@@ -1,0 +1,487 @@
+{
+  "name": "Evoke CMO — Multi-User v4",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "evoke-cmo",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "87391158-85eb-436c-86b1-de0aafce7387",
+      "name": "Form Webhook - AI CMO",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [240, 300],
+      "webhookId": "03d04a07-3c9a-487d-afcf-e21e01eae0c8"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "f1",  "name": "campaignType",     "value": "={{ $json.body?.campaignType ?? $json.campaignType ?? 'event' }}", "type": "string" },
+            { "id": "f2",  "name": "name",             "value": "={{ $json.body?.name ?? $json.name ?? '' }}", "type": "string" },
+            { "id": "f3",  "name": "description",      "value": "={{ $json.body?.description ?? $json.description ?? '' }}", "type": "string" },
+            { "id": "f4",  "name": "date",             "value": "={{ $json.body?.date ?? $json.date ?? '' }}", "type": "string" },
+            { "id": "f5",  "name": "time",             "value": "={{ $json.body?.time ?? $json.time ?? '' }}", "type": "string" },
+            { "id": "f6",  "name": "location",         "value": "={{ $json.body?.location ?? $json.location ?? '' }}", "type": "string" },
+            { "id": "f7",  "name": "contactName",      "value": "={{ $json.body?.contactName ?? $json.contactName ?? 'Friend' }}", "type": "string" },
+            { "id": "f8",  "name": "contactEmail",     "value": "={{ $json.body?.contactEmail ?? $json.contactEmail ?? '' }}", "type": "string" },
+            { "id": "f9",  "name": "contactPhone",     "value": "={{ $json.body?.contactPhone ?? $json.contactPhone ?? '' }}", "type": "string" },
+            { "id": "f10", "name": "brandName",        "value": "={{ $json.body?.brandName ?? $json.brandName ?? 'EVOKE' }}", "type": "string" },
+            { "id": "f11", "name": "imageUrl",         "value": "={{ $json.body?.imageUrl ?? $json.imageUrl ?? '' }}", "type": "string" },
+            { "id": "f12", "name": "postDate",         "value": "={{ $json.body?.postDate ?? $json.postDate ?? '' }}", "type": "string" },
+            { "id": "f13", "name": "postTime",         "value": "={{ $json.body?.postTime ?? $json.postTime ?? '09:00' }}", "type": "string" },
+            { "id": "f14", "name": "platforms",        "value": "={{ $json.body?.platforms ?? $json.platforms ?? 'linkedin,instagram,facebook,email' }}", "type": "string" },
+            { "id": "f15", "name": "emailSubject",     "value": "={{ $json.body?.emailSubject ?? $json.emailSubject ?? '' }}", "type": "string" },
+            { "id": "f16", "name": "emailBody",        "value": "={{ $json.body?.emailBody ?? $json.emailBody ?? '' }}", "type": "string" },
+            { "id": "f17", "name": "linkedinPost",     "value": "={{ $json.body?.linkedinPost ?? $json.linkedinPost ?? '' }}", "type": "string" },
+            { "id": "f18", "name": "instagramCaption", "value": "={{ $json.body?.instagramCaption ?? $json.instagramCaption ?? '' }}", "type": "string" },
+            { "id": "f19", "name": "facebookPost",     "value": "={{ $json.body?.facebookPost ?? $json.facebookPost ?? '' }}", "type": "string" },
+            { "id": "f20", "name": "whatsappMessage",  "value": "={{ $json.body?.whatsappMessage ?? $json.whatsappMessage ?? '' }}", "type": "string" },
+            { "id": "f21", "name": "adHeadline",       "value": "={{ $json.body?.adHeadline ?? $json.adHeadline ?? '' }}", "type": "string" },
+            { "id": "f22", "name": "adBody",           "value": "={{ $json.body?.adBody ?? $json.adBody ?? '' }}", "type": "string" },
+            { "id": "f23", "name": "timestamp",        "value": "={{ DateTime.now().toISO() }}", "type": "string" },
+            {
+              "id": "f24",
+              "name": "userCredentials",
+              "value": "={{ $json.body?.userCredentials ?? $json.userCredentials ?? {} }}",
+              "type": "object"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "normalize-01",
+      "name": "Normalize & Extract Credentials",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.item.json;\nconst creds = d.userCredentials || {};\nreturn { json: { ...d, status: 'Posting', timestamp: new Date().toISOString(), _fb: creds.facebook || null, _ig: creds.instagram || null, _li: creds.linkedin || null, _wa: creds.whatsapp || null } };"
+      },
+      "id": "extract-creds-01",
+      "name": "Flatten User Credentials",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, message: 'Campaign received — posting now to your accounts', name: $json.name, campaignType: $json.campaignType }) }}",
+        "options": {}
+      },
+      "id": "respond-01",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "typeValidation": "strict", "version": 2 },
+          "conditions": [
+            {
+              "id": "has-image",
+              "leftValue":  "={{ $json.imageUrl }}",
+              "rightValue": "",
+              "operator": { "type": "string", "operation": "notEquals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "has-image-01",
+      "name": "Has Image?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.imageUrl }}",
+        "options": { "response": { "response": { "responseFormat": "file" } } }
+      },
+      "id": "download-image-01",
+      "name": "Download Image",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [1340, 160],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "typeValidation": "strict", "version": 2 },
+          "conditions": [
+            {
+              "id": "has-li",
+              "leftValue":  "={{ $json._li !== null && $json._li !== undefined }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "has-linkedin-01",
+      "name": "Has LinkedIn?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1560, 160]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.linkedin.com/v2/ugcPosts",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "={{ 'Bearer ' + $json._li.accessToken }}" },
+            { "name": "Content-Type",  "value": "application/json" },
+            { "name": "X-Restli-Protocol-Version", "value": "2.0.0" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "jsonBody": "={\n  \"author\": \"{{ $json._li.personUrn }}\",\n  \"lifecycleState\": \"PUBLISHED\",\n  \"specificContent\": {\n    \"com.linkedin.ugc.ShareContent\": {\n      \"shareCommentary\": { \"text\": \"{{ $json.linkedinPost }}\" },\n      \"shareMediaCategory\": \"NONE\"\n    }\n  },\n  \"visibility\": { \"com.linkedin.ugc.MemberNetworkVisibility\": \"PUBLIC\" }\n}",
+        "options": {}
+      },
+      "id": "linkedin-post-01",
+      "name": "Post to LinkedIn",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [1780, 80],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "typeValidation": "strict", "version": 2 },
+          "conditions": [
+            {
+              "id": "has-ig",
+              "leftValue":  "={{ $json._ig !== null && $json._ig !== undefined }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "has-instagram-01",
+      "name": "Has Instagram?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [2000, 160]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://graph.instagram.com/v21.0/' + $json._ig.businessAccountId + '/media' }}",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "image_url",    "value": "={{ $json.imageUrl }}" },
+            { "name": "caption",      "value": "={{ $json.instagramCaption }}" },
+            { "name": "access_token", "value": "={{ $json._ig.pageAccessToken }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "create-ig-media-01",
+      "name": "Create Instagram Media",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [2220, 80],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://graph.instagram.com/v21.0/' + $('Flatten User Credentials').first().json._ig.businessAccountId + '/media_publish' }}",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "creation_id",  "value": "={{ $json.id }}" },
+            { "name": "access_token", "value": "={{ $('Flatten User Credentials').first().json._ig.pageAccessToken }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "publish-ig-01",
+      "name": "Publish Instagram Media",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [2440, 80],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "typeValidation": "strict", "version": 2 },
+          "conditions": [
+            {
+              "id": "has-fb",
+              "leftValue":  "={{ $('Flatten User Credentials').first().json._fb !== null }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "has-facebook-01",
+      "name": "Has Facebook?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [2660, 160]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://graph.facebook.com/v21.0/' + $('Flatten User Credentials').first().json._fb.pageId + '/photos' }}",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "caption",      "value": "={{ $('Flatten User Credentials').first().json.facebookPost }}" },
+            { "name": "url",          "value": "={{ $('Flatten User Credentials').first().json.imageUrl }}" },
+            { "name": "access_token", "value": "={{ $('Flatten User Credentials').first().json._fb.pageAccessToken }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "facebook-photo-01",
+      "name": "Facebook (with image)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [2880, 80],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://graph.facebook.com/v21.0/' + $('Flatten User Credentials').first().json._fb.pageId + '/feed' }}",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "message",      "value": "={{ $('Flatten User Credentials').first().json.facebookPost }}" },
+            { "name": "access_token", "value": "={{ $('Flatten User Credentials').first().json._fb.pageAccessToken }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "facebook-text-01",
+      "name": "Facebook (text only)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [2880, 340],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "typeValidation": "strict", "version": 2 },
+          "conditions": [
+            {
+              "id": "has-wa",
+              "leftValue":  "={{ $('Flatten User Credentials').first().json._wa !== null && $('Flatten User Credentials').first().json.contactPhone !== '' }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "has-whatsapp-01",
+      "name": "Has WhatsApp?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [3100, 160]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://graph.facebook.com/v21.0/' + $('Flatten User Credentials').first().json._wa.phoneNumberId + '/messages' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "={{ 'Bearer ' + $('Flatten User Credentials').first().json._wa.accessToken }}" },
+            { "name": "Content-Type",  "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"{{ $('Flatten User Credentials').first().json.contactPhone }}\",\n  \"type\": \"text\",\n  \"text\": { \"body\": \"{{ $('Flatten User Credentials').first().json.whatsappMessage }}\" }\n}",
+        "options": {}
+      },
+      "id": "whatsapp-send-01",
+      "name": "Send WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [3320, 80],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Flatten User Credentials').first().json.contactEmail }}",
+        "subject": "={{ $('Flatten User Credentials').first().json.emailSubject }}",
+        "message": "={{ $('Flatten User Credentials').first().json.emailBody }}",
+        "options": {}
+      },
+      "id": "send-email-01",
+      "name": "Send Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [3540, 220],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "56gcL5bWilDrSr8T",
+          "name": "Gmail account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1gdwIWOkasERi9MTIbZ_HaA7Oqn4NyCzoqjTcURk4Uu4",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "campaignType":     "={{ $('Flatten User Credentials').first().json.campaignType }}",
+            "name":             "={{ $('Flatten User Credentials').first().json.name }}",
+            "date":             "={{ $('Flatten User Credentials').first().json.date }}",
+            "time":             "={{ $('Flatten User Credentials').first().json.time }}",
+            "location":         "={{ $('Flatten User Credentials').first().json.location }}",
+            "contactName":      "={{ $('Flatten User Credentials').first().json.contactName }}",
+            "contactEmail":     "={{ $('Flatten User Credentials').first().json.contactEmail }}",
+            "contactPhone":     "={{ $('Flatten User Credentials').first().json.contactPhone }}",
+            "linkedinPost":     "={{ $('Flatten User Credentials').first().json.linkedinPost }}",
+            "instagramCaption": "={{ $('Flatten User Credentials').first().json.instagramCaption }}",
+            "facebookPost":     "={{ $('Flatten User Credentials').first().json.facebookPost }}",
+            "emailSubject":     "={{ $('Flatten User Credentials').first().json.emailSubject }}",
+            "whatsappMessage":  "={{ $('Flatten User Credentials').first().json.whatsappMessage }}",
+            "imageUrl":         "={{ $('Flatten User Credentials').first().json.imageUrl }}",
+            "postDate":         "={{ $('Flatten User Credentials').first().json.postDate }}",
+            "postTime":         "={{ $('Flatten User Credentials').first().json.postTime }}",
+            "status":           "Posted",
+            "timestamp":        "={{ $('Flatten User Credentials').first().json.timestamp }}",
+            "platforms":        "={{ $('Flatten User Credentials').first().json.platforms }}"
+          },
+          "matchingColumns": []
+        },
+        "options": {}
+      },
+      "id": "sheets-log-01",
+      "name": "Save to Google Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [3760, 220],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "DDDHd5r2vMehujiw",
+          "name": "Google Sheets account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    }
+  ],
+  "connections": {
+    "Form Webhook - AI CMO": {
+      "main": [[{ "node": "Normalize & Extract Credentials", "type": "main", "index": 0 }]]
+    },
+    "Normalize & Extract Credentials": {
+      "main": [[{ "node": "Flatten User Credentials", "type": "main", "index": 0 }]]
+    },
+    "Flatten User Credentials": {
+      "main": [[{ "node": "Respond to Webhook", "type": "main", "index": 0 }]]
+    },
+    "Respond to Webhook": {
+      "main": [[{ "node": "Has Image?", "type": "main", "index": 0 }]]
+    },
+    "Has Image?": {
+      "main": [
+        [{ "node": "Download Image", "type": "main", "index": 0 }],
+        [{ "node": "Has LinkedIn?",  "type": "main", "index": 0 }]
+      ]
+    },
+    "Download Image": {
+      "main": [[{ "node": "Has LinkedIn?", "type": "main", "index": 0 }]]
+    },
+    "Has LinkedIn?": {
+      "main": [
+        [{ "node": "Post to LinkedIn",  "type": "main", "index": 0 }],
+        [{ "node": "Has Instagram?",    "type": "main", "index": 0 }]
+      ]
+    },
+    "Post to LinkedIn": {
+      "main": [[{ "node": "Has Instagram?", "type": "main", "index": 0 }]]
+    },
+    "Has Instagram?": {
+      "main": [
+        [{ "node": "Create Instagram Media", "type": "main", "index": 0 }],
+        [{ "node": "Has Facebook?",          "type": "main", "index": 0 }]
+      ]
+    },
+    "Create Instagram Media": {
+      "main": [[{ "node": "Publish Instagram Media", "type": "main", "index": 0 }]]
+    },
+    "Publish Instagram Media": {
+      "main": [[{ "node": "Has Facebook?", "type": "main", "index": 0 }]]
+    },
+    "Has Facebook?": {
+      "main": [
+        [{ "node": "Facebook (with image)", "type": "main", "index": 0 }],
+        [{ "node": "Facebook (text only)",  "type": "main", "index": 0 }]
+      ]
+    },
+    "Facebook (with image)": {
+      "main": [[{ "node": "Has WhatsApp?", "type": "main", "index": 0 }]]
+    },
+    "Facebook (text only)": {
+      "main": [[{ "node": "Has WhatsApp?", "type": "main", "index": 0 }]]
+    },
+    "Has WhatsApp?": {
+      "main": [
+        [{ "node": "Send WhatsApp", "type": "main", "index": 0 }],
+        [{ "node": "Send Email",    "type": "main", "index": 0 }]
+      ]
+    },
+    "Send WhatsApp": {
+      "main": [[{ "node": "Send Email", "type": "main", "index": 0 }]]
+    },
+    "Send Email": {
+      "main": [[{ "node": "Save to Google Sheet", "type": "main", "index": 0 }]]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "9f6ccdf5c0705b8e02c0672ddeb7adfe4008dcee8c0717be7cd0c5e4b19fae0e"
+  }
+}
