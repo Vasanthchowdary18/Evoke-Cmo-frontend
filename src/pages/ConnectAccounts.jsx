@@ -11,7 +11,7 @@ import { auth } from '../firebase'
 import { onAuthStateChanged } from 'firebase/auth'
 import { getOrCreateUser, saveSocialAccount, disconnectSocialAccount } from '../services/userService'
 
-// ─── Config ────────────────────────────────────────────────────────────────
+// ─── Config v2 ─────────────────────────────────────────────────────────────
 const META_APP_ID        = import.meta.env.VITE_META_APP_ID || '1587533479009417'
 const FACEBOOK_REDIRECT  = window.location.origin + '/connect-accounts'
 const FACEBOOK_SCOPE     = 'pages_manage_posts,pages_read_engagement,instagram_basic,instagram_content_publish,pages_show_list'
