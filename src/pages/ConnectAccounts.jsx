@@ -116,6 +116,24 @@ const PLATFORMS = [
     btnLabel: 'Connect with X',
   },
   {
+    key: 'metaads',
+    label: 'Meta Ads',
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 2C6.477 2 2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.879V14.89h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.989C18.343 21.129 22 16.99 22 12c0-5.523-4.477-10-10-10z"/>
+      </svg>
+    ),
+    color: '#0866ff',
+    gradient: 'linear-gradient(135deg, rgba(8,102,255,0.15), rgba(8,102,255,0.05))',
+    border: 'rgba(8,102,255,0.3)',
+    description: 'Run paid ads on Facebook & Instagram using Meta Ads Manager',
+    oauthType: 'manual',
+    note: 'You need a Meta Business Ad Account. Find your Ad Account ID in Meta Ads Manager.',
+    fields: [
+      { name: 'adAccountId', label: 'Ad Account ID', placeholder: 'act_1234567890123456', help: 'Meta Ads Manager → Account Overview → Account ID (prefix with act_)' },
+    ],
+  },
+  {
     key: 'whatsapp',
     label: 'WhatsApp Campaigns',
     icon: <MessageSquare size={22} />,
