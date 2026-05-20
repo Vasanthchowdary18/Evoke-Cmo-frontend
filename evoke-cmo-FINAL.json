@@ -397,7 +397,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const d = $('Flatten User Credentials').first().json;\nconst raw = d.whatsappRecipients || '';\nconst numbers = raw.split(',').map(r => r.trim()).filter(r => r.length > 0);\nif (numbers.length === 0) return [];\nreturn numbers.map(phone => ({ json: { ...d, waPhone: phone } }));"
+        "jsCode": "const d = $('Flatten User Credentials').first().json;\nconst raw = d.whatsappRecipients || '';\nconst numbers = raw.split(',').map(r => r.trim().replace(/^\\+/, '')).filter(r => r.length > 0);\nif (numbers.length === 0) return [];\nreturn numbers.map(phone => ({ json: { ...d, waPhone: phone } }));"
       },
       "id": "node-wa-split",
       "name": "Split WA Recipients",
