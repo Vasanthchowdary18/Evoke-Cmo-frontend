@@ -13,7 +13,9 @@ import { getOrCreateUser, saveSocialAccount, disconnectSocialAccount } from '../
 
 // ─── Config ────────────────────────────────────────────────────────────────
 const META_APP_ID        = import.meta.env.VITE_META_APP_ID || '1587533479009417'
-const FB_SCOPE           = 'pages_manage_posts,pages_read_engagement,instagram_basic,instagram_content_publish,pages_show_list'
+const FACEBOOK_REDIRECT  = window.location.origin + '/connect-accounts'
+const FACEBOOK_SCOPE     = 'pages_manage_posts,pages_read_engagement,instagram_basic,instagram_content_publish,pages_show_list'
+const FACEBOOK_N8N       = 'https://evoke2026.app.n8n.cloud/webhook/facebook-oauth'
 
 const LINKEDIN_CLIENT_ID = import.meta.env.VITE_LINKEDIN_CLIENT_ID || ''
 const LINKEDIN_REDIRECT  = window.location.origin + '/connect-accounts'
@@ -163,7 +165,8 @@ export default function ConnectAccounts() {
       if (!u) return
       unsub() // stop listening once we have the user
       console.log('🔵 Auth ready, processing OAuth for user:', u.uid)
-      if (state === 'linkedin_connect')   handleLinkedInCallback(code)
+      if (state === 'facebook_connect')  handleFacebookCallback(code)
+      if (state === 'linkedin_connect')  handleLinkedInCallback(code)
       if (state === 'instagram_connect') handleInstagramCallback(code)
       if (state === 'twitter_connect')   handleTwitterCallback(code)
     })
@@ -186,65 +189,44 @@ export default function ConnectAccounts() {
   const setLoad = (k, v) => setLoading(l => ({ ...l, [k]: v }))
   const setOk   = (k, v) => setSuccess(s => ({ ...s, [k]: v }))
 
-  // ── Facebook + Instagram ─────────────────────────────────────────────────
+  // ── Facebook + Instagram (redirect flow — no SDK popup) ──────────────────
   const connectFacebook = () => {
-    // Check SDK is ready
-    if (!window.FB) {
-      setErr('facebook', 'Facebook SDK not loaded. Please refresh the page and try again.')
-      return
-    }
-    setLoad('facebook', true); clrErr('facebook')
-
-    // Safety timeout — if popup is blocked or closed, reset after 30s
-    const timeout = setTimeout(() => {
-      setLoad('facebook', false)
-      setErr('facebook', 'Facebook login timed out. Make sure popups are not blocked in your browser, then try again.')
-    }, 30000)
-
-    // Call FB.login directly (no await) so browser doesn't block the popup
-    window.FB.login((resp) => {
-      if (!resp || !resp.authResponse) {
-        clearTimeout(timeout)
-        setErr('facebook', 'Facebook login was cancelled or popup was blocked. Please allow popups and try again.')
-        setLoad('facebook', false)
-        return
-      }
-      const { accessToken } = resp.authResponse
-      window.FB.api('/me/accounts', { access_token: accessToken }, (pagesResp) => {
-        if (!pagesResp || pagesResp.error || !pagesResp.data || pagesResp.data.length === 0) {
-          clearTimeout(timeout)
-          setErr('facebook', pagesResp?.error?.message || 'No Facebook Pages found. You need to manage at least one Facebook Page.')
-          setLoad('facebook', false)
-          return
-        }
-        const page = pagesResp.data[0]
-        saveSocialAccount(user.uid, 'facebook', {
-          pageId: page.id, pageAccessToken: page.access_token, pageName: page.name,
-        }).then(() => {
-          setAccounts(a => ({ ...a, facebook: { connected: true, pageId: page.id, pageName: page.name } }))
-          setOk('facebook', true)
-          // Auto-detect Instagram Business linked to this page
-          window.FB.api(`/${page.id}?fields=instagram_business_account`, { access_token: page.access_token }, (igResp) => {
-            clearTimeout(timeout)
-            if (igResp && igResp.instagram_business_account) {
-              const igId = igResp.instagram_business_account.id
-              saveSocialAccount(user.uid, 'instagram', {
-                businessAccountId: igId, pageAccessToken: page.access_token, pageName: page.name,
-              }).then(() => {
-                setAccounts(a => ({ ...a, instagram: { connected: true, businessAccountId: igId, pageName: page.name } }))
-                setOk('instagram', true)
-              })
-            }
-            setLoad('facebook', false)
-          })
-        }).catch(() => {
-          clearTimeout(timeout)
-          setErr('facebook', 'Failed to save credentials. Please try again.')
-          setLoad('facebook', false)
-        })
-      })
-    }, { scope: FB_SCOPE })
+    const url = new URLSearchParams({
+      client_id:     META_APP_ID,
+      redirect_uri:  FACEBOOK_REDIRECT,
+      scope:         FACEBOOK_SCOPE,
+      response_type: 'code',
+      state:         'facebook_connect',
+    })
+    window.location.href = `https://www.facebook.com/v21.0/dialog/oauth?${url}`
   }
+
+  const handleFacebookCallback = useCallback(async (code) => {
+    if (!auth.currentUser) return
+    const uid = auth.currentUser.uid
+    setLoad('facebook', true); clrErr('facebook')
+    try {
+      const res = await fetch(FACEBOOK_N8N, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, redirectUri: FACEBOOK_REDIRECT, uid }),
+      })
+      if (!res.ok) throw new Error('Token exchange failed: ' + await res.text())
+      const { pageId, pageAccessToken, pageName, igId } = await res.json()
+      await saveSocialAccount(uid, 'facebook', { pageId, pageAccessToken, pageName })
+      setAccounts(a => ({ ...a, facebook: { connected: true, pageId, pageName } }))
+      setOk('facebook', true)
+      if (igId) {
+        await saveSocialAccount(uid, 'instagram', { businessAccountId: igId, pageAccessToken, pageName })
+        setAccounts(a => ({ ...a, instagram: { connected: true, businessAccountId: igId, pageName } }))
+        setOk('instagram', true)
+      }
+    } catch (e) {
+      setErr('facebook', 'Facebook connection failed: ' + e.message)
+    } finally {
+      setLoad('facebook', false)
+    }
+  }, [])
 
   // ── Instagram OAuth (Business Login) ────────────────────────────────────
   const connectInstagram = () => {

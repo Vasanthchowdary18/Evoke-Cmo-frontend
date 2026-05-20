@@ -477,6 +477,145 @@
     {
       "parameters": {
         "httpMethod": "POST",
+        "path": "facebook-oauth",
+        "responseMode": "responseNode",
+        "options": { "allowedOrigins": "*" }
+      },
+      "id": "node-fb-01",
+      "name": "FB OAuth Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [240, 1100],
+      "webhookId": "facebook-oauth-evoke-cmo"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.item.json.body || $input.item.json;\nreturn { json: { code: body.code, redirectUri: body.redirectUri, uid: body.uid } };"
+      },
+      "id": "node-fb-02",
+      "name": "FB Extract Params",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 1100]
+    },
+    {
+      "parameters": {
+        "url": "https://graph.facebook.com/v21.0/oauth/access_token",
+        "sendQueryParameters": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "client_id",     "value": "1587533479009417" },
+            { "name": "client_secret", "value": "1b96d5c9725279d38f64140b9aeafbfd" },
+            { "name": "redirect_uri",  "value": "={{ $json.redirectUri }}" },
+            { "name": "code",          "value": "={{ $json.code }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-fb-03",
+      "name": "FB Exchange Code",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [680, 1100]
+    },
+    {
+      "parameters": {
+        "url": "https://graph.facebook.com/v21.0/oauth/access_token",
+        "sendQueryParameters": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "grant_type",       "value": "fb_exchange_token" },
+            { "name": "client_id",        "value": "1587533479009417" },
+            { "name": "client_secret",    "value": "1b96d5c9725279d38f64140b9aeafbfd" },
+            { "name": "fb_exchange_token","value": "={{ $json.access_token }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-fb-04",
+      "name": "FB Get Long-lived Token",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [900, 1100]
+    },
+    {
+      "parameters": {
+        "url": "https://graph.facebook.com/v21.0/me/accounts",
+        "sendQueryParameters": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "access_token", "value": "={{ $json.access_token }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-fb-05",
+      "name": "FB Get Pages",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [1120, 1100]
+    },
+    {
+      "parameters": {
+        "jsCode": "const pagesResp = $input.item.json;\nconst pages = pagesResp.data || [];\nif (pages.length === 0) throw new Error('No Facebook Pages found');\nconst page = pages[0];\nconst uid = $('FB Extract Params').first().json.uid;\nreturn [{ json: { pageId: page.id, pageAccessToken: page.access_token, pageName: page.name, uid } }];"
+      },
+      "id": "node-fb-06",
+      "name": "FB Extract Page",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 1100]
+    },
+    {
+      "parameters": {
+        "url": "={{ 'https://graph.facebook.com/v21.0/' + $json.pageId }}",
+        "sendQueryParameters": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "fields",       "value": "instagram_business_account" },
+            { "name": "access_token", "value": "={{ $json.pageAccessToken }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-fb-07",
+      "name": "FB Get Instagram",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [1560, 1100],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const igResp = $input.item.json;\nconst page = $('FB Extract Page').first().json;\nreturn [{ json: { pageId: page.pageId, pageAccessToken: page.pageAccessToken, pageName: page.pageName, igId: igResp.instagram_business_account?.id || null, uid: page.uid } }];"
+      },
+      "id": "node-fb-08",
+      "name": "FB Build Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1780, 1100]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin", "value": "*" }
+            ]
+          }
+        }
+      },
+      "id": "node-fb-09",
+      "name": "FB Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [2000, 1100]
+    },
+
+    {
+      "parameters": {
+        "httpMethod": "POST",
         "path": "instagram-oauth",
         "responseMode": "responseNode",
         "options": { "allowedOrigins": "*" }
@@ -804,6 +943,33 @@
         [{ "node": "Save to Google Sheet1", "type": "main", "index": 0 }],
         [{ "node": "Save to Google Sheet1", "type": "main", "index": 0 }]
       ]
+    },
+    "FB OAuth Webhook": {
+      "main": [[{ "node": "FB Extract Params", "type": "main", "index": 0 }]]
+    },
+    "FB Extract Params": {
+      "main": [[{ "node": "FB Exchange Code", "type": "main", "index": 0 }]]
+    },
+    "FB Exchange Code": {
+      "main": [[{ "node": "FB Get Long-lived Token", "type": "main", "index": 0 }]]
+    },
+    "FB Get Long-lived Token": {
+      "main": [[{ "node": "FB Get Pages", "type": "main", "index": 0 }]]
+    },
+    "FB Get Pages": {
+      "main": [[{ "node": "FB Extract Page", "type": "main", "index": 0 }]]
+    },
+    "FB Extract Page": {
+      "main": [[{ "node": "FB Get Instagram", "type": "main", "index": 0 }]]
+    },
+    "FB Get Instagram": {
+      "main": [
+        [{ "node": "FB Build Response", "type": "main", "index": 0 }],
+        [{ "node": "FB Build Response", "type": "main", "index": 0 }]
+      ]
+    },
+    "FB Build Response": {
+      "main": [[{ "node": "FB Respond to Webhook", "type": "main", "index": 0 }]]
     },
     "IG OAuth Webhook": {
       "main": [[{ "node": "IG Extract Params", "type": "main", "index": 0 }]]
