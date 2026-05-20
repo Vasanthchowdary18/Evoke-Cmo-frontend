@@ -101,19 +101,23 @@ const PLATFORMS = [
     btnLabel: 'Connect with LinkedIn',
   },
   {
-    key: 'twitter',
-    label: 'X / Twitter',
+    key: 'tiktok',
+    label: 'TikTok',
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+        <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.75a4.85 4.85 0 01-1.01-.06z"/>
       </svg>
     ),
-    color: '#000000',
-    gradient: 'linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.03))',
-    border: 'rgba(255,255,255,0.15)',
-    description: 'Post tweets to your X / Twitter account',
-    oauthType: 'twitter',
-    btnLabel: 'Connect with X',
+    color: '#ff0050',
+    gradient: 'linear-gradient(135deg, rgba(255,0,80,0.15), rgba(0,242,234,0.05))',
+    border: 'rgba(255,0,80,0.3)',
+    description: 'Post videos and content to your TikTok Business account',
+    oauthType: 'manual',
+    note: 'Enter your TikTok Business account details to enable campaign posting.',
+    fields: [
+      { name: 'accessToken', label: 'TikTok Access Token', placeholder: 'Paste your TikTok access token', help: 'TikTok Developer Portal → My Apps → Your App → Access Token' },
+      { name: 'openId',      label: 'TikTok Open ID',      placeholder: 'Your TikTok Open ID',            help: 'Found alongside your access token in TikTok Developer Portal' },
+    ],
   },
   {
     key: 'metaads',
@@ -577,18 +581,6 @@ export default function ConnectAccounts() {
                       <button onClick={connectLinkedIn} disabled={isLoading}
                         style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 18px', background: `linear-gradient(135deg, ${p.color}, ${p.color}bb)`, border: 'none', borderRadius: 10, color: 'white', fontSize: 14, fontWeight: 700, cursor: isLoading ? 'not-allowed' : 'pointer' }}>
                         {isLoading ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <><Linkedin size={14} /> {p.btnLabel}</>}
-                      </button>
-                    ) : p.oauthType === 'twitter' ? (
-                      <button onClick={connectTwitter} disabled={isLoading}
-                        style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 18px', background: 'linear-gradient(135deg, #111, #333)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 10, color: 'white', fontSize: 14, fontWeight: 700, cursor: isLoading ? 'not-allowed' : 'pointer' }}>
-                        {isLoading ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : (
-                          <>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                            </svg>
-                            {p.btnLabel}
-                          </>
-                        )}
                       </button>
                     ) : (
                       // Manual form toggle
