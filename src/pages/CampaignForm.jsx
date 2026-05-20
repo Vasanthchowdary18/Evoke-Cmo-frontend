@@ -914,7 +914,7 @@ export default function CampaignForm() {
             facebook:  sa.facebook?.connected  ? { pageId: sa.facebook.pageId,  pageAccessToken: sa.facebook.pageAccessToken }  : null,
             instagram: sa.instagram?.connected ? { businessAccountId: sa.instagram.businessAccountId, pageAccessToken: sa.instagram.pageAccessToken } : null,
             linkedin:  sa.linkedin?.connected  ? { personUrn: sa.linkedin.personUrn, accessToken: sa.linkedin.accessToken }  : null,
-            gmail:     sa.gmail?.connected     ? { email: sa.gmail.email } : null,
+            gmail:     sa.gmail?.connected     ? { email: sa.gmail.email, accessToken: sa.gmail.accessToken, refreshToken: sa.gmail.refreshToken } : null,
           }
         }
       }

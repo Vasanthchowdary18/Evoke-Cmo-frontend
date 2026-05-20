@@ -32,6 +32,11 @@ const TWITTER_REDIRECT   = window.location.origin + '/connect-accounts'
 const TWITTER_SCOPE      = 'tweet.read tweet.write users.read offline.access'
 const TWITTER_N8N        = 'https://evoke2026.app.n8n.cloud/webhook/twitter-oauth'
 
+const GOOGLE_CLIENT_ID   = '53481639003-g903a5274f1bcq4jvkgpeoispls7aps9.apps.googleusercontent.com'
+const GOOGLE_REDIRECT    = window.location.origin + '/connect-accounts'
+const GOOGLE_SCOPE       = 'https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile'
+const GMAIL_N8N          = 'https://evoke2026.app.n8n.cloud/webhook/gmail-oauth'
+
 // ─── PKCE helpers for Twitter ──────────────────────────────────────────────
 function genVerifier() {
   const arr = new Uint8Array(32)
@@ -128,12 +133,9 @@ const PLATFORMS = [
     color: '#ea4335',
     gradient: 'linear-gradient(135deg, rgba(234,67,53,0.15), rgba(234,67,53,0.05))',
     border: 'rgba(234,67,53,0.3)',
-    description: 'Send campaign emails from your Gmail account',
-    oauthType: 'manual',
-    fields: [
-      { name: 'email', label: 'Gmail Address', placeholder: 'yourname@gmail.com', help: 'The Gmail account n8n will send campaign emails from' },
-    ],
-    note: 'Also connect this Gmail in your n8n → Gmail node credentials',
+    description: 'Send campaign emails directly from your own Gmail account',
+    oauthType: 'gmail',
+    btnLabel: 'Connect Gmail',
   },
 ]
 
@@ -165,6 +167,7 @@ export default function ConnectAccounts() {
       if (state === 'linkedin_connect')  handleLinkedInCallback(code)
       if (state === 'instagram_connect') handleInstagramCallback(code)
       if (state === 'twitter_connect')   handleTwitterCallback(code)
+      if (state === 'gmail_connect')     handleGmailCallback(code)
     })
   }, []) // eslint-disable-line
 
@@ -371,6 +374,42 @@ export default function ConnectAccounts() {
     }
   }, [])
 
+  // ── Gmail OAuth ─────────────────────────────────────────────────────────
+  const connectGmail = () => {
+    const url = new URLSearchParams({
+      client_id:     GOOGLE_CLIENT_ID,
+      redirect_uri:  GOOGLE_REDIRECT,
+      scope:         GOOGLE_SCOPE,
+      response_type: 'code',
+      state:         'gmail_connect',
+      access_type:   'offline',
+      prompt:        'consent',
+    })
+    window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${url}`
+  }
+
+  const handleGmailCallback = useCallback(async (code) => {
+    if (!auth.currentUser) return
+    const uid = auth.currentUser.uid
+    setLoad('gmail', true); clrErr('gmail')
+    try {
+      const res = await fetch(GMAIL_N8N, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, redirectUri: GOOGLE_REDIRECT, uid }),
+      })
+      if (!res.ok) throw new Error('Token exchange failed: ' + await res.text())
+      const { accessToken, refreshToken, email } = await res.json()
+      await saveSocialAccount(uid, 'gmail', { accessToken, refreshToken, email, connected: true })
+      setAccounts(a => ({ ...a, gmail: { connected: true, email } }))
+      setOk('gmail', true)
+    } catch (e) {
+      setErr('gmail', 'Gmail connection failed: ' + e.message)
+    } finally {
+      setLoad('gmail', false)
+    }
+  }, [])
+
   // ── Manual form (WhatsApp / Gmail) ───────────────────────────────────────
   const saveManual = async (platform, fields) => {
     const form = manualForms[platform] || {}
@@ -531,8 +570,13 @@ export default function ConnectAccounts() {
                           </>
                         )}
                       </button>
+                    ) : p.oauthType === 'gmail' ? (
+                      <button onClick={connectGmail} disabled={isLoading}
+                        style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 18px', background: 'linear-gradient(135deg, #ea4335, #c5221f)', border: 'none', borderRadius: 10, color: 'white', fontSize: 14, fontWeight: 700, cursor: isLoading ? 'not-allowed' : 'pointer' }}>
+                        {isLoading ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <><Mail size={14} /> {p.btnLabel}</>}
+                      </button>
                     ) : (
-                      // Manual form toggle (WhatsApp / Gmail)
+                      // Manual form toggle
                       <button
                         onClick={() => setExpanded(isOpen ? null : p.key)}
                         style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 18px', background: `linear-gradient(135deg, ${p.color}, ${p.color}bb)`, border: 'none', borderRadius: 10, color: 'white', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>

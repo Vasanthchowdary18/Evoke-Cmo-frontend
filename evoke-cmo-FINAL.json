@@ -56,7 +56,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const d = $input.item.json;\nconst creds = d.userCredentials || {};\nreturn { json: { ...d, status: 'Posting', timestamp: new Date().toISOString(), _fb: creds.facebook || null, _ig: creds.instagram || null, _li: creds.linkedin || null, _wa: creds.whatsapp || null } };"
+        "jsCode": "const d = $input.item.json;\nconst creds = d.userCredentials || {};\nreturn { json: { ...d, status: 'Posting', timestamp: new Date().toISOString(), _fb: creds.facebook || null, _ig: creds.instagram || null, _li: creds.linkedin || null, _gmail: creds.gmail || null } };"
       },
       "id": "node-03",
       "name": "Flatten User Credentials",
@@ -430,19 +430,75 @@
     },
     {
       "parameters": {
-        "sendTo":  "={{ $('Flatten User Credentials').first().json.contactEmail }}",
-        "subject": "={{ $('Flatten User Credentials').first().json.emailSubject }}",
-        "message": "={{ $('Flatten User Credentials').first().json.emailBody }}",
+        "conditions": {
+          "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict", "version": 2 },
+          "conditions": [
+            { "id": "cg1", "leftValue": "={{ $('Flatten User Credentials').first().json._gmail !== null && $('Flatten User Credentials').first().json._gmail !== undefined }}", "rightValue": true, "operator": { "type": "boolean", "operation": "equals" } }
+          ],
+          "combinator": "and"
+        },
         "options": {}
       },
-      "id": "node-22",
-      "name": "Send Email1",
-      "type": "n8n-nodes-base.gmail",
+      "id": "node-has-gmail",
+      "name": "Has Gmail?",
+      "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [4420, 300],
-      "credentials": {
-        "gmailOAuth2": { "id": "56gcL5bWilDrSr8T", "name": "Gmail account" }
+      "position": [4420, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://oauth2.googleapis.com/token",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "grant_type",    "value": "refresh_token" },
+            { "name": "client_id",     "value": "53481639003-g903a5274f1bcq4jvkgpeoispls7aps9.apps.googleusercontent.com" },
+            { "name": "client_secret", "value": "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" },
+            { "name": "refresh_token", "value": "={{ $('Flatten User Credentials').first().json._gmail.refreshToken }}" }
+          ]
+        },
+        "options": {}
       },
+      "id": "node-refresh-gmail",
+      "name": "Refresh Gmail Token",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [4640, 180],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $('Flatten User Credentials').first().json;\nconst freshToken = $input.item.json.access_token || d._gmail.accessToken;\nconst to = d.contactEmail || '';\nconst from = d._gmail.email || '';\nconst subject = d.emailSubject || 'Campaign Update from ' + (d.brandName || 'Evoke CMO');\nconst body = d.emailBody || d.description || '';\nconst raw = [\n  'From: ' + from,\n  'To: ' + to,\n  'Subject: ' + subject,\n  'MIME-Version: 1.0',\n  'Content-Type: text/html; charset=utf-8',\n  '',\n  body\n].join('\\r\\n');\nconst encoded = Buffer.from(raw).toString('base64').replace(/\\+/g, '-').replace(/\\//g, '_').replace(/=/g, '');\nreturn [{ json: { ...d, _gmailRaw: encoded, _freshToken: freshToken } }];"
+      },
+      "id": "node-build-email",
+      "name": "Build Gmail Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [4860, 180]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "={{ 'Bearer ' + $json._freshToken }}" },
+            { "name": "Content-Type",  "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ raw: $json._gmailRaw }) }}",
+        "options": {}
+      },
+      "id": "node-send-gmail-api",
+      "name": "Send via Gmail API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [5080, 180],
       "onError": "continueErrorOutput"
     },
     {
@@ -833,6 +889,98 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
       "position": [1340, 700]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "gmail-oauth",
+        "responseMode": "responseNode",
+        "options": { "allowedOrigins": "*" }
+      },
+      "id": "node-gmail-webhook",
+      "name": "Gmail OAuth Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [240, 900],
+      "webhookId": "gmail-oauth-evoke-cmo"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.item.json.body || $input.item.json;\nreturn { json: { code: body.code, redirectUri: body.redirectUri, uid: body.uid } };"
+      },
+      "id": "node-gmail-extract",
+      "name": "Gmail Extract Params",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 900]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://oauth2.googleapis.com/token",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "code",          "value": "={{ $json.code }}" },
+            { "name": "client_id",     "value": "53481639003-g903a5274f1bcq4jvkgpeoispls7aps9.apps.googleusercontent.com" },
+            { "name": "client_secret", "value": "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" },
+            { "name": "redirect_uri",  "value": "={{ $json.redirectUri }}" },
+            { "name": "grant_type",    "value": "authorization_code" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-gmail-exchange",
+      "name": "Gmail Exchange Code",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [680, 900]
+    },
+    {
+      "parameters": {
+        "url": "https://www.googleapis.com/oauth2/v2/userinfo",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "={{ 'Bearer ' + $json.access_token }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-gmail-profile",
+      "name": "Gmail Get Profile",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [900, 900]
+    },
+    {
+      "parameters": {
+        "jsCode": "const profile = $input.item.json;\nconst tokenData = $('Gmail Exchange Code').first().json;\nreturn { json: { accessToken: tokenData.access_token, refreshToken: tokenData.refresh_token, email: profile.email || profile.name || '' } };"
+      },
+      "id": "node-gmail-build",
+      "name": "Gmail Build Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 900]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin", "value": "*" }
+            ]
+          }
+        }
+      },
+      "id": "node-gmail-respond",
+      "name": "Gmail Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [1340, 900]
     }
   ],
 
@@ -939,7 +1087,7 @@
     "Has WhatsApp?": {
       "main": [
         [{ "node": "Split WA Recipients", "type": "main", "index": 0 }],
-        [{ "node": "Send Email1",         "type": "main", "index": 0 }]
+        [{ "node": "Has Gmail?",          "type": "main", "index": 0 }]
       ]
     },
     "Split WA Recipients": {
@@ -949,11 +1097,28 @@
     },
     "Send WhatsApp1": {
       "main": [
-        [{ "node": "Send Email1", "type": "main", "index": 0 }],
-        [{ "node": "Send Email1", "type": "main", "index": 0 }]
+        [{ "node": "Has Gmail?", "type": "main", "index": 0 }],
+        [{ "node": "Has Gmail?", "type": "main", "index": 0 }]
       ]
     },
-    "Send Email1": {
+    "Has Gmail?": {
+      "main": [
+        [{ "node": "Refresh Gmail Token", "type": "main", "index": 0 }],
+        [{ "node": "Save to Google Sheet1", "type": "main", "index": 0 }]
+      ]
+    },
+    "Refresh Gmail Token": {
+      "main": [
+        [{ "node": "Build Gmail Email", "type": "main", "index": 0 }],
+        [{ "node": "Save to Google Sheet1", "type": "main", "index": 0 }]
+      ]
+    },
+    "Build Gmail Email": {
+      "main": [
+        [{ "node": "Send via Gmail API", "type": "main", "index": 0 }]
+      ]
+    },
+    "Send via Gmail API": {
       "main": [
         [{ "node": "Save to Google Sheet1", "type": "main", "index": 0 }],
         [{ "node": "Save to Google Sheet1", "type": "main", "index": 0 }]
@@ -1018,6 +1183,21 @@
     },
     "LI Build Response": {
       "main": [[{ "node": "LI Respond to Webhook", "type": "main", "index": 0 }]]
+    },
+    "Gmail OAuth Webhook": {
+      "main": [[{ "node": "Gmail Extract Params", "type": "main", "index": 0 }]]
+    },
+    "Gmail Extract Params": {
+      "main": [[{ "node": "Gmail Exchange Code", "type": "main", "index": 0 }]]
+    },
+    "Gmail Exchange Code": {
+      "main": [[{ "node": "Gmail Get Profile", "type": "main", "index": 0 }]]
+    },
+    "Gmail Get Profile": {
+      "main": [[{ "node": "Gmail Build Response", "type": "main", "index": 0 }]]
+    },
+    "Gmail Build Response": {
+      "main": [[{ "node": "Gmail Respond to Webhook", "type": "main", "index": 0 }]]
     }
   },
 
