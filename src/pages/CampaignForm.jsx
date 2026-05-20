@@ -128,7 +128,15 @@ Return ONLY valid JSON with exactly these fields, no markdown, no explanation:
   const text = data.choices?.[0]?.message?.content || ''
   const match = text.match(/```json\s*([\s\S]*?)```/) || text.match(/(\{[\s\S]*\})/)
   if (!match) throw new Error('Could not parse AI response. Please try again.')
-  return JSON.parse(match[1])
+  // Try parsing directly; if AI returned literal newlines/tabs inside string values,
+  // fix them by escaping only within JSON strings, then retry.
+  let raw = match[1]
+  try { return JSON.parse(raw) } catch (_) {}
+  // Escape literal \n \r \t that appear inside JSON string literals
+  const fixed = raw.replace(/"(?:[^"\\]|\\.)*"/g, str =>
+    str.replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t')
+  )
+  return JSON.parse(fixed)
 }
 
 // ─── Comprehensive product category list ────────────────────────────────────
