@@ -418,7 +418,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ messaging_product: 'whatsapp', to: $json.waPhone, type: 'text', text: { body: $json.whatsappMessage } }) }}",
+        "jsonBody": "={{ JSON.stringify({ messaging_product: 'whatsapp', to: $json.waPhone, type: 'template', template: { name: 'hello_world', language: { code: 'en_US' } } }) }}",
         "options": {}
       },
       "id": "node-21",
