@@ -758,17 +758,154 @@ export default function CampaignForm() {
 
   const INDIAN_CITIES = [
     'Online / Virtual',
-    'Mumbai', 'Delhi', 'Bengaluru', 'Hyderabad', 'Chennai', 'Kolkata',
-    'Pune', 'Ahmedabad', 'Jaipur', 'Surat', 'Lucknow', 'Kanpur',
-    'Nagpur', 'Indore', 'Thane', 'Bhopal', 'Visakhapatnam', 'Pimpri-Chinchwad',
-    'Patna', 'Vadodara', 'Coimbatore', 'Agra', 'Madurai', 'Nashik',
-    'Faridabad', 'Meerut', 'Rajkot', 'Varanasi', 'Srinagar', 'Aurangabad',
-    'Dhanbad', 'Amritsar', 'Navi Mumbai', 'Allahabad', 'Ranchi', 'Howrah',
-    'Ghaziabad', 'Chandigarh', 'Jodhpur', 'Ludhiana', 'Mysore', 'Kochi',
-    'Guwahati', 'Bhubaneswar', 'Thiruvananthapuram', 'Noida', 'Gurugram',
-    // International
-    'Dubai', 'Singapore', 'London', 'New York', 'San Francisco', 'Sydney',
-    'Toronto', 'Berlin', 'Paris', 'Tokyo',
+    // ── India ──
+    'Mumbai, India', 'Delhi, India', 'Bengaluru, India', 'Hyderabad, India', 'Chennai, India',
+    'Kolkata, India', 'Pune, India', 'Ahmedabad, India', 'Jaipur, India', 'Surat, India',
+    'Lucknow, India', 'Kanpur, India', 'Nagpur, India', 'Indore, India', 'Thane, India',
+    'Bhopal, India', 'Visakhapatnam, India', 'Patna, India', 'Vadodara, India',
+    'Coimbatore, India', 'Agra, India', 'Madurai, India', 'Nashik, India',
+    'Faridabad, India', 'Meerut, India', 'Rajkot, India', 'Varanasi, India',
+    'Srinagar, India', 'Aurangabad, India', 'Amritsar, India', 'Navi Mumbai, India',
+    'Ranchi, India', 'Howrah, India', 'Ghaziabad, India', 'Chandigarh, India',
+    'Jodhpur, India', 'Ludhiana, India', 'Mysore, India', 'Kochi, India',
+    'Guwahati, India', 'Bhubaneswar, India', 'Thiruvananthapuram, India',
+    'Noida, India', 'Gurugram, India',
+    // ── United States ──
+    'New York, USA', 'Los Angeles, USA', 'Chicago, USA', 'Houston, USA', 'Phoenix, USA',
+    'Philadelphia, USA', 'San Antonio, USA', 'San Diego, USA', 'Dallas, USA', 'San Jose, USA',
+    'Austin, USA', 'Jacksonville, USA', 'Fort Worth, USA', 'Columbus, USA', 'Charlotte, USA',
+    'Indianapolis, USA', 'San Francisco, USA', 'Seattle, USA', 'Denver, USA', 'Nashville, USA',
+    'Las Vegas, USA', 'Portland, USA', 'Memphis, USA', 'Atlanta, USA', 'Boston, USA',
+    'Miami, USA', 'Minneapolis, USA', 'New Orleans, USA', 'Washington DC, USA',
+    // ── United Kingdom ──
+    'London, UK', 'Manchester, UK', 'Birmingham, UK', 'Leeds, UK', 'Glasgow, UK',
+    'Sheffield, UK', 'Bradford, UK', 'Edinburgh, UK', 'Liverpool, UK', 'Bristol, UK',
+    'Cardiff, UK', 'Belfast, UK', 'Leicester, UK', 'Nottingham, UK', 'Newcastle, UK',
+    // ── Germany ──
+    'Berlin, Germany', 'Hamburg, Germany', 'Munich, Germany', 'Cologne, Germany',
+    'Frankfurt, Germany', 'Stuttgart, Germany', 'Düsseldorf, Germany', 'Leipzig, Germany',
+    'Dortmund, Germany', 'Essen, Germany', 'Bremen, Germany', 'Dresden, Germany',
+    // ── France ──
+    'Paris, France', 'Marseille, France', 'Lyon, France', 'Toulouse, France',
+    'Nice, France', 'Nantes, France', 'Strasbourg, France', 'Bordeaux, France',
+    'Lille, France', 'Rennes, France',
+    // ── UAE ──
+    'Dubai, UAE', 'Abu Dhabi, UAE', 'Sharjah, UAE', 'Ajman, UAE', 'Ras Al Khaimah, UAE',
+    // ── Saudi Arabia ──
+    'Riyadh, Saudi Arabia', 'Jeddah, Saudi Arabia', 'Mecca, Saudi Arabia',
+    'Medina, Saudi Arabia', 'Dammam, Saudi Arabia',
+    // ── Australia ──
+    'Sydney, Australia', 'Melbourne, Australia', 'Brisbane, Australia', 'Perth, Australia',
+    'Adelaide, Australia', 'Gold Coast, Australia', 'Canberra, Australia', 'Hobart, Australia',
+    // ── Canada ──
+    'Toronto, Canada', 'Vancouver, Canada', 'Montreal, Canada', 'Calgary, Canada',
+    'Edmonton, Canada', 'Ottawa, Canada', 'Winnipeg, Canada', 'Quebec City, Canada',
+    // ── Singapore ──
+    'Singapore',
+    // ── Japan ──
+    'Tokyo, Japan', 'Osaka, Japan', 'Yokohama, Japan', 'Nagoya, Japan', 'Sapporo, Japan',
+    'Fukuoka, Japan', 'Kobe, Japan', 'Kyoto, Japan',
+    // ── China ──
+    'Beijing, China', 'Shanghai, China', 'Guangzhou, China', 'Shenzhen, China',
+    'Chengdu, China', 'Hangzhou, China', 'Wuhan, China', 'Xi\'an, China',
+    // ── South Korea ──
+    'Seoul, South Korea', 'Busan, South Korea', 'Incheon, South Korea', 'Daegu, South Korea',
+    // ── Netherlands ──
+    'Amsterdam, Netherlands', 'Rotterdam, Netherlands', 'The Hague, Netherlands',
+    'Utrecht, Netherlands', 'Eindhoven, Netherlands',
+    // ── Spain ──
+    'Madrid, Spain', 'Barcelona, Spain', 'Valencia, Spain', 'Seville, Spain',
+    'Bilbao, Spain', 'Málaga, Spain', 'Zaragoza, Spain',
+    // ── Italy ──
+    'Rome, Italy', 'Milan, Italy', 'Naples, Italy', 'Turin, Italy', 'Florence, Italy',
+    'Venice, Italy', 'Bologna, Italy', 'Genoa, Italy',
+    // ── Brazil ──
+    'São Paulo, Brazil', 'Rio de Janeiro, Brazil', 'Brasília, Brazil', 'Salvador, Brazil',
+    'Fortaleza, Brazil', 'Belo Horizonte, Brazil', 'Manaus, Brazil',
+    // ── Mexico ──
+    'Mexico City, Mexico', 'Guadalajara, Mexico', 'Monterrey, Mexico', 'Cancún, Mexico',
+    'Tijuana, Mexico', 'Puebla, Mexico',
+    // ── South Africa ──
+    'Johannesburg, South Africa', 'Cape Town, South Africa', 'Durban, South Africa',
+    'Pretoria, South Africa', 'Port Elizabeth, South Africa',
+    // ── Nigeria ──
+    'Lagos, Nigeria', 'Abuja, Nigeria', 'Kano, Nigeria', 'Ibadan, Nigeria',
+    // ── Kenya ──
+    'Nairobi, Kenya', 'Mombasa, Kenya',
+    // ── Egypt ──
+    'Cairo, Egypt', 'Alexandria, Egypt', 'Giza, Egypt',
+    // ── Pakistan ──
+    'Karachi, Pakistan', 'Lahore, Pakistan', 'Islamabad, Pakistan', 'Rawalpindi, Pakistan',
+    // ── Bangladesh ──
+    'Dhaka, Bangladesh', 'Chittagong, Bangladesh',
+    // ── Sri Lanka ──
+    'Colombo, Sri Lanka', 'Kandy, Sri Lanka',
+    // ── Nepal ──
+    'Kathmandu, Nepal',
+    // ── Malaysia ──
+    'Kuala Lumpur, Malaysia', 'George Town, Malaysia', 'Johor Bahru, Malaysia',
+    // ── Indonesia ──
+    'Jakarta, Indonesia', 'Surabaya, Indonesia', 'Bandung, Indonesia', 'Bali, Indonesia',
+    // ── Philippines ──
+    'Manila, Philippines', 'Cebu, Philippines', 'Davao, Philippines',
+    // ── Thailand ──
+    'Bangkok, Thailand', 'Chiang Mai, Thailand', 'Phuket, Thailand',
+    // ── Vietnam ──
+    'Ho Chi Minh City, Vietnam', 'Hanoi, Vietnam', 'Da Nang, Vietnam',
+    // ── Russia ──
+    'Moscow, Russia', 'Saint Petersburg, Russia', 'Novosibirsk, Russia',
+    // ── Turkey ──
+    'Istanbul, Turkey', 'Ankara, Turkey', 'Izmir, Turkey',
+    // ── Switzerland ──
+    'Zurich, Switzerland', 'Geneva, Switzerland', 'Basel, Switzerland',
+    // ── Sweden ──
+    'Stockholm, Sweden', 'Gothenburg, Sweden', 'Malmö, Sweden',
+    // ── Norway ──
+    'Oslo, Norway', 'Bergen, Norway',
+    // ── Denmark ──
+    'Copenhagen, Denmark', 'Aarhus, Denmark',
+    // ── Finland ──
+    'Helsinki, Finland', 'Tampere, Finland',
+    // ── Belgium ──
+    'Brussels, Belgium', 'Antwerp, Belgium', 'Ghent, Belgium',
+    // ── Austria ──
+    'Vienna, Austria', 'Graz, Austria', 'Salzburg, Austria',
+    // ── Portugal ──
+    'Lisbon, Portugal', 'Porto, Portugal',
+    // ── Greece ──
+    'Athens, Greece', 'Thessaloniki, Greece',
+    // ── Poland ──
+    'Warsaw, Poland', 'Kraków, Poland', 'Wrocław, Poland', 'Gdańsk, Poland',
+    // ── Israel ──
+    'Tel Aviv, Israel', 'Jerusalem, Israel', 'Haifa, Israel',
+    // ── Qatar ──
+    'Doha, Qatar',
+    // ── Kuwait ──
+    'Kuwait City, Kuwait',
+    // ── Bahrain ──
+    'Manama, Bahrain',
+    // ── Oman ──
+    'Muscat, Oman',
+    // ── New Zealand ──
+    'Auckland, New Zealand', 'Wellington, New Zealand', 'Christchurch, New Zealand',
+    // ── Argentina ──
+    'Buenos Aires, Argentina', 'Córdoba, Argentina', 'Rosario, Argentina',
+    // ── Chile ──
+    'Santiago, Chile',
+    // ── Colombia ──
+    'Bogotá, Colombia', 'Medellín, Colombia',
+    // ── Peru ──
+    'Lima, Peru',
+    // ── Ireland ──
+    'Dublin, Ireland', 'Cork, Ireland',
+    // ── Czech Republic ──
+    'Prague, Czech Republic', 'Brno, Czech Republic',
+    // ── Hungary ──
+    'Budapest, Hungary',
+    // ── Romania ──
+    'Bucharest, Romania',
+    // ── Ukraine ──
+    'Kyiv, Ukraine', 'Lviv, Ukraine',
   ]
 
   const PLATFORM_OPTIONS = [
