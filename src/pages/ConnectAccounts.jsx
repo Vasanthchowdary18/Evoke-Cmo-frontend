@@ -133,9 +133,11 @@ const PLATFORMS = [
     color: '#ea4335',
     gradient: 'linear-gradient(135deg, rgba(234,67,53,0.15), rgba(234,67,53,0.05))',
     border: 'rgba(234,67,53,0.3)',
-    description: 'Send campaign emails directly from your own Gmail account',
-    oauthType: 'gmail',
-    btnLabel: 'Connect Gmail',
+    description: 'Campaign invitation emails will be sent to your attendees. Enter your email so replies come back to you.',
+    oauthType: 'manual',
+    fields: [
+      { name: 'email', label: 'Your Email Address', placeholder: 'yourname@gmail.com', help: 'Replies from attendees will go to this email' },
+    ],
   },
 ]
 
@@ -569,11 +571,6 @@ export default function ConnectAccounts() {
                             {p.btnLabel}
                           </>
                         )}
-                      </button>
-                    ) : p.oauthType === 'gmail' ? (
-                      <button onClick={connectGmail} disabled={isLoading}
-                        style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 18px', background: 'linear-gradient(135deg, #ea4335, #c5221f)', border: 'none', borderRadius: 10, color: 'white', fontSize: 14, fontWeight: 700, cursor: isLoading ? 'not-allowed' : 'pointer' }}>
-                        {isLoading ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <><Mail size={14} /> {p.btnLabel}</>}
                       </button>
                     ) : (
                       // Manual form toggle
