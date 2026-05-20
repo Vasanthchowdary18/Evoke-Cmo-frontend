@@ -383,7 +383,7 @@
         "conditions": {
           "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict", "version": 2 },
           "conditions": [
-            { "id": "c5", "leftValue": "={{ $('Flatten User Credentials').first().json._wa !== null && $('Flatten User Credentials').first().json._wa !== undefined && $('Flatten User Credentials').first().json.contactPhone !== '' }}", "rightValue": true, "operator": { "type": "boolean", "operation": "equals" } }
+            { "id": "c5", "leftValue": "={{ $('Flatten User Credentials').first().json.whatsappRecipients !== '' && $('Flatten User Credentials').first().json.whatsappRecipients !== null && $('Flatten User Credentials').first().json.whatsappRecipients !== undefined }}", "rightValue": true, "operator": { "type": "boolean", "operation": "equals" } }
           ],
           "combinator": "and"
         },
@@ -397,25 +397,35 @@
     },
     {
       "parameters": {
+        "jsCode": "const d = $('Flatten User Credentials').first().json;\nconst raw = d.whatsappRecipients || '';\nconst numbers = raw.split(',').map(r => r.trim()).filter(r => r.length > 0);\nif (numbers.length === 0) return [];\nreturn numbers.map(phone => ({ json: { ...d, waPhone: phone } }));"
+      },
+      "id": "node-wa-split",
+      "name": "Split WA Recipients",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [4130, 180]
+    },
+    {
+      "parameters": {
         "method": "POST",
-        "url": "={{ 'https://graph.facebook.com/v21.0/' + $('Flatten User Credentials').first().json._wa.phoneNumberId + '/messages' }}",
+        "url": "https://graph.facebook.com/v21.0/1036970086175468/messages",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "={{ 'Bearer ' + $('Flatten User Credentials').first().json._wa.accessToken }}" },
+            { "name": "Authorization", "value": "Bearer EAAVDWE6ATl8BRpAeuTtCkv54Q9DSqDUXj1oomx5krxlK073GD1AD2JorU5jHaGkdu6XUnwJBFBIVbkK8UE1YIn9panvZAmmViR2zf7b3l7UE6QZAUdUwgCuxevtDuBwd5q5VfgcT1N7RnWCZClWrsertiVGYZBClBEPhc8gDvMvRqIDdEKaIklMdNQ5GrY7onToMSF05Cl16NWZBJjXydr9stZAptnj45k6N6U7SSdZBPRZCLCwLTkonKbYtF8yJ6qId7eqDnZBEjVbfjvYhdPqZBZA" },
             { "name": "Content-Type",  "value": "application/json" }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ messaging_product: 'whatsapp', to: $('Flatten User Credentials').first().json.contactPhone, type: 'text', text: { body: $('Flatten User Credentials').first().json.whatsappMessage } }) }}",
+        "jsonBody": "={{ JSON.stringify({ messaging_product: 'whatsapp', to: $json.waPhone, type: 'text', text: { body: $json.whatsappMessage } }) }}",
         "options": {}
       },
       "id": "node-21",
       "name": "Send WhatsApp1",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
-      "position": [4200, 180],
+      "position": [4350, 180],
       "onError": "continueErrorOutput"
     },
     {
@@ -928,8 +938,13 @@
     },
     "Has WhatsApp?": {
       "main": [
-        [{ "node": "Send WhatsApp1", "type": "main", "index": 0 }],
-        [{ "node": "Send Email1",    "type": "main", "index": 0 }]
+        [{ "node": "Split WA Recipients", "type": "main", "index": 0 }],
+        [{ "node": "Send Email1",         "type": "main", "index": 0 }]
+      ]
+    },
+    "Split WA Recipients": {
+      "main": [
+        [{ "node": "Send WhatsApp1", "type": "main", "index": 0 }]
       ]
     },
     "Send WhatsApp1": {

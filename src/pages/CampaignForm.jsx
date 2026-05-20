@@ -775,6 +775,7 @@ export default function CampaignForm() {
     { key: 'linkedin',  label: 'LinkedIn',  color: '#0a66c2' },
     { key: 'instagram', label: 'Instagram', color: '#e1306c' },
     { key: 'facebook',  label: 'Facebook',  color: '#1877f2' },
+    { key: 'whatsapp',  label: 'WhatsApp',  color: '#25d366' },
     { key: 'email',     label: 'Email',     color: '#7c3aed' },
   ]
 
@@ -789,6 +790,7 @@ export default function CampaignForm() {
     brandName: '', contactName: '', contactEmail: '', contactPhone: '',
     postDate: '', postTime: '09:00',
     platforms: ['linkedin', 'instagram', 'facebook', 'email'],
+    whatsappRecipients: '',
   })
   const [audienceOpen, setAudienceOpen] = useState(false)
   const [locationOpen, setLocationOpen] = useState(false)
@@ -897,6 +899,7 @@ export default function CampaignForm() {
         instagramCaption: campaignData.instagramCaption || '',
         facebookPost: campaignData.facebookPost || '',
         whatsappMessage: campaignData.whatsappMessage || '',
+        whatsappRecipients: form.whatsappRecipients || '',
         adHeadline: campaignData.adHeadline || '',
         adBody: campaignData.adBody || '',
       }
@@ -911,7 +914,6 @@ export default function CampaignForm() {
             facebook:  sa.facebook?.connected  ? { pageId: sa.facebook.pageId,  pageAccessToken: sa.facebook.pageAccessToken }  : null,
             instagram: sa.instagram?.connected ? { businessAccountId: sa.instagram.businessAccountId, pageAccessToken: sa.instagram.pageAccessToken } : null,
             linkedin:  sa.linkedin?.connected  ? { personUrn: sa.linkedin.personUrn, accessToken: sa.linkedin.accessToken }  : null,
-            whatsapp:  sa.whatsapp?.connected  ? { phoneNumberId: sa.whatsapp.phoneNumberId, accessToken: sa.whatsapp.accessToken } : null,
             gmail:     sa.gmail?.connected     ? { email: sa.gmail.email } : null,
           }
         }
@@ -1375,6 +1377,29 @@ export default function CampaignForm() {
               )
             })}
           </div>
+
+          {/* WhatsApp Recipients — shown only when WhatsApp platform is selected */}
+          {form.platforms.includes('whatsapp') && (
+            <div style={{ marginTop: 16, padding: '16px 20px', background: 'rgba(37,211,102,0.06)', border: '1px solid rgba(37,211,102,0.2)', borderRadius: 12 }}>
+              <label style={{ ...s.label, color: '#25d366', marginTop: 0 }}>
+                📱 WhatsApp Invitation Recipients
+              </label>
+              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, marginBottom: 8, marginTop: 2 }}>
+                Paste phone numbers with country code, separated by commas.<br />
+                Example: +919876543210, +918123456789, +971501234567
+              </p>
+              <textarea
+                placeholder="+919876543210, +918123456789, +971501234567"
+                value={form.whatsappRecipients}
+                onChange={e => set('whatsappRecipients', e.target.value)}
+                rows={3}
+                style={{ ...s.input, resize: 'vertical', fontFamily: 'monospace', fontSize: 13 }}
+              />
+              <p style={{ color: 'rgba(37,211,102,0.6)', fontSize: 11, marginTop: 4 }}>
+                ✓ Platform WhatsApp Business API will send invitation messages to each number
+              </p>
+            </div>
+          )}
 
           {/* Error Banner */}
           <AnimatePresence>

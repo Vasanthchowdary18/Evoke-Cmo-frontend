@@ -112,18 +112,14 @@ const PLATFORMS = [
   },
   {
     key: 'whatsapp',
-    label: 'WhatsApp Business',
+    label: 'WhatsApp Campaigns',
     icon: <MessageSquare size={22} />,
     color: '#25d366',
     gradient: 'linear-gradient(135deg, rgba(37,211,102,0.15), rgba(37,211,102,0.05))',
     border: 'rgba(37,211,102,0.3)',
-    description: 'Send WhatsApp messages from your business number',
-    oauthType: 'manual',
-    note: 'WhatsApp Business API requires manual credentials — no OAuth login available',
-    fields: [
-      { name: 'phoneNumberId', label: 'Phone Number ID', placeholder: 'e.g. 1234567890123456', help: 'Meta Business Suite → WhatsApp → Phone Numbers' },
-      { name: 'accessToken',   label: 'Permanent Access Token', placeholder: 'Paste your WhatsApp Business API token', help: 'Meta Business Suite → System Users → Generate token' },
-    ],
+    description: 'Platform WhatsApp Business API is active — add recipient numbers in your campaign form to send invitation messages.',
+    oauthType: 'platform_whatsapp',
+    note: 'No setup needed. When creating a campaign, select WhatsApp and paste the phone numbers you want to invite.',
   },
   {
     key: 'gmail',
@@ -495,7 +491,11 @@ export default function ConnectAccounts() {
 
                   {/* Action button */}
                   <div style={{ flexShrink: 0 }}>
-                    {connected ? (
+                    {p.oauthType === 'platform_whatsapp' ? (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'rgba(37,211,102,0.1)', border: '1px solid rgba(37,211,102,0.35)', borderRadius: 10, color: '#25d366', fontSize: 13, fontWeight: 700 }}>
+                        <Check size={13} /> Always Enabled
+                      </span>
+                    ) : connected ? (
                       <button
                         onClick={() => disconnect(p.key)}
                         disabled={isLoading}
