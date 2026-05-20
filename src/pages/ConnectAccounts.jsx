@@ -17,7 +17,7 @@ const FACEBOOK_REDIRECT  = window.location.origin + '/connect-accounts'
 const FACEBOOK_SCOPE     = 'pages_manage_posts,pages_read_engagement,instagram_basic,instagram_content_publish,pages_show_list'
 const FACEBOOK_N8N       = 'https://evoke2026.app.n8n.cloud/webhook/facebook-oauth'
 
-const LINKEDIN_CLIENT_ID = import.meta.env.VITE_LINKEDIN_CLIENT_ID || ''
+const LINKEDIN_CLIENT_ID = import.meta.env.VITE_LINKEDIN_CLIENT_ID || '86xauinshp202e'
 const LINKEDIN_REDIRECT  = window.location.origin + '/connect-accounts'
 const LINKEDIN_SCOPE     = 'openid profile email w_member_social'
 const LINKEDIN_N8N       = 'https://evoke2026.app.n8n.cloud/webhook/linkedin-oauth'
