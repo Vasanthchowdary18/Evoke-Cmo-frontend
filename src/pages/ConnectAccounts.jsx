@@ -22,7 +22,7 @@ const LINKEDIN_N8N       = 'https://evoke2026.app.n8n.cloud/webhook/linkedin-oau
 
 const INSTAGRAM_APP_ID   = '1490643592209115'
 const INSTAGRAM_REDIRECT = window.location.origin + '/connect-accounts'
-const INSTAGRAM_SCOPE    = 'instagram_basic,instagram_content_publish,instagram_manage_comments'
+const INSTAGRAM_SCOPE    = 'instagram_basic,instagram_content_publish'
 const INSTAGRAM_N8N      = 'https://evoke2026.app.n8n.cloud/webhook/instagram-oauth'
 
 const TWITTER_CLIENT_ID  = import.meta.env.VITE_TWITTER_CLIENT_ID || ''
@@ -255,7 +255,7 @@ export default function ConnectAccounts() {
       response_type: 'code',
       state:         'instagram_connect',
     })
-    window.location.href = `https://api.instagram.com/oauth/authorize?${url}`
+    window.location.href = `https://www.instagram.com/oauth/authorize?${url}`
   }
 
   const handleInstagramCallback = useCallback(async (code) => {
