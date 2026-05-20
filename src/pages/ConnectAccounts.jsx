@@ -20,6 +20,11 @@ const LINKEDIN_REDIRECT  = window.location.origin + '/connect-accounts'
 const LINKEDIN_SCOPE     = 'openid profile email w_member_social'
 const LINKEDIN_N8N       = 'https://evoke2026.app.n8n.cloud/webhook/linkedin-oauth'
 
+const INSTAGRAM_APP_ID   = '1490643592209115'
+const INSTAGRAM_REDIRECT = window.location.origin + '/connect-accounts'
+const INSTAGRAM_SCOPE    = 'instagram_basic,instagram_content_publish,instagram_manage_comments'
+const INSTAGRAM_N8N      = 'https://evoke2026.app.n8n.cloud/webhook/instagram-oauth'
+
 const TWITTER_CLIENT_ID  = import.meta.env.VITE_TWITTER_CLIENT_ID || ''
 const TWITTER_REDIRECT   = window.location.origin + '/connect-accounts'
 const TWITTER_SCOPE      = 'tweet.read tweet.write users.read offline.access'
@@ -72,10 +77,10 @@ const PLATFORMS = [
     color: '#e1306c',
     gradient: 'linear-gradient(135deg, rgba(225,48,108,0.15), rgba(225,48,108,0.05))',
     border: 'rgba(225,48,108,0.3)',
-    description: 'Auto-connected when you connect Facebook',
-    note: 'Requires Instagram Business account linked to your Facebook Page',
-    oauthType: 'instagram',
-    btnLabel: 'Connect via Facebook',
+    description: 'Connect your Instagram Business or Creator account directly',
+    note: 'Requires an Instagram Business or Creator account',
+    oauthType: 'instagram_direct',
+    btnLabel: 'Connect with Instagram',
   },
   {
     key: 'linkedin',
@@ -146,6 +151,25 @@ export default function ConnectAccounts() {
   const [authReady, setAuthReady]   = useState(false)
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const code  = params.get('code')
+    const state = params.get('state')
+    if (!code || !state) return
+    window.history.replaceState({}, '', window.location.pathname)
+    console.log('🔵 OAuth callback detected, state:', state)
+
+    // Wait for Firebase Auth to be ready, then process
+    const unsub = onAuthStateChanged(auth, (u) => {
+      if (!u) return
+      unsub() // stop listening once we have the user
+      console.log('🔵 Auth ready, processing OAuth for user:', u.uid)
+      if (state === 'linkedin_connect')   handleLinkedInCallback(code)
+      if (state === 'instagram_connect') handleInstagramCallback(code)
+      if (state === 'twitter_connect')   handleTwitterCallback(code)
+    })
+  }, []) // eslint-disable-line
+
+  useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
       if (!u) { navigate('/signin'); return }
       setUser(u)
@@ -157,71 +181,109 @@ export default function ConnectAccounts() {
     return unsub
   }, [navigate])
 
-  // Handle OAuth callbacks from URL (LinkedIn & Twitter redirect back here)
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const code  = params.get('code')
-    const state = params.get('state')
-    if (!code || !state) return
-    window.history.replaceState({}, '', window.location.pathname)
-
-    if (state === 'linkedin_connect') handleLinkedInCallback(code)
-    if (state === 'twitter_connect')  handleTwitterCallback(code)
-  }, []) // eslint-disable-line
-
   const setErr  = (k, m) => setErrors(e => ({ ...e, [k]: m }))
   const clrErr  = (k)    => setErrors(e => { const n = { ...e }; delete n[k]; return n })
   const setLoad = (k, v) => setLoading(l => ({ ...l, [k]: v }))
   const setOk   = (k, v) => setSuccess(s => ({ ...s, [k]: v }))
 
   // ── Facebook + Instagram ─────────────────────────────────────────────────
-  const connectFacebook = async () => {
+  const connectFacebook = () => {
+    // Check SDK is ready
+    if (!window.FB) {
+      setErr('facebook', 'Facebook SDK not loaded. Please refresh the page and try again.')
+      return
+    }
     setLoad('facebook', true); clrErr('facebook')
-    try {
-      await loadFBSDK()
-      window.FB.login((resp) => {
-        if (!resp.authResponse) {
-          setErr('facebook', 'Facebook login was cancelled.')
+
+    // Safety timeout — if popup is blocked or closed, reset after 30s
+    const timeout = setTimeout(() => {
+      setLoad('facebook', false)
+      setErr('facebook', 'Facebook login timed out. Make sure popups are not blocked in your browser, then try again.')
+    }, 30000)
+
+    // Call FB.login directly (no await) so browser doesn't block the popup
+    window.FB.login((resp) => {
+      if (!resp || !resp.authResponse) {
+        clearTimeout(timeout)
+        setErr('facebook', 'Facebook login was cancelled or popup was blocked. Please allow popups and try again.')
+        setLoad('facebook', false)
+        return
+      }
+      const { accessToken } = resp.authResponse
+      window.FB.api('/me/accounts', { access_token: accessToken }, (pagesResp) => {
+        if (!pagesResp || pagesResp.error || !pagesResp.data || pagesResp.data.length === 0) {
+          clearTimeout(timeout)
+          setErr('facebook', pagesResp?.error?.message || 'No Facebook Pages found. You need to manage at least one Facebook Page.')
           setLoad('facebook', false)
           return
         }
-        const { accessToken } = resp.authResponse
-        window.FB.api('/me/accounts', { access_token: accessToken }, (pagesResp) => {
-          if (!pagesResp.data || pagesResp.data.length === 0) {
-            setErr('facebook', 'No Facebook Pages found. You need to manage at least one Facebook Page.')
-            setLoad('facebook', false)
-            return
-          }
-          const page = pagesResp.data[0]
-          saveSocialAccount(user.uid, 'facebook', {
-            pageId: page.id, pageAccessToken: page.access_token, pageName: page.name,
-          }).then(() => {
-            setAccounts(a => ({ ...a, facebook: { connected: true, pageId: page.id, pageName: page.name } }))
-            setOk('facebook', true)
-            // Auto-detect Instagram Business linked to this page
-            window.FB.api(`/${page.id}?fields=instagram_business_account`, { access_token: page.access_token }, (igResp) => {
-              if (igResp.instagram_business_account) {
-                const igId = igResp.instagram_business_account.id
-                saveSocialAccount(user.uid, 'instagram', {
-                  businessAccountId: igId, pageAccessToken: page.access_token, pageName: page.name,
-                }).then(() => {
-                  setAccounts(a => ({ ...a, instagram: { connected: true, businessAccountId: igId, pageName: page.name } }))
-                  setOk('instagram', true)
-                })
-              }
-              setLoad('facebook', false)
-            })
-          }).catch(() => {
-            setErr('facebook', 'Failed to save credentials. Please try again.')
+        const page = pagesResp.data[0]
+        saveSocialAccount(user.uid, 'facebook', {
+          pageId: page.id, pageAccessToken: page.access_token, pageName: page.name,
+        }).then(() => {
+          setAccounts(a => ({ ...a, facebook: { connected: true, pageId: page.id, pageName: page.name } }))
+          setOk('facebook', true)
+          // Auto-detect Instagram Business linked to this page
+          window.FB.api(`/${page.id}?fields=instagram_business_account`, { access_token: page.access_token }, (igResp) => {
+            clearTimeout(timeout)
+            if (igResp && igResp.instagram_business_account) {
+              const igId = igResp.instagram_business_account.id
+              saveSocialAccount(user.uid, 'instagram', {
+                businessAccountId: igId, pageAccessToken: page.access_token, pageName: page.name,
+              }).then(() => {
+                setAccounts(a => ({ ...a, instagram: { connected: true, businessAccountId: igId, pageName: page.name } }))
+                setOk('instagram', true)
+              })
+            }
             setLoad('facebook', false)
           })
+        }).catch(() => {
+          clearTimeout(timeout)
+          setErr('facebook', 'Failed to save credentials. Please try again.')
+          setLoad('facebook', false)
         })
-      }, { scope: FB_SCOPE })
-    } catch (e) {
-      setErr('facebook', 'Facebook login failed: ' + e.message)
-      setLoad('facebook', false)
-    }
+      })
+    }, { scope: FB_SCOPE })
   }
+
+  // ── Instagram OAuth (Business Login) ────────────────────────────────────
+  const connectInstagram = () => {
+    const url = new URLSearchParams({
+      client_id:     INSTAGRAM_APP_ID,
+      redirect_uri:  INSTAGRAM_REDIRECT,
+      scope:         INSTAGRAM_SCOPE,
+      response_type: 'code',
+      state:         'instagram_connect',
+    })
+    window.location.href = `https://api.instagram.com/oauth/authorize?${url}`
+  }
+
+  const handleInstagramCallback = useCallback(async (code) => {
+    if (!auth.currentUser) return
+    const uid = auth.currentUser.uid
+    setLoad('instagram', true); clrErr('instagram')
+    try {
+      const res = await fetch(INSTAGRAM_N8N, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, redirectUri: INSTAGRAM_REDIRECT, uid }),
+      })
+      if (!res.ok) throw new Error('Token exchange failed: ' + await res.text())
+      const { accessToken, userId, username } = await res.json()
+      // Store using same field names as Facebook-linked Instagram so n8n posting nodes work unchanged
+      await saveSocialAccount(uid, 'instagram', {
+        businessAccountId: userId,
+        pageAccessToken:   accessToken,
+        username,
+      })
+      setAccounts(a => ({ ...a, instagram: { connected: true, username, businessAccountId: userId } }))
+      setOk('instagram', true)
+    } catch (e) {
+      setErr('instagram', 'Instagram connection failed: ' + e.message)
+    } finally {
+      setLoad('instagram', false)
+    }
+  }, [])
 
   // ── LinkedIn OAuth ───────────────────────────────────────────────────────
   const connectLinkedIn = () => {
@@ -240,21 +302,32 @@ export default function ConnectAccounts() {
   }
 
   const handleLinkedInCallback = useCallback(async (code) => {
-    if (!auth.currentUser) return
+    console.log('🔵 LinkedIn callback started, user:', auth.currentUser?.uid)
+    if (!auth.currentUser) { console.error('❌ No user found'); return }
     const uid = auth.currentUser.uid
     setLoad('linkedin', true); clrErr('linkedin')
     try {
+      console.log('🔵 Calling n8n webhook:', LINKEDIN_N8N)
       const res = await fetch(LINKEDIN_N8N, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code, redirectUri: LINKEDIN_REDIRECT, uid }),
       })
-      if (!res.ok) throw new Error('Token exchange failed')
-      const { accessToken, name, personUrn } = await res.json()
+      console.log('🔵 n8n response status:', res.status, res.ok)
+      if (!res.ok) {
+        const errText = await res.text()
+        console.error('❌ n8n error response:', errText)
+        throw new Error('Token exchange failed: ' + errText)
+      }
+      const data = await res.json()
+      console.log('🔵 n8n response data:', data)
+      const { accessToken, name, personUrn } = data
       await saveSocialAccount(uid, 'linkedin', { accessToken, name, personUrn })
       setAccounts(a => ({ ...a, linkedin: { connected: true, name, personUrn } }))
       setOk('linkedin', true)
-    } catch {
+      console.log('✅ LinkedIn connected successfully!')
+    } catch(e) {
+      console.error('❌ LinkedIn error:', e.message)
       setErr('linkedin', 'LinkedIn connection failed. Make sure the n8n LinkedIn OAuth webhook is active.')
     } finally {
       setLoad('linkedin', false)
@@ -441,9 +514,9 @@ export default function ConnectAccounts() {
                         style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 18px', background: `linear-gradient(135deg, ${p.color}, ${p.color}bb)`, border: 'none', borderRadius: 10, color: 'white', fontSize: 14, fontWeight: 700, cursor: isLoading ? 'not-allowed' : 'pointer' }}>
                         {isLoading ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <><Facebook size={14} /> {p.btnLabel}</>}
                       </button>
-                    ) : p.oauthType === 'instagram' ? (
-                      <button onClick={connectFacebook} disabled={isLoading}
-                        style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 18px', background: `linear-gradient(135deg, ${p.color}, ${p.color}bb)`, border: 'none', borderRadius: 10, color: 'white', fontSize: 14, fontWeight: 700, cursor: isLoading ? 'not-allowed' : 'pointer' }}>
+                    ) : p.oauthType === 'instagram_direct' ? (
+                      <button onClick={connectInstagram} disabled={isLoading}
+                        style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 18px', background: `linear-gradient(135deg, #f58529, #e1306c, #833ab4)`, border: 'none', borderRadius: 10, color: 'white', fontSize: 14, fontWeight: 700, cursor: isLoading ? 'not-allowed' : 'pointer' }}>
                         {isLoading ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <><Instagram size={14} /> {p.btnLabel}</>}
                       </button>
                     ) : p.oauthType === 'linkedin' ? (
