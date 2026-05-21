@@ -1007,8 +1007,8 @@
         "contentType": "form-urlencoded",
         "bodyParameters": {
           "parameters": [
-            { "name": "client_key",     "value": "awuik4puf6atln4v" },
-            { "name": "client_secret",  "value": "Xd3RyJJd4X5Qq3gkFmMhhKYSePXCC1Xw" },
+            { "name": "client_key",     "value": "sbawq8ejz7li1bzsf1" },
+            { "name": "client_secret",  "value": "wOaBz6NXsCFxr5bQsZyW0CE0wPnyDrDA" },
             { "name": "code",           "value": "={{ $json.code }}" },
             { "name": "grant_type",     "value": "authorization_code" },
             { "name": "redirect_uri",   "value": "={{ $json.redirectUri }}" },
