@@ -470,6 +470,16 @@
     },
     {
       "parameters": {
+        "jsCode": "const d = $('Flatten User Credentials').first().json;\nconst tokenRes = $input.item.json;\nconst freshToken = tokenRes.access_token || d._gmail?.accessToken || '';\nreturn { json: { ...d, _freshGmailToken: freshToken } };"
+      },
+      "id": "node-build-gmail-email",
+      "name": "Build Gmail Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [4860, 180]
+    },
+    {
+      "parameters": {
         "sendTo":  "={{ $('Flatten User Credentials').first().json.contactEmail }}",
         "subject": "={{ $('Flatten User Credentials').first().json.emailSubject || 'You are invited: ' + $('Flatten User Credentials').first().json.name }}",
         "message": "={{ $('Flatten User Credentials').first().json.emailBody }}",
