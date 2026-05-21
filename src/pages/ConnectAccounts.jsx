@@ -37,6 +37,11 @@ const GOOGLE_REDIRECT    = window.location.origin + '/connect-accounts'
 const GOOGLE_SCOPE       = 'https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile'
 const GMAIL_N8N          = 'https://evoke2026.app.n8n.cloud/webhook/gmail-oauth'
 
+const TIKTOK_CLIENT_KEY  = 'awuik4puf6atln4v'
+const TIKTOK_REDIRECT    = window.location.origin + '/connect-accounts'
+const TIKTOK_SCOPE       = 'user.info.basic,video.publish,video.upload'
+const TIKTOK_N8N         = 'https://evoke2026.app.n8n.cloud/webhook/tiktok-oauth'
+
 // ─── PKCE helpers for Twitter ──────────────────────────────────────────────
 function genVerifier() {
   const arr = new Uint8Array(32)
@@ -112,12 +117,8 @@ const PLATFORMS = [
     gradient: 'linear-gradient(135deg, rgba(255,0,80,0.15), rgba(0,242,234,0.05))',
     border: 'rgba(255,0,80,0.3)',
     description: 'Post videos and content to your TikTok Business account',
-    oauthType: 'manual',
-    note: 'Enter your TikTok Business account details to enable campaign posting.',
-    fields: [
-      { name: 'accessToken', label: 'TikTok Access Token', placeholder: 'Paste your TikTok access token', help: 'TikTok Developer Portal → My Apps → Your App → Access Token' },
-      { name: 'openId',      label: 'TikTok Open ID',      placeholder: 'Your TikTok Open ID',            help: 'Found alongside your access token in TikTok Developer Portal' },
-    ],
+    oauthType: 'tiktok',
+    btnLabel: 'Connect with TikTok',
   },
   {
     key: 'metaads',
@@ -192,6 +193,7 @@ export default function ConnectAccounts() {
       if (state === 'instagram_connect') handleInstagramCallback(code)
       if (state === 'twitter_connect')   handleTwitterCallback(code)
       if (state === 'gmail_connect')     handleGmailCallback(code)
+      if (state === 'tiktok_connect')    handleTikTokCallback(code)
     })
   }, []) // eslint-disable-line
 
@@ -434,6 +436,40 @@ export default function ConnectAccounts() {
     }
   }, [])
 
+  // ── TikTok OAuth ────────────────────────────────────────────────────────
+  const connectTikTok = () => {
+    const url = new URLSearchParams({
+      client_key:    TIKTOK_CLIENT_KEY,
+      redirect_uri:  TIKTOK_REDIRECT,
+      scope:         TIKTOK_SCOPE,
+      response_type: 'code',
+      state:         'tiktok_connect',
+    })
+    window.location.href = `https://www.tiktok.com/v2/auth/authorize?${url}`
+  }
+
+  const handleTikTokCallback = useCallback(async (code) => {
+    if (!auth.currentUser) return
+    const uid = auth.currentUser.uid
+    setLoad('tiktok', true); clrErr('tiktok')
+    try {
+      const res = await fetch(TIKTOK_N8N, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, redirectUri: TIKTOK_REDIRECT, uid }),
+      })
+      if (!res.ok) throw new Error('Token exchange failed: ' + await res.text())
+      const { accessToken, openId, displayName } = await res.json()
+      await saveSocialAccount(uid, 'tiktok', { accessToken, openId, displayName, connected: true })
+      setAccounts(a => ({ ...a, tiktok: { connected: true, name: displayName, openId } }))
+      setOk('tiktok', true)
+    } catch (e) {
+      setErr('tiktok', 'TikTok connection failed: ' + e.message)
+    } finally {
+      setLoad('tiktok', false)
+    }
+  }, [])
+
   // ── Manual form (WhatsApp / Gmail) ───────────────────────────────────────
   const saveManual = async (platform, fields) => {
     const form = manualForms[platform] || {}
@@ -581,6 +617,18 @@ export default function ConnectAccounts() {
                       <button onClick={connectLinkedIn} disabled={isLoading}
                         style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 18px', background: `linear-gradient(135deg, ${p.color}, ${p.color}bb)`, border: 'none', borderRadius: 10, color: 'white', fontSize: 14, fontWeight: 700, cursor: isLoading ? 'not-allowed' : 'pointer' }}>
                         {isLoading ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <><Linkedin size={14} /> {p.btnLabel}</>}
+                      </button>
+                    ) : p.oauthType === 'tiktok' ? (
+                      <button onClick={connectTikTok} disabled={isLoading}
+                        style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 18px', background: 'linear-gradient(135deg, #ff0050, #ff0050bb)', border: 'none', borderRadius: 10, color: 'white', fontSize: 14, fontWeight: 700, cursor: isLoading ? 'not-allowed' : 'pointer' }}>
+                        {isLoading ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : (
+                          <>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.75a4.85 4.85 0 01-1.01-.06z"/>
+                            </svg>
+                            {p.btnLabel}
+                          </>
+                        )}
                       </button>
                     ) : (
                       // Manual form toggle
