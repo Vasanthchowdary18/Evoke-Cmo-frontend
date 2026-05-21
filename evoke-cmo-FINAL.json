@@ -967,6 +967,106 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
       "position": [1340, 900]
+    },
+
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "tiktok-oauth",
+        "responseMode": "responseNode",
+        "options": { "allowedOrigins": "*" }
+      },
+      "id": "node-tt-01",
+      "name": "TikTok OAuth Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [240, 1300],
+      "webhookId": "tiktok-oauth-evoke-cmo"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.item.json.body || $input.item.json;\nreturn { json: { code: body.code, redirectUri: body.redirectUri, uid: body.uid } };"
+      },
+      "id": "node-tt-02",
+      "name": "TikTok Extract Params",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 1300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://open.tiktokapis.com/v2/oauth/token/",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/x-www-form-urlencoded" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "client_key",    "value": "awuik4puf6atln4v" },
+            { "name": "client_secret", "value": "Xd3RyJJd4X5Qq3gkFmMhhKYSePXCC1Xw" },
+            { "name": "code",          "value": "={{ $json.code }}" },
+            { "name": "grant_type",    "value": "authorization_code" },
+            { "name": "redirect_uri",  "value": "={{ $json.redirectUri }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-tt-03",
+      "name": "TikTok Exchange Code",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [680, 1300]
+    },
+    {
+      "parameters": {
+        "url": "https://open.tiktokapis.com/v2/user/info/?fields=display_name,open_id",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "={{ 'Bearer ' + $json.data.access_token }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-tt-04",
+      "name": "TikTok Get User Info",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [900, 1300],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const userResp = $input.item.json;\nconst tokenData = $('TikTok Exchange Code').first().json;\nreturn {\n  json: {\n    accessToken: tokenData.data?.access_token || tokenData.access_token || '',\n    openId: tokenData.data?.open_id || tokenData.open_id || '',\n    displayName: userResp.data?.user?.display_name || userResp.data?.user?.open_id || ''\n  }\n};"
+      },
+      "id": "node-tt-05",
+      "name": "TikTok Build Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 1300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin", "value": "*" }
+            ]
+          }
+        }
+      },
+      "id": "node-tt-06",
+      "name": "TikTok Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [1340, 1300]
     }
   ],
 
@@ -1184,6 +1284,21 @@
     },
     "Gmail Build Response": {
       "main": [[{ "node": "Gmail Respond to Webhook", "type": "main", "index": 0 }]]
+    },
+    "TikTok OAuth Webhook": {
+      "main": [[{ "node": "TikTok Extract Params", "type": "main", "index": 0 }]]
+    },
+    "TikTok Extract Params": {
+      "main": [[{ "node": "TikTok Exchange Code", "type": "main", "index": 0 }]]
+    },
+    "TikTok Exchange Code": {
+      "main": [[{ "node": "TikTok Get User Info", "type": "main", "index": 0 }]]
+    },
+    "TikTok Get User Info": {
+      "main": [[{ "node": "TikTok Build Response", "type": "main", "index": 0 }]]
+    },
+    "TikTok Build Response": {
+      "main": [[{ "node": "TikTok Respond to Webhook", "type": "main", "index": 0 }]]
     }
   },
 
