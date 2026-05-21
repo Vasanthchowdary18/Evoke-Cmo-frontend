@@ -15,7 +15,9 @@ const PLATFORMS = [
   { key: 'linkedin',  label: 'LinkedIn',      icon: <Linkedin size={15} />,   color: '#0a66c2', desc: 'Posted to LinkedIn'     },
   { key: 'instagram', label: 'Instagram',     icon: <Instagram size={15} />,  color: '#e1306c', desc: 'Posted to Instagram'    },
   { key: 'facebook',  label: 'Facebook',      icon: <Facebook size={15} />,   color: '#1877f2', desc: 'Posted to Facebook'     },
-  { key: 'email',     label: 'Email',         icon: <Mail size={15} />,       color: '#7c3aed', desc: 'Sent to contact'        },
+  { key: 'tiktok',    label: 'TikTok',        icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.75a4.85 4.85 0 01-1.01-.06z"/></svg>, color: '#ff0050', desc: 'Posted to TikTok' },
+  { key: 'whatsapp',  label: 'WhatsApp',      icon: <MessageSquare size={15} />, color: '#25d366', desc: 'Sent via WhatsApp'    },
+  { key: 'email',     label: 'Gmail / Email', icon: <Mail size={15} />,       color: '#ea4335', desc: 'Sent via Gmail'         },
   { key: 'sheets',    label: 'Google Sheets', icon: <Send size={15} />,       color: '#34a853', desc: 'Logged to Sheets'       },
 ]
 
@@ -221,6 +223,15 @@ const PLATFORM_CONTENT = [
     previewBorder: 'rgba(124,58,237,0.2)',
   },
   {
+    key: 'tiktok',
+    label: 'TikTok',
+    icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.75a4.85 4.85 0 01-1.01-.06z"/></svg>,
+    color: '#ff0050',
+    getContent: (r) => r.tiktokCaption,
+    previewBg: 'rgba(255,0,80,0.06)',
+    previewBorder: 'rgba(255,0,80,0.2)',
+  },
+  {
     key: 'whatsapp',
     label: 'WhatsApp',
     icon: <MessageSquare size={16} />,
@@ -228,6 +239,15 @@ const PLATFORM_CONTENT = [
     getContent: (r) => r.whatsappMessage,
     previewBg: 'rgba(37,211,102,0.06)',
     previewBorder: 'rgba(37,211,102,0.2)',
+  },
+  {
+    key: 'email',
+    label: 'Gmail / Email',
+    icon: <Mail size={16} />,
+    color: '#ea4335',
+    getContent: (r) => r.emailBody,
+    previewBg: 'rgba(234,67,53,0.06)',
+    previewBorder: 'rgba(234,67,53,0.2)',
   },
 ]
 
@@ -238,6 +258,15 @@ function PostingStatusBanner({ r }) {
   const [webhookStatus, setWebhookStatus] = useState(
     () => sessionStorage.getItem('webhookStatus') || 'pending'
   )
+  // Get selected platforms from payload so we only show relevant chips
+  const selectedPlatforms = (() => {
+    try {
+      const raw = sessionStorage.getItem('webhookPayload')
+      if (!raw) return null
+      const payload = JSON.parse(raw)
+      return payload.platforms ? payload.platforms.split(',') : null
+    } catch { return null }
+  })()
   const [retrying, setRetrying] = useState(false)
 
   const handleRetry = async () => {
@@ -292,7 +321,7 @@ function PostingStatusBanner({ r }) {
     : 'Sending campaign to n8n pipeline…'
 
   const statusSub = isPosted
-    ? `n8n received your campaign and is posting to LinkedIn, Instagram, Facebook, Email & WhatsApp`
+    ? `n8n received your campaign and is posting to LinkedIn, Instagram, Facebook, TikTok, Gmail & WhatsApp`
     : isFailed
     ? 'Make sure your n8n workflow is Active (toggled ON), then click Retry.'
     : 'Connecting to n8n… this takes a few seconds'
@@ -357,7 +386,7 @@ function PostingStatusBanner({ r }) {
 
         {/* Platform chips */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-          {PLATFORMS.map((p, i) => (
+          {PLATFORMS.filter(p => !selectedPlatforms || selectedPlatforms.includes(p.key) || p.key === 'sheets').map((p, i) => (
             <motion.div
               key={p.key}
               initial={{ opacity: 0, scale: 0.85 }}
