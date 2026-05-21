@@ -9,6 +9,7 @@ import Results from './pages/Results.jsx'
 import Purchase from './pages/Purchase.jsx'
 import ConnectAccounts from './pages/ConnectAccounts.jsx'
 import Privacy from './pages/Privacy.jsx'
+import Terms from './pages/Terms.jsx'
 import Chatbot from './components/Chatbot.jsx'
 
 export default function App() {
@@ -25,6 +26,7 @@ export default function App() {
         <Route path="/connect-accounts"  element={<ConnectAccounts />} />
         <Route path="/products"          element={<Navigate to="/campaign/product" replace />} />
         <Route path="/privacy"            element={<Privacy />} />
+        <Route path="/terms"              element={<Terms />} />
         <Route path="*"                  element={<Navigate to="/" replace />} />
       </Routes>
       <Chatbot />
