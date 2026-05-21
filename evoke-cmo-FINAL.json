@@ -1031,7 +1031,8 @@
       "name": "TikTok Exchange Code",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
-      "position": [680, 1300]
+      "position": [680, 1300],
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
@@ -1059,7 +1060,18 @@
       "name": "TikTok Build Response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1120, 1300]
+      "position": [1120, 1300],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const err = $input.item.json;\nconst msg = err.message || err.error_description || err.data?.description || JSON.stringify(err);\nreturn { json: { error: true, message: msg } };"
+      },
+      "id": "node-tt-err",
+      "name": "TikTok Error Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 1440]
     },
     {
       "parameters": {
@@ -1303,12 +1315,24 @@
       "main": [[{ "node": "TikTok Exchange Code", "type": "main", "index": 0 }]]
     },
     "TikTok Exchange Code": {
-      "main": [[{ "node": "TikTok Get User Info", "type": "main", "index": 0 }]]
+      "main": [
+        [{ "node": "TikTok Get User Info",    "type": "main", "index": 0 }],
+        [{ "node": "TikTok Error Response",   "type": "main", "index": 0 }]
+      ]
     },
     "TikTok Get User Info": {
-      "main": [[{ "node": "TikTok Build Response", "type": "main", "index": 0 }]]
+      "main": [
+        [{ "node": "TikTok Build Response",   "type": "main", "index": 0 }],
+        [{ "node": "TikTok Error Response",   "type": "main", "index": 0 }]
+      ]
     },
     "TikTok Build Response": {
+      "main": [
+        [{ "node": "TikTok Respond to Webhook", "type": "main", "index": 0 }],
+        [{ "node": "TikTok Error Response",     "type": "main", "index": 0 }]
+      ]
+    },
+    "TikTok Error Response": {
       "main": [[{ "node": "TikTok Respond to Webhook", "type": "main", "index": 0 }]]
     }
   },

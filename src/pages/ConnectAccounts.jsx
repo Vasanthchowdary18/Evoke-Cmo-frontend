@@ -466,7 +466,10 @@ export default function ConnectAccounts() {
         body: JSON.stringify({ code, redirectUri: TIKTOK_REDIRECT, uid, codeVerifier: verifier }),
       })
       if (!res.ok) throw new Error('Token exchange failed: ' + await res.text())
-      const { accessToken, openId, displayName } = await res.json()
+      const data = await res.json()
+      if (data.error) throw new Error(data.message || 'TikTok auth failed')
+      const { accessToken, openId, displayName } = data
+      if (!accessToken) throw new Error('No access token returned from TikTok')
       await saveSocialAccount(uid, 'tiktok', { accessToken, openId, displayName, connected: true })
       setAccounts(a => ({ ...a, tiktok: { connected: true, name: displayName, openId } }))
       setOk('tiktok', true)
