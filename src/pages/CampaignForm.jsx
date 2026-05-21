@@ -98,6 +98,7 @@ Return ONLY valid JSON with exactly these fields, no markdown, no explanation:
   "seoDescription": "meta description (150-160 chars)",
   "adHeadline": "Google/social ad headline (30 chars max)",
   "adBody": "ad body copy (90 chars max)",
+  "tiktokCaption": "short punchy TikTok caption with trending hashtags and a hook (50-80 words, energetic tone)",
   "campaignCalendar": "Day 1: [action]\\nDay 2: [action]\\nDay 3: [action]\\nDay 4: [action]\\nDay 5: [action]\\nDay 6: [action]\\nDay 7: [action]",
   "positioningStatement": "one strong brand/event positioning statement"
 }`
@@ -920,6 +921,7 @@ export default function CampaignForm() {
     { key: 'linkedin',  label: 'LinkedIn',  color: '#0a66c2' },
     { key: 'instagram', label: 'Instagram', color: '#e1306c' },
     { key: 'facebook',  label: 'Facebook',  color: '#1877f2' },
+    { key: 'tiktok',    label: 'TikTok',    color: '#ff0050' },
     { key: 'whatsapp',  label: 'WhatsApp',  color: '#25d366' },
     { key: 'email',     label: 'Email',     color: '#7c3aed' },
   ]
@@ -1043,6 +1045,7 @@ export default function CampaignForm() {
         linkedinPost: campaignData.linkedinPost || '',
         instagramCaption: campaignData.instagramCaption || '',
         facebookPost: campaignData.facebookPost || '',
+        tiktokCaption: campaignData.tiktokCaption || '',
         whatsappMessage: campaignData.whatsappMessage || '',
         whatsappRecipients: form.whatsappRecipients || '',
         adHeadline: campaignData.adHeadline || '',
@@ -1060,6 +1063,7 @@ export default function CampaignForm() {
             instagram: sa.instagram?.connected ? { businessAccountId: sa.instagram.businessAccountId, pageAccessToken: sa.instagram.pageAccessToken } : null,
             linkedin:  sa.linkedin?.connected  ? { personUrn: sa.linkedin.personUrn, accessToken: sa.linkedin.accessToken }  : null,
             gmail:     sa.gmail?.connected     ? { email: sa.gmail.email, accessToken: sa.gmail.accessToken, refreshToken: sa.gmail.refreshToken } : null,
+            tiktok:    sa.tiktok?.connected    ? { accessToken: sa.tiktok.accessToken, openId: sa.tiktok.openId } : null,
           }
         }
       }

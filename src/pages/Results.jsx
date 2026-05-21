@@ -580,6 +580,7 @@ export default function Results() {
   const linkedinPost       = r.linkedinPost       || r.linkedin_post  || r['LinkedIn Post']           || r.linkedin || ''
   const instagramCaption   = r.instagramCaption   || r.instagram_caption || r['Instagram Caption']    || r.instagram || ''
   const facebookPost       = r.facebookPost       || r.facebook_post  || r['Facebook Post']           || r.facebook || ''
+  const tiktokCaption      = r.tiktokCaption      || r.tiktok_caption || r['TikTok Caption']           || r.tiktok  || ''
   const whatsappMessage    = r.whatsappMessage    || r.whatsapp_message || r['WhatsApp Message']      || r.whatsapp || ''
   const smsMessage         = r.smsMessage         || r.sms_message    || r['SMS Message']             || r.sms || ''
   const positioningStatement = r.positioningStatement || r.positioning_statement || r['Positioning Statement'] || r.positioning || ''
@@ -591,7 +592,7 @@ export default function Results() {
   const imageUrl           = r.imageUrl           || r.image_url      || r['Image URL']               || ''
 
   const calendarDays = parseCalendar(campaignCalendar)
-  const hasAnyCampaignContent = !!(emailSubject || emailBody || linkedinPost || instagramCaption || facebookPost || whatsappMessage || smsMessage || seoTitle || adHeadline || calendarDays.length)
+  const hasAnyCampaignContent = !!(emailSubject || emailBody || linkedinPost || instagramCaption || facebookPost || tiktokCaption || whatsappMessage || smsMessage || seoTitle || adHeadline || calendarDays.length)
 
   // Build full text for download
   const fullText = [
@@ -600,6 +601,7 @@ export default function Results() {
     linkedinPost        && `LINKEDIN POST:\n${linkedinPost}`,
     instagramCaption    && `INSTAGRAM CAPTION:\n${instagramCaption}`,
     facebookPost        && `FACEBOOK POST:\n${facebookPost}`,
+    tiktokCaption       && `TIKTOK CAPTION:\n${tiktokCaption}`,
     whatsappMessage     && `WHATSAPP MESSAGE:\n${whatsappMessage}`,
     smsMessage          && `SMS MESSAGE:\n${smsMessage}`,
     positioningStatement && `POSITIONING STATEMENT:\n${positioningStatement}`,
@@ -767,6 +769,26 @@ export default function Results() {
             </ResultCard>
           )}
 
+          {/* TikTok */}
+          {tiktokCaption && (
+            <ResultCard
+              icon={
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V9.05a8.16 8.16 0 004.77 1.52V7.12a4.85 4.85 0 01-1-.43z"/>
+                </svg>
+              }
+              title="TikTok Caption"
+              color="#ff0050"
+              copyText={tiktokCaption}
+              copyId="tiktok"
+              copied={copied}
+              copy={copy}
+              delay={0.17}
+            >
+              <ContentText value={tiktokCaption} />
+            </ResultCard>
+          )}
+
           {/* WhatsApp */}
           {whatsappMessage && (
             <ResultCard
@@ -926,7 +948,7 @@ export default function Results() {
           )}
 
           {/* No content fallback */}
-          {!emailSubject && !emailBody && !linkedinPost && !instagramCaption && !facebookPost && !whatsappMessage && !smsMessage && !positioningStatement && !seoTitle && !adHeadline && calendarDays.length === 0 && (
+          {!emailSubject && !emailBody && !linkedinPost && !instagramCaption && !facebookPost && !tiktokCaption && !whatsappMessage && !smsMessage && !positioningStatement && !seoTitle && !adHeadline && calendarDays.length === 0 && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}

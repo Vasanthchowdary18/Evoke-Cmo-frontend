@@ -42,7 +42,8 @@
             { "id": "f21", "name": "adHeadline",       "value": "={{ $json.body?.adHeadline ?? $json.adHeadline ?? '' }}", "type": "string" },
             { "id": "f22", "name": "adBody",           "value": "={{ $json.body?.adBody ?? $json.adBody ?? '' }}", "type": "string" },
             { "id": "f23", "name": "timestamp",        "value": "={{ DateTime.now().toISO() }}", "type": "string" },
-            { "id": "f24", "name": "userCredentials",  "value": "={{ $json.body?.userCredentials ?? $json.userCredentials ?? {} }}", "type": "object" }
+            { "id": "f24", "name": "userCredentials",  "value": "={{ $json.body?.userCredentials ?? $json.userCredentials ?? {} }}", "type": "object" },
+            { "id": "f25", "name": "tiktokCaption",    "value": "={{ $json.body?.tiktokCaption ?? $json.tiktokCaption ?? '' }}", "type": "string" }
           ]
         },
         "includeOtherFields": true,
@@ -56,7 +57,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const d = $input.item.json;\nconst creds = d.userCredentials || {};\nreturn { json: { ...d, status: 'Posting', timestamp: new Date().toISOString(), _fb: creds.facebook || null, _ig: creds.instagram || null, _li: creds.linkedin || null, _gmail: creds.gmail || null } };"
+        "jsCode": "const d = $input.item.json;\nconst creds = d.userCredentials || {};\nreturn { json: { ...d, status: 'Posting', timestamp: new Date().toISOString(), _fb: creds.facebook || null, _ig: creds.instagram || null, _li: creds.linkedin || null, _gmail: creds.gmail || null, _tiktok: creds.tiktok || null } };"
       },
       "id": "node-03",
       "name": "Flatten User Credentials",
@@ -529,10 +530,55 @@
       "name": "Save to Google Sheet1",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
-      "position": [4640, 300],
+      "position": [5760, 300],
       "credentials": {
         "googleSheetsOAuth2Api": { "id": "DDDHd5r2vMehujiw", "name": "Google Sheets account" }
       },
+      "onError": "continueErrorOutput"
+    },
+
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict", "version": 2 },
+          "conditions": [
+            { "id": "tt1", "leftValue": "={{ $('Flatten User Credentials').first().json._tiktok !== null && $('Flatten User Credentials').first().json._tiktok !== undefined }}", "rightValue": true, "operator": { "type": "boolean", "operation": "equals" } },
+            { "id": "tt2", "leftValue": "={{ $('Flatten User Credentials').first().json.platforms.includes('tiktok') }}", "rightValue": true, "operator": { "type": "boolean", "operation": "equals" } },
+            { "id": "tt3", "leftValue": "={{ ($('Flatten User Credentials').first().json.imageUrl || '') !== '' }}", "rightValue": true, "operator": { "type": "boolean", "operation": "equals" } }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-has-tiktok",
+      "name": "Has TikTok?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [5320, 300]
+    },
+
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://open.tiktokapis.com/v2/post/publish/content/init/",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "={{ 'Bearer ' + $('Flatten User Credentials').first().json._tiktok.accessToken }}" },
+            { "name": "Content-Type",  "value": "application/json; charset=UTF-8" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ post_info: { title: ($('Flatten User Credentials').first().json.tiktokCaption || $('Flatten User Credentials').first().json.instagramCaption || '').substring(0, 2200), privacy_level: 'PUBLIC_TO_EVERYONE', disable_duet: false, disable_comment: false, disable_stitch: false }, source_info: { source: 'PULL_FROM_URL', photo_images: [$('Flatten User Credentials').first().json.imageUrl], photo_cover_index: 0 }, media_type: 'PHOTO' }) }}",
+        "options": {}
+      },
+      "id": "node-tiktok-post",
+      "name": "TikTok Post Content",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [5540, 180],
       "onError": "continueErrorOutput"
     },
 
@@ -1213,13 +1259,13 @@
     "Has Gmail?": {
       "main": [
         [{ "node": "Refresh Gmail Token", "type": "main", "index": 0 }],
-        [{ "node": "Save to Google Sheet1", "type": "main", "index": 0 }]
+        [{ "node": "Has TikTok?",         "type": "main", "index": 0 }]
       ]
     },
     "Refresh Gmail Token": {
       "main": [
         [{ "node": "Build Gmail Email", "type": "main", "index": 0 }],
-        [{ "node": "Save to Google Sheet1", "type": "main", "index": 0 }]
+        [{ "node": "Has TikTok?",       "type": "main", "index": 0 }]
       ]
     },
     "Build Gmail Email": {
@@ -1229,8 +1275,8 @@
     },
     "Send via Gmail API": {
       "main": [
-        [{ "node": "Save to Google Sheet1", "type": "main", "index": 0 }],
-        [{ "node": "Save to Google Sheet1", "type": "main", "index": 0 }]
+        [{ "node": "Has TikTok?", "type": "main", "index": 0 }],
+        [{ "node": "Has TikTok?", "type": "main", "index": 0 }]
       ]
     },
     "FB OAuth Webhook": {
@@ -1307,6 +1353,18 @@
     },
     "Gmail Build Response": {
       "main": [[{ "node": "Gmail Respond to Webhook", "type": "main", "index": 0 }]]
+    },
+    "Has TikTok?": {
+      "main": [
+        [{ "node": "TikTok Post Content",  "type": "main", "index": 0 }],
+        [{ "node": "Save to Google Sheet1","type": "main", "index": 0 }]
+      ]
+    },
+    "TikTok Post Content": {
+      "main": [
+        [{ "node": "Save to Google Sheet1", "type": "main", "index": 0 }],
+        [{ "node": "Save to Google Sheet1", "type": "main", "index": 0 }]
+      ]
     },
     "TikTok OAuth Webhook": {
       "main": [[{ "node": "TikTok Extract Params", "type": "main", "index": 0 }]]
