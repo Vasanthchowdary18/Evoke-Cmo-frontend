@@ -398,7 +398,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const d = $('Flatten User Credentials').first().json;\nconst raw = d.whatsappRecipients || '';\nconst numbers = raw.split(',').map(r => r.trim().replace(/^\\+/, '')).filter(r => r.length > 0);\nif (numbers.length === 0) return [];\nreturn numbers.map(phone => ({ json: { ...d, waPhone: phone } }));"
+        "jsCode": "const d = $('Flatten User Credentials').first().json;\nconst raw = d.whatsappRecipients || '';\nconst numbers = raw.split(',').map(r => {\n  let n = r.trim().replace(/^\\+/, '').replace(/\\s/g, '');\n  // If number has no country code (10 digits starting with 6,7,8,9 = Indian number), prepend 91\n  if (n.length === 10 && /^[6-9]/.test(n)) n = '91' + n;\n  return n;\n}).filter(r => r.length >= 10);\nif (numbers.length === 0) return [];\nreturn numbers.map(phone => ({ json: { ...d, waPhone: phone } }));"
       },
       "id": "node-wa-split",
       "name": "Split WA Recipients",
@@ -571,7 +571,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ post_info: { title: ($('Flatten User Credentials').first().json.tiktokCaption || $('Flatten User Credentials').first().json.instagramCaption || '').substring(0, 2200), privacy_level: 'PUBLIC_TO_EVERYONE', disable_duet: false, disable_comment: false, disable_stitch: false }, source_info: { source: 'PULL_FROM_URL', photo_images: [$('Flatten User Credentials').first().json.imageUrl], photo_cover_index: 0 }, media_type: 'PHOTO' }) }}",
+        "body": "={{ JSON.stringify({ post_info: { title: ($('Flatten User Credentials').first().json.tiktokCaption || $('Flatten User Credentials').first().json.instagramCaption || '').substring(0, 2200), privacy_level: 'SELF_ONLY', disable_duet: false, disable_comment: false, disable_stitch: false }, source_info: { source: 'PULL_FROM_URL', photo_images: [$('Flatten User Credentials').first().json.imageUrl], photo_cover_index: 0 }, media_type: 'PHOTO', post_mode: 'DIRECT_POST' }) }}",
         "options": {}
       },
       "id": "node-tiktok-post",
