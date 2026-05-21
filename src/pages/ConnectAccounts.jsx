@@ -39,7 +39,7 @@ const GMAIL_N8N          = 'https://evoke2026.app.n8n.cloud/webhook/gmail-oauth'
 
 const TIKTOK_CLIENT_KEY  = 'sbawq8ejz7li1bzsf1' // sandbox
 const TIKTOK_REDIRECT    = window.location.origin + '/connect-accounts'
-const TIKTOK_SCOPE       = 'user.info.basic,video.publish,video.upload'
+const TIKTOK_SCOPE       = 'user.info.basic,video.upload'
 const TIKTOK_N8N         = 'https://evoke2026.app.n8n.cloud/webhook/tiktok-oauth'
 
 // ─── PKCE helpers for Twitter ──────────────────────────────────────────────
