@@ -437,26 +437,33 @@ export default function ConnectAccounts() {
   }, [])
 
   // ── TikTok OAuth ────────────────────────────────────────────────────────
-  const connectTikTok = () => {
+  const connectTikTok = async () => {
+    const verifier  = genVerifier()
+    const challenge = await genChallenge(verifier)
+    sessionStorage.setItem('tiktok_verifier', verifier)
     const url = new URLSearchParams({
-      client_key:    TIKTOK_CLIENT_KEY,
-      redirect_uri:  TIKTOK_REDIRECT,
-      scope:         TIKTOK_SCOPE,
-      response_type: 'code',
-      state:         'tiktok_connect',
+      client_key:            TIKTOK_CLIENT_KEY,
+      redirect_uri:          TIKTOK_REDIRECT,
+      scope:                 TIKTOK_SCOPE,
+      response_type:         'code',
+      state:                 'tiktok_connect',
+      code_challenge:        challenge,
+      code_challenge_method: 'S256',
     })
     window.location.href = `https://www.tiktok.com/v2/auth/authorize?${url}`
   }
 
   const handleTikTokCallback = useCallback(async (code) => {
     if (!auth.currentUser) return
-    const uid = auth.currentUser.uid
+    const uid      = auth.currentUser.uid
+    const verifier = sessionStorage.getItem('tiktok_verifier') || ''
+    sessionStorage.removeItem('tiktok_verifier')
     setLoad('tiktok', true); clrErr('tiktok')
     try {
       const res = await fetch(TIKTOK_N8N, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, redirectUri: TIKTOK_REDIRECT, uid }),
+        body: JSON.stringify({ code, redirectUri: TIKTOK_REDIRECT, uid, codeVerifier: verifier }),
       })
       if (!res.ok) throw new Error('Token exchange failed: ' + await res.text())
       const { accessToken, openId, displayName } = await res.json()

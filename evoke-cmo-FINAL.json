@@ -985,7 +985,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const body = $input.item.json.body || $input.item.json;\nreturn { json: { code: body.code, redirectUri: body.redirectUri, uid: body.uid } };"
+        "jsCode": "const body = $input.item.json.body || $input.item.json;\nreturn { json: { code: body.code, redirectUri: body.redirectUri, uid: body.uid, codeVerifier: body.codeVerifier || '' } };"
       },
       "id": "node-tt-02",
       "name": "TikTok Extract Params",
@@ -1007,11 +1007,12 @@
         "contentType": "form-urlencoded",
         "bodyParameters": {
           "parameters": [
-            { "name": "client_key",    "value": "awuik4puf6atln4v" },
-            { "name": "client_secret", "value": "Xd3RyJJd4X5Qq3gkFmMhhKYSePXCC1Xw" },
-            { "name": "code",          "value": "={{ $json.code }}" },
-            { "name": "grant_type",    "value": "authorization_code" },
-            { "name": "redirect_uri",  "value": "={{ $json.redirectUri }}" }
+            { "name": "client_key",     "value": "awuik4puf6atln4v" },
+            { "name": "client_secret",  "value": "Xd3RyJJd4X5Qq3gkFmMhhKYSePXCC1Xw" },
+            { "name": "code",           "value": "={{ $json.code }}" },
+            { "name": "grant_type",     "value": "authorization_code" },
+            { "name": "redirect_uri",   "value": "={{ $json.redirectUri }}" },
+            { "name": "code_verifier",  "value": "={{ $json.codeVerifier }}" }
           ]
         },
         "options": {}
