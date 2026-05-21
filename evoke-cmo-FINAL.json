@@ -1040,7 +1040,7 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "={{ 'Bearer ' + $json.data.access_token }}" }
+            { "name": "Authorization", "value": "={{ 'Bearer ' + ($json.data?.access_token || $json.access_token || '') }}" }
           ]
         },
         "options": {}
@@ -1054,7 +1054,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const userResp = $input.item.json;\nconst tokenData = $('TikTok Exchange Code').first().json;\nreturn {\n  json: {\n    accessToken: tokenData.data?.access_token || tokenData.access_token || '',\n    openId: tokenData.data?.open_id || tokenData.open_id || '',\n    displayName: userResp.data?.user?.display_name || userResp.data?.user?.open_id || ''\n  }\n};"
+        "jsCode": "const userResp = $input.item.json;\nconst tokenData = $('TikTok Exchange Code').first().json;\nconst accessToken = tokenData.data?.access_token || tokenData.access_token || '';\nconst openId = tokenData.data?.open_id || tokenData.open_id || '';\nconst displayName = userResp.data?.user?.display_name || userResp.data?.user?.open_id || openId || 'TikTok User';\nif (!accessToken) throw new Error('No access token in exchange response');\nreturn { json: { accessToken, openId, displayName } };"
       },
       "id": "node-tt-05",
       "name": "TikTok Build Response",
