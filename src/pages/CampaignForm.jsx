@@ -1266,7 +1266,7 @@ export default function CampaignForm() {
               </div>
 
               <label style={s.label}>
-                Event Image <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '12px', fontWeight: 400 }}>(optional — posted to Instagram, Facebook &amp; LinkedIn)</span>
+                Event Image <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '12px', fontWeight: 400 }}>(optional — posted to Instagram, Facebook, LinkedIn &amp; TikTok)</span>
               </label>
               <div
                 style={{
@@ -1399,7 +1399,7 @@ export default function CampaignForm() {
               <p style={s.sectionTitle}>Product Image</p>
 
               <label style={{ ...s.label, marginTop: '12px' }} id="product-image-field">
-                Product Image <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '12px', fontWeight: 400 }}>(optional)</span>
+                Product Image <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '12px', fontWeight: 400 }}>(optional — posted to Instagram, Facebook, LinkedIn &amp; TikTok)</span>
               </label>
               <div
                 style={{ ...s.dropZone, borderColor: form.imagePreview ? `${meta.color}50` : 'rgba(255,255,255,0.1)' }}
