@@ -103,22 +103,27 @@ Return ONLY valid JSON with exactly these fields, no markdown, no explanation:
   "positioningStatement": "one strong brand/event positioning statement"
 }`
 
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: 'llama-3.3-70b-versatile',
-      messages: [
-        { role: 'system', content: 'You are an expert AI CMO. Always respond with only valid JSON, no markdown, no explanation.' },
-        { role: 'user', content: prompt },
-      ],
-      temperature: 0.7,
-      max_tokens: 4096,
-    }),
-  })
+  let res
+  try {
+    res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: [
+          { role: 'system', content: 'You are an expert AI CMO. Always respond with only valid JSON, no markdown, no explanation.' },
+          { role: 'user', content: prompt },
+        ],
+        temperature: 0.7,
+        max_tokens: 4096,
+      }),
+    })
+  } catch (networkErr) {
+    throw new Error(`Network error reaching Groq AI: ${networkErr.message}. Please check your internet connection and try again.`)
+  }
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
