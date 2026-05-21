@@ -103,14 +103,12 @@ Return ONLY valid JSON with exactly these fields, no markdown, no explanation:
   "positioningStatement": "one strong brand/event positioning statement"
 }`
 
+  // Call via Vercel proxy (/api/generate) to avoid browser CORS restrictions
   let res
   try {
-    res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    res = await fetch('/api/generate', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'llama-3.3-70b-versatile',
         messages: [
@@ -122,12 +120,12 @@ Return ONLY valid JSON with exactly these fields, no markdown, no explanation:
       }),
     })
   } catch (networkErr) {
-    throw new Error(`Network error reaching Groq AI: ${networkErr.message}. Please check your internet connection and try again.`)
+    throw new Error(`Network error: ${networkErr.message}. Please check your internet connection and try again.`)
   }
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err?.error?.message || `Groq API error ${res.status}`)
+    throw new Error(err?.error?.message || `AI generation error ${res.status}`)
   }
 
   const data = await res.json()
