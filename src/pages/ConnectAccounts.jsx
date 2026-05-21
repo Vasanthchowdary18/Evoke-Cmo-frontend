@@ -156,11 +156,9 @@ const PLATFORMS = [
     color: '#ea4335',
     gradient: 'linear-gradient(135deg, rgba(234,67,53,0.15), rgba(234,67,53,0.05))',
     border: 'rgba(234,67,53,0.3)',
-    description: 'Campaign invitation emails will be sent to your attendees. Enter your email so replies come back to you.',
-    oauthType: 'manual',
-    fields: [
-      { name: 'email', label: 'Your Email Address', placeholder: 'yourname@gmail.com', help: 'Replies from attendees will go to this email' },
-    ],
+    description: 'Send campaign emails directly from your Gmail account to your contacts.',
+    oauthType: 'gmail',
+    btnLabel: 'Connect with Gmail',
   },
 ]
 
@@ -635,6 +633,18 @@ export default function ConnectAccounts() {
                           <>
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
                               <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.75a4.85 4.85 0 01-1.01-.06z"/>
+                            </svg>
+                            {p.btnLabel}
+                          </>
+                        )}
+                      </button>
+                    ) : p.oauthType === 'gmail' ? (
+                      <button onClick={connectGmail} disabled={isLoading}
+                        style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 18px', background: 'linear-gradient(135deg, #ea4335, #ea4335bb)', border: 'none', borderRadius: 10, color: 'white', fontSize: 14, fontWeight: 700, cursor: isLoading ? 'not-allowed' : 'pointer' }}>
+                        {isLoading ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : (
+                          <>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M20 4H4C2.9 4 2 4.9 2 6v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
                             </svg>
                             {p.btnLabel}
                           </>
