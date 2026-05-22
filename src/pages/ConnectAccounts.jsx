@@ -27,7 +27,7 @@ import {
 } from "../services/userService";
 
 // ─── Config v2 ─────────────────────────────────────────────────────────────
-const META_APP_ID = import.meta.env.VITE_META_APP_ID || "1587533479009417";
+const META_APP_ID = import.meta.env.VITE_META_APP_ID || "1615687502835152";
 const FACEBOOK_REDIRECT = window.location.origin + "/connect-accounts";
 const FACEBOOK_SCOPE =
   "pages_manage_posts,pages_read_engagement,instagram_basic,instagram_content_publish,pages_show_list";
