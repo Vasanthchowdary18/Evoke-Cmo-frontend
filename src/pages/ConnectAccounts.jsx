@@ -224,19 +224,30 @@ export default function ConnectAccounts() {
   const [authReady, setAuthReady] = useState(false);
 
   useEffect(() => {
+    // Check URL hash for Facebook implicit grant token
+    const hash = new URLSearchParams(window.location.hash.slice(1));
+    const fbToken = hash.get('access_token');
+    const fbState = hash.get('state');
+    if (fbToken && fbState === 'facebook_connect') {
+      window.history.replaceState({}, '', window.location.pathname);
+      const unsub = onAuthStateChanged(auth, (u) => {
+        if (!u) return;
+        unsub();
+        handleFacebookTokenConnect(fbToken, u.uid);
+      });
+      return;
+    }
+
     const params = new URLSearchParams(window.location.search);
     const code = params.get("code");
     const state = params.get("state");
     if (!code || !state) return;
     window.history.replaceState({}, "", window.location.pathname);
-    console.log("🔵 OAuth callback detected, state:", state);
 
     // Wait for Firebase Auth to be ready, then process
     const unsub = onAuthStateChanged(auth, (u) => {
       if (!u) return;
-      unsub(); // stop listening once we have the user
-      console.log("🔵 Auth ready, processing OAuth for user:", u.uid);
-      if (state === "facebook_connect") handleFacebookCallback(code);
+      unsub();
       if (state === "linkedin_connect") handleLinkedInCallback(code);
       if (state === "instagram_connect") handleInstagramCallback(code);
       if (state === "twitter_connect") handleTwitterCallback(code);
@@ -270,65 +281,46 @@ export default function ConnectAccounts() {
   const setLoad = (k, v) => setLoading((l) => ({ ...l, [k]: v }));
   const setOk = (k, v) => setSuccess((s) => ({ ...s, [k]: v }));
 
-  // ── Facebook (SDK popup) ─────────────────────────────────────────────────
-  const doFBLogin = () => {
-    const timeout = setTimeout(() => {
-      setLoad('facebook', false);
-      setErr('facebook', 'Login timed out. Please allow popups and try again.');
-    }, 60000);
-
-    window.FB.login((resp) => {
-      if (!resp?.authResponse) {
-        clearTimeout(timeout);
-        setErr('facebook', 'Facebook login cancelled or popup blocked. Please allow popups and try again.');
-        setLoad('facebook', false);
-        return;
-      }
-      const { accessToken } = resp.authResponse;
-      window.FB.api('/me/accounts', { access_token: accessToken }, (pagesResp) => {
-        clearTimeout(timeout);
-        if (!pagesResp?.data?.length) {
-          setErr('facebook', 'No Facebook Pages found. In the Facebook popup, look for "Choose what you allow" and make sure to select your Page (Test demo or Vasanth Chowdary Thumati).');
-          setLoad('facebook', false);
-          return;
-        }
-        const page = pagesResp.data[0];
-        saveSocialAccount(user.uid, 'facebook', {
-          pageId: page.id, pageAccessToken: page.access_token, pageName: page.name, connected: true,
-        }).then(() => {
-          setAccounts(a => ({ ...a, facebook: { connected: true, pageId: page.id, pageName: page.name } }));
-          setOk('facebook', true);
-          window.FB.api(`/${page.id}`, { fields: 'instagram_business_account', access_token: page.access_token }, (igResp) => {
-            if (igResp?.instagram_business_account?.id) {
-              const igId = igResp.instagram_business_account.id;
-              saveSocialAccount(user.uid, 'instagram', {
-                businessAccountId: igId, pageAccessToken: page.access_token, pageName: page.name, connected: true,
-              }).then(() => {
-                setAccounts(a => ({ ...a, instagram: { connected: true, businessAccountId: igId, pageName: page.name } }));
-                setOk('instagram', true);
-              });
-            }
-            setLoad('facebook', false);
-          });
-        }).catch(() => {
-          setErr('facebook', 'Failed to save. Please try again.');
-          setLoad('facebook', false);
-        });
-      });
-    }, { scope: FACEBOOK_SCOPE });
+  // ── Facebook (implicit grant redirect — no popup, no n8n) ────────────────
+  const connectFacebook = () => {
+    const url = new URLSearchParams({
+      client_id:     META_APP_ID,
+      redirect_uri:  FACEBOOK_REDIRECT,
+      scope:         FACEBOOK_SCOPE,
+      response_type: 'token',
+      state:         'facebook_connect',
+    });
+    window.location.href = `https://www.facebook.com/dialog/oauth?${url}`;
   };
 
-  const connectFacebook = () => {
-    if (!window.FB) { setErr('facebook', 'Facebook SDK not loaded. Please refresh.'); return; }
+  const handleFacebookTokenConnect = async (accessToken, uid) => {
     setLoad('facebook', true); clrErr('facebook');
-    // Force logout first so Facebook always shows the full permission + page selection screen
-    window.FB.getLoginStatus((statusResp) => {
-      if (statusResp.status === 'connected') {
-        window.FB.logout(() => doFBLogin());
-      } else {
-        doFBLogin();
+    try {
+      const pagesRes = await fetch(`https://graph.facebook.com/v21.0/me/accounts?access_token=${accessToken}`);
+      const pagesData = await pagesRes.json();
+      if (!pagesData.data?.length) throw new Error('No Facebook Pages found. When Facebook asks which pages to allow, make sure to select your page.');
+      const page = pagesData.data[0];
+      await saveSocialAccount(uid, 'facebook', {
+        pageId: page.id, pageAccessToken: page.access_token, pageName: page.name, connected: true,
+      });
+      setAccounts(a => ({ ...a, facebook: { connected: true, pageId: page.id, pageName: page.name } }));
+      setOk('facebook', true);
+      // Auto-connect Instagram if linked
+      const igRes = await fetch(`https://graph.facebook.com/v21.0/${page.id}?fields=instagram_business_account&access_token=${page.access_token}`);
+      const igData = await igRes.json();
+      if (igData.instagram_business_account?.id) {
+        const igId = igData.instagram_business_account.id;
+        await saveSocialAccount(uid, 'instagram', {
+          businessAccountId: igId, pageAccessToken: page.access_token, pageName: page.name, connected: true,
+        });
+        setAccounts(a => ({ ...a, instagram: { connected: true, businessAccountId: igId, pageName: page.name } }));
+        setOk('instagram', true);
       }
-    });
+    } catch (e) {
+      setErr('facebook', 'Facebook connection failed: ' + e.message);
+    } finally {
+      setLoad('facebook', false);
+    }
   };
 
   const handleFacebookCallback = useCallback(async () => {}, []);
