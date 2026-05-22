@@ -27,7 +27,7 @@ import {
 } from "../services/userService";
 
 // ─── Config v2 ─────────────────────────────────────────────────────────────
-const META_APP_ID = import.meta.env.VITE_META_APP_ID || "1615687502835152";
+const META_APP_ID = import.meta.env.VITE_META_APP_ID || "1587533479009417";
 const FACEBOOK_REDIRECT = window.location.origin + "/connect-accounts";
 const FACEBOOK_SCOPE =
   "pages_manage_posts,pages_read_engagement,instagram_basic,instagram_content_publish,pages_show_list";
@@ -39,7 +39,7 @@ const LINKEDIN_REDIRECT = window.location.origin + "/connect-accounts";
 const LINKEDIN_SCOPE = "openid profile email w_member_social";
 const LINKEDIN_N8N = "https://evoke2026.app.n8n.cloud/webhook/linkedin-oauth";
 
-const INSTAGRAM_APP_ID = "1721554202307177";
+const INSTAGRAM_APP_ID = "1490643592209115";
 const INSTAGRAM_REDIRECT = window.location.origin + "/connect-accounts";
 const INSTAGRAM_SCOPE =
   "instagram_business_basic,instagram_business_content_publish";
