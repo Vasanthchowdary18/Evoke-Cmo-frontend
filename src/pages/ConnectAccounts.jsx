@@ -270,53 +270,57 @@ export default function ConnectAccounts() {
   const setLoad = (k, v) => setLoading((l) => ({ ...l, [k]: v }));
   const setOk = (k, v) => setSuccess((s) => ({ ...s, [k]: v }));
 
-  // ── Facebook (redirect-based OAuth) ─────────────────────────────────────
+  // ── Facebook (SDK popup) ─────────────────────────────────────────────────
   const connectFacebook = () => {
-    const url = new URLSearchParams({
-      client_id:     META_APP_ID,
-      redirect_uri:  FACEBOOK_REDIRECT,
-      scope:         FACEBOOK_SCOPE,
-      response_type: 'code',
-      state:         'facebook_connect',
-    });
-    window.location.href = `https://www.facebook.com/dialog/oauth?${url}`;
+    if (!window.FB) { setErr('facebook', 'Facebook SDK not loaded. Please refresh.'); return; }
+    setLoad('facebook', true); clrErr('facebook');
+    const timeout = setTimeout(() => {
+      setLoad('facebook', false);
+      setErr('facebook', 'Login timed out. Please allow popups and try again.');
+    }, 60000);
+    window.FB.login((resp) => {
+      if (!resp?.authResponse) {
+        clearTimeout(timeout);
+        setErr('facebook', 'Facebook login cancelled or popup blocked. Allow popups and try again.');
+        setLoad('facebook', false);
+        return;
+      }
+      const { accessToken } = resp.authResponse;
+      window.FB.api('/me/accounts', { access_token: accessToken }, (pagesResp) => {
+        clearTimeout(timeout);
+        if (!pagesResp?.data?.length) {
+          setErr('facebook', 'No Facebook Pages found. When the Facebook popup opens, make sure to select your Page (e.g. "Test demo") in the permissions screen.');
+          setLoad('facebook', false);
+          return;
+        }
+        const page = pagesResp.data[0];
+        saveSocialAccount(user.uid, 'facebook', {
+          pageId: page.id, pageAccessToken: page.access_token, pageName: page.name, connected: true,
+        }).then(() => {
+          setAccounts(a => ({ ...a, facebook: { connected: true, pageId: page.id, pageName: page.name } }));
+          setOk('facebook', true);
+          // Also auto-connect Instagram if page has a linked Instagram Business account
+          window.FB.api(`/${page.id}`, { fields: 'instagram_business_account', access_token: page.access_token }, (igResp) => {
+            if (igResp?.instagram_business_account?.id) {
+              const igId = igResp.instagram_business_account.id;
+              saveSocialAccount(user.uid, 'instagram', {
+                businessAccountId: igId, pageAccessToken: page.access_token, pageName: page.name, connected: true,
+              }).then(() => {
+                setAccounts(a => ({ ...a, instagram: { connected: true, businessAccountId: igId, pageName: page.name } }));
+                setOk('instagram', true);
+              });
+            }
+            setLoad('facebook', false);
+          });
+        }).catch(() => {
+          setErr('facebook', 'Failed to save. Please try again.');
+          setLoad('facebook', false);
+        });
+      });
+    }, { scope: FACEBOOK_SCOPE, auth_type: 'rerequest', return_scopes: true });
   };
 
-  const handleFacebookCallback = useCallback(async (code) => {
-    if (!auth.currentUser) return;
-    const uid = auth.currentUser.uid;
-    setLoad('facebook', true); clrErr('facebook');
-    try {
-      const res = await fetch(FACEBOOK_N8N, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, redirectUri: FACEBOOK_REDIRECT, uid }),
-      });
-      if (!res.ok) throw new Error('Token exchange failed: ' + await res.text());
-      const data = await res.json();
-      if (data.error) throw new Error(data.message || 'Facebook auth failed');
-      const { pageId, pageAccessToken, pageName, instagramBusinessAccountId } = data;
-      if (!pageAccessToken) throw new Error('No page access token returned');
-      await saveSocialAccount(uid, 'facebook', { pageId, pageAccessToken, pageName, connected: true });
-      setAccounts(a => ({ ...a, facebook: { connected: true, pageId, pageName } }));
-      setOk('facebook', true);
-      // Auto-connect Instagram if the page has a linked Instagram Business account
-      if (instagramBusinessAccountId) {
-        await saveSocialAccount(uid, 'instagram', {
-          businessAccountId: instagramBusinessAccountId,
-          pageAccessToken,
-          pageName,
-          connected: true,
-        });
-        setAccounts(a => ({ ...a, instagram: { connected: true, businessAccountId: instagramBusinessAccountId, pageName } }));
-        setOk('instagram', true);
-      }
-    } catch (e) {
-      setErr('facebook', 'Facebook connection failed: ' + e.message);
-    } finally {
-      setLoad('facebook', false);
-    }
-  }, []);
+  const handleFacebookCallback = useCallback(async () => {}, []);
 
   // ── Instagram via saved Facebook credentials ─────────────────────────────
   const connectInstagram = () => {
