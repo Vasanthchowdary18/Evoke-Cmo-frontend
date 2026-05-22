@@ -22,7 +22,7 @@ const LINKEDIN_REDIRECT  = window.location.origin + '/connect-accounts'
 const LINKEDIN_SCOPE     = 'openid profile email w_member_social'
 const LINKEDIN_N8N       = 'https://evoke2026.app.n8n.cloud/webhook/linkedin-oauth'
 
-const INSTAGRAM_APP_ID   = META_APP_ID
+const INSTAGRAM_APP_ID   = '1490643592209115'
 const INSTAGRAM_REDIRECT = window.location.origin + '/connect-accounts'
 const INSTAGRAM_SCOPE    = 'instagram_business_basic,instagram_business_content_publish'
 const INSTAGRAM_N8N      = 'https://evoke2026.app.n8n.cloud/webhook/instagram-oauth'
