@@ -265,56 +265,62 @@ export default function ConnectAccounts() {
   }
 
   // ── Instagram via Facebook SDK ───────────────────────────────────────────
-  const connectInstagram = async () => {
+  const connectInstagram = () => {
     if (!user) return
     setLoad('instagram', true); clrErr('instagram')
-    try {
-      await loadFBSDK()
-      window.FB.login(async (resp) => {
+
+    loadFBSDK().then(() => {
+      window.FB.login((resp) => {
         if (!resp.authResponse?.accessToken) {
           setErr('instagram', 'Connection cancelled.')
           setLoad('instagram', false)
           return
         }
-        window.FB.api('/me/accounts', { access_token: resp.authResponse.accessToken }, async (pagesResp) => {
+
+        window.FB.api('/me/accounts', { access_token: resp.authResponse.accessToken }, (pagesResp) => {
           const pages = pagesResp?.data || []
           if (!pages.length) {
             setErr('instagram', 'No Facebook Pages found. Make sure your Facebook account has a Page linked to an Instagram Business account.')
             setLoad('instagram', false)
             return
           }
-          let found = false
-          for (const page of pages) {
-            await new Promise((resolve) => {
-              window.FB.api(`/${page.id}`, { fields: 'instagram_business_account', access_token: page.access_token }, async (igResp) => {
-                if (!found && igResp?.instagram_business_account?.id) {
-                  found = true
-                  const igId = igResp.instagram_business_account.id
-                  await saveSocialAccount(user.uid, 'instagram', {
-                    businessAccountId: igId,
-                    pageAccessToken:   page.access_token,
-                    pageName:          page.name,
-                    connected:         true,
-                  })
+
+          let pageIndex = 0
+          const checkNextPage = () => {
+            if (pageIndex >= pages.length) {
+              setErr('instagram', 'No Instagram Business account linked to your Facebook Pages. Go to Instagram → Edit Profile → link your Facebook Page first.')
+              setLoad('instagram', false)
+              return
+            }
+            const page = pages[pageIndex++]
+            window.FB.api(`/${page.id}`, { fields: 'instagram_business_account', access_token: page.access_token }, (igResp) => {
+              if (igResp?.instagram_business_account?.id) {
+                const igId = igResp.instagram_business_account.id
+                saveSocialAccount(user.uid, 'instagram', {
+                  businessAccountId: igId,
+                  pageAccessToken:   page.access_token,
+                  pageName:          page.name,
+                  connected:         true,
+                }).then(() => {
                   setAccounts(a => ({ ...a, instagram: { connected: true, businessAccountId: igId, pageName: page.name } }))
                   setOk('instagram', true)
                   setLoad('instagram', false)
-                }
-                resolve()
-              })
+                }).catch((err) => {
+                  setErr('instagram', 'Failed to save Instagram account: ' + err.message)
+                  setLoad('instagram', false)
+                })
+              } else {
+                checkNextPage()
+              }
             })
-            if (found) break
           }
-          if (!found) {
-            setErr('instagram', 'No Instagram Business account linked to your Facebook Pages. In Instagram app settings, link your Instagram account to a Facebook Page first.')
-            setLoad('instagram', false)
-          }
+          checkNextPage()
         })
       }, { scope: 'pages_show_list,pages_manage_posts,pages_read_engagement,instagram_basic,instagram_content_publish' })
-    } catch (e) {
+    }).catch((e) => {
       setErr('instagram', 'Instagram connection failed: ' + e.message)
       setLoad('instagram', false)
-    }
+    })
   }
 
   const handleInstagramCallback = useCallback(async () => {}, [])
