@@ -264,44 +264,60 @@ export default function ConnectAccounts() {
     }, { scope: FACEBOOK_SCOPE })
   }
 
-  // ── Instagram OAuth (Business Login) ────────────────────────────────────
-  const connectInstagram = () => {
-    const url = new URLSearchParams({
-      client_id:     INSTAGRAM_APP_ID,
-      redirect_uri:  INSTAGRAM_REDIRECT,
-      scope:         INSTAGRAM_SCOPE,
-      response_type: 'code',
-      state:         'instagram_connect',
-    })
-    window.location.href = `https://www.instagram.com/oauth/authorize?${url}`
-  }
-
-  const handleInstagramCallback = useCallback(async (code) => {
-    if (!auth.currentUser) return
-    const uid = auth.currentUser.uid
+  // ── Instagram via Facebook SDK ───────────────────────────────────────────
+  const connectInstagram = async () => {
+    if (!user) return
     setLoad('instagram', true); clrErr('instagram')
     try {
-      const res = await fetch(INSTAGRAM_N8N, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, redirectUri: INSTAGRAM_REDIRECT, uid }),
-      })
-      if (!res.ok) throw new Error('Token exchange failed: ' + await res.text())
-      const { accessToken, userId, username } = await res.json()
-      // Store using same field names as Facebook-linked Instagram so n8n posting nodes work unchanged
-      await saveSocialAccount(uid, 'instagram', {
-        businessAccountId: userId,
-        pageAccessToken:   accessToken,
-        username,
-      })
-      setAccounts(a => ({ ...a, instagram: { connected: true, username, businessAccountId: userId } }))
-      setOk('instagram', true)
+      await loadFBSDK()
+      window.FB.login(async (resp) => {
+        if (!resp.authResponse?.accessToken) {
+          setErr('instagram', 'Connection cancelled.')
+          setLoad('instagram', false)
+          return
+        }
+        window.FB.api('/me/accounts', { access_token: resp.authResponse.accessToken }, async (pagesResp) => {
+          const pages = pagesResp?.data || []
+          if (!pages.length) {
+            setErr('instagram', 'No Facebook Pages found. Make sure your Facebook account has a Page linked to an Instagram Business account.')
+            setLoad('instagram', false)
+            return
+          }
+          let found = false
+          for (const page of pages) {
+            await new Promise((resolve) => {
+              window.FB.api(`/${page.id}`, { fields: 'instagram_business_account', access_token: page.access_token }, async (igResp) => {
+                if (!found && igResp?.instagram_business_account?.id) {
+                  found = true
+                  const igId = igResp.instagram_business_account.id
+                  await saveSocialAccount(user.uid, 'instagram', {
+                    businessAccountId: igId,
+                    pageAccessToken:   page.access_token,
+                    pageName:          page.name,
+                    connected:         true,
+                  })
+                  setAccounts(a => ({ ...a, instagram: { connected: true, businessAccountId: igId, pageName: page.name } }))
+                  setOk('instagram', true)
+                  setLoad('instagram', false)
+                }
+                resolve()
+              })
+            })
+            if (found) break
+          }
+          if (!found) {
+            setErr('instagram', 'No Instagram Business account linked to your Facebook Pages. In Instagram app settings, link your Instagram account to a Facebook Page first.')
+            setLoad('instagram', false)
+          }
+        })
+      }, { scope: 'pages_show_list,pages_manage_posts,pages_read_engagement,instagram_basic,instagram_content_publish' })
     } catch (e) {
       setErr('instagram', 'Instagram connection failed: ' + e.message)
-    } finally {
       setLoad('instagram', false)
     }
-  }, [])
+  }
+
+  const handleInstagramCallback = useCallback(async () => {}, [])
 
   // ── LinkedIn OAuth ───────────────────────────────────────────────────────
   const connectLinkedIn = () => {
