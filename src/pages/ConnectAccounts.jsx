@@ -271,17 +271,16 @@ export default function ConnectAccounts() {
   const setOk = (k, v) => setSuccess((s) => ({ ...s, [k]: v }));
 
   // ── Facebook (SDK popup) ─────────────────────────────────────────────────
-  const connectFacebook = () => {
-    if (!window.FB) { setErr('facebook', 'Facebook SDK not loaded. Please refresh.'); return; }
-    setLoad('facebook', true); clrErr('facebook');
+  const doFBLogin = () => {
     const timeout = setTimeout(() => {
       setLoad('facebook', false);
       setErr('facebook', 'Login timed out. Please allow popups and try again.');
     }, 60000);
+
     window.FB.login((resp) => {
       if (!resp?.authResponse) {
         clearTimeout(timeout);
-        setErr('facebook', 'Facebook login cancelled or popup blocked. Allow popups and try again.');
+        setErr('facebook', 'Facebook login cancelled or popup blocked. Please allow popups and try again.');
         setLoad('facebook', false);
         return;
       }
@@ -289,7 +288,7 @@ export default function ConnectAccounts() {
       window.FB.api('/me/accounts', { access_token: accessToken }, (pagesResp) => {
         clearTimeout(timeout);
         if (!pagesResp?.data?.length) {
-          setErr('facebook', 'No Facebook Pages found. When the Facebook popup opens, make sure to select your Page (e.g. "Test demo") in the permissions screen.');
+          setErr('facebook', 'No Facebook Pages found. In the Facebook popup, look for "Choose what you allow" and make sure to select your Page (Test demo or Vasanth Chowdary Thumati).');
           setLoad('facebook', false);
           return;
         }
@@ -299,7 +298,6 @@ export default function ConnectAccounts() {
         }).then(() => {
           setAccounts(a => ({ ...a, facebook: { connected: true, pageId: page.id, pageName: page.name } }));
           setOk('facebook', true);
-          // Also auto-connect Instagram if page has a linked Instagram Business account
           window.FB.api(`/${page.id}`, { fields: 'instagram_business_account', access_token: page.access_token }, (igResp) => {
             if (igResp?.instagram_business_account?.id) {
               const igId = igResp.instagram_business_account.id;
@@ -317,7 +315,20 @@ export default function ConnectAccounts() {
           setLoad('facebook', false);
         });
       });
-    }, { scope: FACEBOOK_SCOPE, auth_type: 'rerequest', return_scopes: true });
+    }, { scope: FACEBOOK_SCOPE });
+  };
+
+  const connectFacebook = () => {
+    if (!window.FB) { setErr('facebook', 'Facebook SDK not loaded. Please refresh.'); return; }
+    setLoad('facebook', true); clrErr('facebook');
+    // Force logout first so Facebook always shows the full permission + page selection screen
+    window.FB.getLoginStatus((statusResp) => {
+      if (statusResp.status === 'connected') {
+        window.FB.logout(() => doFBLogin());
+      } else {
+        doFBLogin();
+      }
+    });
   };
 
   const handleFacebookCallback = useCallback(async () => {}, []);
