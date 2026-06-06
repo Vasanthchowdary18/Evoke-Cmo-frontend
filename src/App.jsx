@@ -1,5 +1,6 @@
 import React from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { AuthProvider } from './components/AuthProvider.jsx'
 import Landing from './pages/Landing.jsx'
 import SignIn from './pages/SignIn.jsx'
 import Onboarding from './pages/Onboarding.jsx'
@@ -23,6 +24,7 @@ import Chatbot from './components/Chatbot.jsx'
 export default function App() {
   return (
     <BrowserRouter>
+      <AuthProvider>
       <Routes>
         <Route path="/"                  element={<Landing />} />
         <Route path="/signin"            element={<SignIn />} />
@@ -51,6 +53,7 @@ export default function App() {
         <Route path="*"                  element={<Navigate to="/" replace />} />
       </Routes>
       <Chatbot />
+      </AuthProvider>
     </BrowserRouter>
   )
 }

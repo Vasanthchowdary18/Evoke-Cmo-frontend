@@ -12,9 +12,7 @@ import {
   Activity, Plus, Wifi, Home
 } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
-import { auth } from '../firebase'
-import { onAuthStateChanged } from 'firebase/auth'
-import { getOrCreateUser } from '../services/userService'
+import { useRequireAuth } from '../hooks/useRequireAuth'
 // AGENT_WEBHOOK_URL not used here — chat uses Gemini directly for real-time CMO conversations
 
 /* ─── Terminal log lines ─── */
@@ -132,8 +130,7 @@ function Severity({ level }) {
 
 export default function CmoDashboard() {
   const navigate = useNavigate()
-  const [user, setUser] = useState(null)
-  const [authReady, setAuthReady] = useState(false)
+  const { user, authReady } = useRequireAuth()
   const [terminalOpen, setTerminalOpen] = useState(true)
   const [logs, setLogs] = useState([])
   const [agents, setAgents] = useState(INIT_AGENTS)
@@ -148,16 +145,6 @@ export default function CmoDashboard() {
   const [activeSideNav, setActiveSideNav] = useState('agents')
   const termRef = useRef(null)
   const chatRef = useRef(null)
-
-  /* auth */
-  useEffect(() => {
-    return onAuthStateChanged(auth, async (u) => {
-      if (!u) { navigate('/signin'); return }
-      setUser(u)
-      await getOrCreateUser(u.uid, u.displayName, u.email)
-      setAuthReady(true)
-    })
-  }, [navigate])
 
   /* terminal playback */
   useEffect(() => {

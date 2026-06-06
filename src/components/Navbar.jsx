@@ -2,15 +2,17 @@ import React, { useState, useEffect, useRef } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Zap, Menu, X, LayoutDashboard, Image, LogOut, ChevronDown } from 'lucide-react'
-import { auth } from '../firebase'
-import { signOut } from 'firebase/auth'
-import GratitudeToken from './GratitudeToken'
+import { useAuth } from './AuthProvider.jsx'
+import { buildAccountsLoginUrl, signOut as ssoSignOut } from '../lib/session'
+import EgtWalletHeader from './EgtWalletHeader.jsx'
 
-export default function Navbar({ onSignIn }) {
+export default function Navbar() {
   const [scrolled, setScrolled]       = useState(false)
   const [mobileOpen, setMobileOpen]   = useState(false)
-  const [user, setUser]               = useState(null)
+  const { user, status } = useAuth()
+  const authLoading = status === 'loading'
   const [profileOpen, setProfileOpen] = useState(false)
+  const [signingOut, setSigningOut]   = useState(false)
   const profileRef                    = useRef(null)
   const location = useLocation()
   const navigate = useNavigate()
@@ -32,8 +34,6 @@ export default function Navbar({ onSignIn }) {
     return () => window.removeEventListener('scroll', fn)
   }, [])
 
-  useEffect(() => auth.onAuthStateChanged(u => setUser(u)), [])
-
   // Close profile dropdown when clicking outside
   useEffect(() => {
     const handler = (e) => {
@@ -45,7 +45,22 @@ export default function Navbar({ onSignIn }) {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  const handleSignOut = async () => { await signOut(auth); navigate('/') }
+  const handleSignOut = async () => {
+    if (signingOut) return
+    setSigningOut(true)
+    try {
+      await ssoSignOut()
+    } finally {
+      // setSigningOut(false)
+      // navigate('/')
+      // window.location.reload()
+    }
+  }
+
+  const handleSsoSignIn = (e) => {
+    e?.preventDefault?.()
+    window.location.href = buildAccountsLoginUrl(window.location.href)
+  }
 
   const landingLinks = [
     { label: 'Features',     href: '#features'     },
@@ -151,10 +166,12 @@ export default function Navbar({ onSignIn }) {
         {/* ── Right actions ── */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }} className="mobile-hide">
 
-          {/* GratitudeToken — only on app pages */}
-          {isApp && <GratitudeToken />}
+          {/* EGT wallet — on-chain balance from SSO wallet address */}
+          <EgtWalletHeader />
 
-          {user ? (
+          {authLoading ? (
+            <div style={{ width: 72, height: 32, borderRadius: 100, background: 'rgba(255,255,255,0.06)' }} />
+          ) : user ? (
             /* ── User profile pill + dropdown ── */
             <div ref={profileRef} style={{ position: 'relative' }}>
               {/* Pill trigger */}
@@ -255,7 +272,7 @@ export default function Navbar({ onSignIn }) {
                         onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.08)'; e.currentTarget.style.color = '#f87171' }}
                         onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = 'rgba(240,235,224,0.55)' }}
                       >
-                        <LogOut size={15} /> Sign out
+                        <LogOut size={15} /> {signingOut ? 'Signing out…' : 'Sign out'}
                       </button>
                     </div>
                   </motion.div>
@@ -266,40 +283,20 @@ export default function Navbar({ onSignIn }) {
           ) : (
             /* ── Not signed in ── */
             <>
-              {onSignIn ? (
-                <button onClick={onSignIn} style={navLink}
-                  onMouseEnter={e => e.currentTarget.style.color = '#f0ebe0'}
-                  onMouseLeave={e => e.currentTarget.style.color = 'rgba(240,235,224,0.55)'}
-                >Sign In</button>
-              ) : (
-                <Link to="/signin" style={navLink}
-                  onMouseEnter={e => e.currentTarget.style.color = '#f0ebe0'}
-                  onMouseLeave={e => e.currentTarget.style.color = 'rgba(240,235,224,0.55)'}
-                >Sign In</Link>
-              )}
-              {onSignIn ? (
-                <button onClick={onSignIn} style={{
-                  padding: '9px 22px', marginLeft: 4,
-                  background: 'linear-gradient(135deg, #d4a853 0%, #b8803a 100%)',
-                  color: '#0e0c09', border: 'none', borderRadius: 100,
-                  fontSize: 14, fontWeight: 600, fontFamily: "'Inter',sans-serif",
-                  cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap',
-                }}
-                  onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 22px rgba(200,151,62,0.45)' }}
-                  onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none' }}
-                >Get Started Free</button>
-              ) : (
-                <Link to="/signin" style={{
-                  display: 'inline-block', padding: '9px 22px', marginLeft: 4,
-                  background: 'linear-gradient(135deg, #d4a853 0%, #b8803a 100%)',
-                  color: '#0e0c09', borderRadius: 100,
-                  fontSize: 14, fontWeight: 600, fontFamily: "'Inter',sans-serif",
-                  textDecoration: 'none', transition: 'all 0.2s', whiteSpace: 'nowrap',
-                }}
-                  onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 22px rgba(200,151,62,0.45)' }}
-                  onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none' }}
-                >Get Started Free</Link>
-              )}
+              <button onClick={handleSsoSignIn} style={navLink}
+                onMouseEnter={e => e.currentTarget.style.color = '#f0ebe0'}
+                onMouseLeave={e => e.currentTarget.style.color = 'rgba(240,235,224,0.55)'}
+              >Sign In</button>
+              <button onClick={handleSsoSignIn} style={{
+                padding: '9px 22px', marginLeft: 4,
+                background: 'linear-gradient(135deg, #d4a853 0%, #b8803a 100%)',
+                color: '#0e0c09', border: 'none', borderRadius: 100,
+                fontSize: 14, fontWeight: 600, fontFamily: "'Inter',sans-serif",
+                cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap',
+              }}
+                onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 22px rgba(200,151,62,0.45)' }}
+                onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none' }}
+              >Get Started Free</button>
             </>
           )}
         </div>
@@ -331,8 +328,8 @@ export default function Navbar({ onSignIn }) {
                 <button onClick={handleSignOut} style={{ padding: 12, background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, color: 'rgba(240,235,224,0.6)', fontSize: 15, cursor: 'pointer' }}>Sign Out</button>
               ) : (
                 <>
-                  <button onClick={onSignIn || (() => navigate('/signin'))} style={{ padding: 12, background: 'transparent', border: '1px solid rgba(200,151,62,0.3)', borderRadius: 100, color: '#c8973e', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>Sign In</button>
-                  <button onClick={onSignIn || (() => navigate('/signin'))} style={{ padding: 12, background: 'linear-gradient(135deg, #d4a853, #b8803a)', border: 'none', borderRadius: 100, color: '#0e0c09', fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>Get Started Free</button>
+                  <button onClick={handleSsoSignIn} style={{ padding: 12, background: 'transparent', border: '1px solid rgba(200,151,62,0.3)', borderRadius: 100, color: '#c8973e', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>Sign In</button>
+                  <button onClick={handleSsoSignIn} style={{ padding: 12, background: 'linear-gradient(135deg, #d4a853, #b8803a)', border: 'none', borderRadius: 100, color: '#0e0c09', fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>Get Started Free</button>
                 </>
               )}
             </div>

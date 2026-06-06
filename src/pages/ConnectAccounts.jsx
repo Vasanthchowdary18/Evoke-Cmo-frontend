@@ -14,8 +14,7 @@ import {
   ChevronLeft,
 } from "lucide-react";
 import Navbar from "../components/Navbar.jsx";
-import { auth } from "../firebase";
-import { onAuthStateChanged } from "firebase/auth";
+import { useRequireAuth } from "../hooks/useRequireAuth";
 import {
   getOrCreateUser,
   saveSocialAccount,
@@ -320,47 +319,36 @@ export default function ConnectAccounts() {
   const searchParams = new URLSearchParams(location.search);
   const isSetupMode  = searchParams.get('setup') === '1';
   const targetCampaign = searchParams.get('campaign') || '/cmo';
-  const [user, setUser] = useState(null);
+  const { user, authReady } = useRequireAuth();
   const [accounts, setAccounts] = useState({});
   const [loading, setLoading] = useState({});
   const [errors, setErrors] = useState({});
   const [success, setSuccess] = useState({});
   const [manualForms, setManualForms] = useState({});
   const [expanded, setExpanded] = useState(null);
-  const [authReady, setAuthReady] = useState(false);
 
   useEffect(() => {
+    if (!authReady || !user) return;
+
     const hash = new URLSearchParams(window.location.hash.slice(1));
     const fbToken = hash.get("access_token");
     const fbState = hash.get("state");
 
     if (fbToken && fbState === "facebook_connect") {
       window.history.replaceState({}, "", window.location.pathname);
-      const unsub = onAuthStateChanged(auth, (u) => {
-        if (!u) return;
-        unsub();
-        handleFacebookTokenConnect(fbToken, u.uid);
-      });
+      handleFacebookTokenConnect(fbToken, user.uid);
       return;
     }
 
     if (fbToken && fbState === "instagram_connect") {
       window.history.replaceState({}, "", window.location.pathname);
-      const unsub = onAuthStateChanged(auth, (u) => {
-        if (!u) return;
-        unsub();
-        handleInstagramTokenConnect(fbToken, u.uid);
-      });
+      handleInstagramTokenConnect(fbToken, user.uid);
       return;
     }
 
     if (fbToken && fbState === "metaads_connect") {
       window.history.replaceState({}, "", window.location.pathname);
-      const unsub = onAuthStateChanged(auth, (u) => {
-        if (!u) return;
-        unsub();
-        handleMetaAdsTokenConnect(fbToken, u.uid);
-      });
+      handleMetaAdsTokenConnect(fbToken, user.uid);
       return;
     }
 
@@ -372,36 +360,22 @@ export default function ConnectAccounts() {
 
     window.history.replaceState({}, "", window.location.pathname);
 
-    const unsub = onAuthStateChanged(auth, (u) => {
-      if (!u) return;
-      unsub();
-
-      if (state === "linkedin_connect") handleLinkedInCallback(code);
-      if (state === "twitter_connect") handleTwitterCallback(code);
-      if (state === "gmail_connect") handleGmailCallback(code);
-      if (state === "tiktok_connect") handleTikTokCallback(code);
-      if (state === "eventbrite_connect") handleEventbriteCallback(code);
-    });
-  }, []); // eslint-disable-line
+    if (state === "linkedin_connect") handleLinkedInCallback(code);
+    if (state === "twitter_connect") handleTwitterCallback(code);
+    if (state === "gmail_connect") handleGmailCallback(code);
+    if (state === "tiktok_connect") handleTikTokCallback(code);
+    if (state === "eventbrite_connect") handleEventbriteCallback(code);
+  }, [authReady, user]); // eslint-disable-line
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (u) => {
-      if (!u) {
-        navigate("/signin");
-        return;
-      }
+    if (!authReady || !user) return;
 
-      setUser(u);
-
-      const data = await getOrCreateUser(u.uid, u.displayName, u.email);
+    getOrCreateUser(user.uid, user.displayName, user.email).then((data) => {
       setAccounts(data.socialAccounts || {});
-      setAuthReady(true);
     });
 
     loadFBSDK();
-
-    return unsub;
-  }, [navigate]);
+  }, [authReady, user]);
 
   const setErr = (k, m) => setErrors((e) => ({ ...e, [k]: m }));
 
@@ -597,9 +571,9 @@ export default function ConnectAccounts() {
   };
 
   const handleLinkedInCallback = useCallback(async (code) => {
-    if (!auth.currentUser) return;
+    if (!user) return;
 
-    const uid = auth.currentUser.uid;
+    const uid = user.uid;
 
     setLoad("linkedin", true);
     clrErr("linkedin");
@@ -669,9 +643,9 @@ export default function ConnectAccounts() {
   };
 
   const handleTwitterCallback = useCallback(async (code) => {
-    if (!auth.currentUser) return;
+    if (!user) return;
 
-    const uid = auth.currentUser.uid;
+    const uid = user.uid;
     const verifier = sessionStorage.getItem("twitter_verifier") || "";
 
     sessionStorage.removeItem("twitter_verifier");
@@ -749,9 +723,9 @@ export default function ConnectAccounts() {
   };
 
   const handleGmailCallback = useCallback(async (code) => {
-    if (!auth.currentUser) return;
+    if (!user) return;
 
-    const uid = auth.currentUser.uid;
+    const uid = user.uid;
 
     setLoad("gmail", true);
     clrErr("gmail");
@@ -805,9 +779,9 @@ export default function ConnectAccounts() {
   };
 
   const handleTikTokCallback = useCallback(async (code) => {
-    if (!auth.currentUser) return;
+    if (!user) return;
 
-    const uid = auth.currentUser.uid;
+    const uid = user.uid;
     const verifier = sessionStorage.getItem("tiktok_verifier") || "";
 
     sessionStorage.removeItem("tiktok_verifier");
@@ -877,9 +851,9 @@ export default function ConnectAccounts() {
   };
 
   const handleEventbriteCallback = useCallback(async (code) => {
-    if (!auth.currentUser) return;
+    if (!user) return;
 
-    const uid = auth.currentUser.uid;
+    const uid = user.uid;
 
     setLoad("eventbrite", true);
     clrErr("eventbrite");

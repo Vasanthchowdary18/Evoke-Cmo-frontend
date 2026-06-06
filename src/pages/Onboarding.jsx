@@ -2,9 +2,8 @@ import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Zap, ArrowRight, Loader2 } from 'lucide-react'
-import { auth } from '../firebase'
-import { onAuthStateChanged } from 'firebase/auth'
-import { getOrCreateUser, saveOnboardingData } from '../services/userService'
+import { useRequireAuth } from '../hooks/useRequireAuth'
+import { getUserData, saveOnboardingData } from '../services/userService'
 
 // ─── Onboarding questions ────────────────────────────────────────────────────
 const STEPS = [
@@ -95,7 +94,7 @@ function AgentText({ text }) {
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function Onboarding() {
   const navigate = useNavigate()
-  const [user, setUser] = useState(null)
+  const { user, authReady } = useRequireAuth()
   const [step, setStep] = useState(-1)          // -1 = loading, 0/1/2 = questions, 3 = done
   const [answers, setAnswers] = useState({})
   const [messages, setMessages] = useState([])   // [{role:'agent'|'user', text, isDone?}]
@@ -109,16 +108,13 @@ export default function Onboarding() {
     setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 80)
   }, [messages, isTyping, showOptions])
 
-  // Auth guard + onboarding check
+  // Redirect if onboarding already complete
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (u) => {
-      if (!u) { navigate('/signin'); return }
-      const userData = await getOrCreateUser(u.uid, u.displayName, u.email)
-      if (userData?.onboardingComplete) { navigate('/dashboard'); return }
-      setUser(u)
+    if (!authReady || !user) return
+    getUserData(user.uid).then((userData) => {
+      if (userData?.onboardingComplete) navigate('/dashboard')
     })
-    return () => unsub()
-  }, [navigate])
+  }, [authReady, user, navigate])
 
   // Fire first question once user is known
   useEffect(() => {

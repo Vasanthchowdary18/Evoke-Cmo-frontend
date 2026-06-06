@@ -2,12 +2,10 @@ import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, useInView } from 'framer-motion'
 import { ArrowRight, Check, Star, Zap, TrendingUp, Target, Calendar, Search, Mail, Users, BarChart2, Briefcase, Megaphone, ShoppingCart, Sparkles, Activity } from 'lucide-react'
-import SignInModal from '../components/SignInModal.jsx'
 // OnboardingModal moved to AgentsHub — not triggered on landing page
 import Navbar from '../components/Navbar.jsx'
-import { auth } from '../firebase'
-import { onAuthStateChanged } from 'firebase/auth'
-import { getOrCreateUser } from '../services/userService'
+import { useAuth } from '../components/AuthProvider.jsx'
+import { redirectToLogin } from '../lib/authUtils'
 
 /* ─── animation ─── */
 const fadeUp = { hidden:{opacity:0,y:24}, visible:{opacity:1,y:0,transition:{duration:0.55,ease:[0.22,1,0.36,1]}} }
@@ -202,18 +200,12 @@ const AUTO_STEPS = [
 /* ═══════════════════════════════════════════════════════════ */
 
 export default function Landing() {
-  const [showModal,      setShowModal]      = useState(false)
-  const [user,           setUser]           = useState(null)
+  const { user } = useAuth()
   const [billingAnnual,  setBillingAnnual]  = useState(false)
   const navigate = useNavigate()
 
-  useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => setUser(u))
-    return unsub
-  }, [])
-
-  const open    = () => setShowModal(true)
-  const goBoard = () => user ? navigate('/cmo') : open()
+  const goSignIn = () => redirectToLogin()
+  const goBoard = () => user ? navigate('/cmo') : goSignIn()
 
   /* Gold gradient text helper */
   const goldGrad = {
@@ -230,9 +222,7 @@ export default function Landing() {
 
   return (
     <div style={{background:BG, minHeight:'100vh', color:TEXT, fontFamily:"'Inter',sans-serif", overflowX:'hidden'}}>
-      {showModal && <SignInModal onClose={() => setShowModal(false)} />}
-
-      <Navbar onSignIn={!user ? open : undefined} />
+      <Navbar />
 
       {/* ══════════════════════════════════════════════════
           HERO  (strip_01)
@@ -349,7 +339,7 @@ export default function Landing() {
             ].map((agent,i)=>(
               <FadeIn key={agent.key} delay={i*0.09}>
                 <div
-                  onClick={()=>agent.active&&(user?navigate(agent.href):open())}
+                  onClick={()=>agent.active&&(user?navigate(agent.href):goSignIn())}
                   style={{
                     background:agent.active?'linear-gradient(160deg,#221d10,#1c1a13)':'linear-gradient(160deg,#161410,#131210)',
                     border:`1px solid ${agent.active?'rgba(200,151,62,0.5)':'rgba(200,151,62,0.15)'}`,
@@ -369,7 +359,7 @@ export default function Landing() {
                     {agent.tags.map(tag=>(<span key={tag} style={{padding:'3px 9px',background:agent.active?'rgba(200,151,62,0.08)':'rgba(255,255,255,0.03)',border:`1px solid ${agent.active?'rgba(200,151,62,0.2)':'rgba(255,255,255,0.06)'}`,borderRadius:100,fontSize:10,color:agent.active?'rgba(240,235,224,0.6)':'rgba(240,235,224,0.25)',fontWeight:500}}>{tag}</span>))}
                   </div>
                   {agent.active?(
-                    <button onClick={e=>{e.stopPropagation();user?navigate(agent.href):open()}} style={{width:'100%',padding:'11px',background:'linear-gradient(135deg,#d4a853,#b8803a)',border:'none',borderRadius:10,color:'#0e0c09',fontSize:13,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:6,fontFamily:"'Inter',sans-serif",transition:'all 0.2s'}}
+                    <button onClick={e=>{e.stopPropagation();user?navigate(agent.href):goSignIn()}} style={{width:'100%',padding:'11px',background:'linear-gradient(135deg,#d4a853,#b8803a)',border:'none',borderRadius:10,color:'#0e0c09',fontSize:13,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:6,fontFamily:"'Inter',sans-serif",transition:'all 0.2s'}}
                       onMouseEnter={e=>{e.currentTarget.style.boxShadow='0 6px 20px rgba(200,151,62,0.4)'}}
                       onMouseLeave={e=>{e.currentTarget.style.boxShadow='none'}}>
                       Launch CMO Agent
@@ -591,7 +581,7 @@ export default function Landing() {
             ].map((agent,i)=>(
               <FadeIn key={agent.key} delay={i*0.09}>
                 <div
-                  onClick={() => agent.active && (user ? navigate(agent.href) : open())}
+                  onClick={() => agent.active && (user ? navigate(agent.href) : goSignIn())}
                   style={{
                     background: agent.active
                       ? 'linear-gradient(160deg,#221d10,#1c1a13)'
@@ -684,7 +674,7 @@ export default function Landing() {
                   {/* Launch / Coming Soon button */}
                   {agent.active ? (
                     <button
-                      onClick={e=>{e.stopPropagation(); user ? navigate(agent.href) : open()}}
+                      onClick={e=>{e.stopPropagation(); user ? navigate(agent.href) : goSignIn()}}
                       style={{
                         width:'100%',padding:'11px',
                         background:'linear-gradient(135deg,#d4a853,#b8803a)',

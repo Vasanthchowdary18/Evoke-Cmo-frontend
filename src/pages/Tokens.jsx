@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import SignInModal from '../components/SignInModal'
+import { redirectToLogin } from '../lib/authUtils'
 
 const SEGMENTS = [
   { label: '50 EGT',   value: 50,   color: '#f0d898', textColor: '#7a5000' },
@@ -199,13 +199,10 @@ const BONUSES = [
 ]
 
 export default function Tokens() {
-  const [showSignIn, setShowSignIn] = useState(false)
-
-  const openSignIn = (e) => { e.preventDefault(); setShowSignIn(true) }
+  const openSignIn = (e) => { e.preventDefault(); redirectToLogin() }
 
   return (
     <div style={{ background: '#fff', color: '#111', fontFamily: 'inherit' }}>
-      {showSignIn && <SignInModal onClose={() => setShowSignIn(false)} />}
 
       {/* ── HERO ── */}
       <section

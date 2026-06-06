@@ -7,9 +7,8 @@ import {
   Loader2, Zap, Coins, Globe, RefreshCw
 } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
-import { auth } from '../firebase'
-import { onAuthStateChanged } from 'firebase/auth'
-import { getOrCreateUser, deductToken } from '../services/userService'
+import { useRequireAuth } from '../hooks/useRequireAuth'
+import { getUserData, deductToken } from '../services/userService'
 
 const GROQ_KEY = import.meta.env.VITE_GROQ_API_KEY
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
@@ -363,9 +362,8 @@ export default function AgentPage() {
   const navigate = useNavigate()
   const agent = AGENTS[agentType]
 
-  const [user, setUser] = useState(null)
+  const { user, authReady } = useRequireAuth()
   const [tokenBalance, setTokenBalance] = useState(null)
-  const [authReady, setAuthReady] = useState(false)
   const [form, setForm] = useState({})
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState(null)
@@ -373,15 +371,11 @@ export default function AgentPage() {
   const { copied, copy } = useCopy()
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (u) => {
-      if (!u) { navigate('/signin'); return }
-      setUser(u)
-      const data = await getOrCreateUser(u.uid, u.displayName, u.email)
-      setTokenBalance(data.tokenBalance ?? 0)
-      setAuthReady(true)
+    if (!authReady || !user) return
+    getUserData(user.uid).then((data) => {
+      setTokenBalance(data?.tokenBalance ?? 0)
     })
-    return unsub
-  }, [navigate])
+  }, [authReady, user])
 
   useEffect(() => {
     if (authReady && !agent) navigate('/dashboard')

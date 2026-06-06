@@ -3,8 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Zap, Check, ArrowRight, Coins, Shield, Star, AlertCircle, Loader2, X } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
-import { auth } from '../firebase'
-import { onAuthStateChanged } from 'firebase/auth'
+import { useRequireAuth } from '../hooks/useRequireAuth'
 import { getOrCreateUser, addTokens, TOKEN_PACKAGES } from '../services/userService'
 
 // Load Razorpay script dynamically
@@ -26,24 +25,19 @@ const RAZORPAY_KEY_ID = import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_REPLAC
 
 export default function Purchase() {
   const navigate = useNavigate()
-  const [user, setUser]           = useState(null)
+  const { user, authReady } = useRequireAuth()
   const [balance, setBalance]     = useState(0)
   const [selected, setSelected]   = useState(null)
   const [paying, setPaying]       = useState(false)
   const [success, setSuccess]     = useState(null)
   const [error, setError]         = useState('')
-  const [authReady, setAuthReady] = useState(false)
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (u) => {
-      if (!u) { navigate('/signin'); return }
-      setUser(u)
-      const data = await getOrCreateUser(u.uid, u.displayName, u.email)
+    if (!authReady || !user) return
+    getOrCreateUser(user.uid, user.displayName, user.email).then((data) => {
       setBalance(data.tokenBalance || 0)
-      setAuthReady(true)
     })
-    return unsub
-  }, [navigate])
+  }, [authReady, user])
 
   const handleBuy = async (pkg) => {
     if (!user) return

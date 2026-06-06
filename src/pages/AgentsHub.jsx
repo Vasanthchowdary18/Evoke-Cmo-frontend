@@ -3,10 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { ArrowRight, Zap, Calendar, Package, Rocket, BookOpen, Globe, Mail, Users, PieChart, TrendingUp } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
-import { auth } from '../firebase'
-import { onAuthStateChanged } from 'firebase/auth'
-import SignInModal from '../components/SignInModal.jsx'
+import { useAuth } from '../components/AuthProvider.jsx'
 import OnboardingModal from '../components/OnboardingModal.jsx'
+import { redirectToLogin } from '../lib/authUtils'
 import { getOrCreateUser } from '../services/userService'
 
 /* ─── colour tokens ─── */
@@ -57,16 +56,13 @@ const AGENTS = [
 
 export default function AgentsHub() {
   const navigate = useNavigate()
-  const [user,            setUser]            = useState(null)
-  const [showModal,       setShowModal]       = useState(false)
+  const { user } = useAuth()
   const [showOnboarding,  setShowOnboarding]  = useState(false)
   const [pendingHref,     setPendingHref]     = useState(null)
 
-  useEffect(() => onAuthStateChanged(auth, u => setUser(u)), [])
-
   const handleLaunch = async (agent) => {
     if (!agent.active) return
-    if (!user) { setShowModal(true); return }
+    if (!user) { redirectToLogin(); return }
 
     try {
       const data = await getOrCreateUser(user.uid, user.displayName, user.email)
@@ -89,8 +85,6 @@ export default function AgentsHub() {
 
   return (
     <div style={{ minHeight: '100vh', background: BG, color: TEXT, fontFamily: "'Inter',sans-serif" }}>
-      {showModal && <SignInModal onClose={() => setShowModal(false)} />}
-
       {/* Onboarding — fires when new user clicks Launch CMO Agent */}
       {showOnboarding && user && (
         <OnboardingModal
