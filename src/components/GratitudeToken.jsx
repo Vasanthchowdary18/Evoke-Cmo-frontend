@@ -13,14 +13,9 @@ export default function GratitudeToken() {
     }
   }, [])
 
-  const addTokens = (e) => {
+  const handleAdd = (e) => {
     e.stopPropagation()
-
-    const updated = tokens + 100
-
-    setTokens(updated)
-
-    localStorage.setItem('gratitudeTokens', updated)
+    navigate('/tokens')
   }
 
   return (
@@ -61,7 +56,7 @@ export default function GratitudeToken() {
       </span>
 
       <button
-        onClick={addTokens}
+        onClick={handleAdd}
         style={{
           width: '26px',
           height: '26px',

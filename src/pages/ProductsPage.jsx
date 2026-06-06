@@ -86,7 +86,7 @@ export default function ProductsPage() {
         {/* Back + Launch */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '40px', flexWrap: 'wrap', gap: '12px' }}>
           <button
-            onClick={() => navigate('/dashboard')}
+            onClick={() => navigate('/agents-hub')}
             style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', color: 'rgba(255,255,255,0.45)', fontSize: '14px', cursor: 'pointer', padding: 0 }}
           >
             <ArrowLeft size={15} /> Back to Dashboard

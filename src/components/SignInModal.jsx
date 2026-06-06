@@ -1,71 +1,89 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { X, Mail, Lock, User, Eye, EyeOff, ArrowRight, AlertCircle, Zap } from 'lucide-react'
-import { auth, googleProvider, facebookProvider, twitterProvider, signInWithPopup } from '../firebase'
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from 'firebase/auth'
+import { X, Eye, EyeOff, AlertCircle } from 'lucide-react'
+import { auth, googleProvider, facebookProvider, signInWithPopup } from '../firebase'
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  updateProfile,
+  sendPasswordResetEmail,
+} from 'firebase/auth'
+import { getOrCreateUser } from '../services/userService'
 
 const friendlyError = (code) => {
   const map = {
-    'auth/email-already-in-use': 'An account with this email already exists.',
-    'auth/invalid-email': 'Please enter a valid email address.',
-    'auth/user-not-found': 'No account found with this email.',
-    'auth/wrong-password': 'Incorrect password. Please try again.',
-    'auth/weak-password': 'Password must be at least 6 characters.',
-    'auth/popup-closed-by-user': 'Sign-in popup was closed. Please try again.',
-    'auth/popup-blocked': 'Popup was blocked by your browser. Please allow popups.',
-    'auth/account-exists-with-different-credential': 'An account already exists with a different sign-in method.',
-    'auth/cancelled-popup-request': '',
-    'auth/network-request-failed': 'Network error. Check your connection.',
-    'auth/operation-not-allowed': 'This sign-in method is not enabled yet.',
+    'auth/email-already-in-use':                   'An account with this email already exists.',
+    'auth/invalid-email':                           'Please enter a valid email address.',
+    'auth/user-not-found':                          'No account found with this email.',
+    'auth/wrong-password':                          'Incorrect password. Please try again.',
+    'auth/invalid-credential':                      'Incorrect email or password. Please try again.',
+    'auth/weak-password':                           'Password must be at least 6 characters.',
+    'auth/popup-closed-by-user':                    'Sign-in popup was closed. Please try again.',
+    'auth/popup-blocked':                           'Popup was blocked. Please allow popups for this site.',
+    'auth/account-exists-with-different-credential':'An account already exists with a different sign-in method.',
+    'auth/cancelled-popup-request':                 '',
+    'auth/network-request-failed':                  'Network error. Check your connection.',
+    'auth/operation-not-allowed':                   'This sign-in method is not enabled yet.',
+    'auth/unauthorized-domain':                     'This domain is not authorised in Firebase Console.',
   }
   return map[code] || 'Something went wrong. Please try again.'
 }
 
-const Spinner = () => (
+const Spinner = ({ dark }) => (
   <div style={{
-    width: 18, height: 18,
-    border: '2px solid rgba(255,255,255,0.3)',
-    borderTopColor: 'white',
+    width: 17, height: 17,
+    border: `2px solid ${dark ? 'rgba(0,0,0,0.18)' : 'rgba(255,255,255,0.3)'}`,
+    borderTopColor: dark ? '#444' : 'white',
     borderRadius: '50%',
-    animation: 'modalSpin 0.7s linear infinite',
+    animation: 'ssoSpin 0.7s linear infinite',
     flexShrink: 0,
   }} />
 )
 
 export default function SignInModal({ onClose }) {
-  const [mode, setMode] = useState('signin')
-  const [form, setForm] = useState({ fullName: '', email: '', password: '' })
-  const [errors, setErrors] = useState({})
-  const [showPass, setShowPass] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [socialLoading, setSocialLoading] = useState(null)
-  const [authError, setAuthError] = useState('')
   const navigate = useNavigate()
+  const [mode, setMode]           = useState('signin')
+  const [fullName, setFullName]   = useState('')
+  const [email, setEmail]         = useState('')
+  const [password, setPassword]   = useState('')
+  const [showPass, setShowPass]   = useState(false)
+  const [staySignedIn, setStay]   = useState(false)
+  const [loading, setLoading]     = useState(false)
+  const [socialLoading, setSocial]= useState(null)
+  const [authError, setAuthError] = useState('')
+  const [errors, setErrors]       = useState({})
+  const [resetSent, setResetSent] = useState(false)
   const isSignUp = mode === 'signup'
 
-  // close on Escape
+  // Dismiss on Escape
   useEffect(() => {
-    const handler = (e) => { if (e.key === 'Escape') onClose() }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
+    const h = (e) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', h)
+    return () => window.removeEventListener('keydown', h)
   }, [onClose])
 
-  // lock body scroll
+  // Lock body scroll
   useEffect(() => {
     document.body.style.overflow = 'hidden'
     return () => { document.body.style.overflow = '' }
   }, [])
 
+  const switchMode = (next) => {
+    setMode(next); setFullName(''); setEmail(''); setPassword('')
+    setErrors({}); setAuthError(''); setShowPass(false); setResetSent(false)
+  }
+
   const validate = () => {
     const e = {}
-    if (isSignUp && !form.fullName.trim()) e.fullName = 'Full name is required'
-    if (!form.email) e.email = 'Email is required'
-    else if (!/\S+@\S+\.\S+/.test(form.email)) e.email = 'Enter a valid email'
-    if (!form.password) e.password = 'Password is required'
-    else if (form.password.length < 6) e.password = 'At least 6 characters'
+    if (isSignUp && !fullName.trim()) e.fullName = 'Full name is required'
+    if (!email)                        e.email    = 'Email is required'
+    else if (!/\S+@\S+\.\S+/.test(email)) e.email = 'Enter a valid email address'
+    if (!password)                     e.password = 'Password is required'
+    else if (password.length < 6)      e.password = 'At least 6 characters'
     return e
   }
 
+  // ── Email / Password login — stays in CMO ──
   const handleSubmit = async (e) => {
     e.preventDefault()
     const errs = validate()
@@ -73,12 +91,15 @@ export default function SignInModal({ onClose }) {
     setErrors({}); setAuthError(''); setLoading(true)
     try {
       if (isSignUp) {
-        const cred = await createUserWithEmailAndPassword(auth, form.email, form.password)
-        await updateProfile(cred.user, { displayName: form.fullName.trim() })
+        const cred = await createUserWithEmailAndPassword(auth, email, password)
+        await updateProfile(cred.user, { displayName: fullName.trim() })
+        await getOrCreateUser(cred.user.uid, fullName.trim(), email)
       } else {
-        await signInWithEmailAndPassword(auth, form.email, form.password)
+        const cred = await signInWithEmailAndPassword(auth, email, password)
+        await getOrCreateUser(cred.user.uid, cred.user.displayName, cred.user.email)
       }
-      navigate('/dashboard')
+      onClose()
+      navigate('/agents-hub')
     } catch (err) {
       setAuthError(friendlyError(err.code))
     } finally {
@@ -86,295 +107,281 @@ export default function SignInModal({ onClose }) {
     }
   }
 
+  // ── Google / Facebook login — stays in CMO ──
   const handleSocial = async (provider, key) => {
-    setAuthError(''); setSocialLoading(key)
+    setAuthError(''); setSocial(key)
     try {
-      await signInWithPopup(auth, provider)
-      navigate('/dashboard')
+      const result = await signInWithPopup(auth, provider)
+      const u = result.user
+      await getOrCreateUser(u.uid, u.displayName, u.email)
+      onClose()
+      navigate('/agents-hub')
     } catch (err) {
       const msg = friendlyError(err.code)
       if (msg) setAuthError(msg)
     } finally {
-      setSocialLoading(null)
+      setSocial(null)
     }
   }
 
-  const switchMode = (next) => {
-    setMode(next)
-    setForm({ fullName: '', email: '', password: '' })
-    setErrors({}); setAuthError(''); setShowPass(false)
+  // ── Forgot password — Firebase sends reset email ──
+  const handleForgotPassword = async () => {
+    if (!email.trim()) { setErrors({ email: 'Enter your email address first' }); return }
+    setAuthError('')
+    try {
+      await sendPasswordResetEmail(auth, email.trim())
+      setResetSent(true)
+    } catch (err) {
+      setAuthError(friendlyError(err.code))
+    }
   }
 
-  const handleChange = (e) => {
-    setForm(f => ({ ...f, [e.target.name]: e.target.value }))
-    if (errors[e.target.name]) setErrors(er => ({ ...er, [e.target.name]: '' }))
-    if (authError) setAuthError('')
+  const inputStyle = {
+    width: '100%', boxSizing: 'border-box',
+    background: 'white', borderRadius: 10,
+    padding: '12px 14px', color: '#1a1208',
+    fontSize: 15, outline: 'none',
+    border: '1px solid #ddd8d0',
+    transition: 'border-color 0.15s, box-shadow 0.15s',
+    fontFamily: 'inherit',
   }
 
-  const socialBtns = [
-    {
-      key: 'google',
-      label: 'Google',
-      provider: googleProvider,
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 18 18">
-          <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 01-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
-          <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z" fill="#34A853"/>
-          <path d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
-          <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
-        </svg>
-      ),
-    },
-    {
-      key: 'facebook',
-      label: 'Facebook',
-      provider: facebookProvider,
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="#1877F2">
-          <path d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.41c0-3.025 1.792-4.697 4.533-4.697 1.312 0 2.686.236 2.686.236v2.97h-1.513c-1.491 0-1.956.93-1.956 1.886v2.267h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"/>
-        </svg>
-      ),
-    },
-    {
-      key: 'twitter',
-      label: 'X (Twitter)',
-      provider: twitterProvider,
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
-          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-        </svg>
-      ),
-    },
-  ]
+  const labelStyle = {
+    display: 'block', fontSize: 11, fontWeight: 700,
+    letterSpacing: '0.08em', color: '#555',
+    textTransform: 'uppercase', marginBottom: 7,
+  }
 
   return (
     <>
       <style>{`
-        @keyframes modalSpin { to { transform: rotate(360deg); } }
-        @keyframes modalFadeIn { from { opacity:0; transform:translateY(16px) scale(0.97); } to { opacity:1; transform:translateY(0) scale(1); } }
+        @keyframes ssoSpin { to { transform:rotate(360deg); } }
+        @keyframes ssoIn {
+          from { opacity:0; transform:scale(0.96) translateY(14px); }
+          to   { opacity:1; transform:scale(1) translateY(0); }
+        }
+        .sso-input:focus {
+          border-color:#b8803a !important;
+          box-shadow:0 0 0 3px rgba(184,128,58,0.14) !important;
+        }
+        .sso-social:hover:not(:disabled) { background:#f0ede8 !important; }
+        .sso-close:hover  { background:rgba(0,0,0,0.1) !important; }
+        .sso-forgot:hover { color:#b8803a !important; }
+        .sso-signup:hover { background:#e8e2d8 !important; }
+        @media (max-width:640px) {
+          .sso-left  { display:none !important; }
+          .sso-right { padding:36px 28px 32px !important; }
+        }
       `}</style>
 
       {/* Backdrop */}
-      <div
-        onClick={onClose}
-        style={{
-          position: 'fixed', inset: 0, zIndex: 10001,
-          background: 'rgba(0,0,0,0.75)',
-          backdropFilter: 'blur(6px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          padding: 24,
-        }}
-      >
-        {/* Modal card */}
-        <div
-          onClick={e => e.stopPropagation()}
-          style={{
-            width: '100%', maxWidth: 440,
-            background: '#0e0e14',
-            border: '1px solid rgba(255,255,255,0.1)',
-            borderRadius: 24,
-            padding: '36px 36px 32px',
-            position: 'relative',
-            animation: 'modalFadeIn 0.28s ease',
-            boxShadow: '0 32px 80px rgba(0,0,0,0.6)',
-            maxHeight: '90vh',
-            overflowY: 'auto',
-          }}
-        >
-          {/* Close */}
-          <button
-            onClick={onClose}
-            style={{
-              position: 'absolute', top: 16, right: 16,
-              width: 32, height: 32, borderRadius: 8,
-              background: 'rgba(255,255,255,0.07)', border: 'none',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer', color: 'rgba(255,255,255,0.5)',
-              transition: 'background 0.15s',
-            }}
-            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.14)'}
-            onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.07)'}
-          >
-            <X size={16} />
-          </button>
+      <div onClick={onClose} style={{
+        position:'fixed', inset:0, zIndex:10001,
+        background:'rgba(0,0,0,0.55)', backdropFilter:'blur(8px)',
+        display:'flex', alignItems:'center', justifyContent:'center', padding:20,
+      }}>
+        {/* Card */}
+        <div onClick={e => e.stopPropagation()} style={{
+          width:'100%', maxWidth:900,
+          background:'white', borderRadius:20,
+          overflow:'hidden', display:'flex',
+          animation:'ssoIn 0.28s ease',
+          boxShadow:'0 40px 100px rgba(0,0,0,0.45)',
+          maxHeight:'94vh',
+        }}>
 
-          {/* Logo */}
-          <div style={{ textAlign: 'center', marginBottom: 24 }}>
-            <div style={{
-              width: 46, height: 46, borderRadius: 12,
-              background: 'linear-gradient(135deg, #7c3aed, #06b6d4)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              margin: '0 auto 10px',
-              boxShadow: '0 0 24px rgba(124,58,237,0.4)',
-            }}>
-              <Zap size={20} color="white" fill="white" />
-            </div>
-            <div style={{ color: 'white', fontWeight: 900, fontSize: 18, letterSpacing: '-0.02em' }}>EVOKE CMO</div>
+          {/* ── Left: fashion photo ── */}
+          <div className="sso-left" style={{ width:'45%', flexShrink:0, position:'relative', overflow:'hidden' }}>
+            <img src="/signin-hero.webp" alt="" aria-hidden="true"
+              style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'cover', objectPosition:'center top' }}
+            />
           </div>
 
-          {/* Tabs */}
-          <div style={{
-            display: 'flex', background: 'rgba(255,255,255,0.05)',
-            borderRadius: 12, padding: 4, marginBottom: 24,
+          {/* ── Right: Firebase auth form ── */}
+          <div className="sso-right" style={{
+            flex:1, background:'#fafaf8',
+            padding:'48px 44px 40px',
+            overflowY:'auto', position:'relative',
           }}>
-            {['signin', 'signup'].map(m => (
-              <button key={m} onClick={() => switchMode(m)} style={{
-                flex: 1, padding: '9px', borderRadius: 9, border: 'none', cursor: 'pointer',
-                fontSize: 13, fontWeight: 600, transition: 'all 0.2s',
-                background: mode === m ? 'linear-gradient(135deg, #7c3aed, #06b6d4)' : 'transparent',
-                color: mode === m ? 'white' : 'rgba(255,255,255,0.4)',
-                boxShadow: mode === m ? '0 2px 10px rgba(124,58,237,0.3)' : 'none',
-              }}>
-                {m === 'signin' ? 'Sign In' : 'Create Account'}
-              </button>
-            ))}
-          </div>
-
-          {/* Heading */}
-          <div style={{ marginBottom: 20 }}>
-            <h2 style={{ color: 'white', fontSize: 22, fontWeight: 800, letterSpacing: '-0.02em', marginBottom: 4 }}>
-              {isSignUp ? 'Create your account' : 'Welcome back'}
-            </h2>
-            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, margin: 0 }}>
-              {isSignUp ? 'Start earning EGT and launch AI campaigns' : 'Sign in to your Evoke CMO account'}
-            </p>
-          </div>
-
-          {/* Error banner */}
-          {authError && (
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 10,
-              background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)',
-              borderRadius: 10, padding: '10px 14px', marginBottom: 16,
-              color: '#fca5a5', fontSize: 13,
+            {/* Close */}
+            <button onClick={onClose} className="sso-close" style={{
+              position:'absolute', top:16, right:16,
+              width:32, height:32, borderRadius:'50%',
+              background:'rgba(0,0,0,0.06)', border:'none',
+              display:'flex', alignItems:'center', justifyContent:'center',
+              cursor:'pointer', color:'#777', transition:'background 0.15s',
             }}>
-              <AlertCircle size={14} style={{ flexShrink: 0 }} />
-              {authError}
-            </div>
-          )}
+              <X size={15} />
+            </button>
 
-          {/* Social buttons */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 9, marginBottom: 18 }}>
-            {socialBtns.map(({ key, label, provider, icon }) => (
-              <button
-                key={key}
-                onClick={() => handleSocial(provider, key)}
-                disabled={!!socialLoading || loading}
-                style={{
-                  width: '100%', padding: '11px 16px',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                  background: key === 'twitter' ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.05)',
-                  border: `1px solid ${key === 'twitter' ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.1)'}`,
-                  borderRadius: 11, cursor: 'pointer', color: 'white',
-                  fontSize: 13, fontWeight: 500, transition: 'background 0.15s',
-                  opacity: (socialLoading && socialLoading !== key) || loading ? 0.45 : 1,
-                }}
-                onMouseEnter={e => { if (!socialLoading && !loading) e.currentTarget.style.background = 'rgba(255,255,255,0.1)' }}
-                onMouseLeave={e => e.currentTarget.style.background = key === 'twitter' ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.05)'}
-              >
-                {socialLoading === key ? <Spinner /> : icon}
-                {socialLoading === key ? 'Connecting...' : `${isSignUp ? 'Sign up' : 'Sign in'} with ${label}`}
-              </button>
-            ))}
-          </div>
+            {/* Heading */}
+            <h2 style={{ color:'#111', fontSize:30, fontWeight:800, letterSpacing:'-0.025em', margin:'0 0 6px' }}>
+              {isSignUp ? 'Create account' : 'Sign in'}
+            </h2>
+            <p style={{ color:'#aaa', fontSize:15, margin:'0 0 26px' }}>
+              {isSignUp ? 'Start your AI marketing journey.' : 'Welcome back. Sign in to continue.'}
+            </p>
 
-          {/* Divider */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
-            <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.07)' }} />
-            <span style={{ color: 'rgba(255,255,255,0.28)', fontSize: 11 }}>or continue with email</span>
-            <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.07)' }} />
-          </div>
-
-          {/* Email form */}
-          <form onSubmit={handleSubmit} noValidate style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {isSignUp && (
-              <div>
-                <label style={{ color: 'rgba(255,255,255,0.55)', fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 6 }}>Full name</label>
-                <div style={{ position: 'relative' }}>
-                  <User size={15} style={{ position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.3)', pointerEvents: 'none' }} />
-                  <input
-                    type="text" name="fullName" value={form.fullName} onChange={handleChange}
-                    placeholder="Your full name"
-                    style={{
-                      width: '100%', boxSizing: 'border-box',
-                      background: 'rgba(255,255,255,0.05)', border: `1px solid ${errors.fullName ? 'rgba(239,68,68,0.5)' : 'rgba(255,255,255,0.1)'}`,
-                      borderRadius: 10, padding: '10px 12px 10px 38px',
-                      color: 'white', fontSize: 13, outline: 'none',
-                    }}
-                  />
-                </div>
-                {errors.fullName && <span style={{ color: '#fca5a5', fontSize: 11, marginTop: 4, display: 'block' }}>{errors.fullName}</span>}
+            {/* Auth error */}
+            {authError && (
+              <div style={{
+                display:'flex', alignItems:'center', gap:10,
+                background:'#fef2f2', border:'1px solid #fecaca',
+                borderRadius:10, padding:'10px 14px', marginBottom:18,
+                color:'#b91c1c', fontSize:13,
+              }}>
+                <AlertCircle size={14} style={{ flexShrink:0 }} />
+                {authError}
               </div>
             )}
 
-            <div>
-              <label style={{ color: 'rgba(255,255,255,0.55)', fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 6 }}>Email address</label>
-              <div style={{ position: 'relative' }}>
-                <Mail size={15} style={{ position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.3)', pointerEvents: 'none' }} />
-                <input
-                  type="email" name="email" value={form.email} onChange={handleChange}
-                  placeholder="you@company.com"
-                  style={{
-                    width: '100%', boxSizing: 'border-box',
-                    background: 'rgba(255,255,255,0.05)', border: `1px solid ${errors.email ? 'rgba(239,68,68,0.5)' : 'rgba(255,255,255,0.1)'}`,
-                    borderRadius: 10, padding: '10px 12px 10px 38px',
-                    color: 'white', fontSize: 13, outline: 'none',
-                  }}
-                />
+            {/* Password reset sent */}
+            {resetSent && (
+              <div style={{
+                background:'#f0fdf4', border:'1px solid #bbf7d0',
+                borderRadius:10, padding:'10px 14px', marginBottom:18,
+                color:'#166534', fontSize:13,
+              }}>
+                Password reset email sent — check your inbox.
               </div>
-              {errors.email && <span style={{ color: '#fca5a5', fontSize: 11, marginTop: 4, display: 'block' }}>{errors.email}</span>}
-            </div>
+            )}
 
-            <div>
-              <label style={{ color: 'rgba(255,255,255,0.55)', fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 6 }}>Password</label>
-              <div style={{ position: 'relative' }}>
-                <Lock size={15} style={{ position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.3)', pointerEvents: 'none' }} />
-                <input
-                  type={showPass ? 'text' : 'password'} name="password" value={form.password} onChange={handleChange}
-                  placeholder={isSignUp ? 'Min. 6 characters' : 'Your password'}
-                  style={{
-                    width: '100%', boxSizing: 'border-box',
-                    background: 'rgba(255,255,255,0.05)', border: `1px solid ${errors.password ? 'rgba(239,68,68,0.5)' : 'rgba(255,255,255,0.1)'}`,
-                    borderRadius: 10, padding: '10px 38px 10px 38px',
-                    color: 'white', fontSize: 13, outline: 'none',
-                  }}
+            <form onSubmit={handleSubmit} noValidate>
+
+              {/* Full name (sign up only) */}
+              {isSignUp && (
+                <div style={{ marginBottom:16 }}>
+                  <label style={labelStyle}>Full Name <span style={{ color:'#b8803a' }}>*</span></label>
+                  <input type="text" value={fullName}
+                    onChange={e => { setFullName(e.target.value); setErrors(er => ({ ...er, fullName:'' })) }}
+                    placeholder="Your full name" autoComplete="name"
+                    className="sso-input"
+                    style={{ ...inputStyle, border:`1px solid ${errors.fullName ? '#fca5a5' : '#ddd8d0'}` }}
+                  />
+                  {errors.fullName && <span style={{ color:'#b91c1c', fontSize:11, marginTop:4, display:'block' }}>{errors.fullName}</span>}
+                </div>
+              )}
+
+              {/* Email */}
+              <div style={{ marginBottom:16 }}>
+                <label style={labelStyle}>Email Address <span style={{ color:'#b8803a' }}>*</span></label>
+                <input type="email" value={email}
+                  onChange={e => { setEmail(e.target.value); setErrors(er => ({ ...er, email:'' })); setAuthError('') }}
+                  placeholder="Enter your email" autoComplete="email"
+                  className="sso-input"
+                  style={{ ...inputStyle, border:`1px solid ${errors.email ? '#fca5a5' : '#ddd8d0'}` }}
                 />
-                <button type="button" onClick={() => setShowPass(v => !v)} style={{
-                  position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
-                  background: 'none', border: 'none', cursor: 'pointer',
-                  color: 'rgba(255,255,255,0.3)', display: 'flex', padding: 0,
+                {errors.email && <span style={{ color:'#b91c1c', fontSize:11, marginTop:4, display:'block' }}>{errors.email}</span>}
+              </div>
+
+              {/* Password */}
+              <div style={{ marginBottom: isSignUp ? 22 : 12 }}>
+                <label style={labelStyle}>Password <span style={{ color:'#b8803a' }}>*</span></label>
+                <div style={{ position:'relative' }}>
+                  <input
+                    type={showPass ? 'text' : 'password'} value={password}
+                    onChange={e => { setPassword(e.target.value); setErrors(er => ({ ...er, password:'' })) }}
+                    placeholder={isSignUp ? 'Min. 6 characters' : 'Enter your password'}
+                    autoComplete={isSignUp ? 'new-password' : 'current-password'}
+                    className="sso-input"
+                    style={{ ...inputStyle, paddingRight:44, border:`1px solid ${errors.password ? '#fca5a5' : '#ddd8d0'}` }}
+                  />
+                  <button type="button" onClick={() => setShowPass(v => !v)} style={{
+                    position:'absolute', right:13, top:'50%', transform:'translateY(-50%)',
+                    background:'none', border:'none', cursor:'pointer', color:'#aaa', padding:0, display:'flex',
+                  }}>
+                    {showPass ? <EyeOff size={17} /> : <Eye size={17} />}
+                  </button>
+                </div>
+                {errors.password && <span style={{ color:'#b91c1c', fontSize:11, marginTop:4, display:'block' }}>{errors.password}</span>}
+              </div>
+
+              {/* Stay signed in + Forgot password */}
+              {!isSignUp && (
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:22 }}>
+                  <label style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer', fontSize:14, color:'#555', userSelect:'none' }}>
+                    <input type="checkbox" checked={staySignedIn} onChange={e => setStay(e.target.checked)}
+                      style={{ width:15, height:15, cursor:'pointer', accentColor:'#b8803a' }} />
+                    Stay signed in
+                  </label>
+                  <button type="button" className="sso-forgot" onClick={handleForgotPassword}
+                    style={{ background:'none', border:'none', cursor:'pointer', color:'#aaa', fontSize:14, padding:0, transition:'color 0.15s', fontFamily:'inherit' }}>
+                    Forgot password?
+                  </button>
+                </div>
+              )}
+
+              {/* Submit */}
+              <button type="submit" disabled={loading || !!socialLoading} style={{
+                width:'100%', padding:'14px',
+                background: (loading || !!socialLoading) ? '#c8a96a' : 'linear-gradient(135deg, #d4a853 0%, #b8803a 100%)',
+                border:'none', borderRadius:50, color:'white',
+                fontWeight:700, fontSize:16,
+                cursor: (loading || !!socialLoading) ? 'not-allowed' : 'pointer',
+                display:'flex', alignItems:'center', justifyContent:'center', gap:8,
+                marginBottom:14,
+                boxShadow:'0 4px 14px rgba(184,128,58,0.35)',
+                transition:'opacity 0.15s', fontFamily:'inherit',
+              }}>
+                {loading
+                  ? <><Spinner />{isSignUp ? 'Creating account...' : 'Signing in...'}</>
+                  : (isSignUp ? 'Create Account' : 'Sign in')}
+              </button>
+            </form>
+
+            {/* Google */}
+            <div style={{ display:'flex', gap:12, marginBottom:14 }}>
+              <button type="button" onClick={() => handleSocial(googleProvider, 'google')}
+                disabled={!!socialLoading || loading} className="sso-social"
+                style={{
+                  flex:1, padding:'12px 10px',
+                  display:'flex', alignItems:'center', justifyContent:'center', gap:9,
+                  background:'white', border:'1px solid #e0dbd0', borderRadius:50,
+                  cursor:'pointer', color:'#222', fontSize:15, fontWeight:600,
+                  transition:'background 0.15s',
+                  opacity:(socialLoading === 'facebook' || loading) ? 0.5 : 1, fontFamily:'inherit',
                 }}>
-                  {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
-                </button>
-              </div>
-              {errors.password && <span style={{ color: '#fca5a5', fontSize: 11, marginTop: 4, display: 'block' }}>{errors.password}</span>}
+                {socialLoading === 'google' ? <Spinner dark /> : (
+                  <svg width="18" height="18" viewBox="0 0 18 18">
+                    <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 01-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
+                    <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z" fill="#34A853"/>
+                    <path d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
+                    <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+                  </svg>
+                )}
+                {socialLoading === 'google' ? 'Connecting...' : 'Google'}
+              </button>
+
+              {/* Facebook */}
+              <button type="button" onClick={() => handleSocial(facebookProvider, 'facebook')}
+                disabled={!!socialLoading || loading} className="sso-social"
+                style={{
+                  flex:1, padding:'12px 10px',
+                  display:'flex', alignItems:'center', justifyContent:'center', gap:9,
+                  background:'white', border:'1px solid #e0dbd0', borderRadius:50,
+                  cursor:'pointer', color:'#222', fontSize:15, fontWeight:600,
+                  transition:'background 0.15s',
+                  opacity:(socialLoading === 'google' || loading) ? 0.5 : 1, fontFamily:'inherit',
+                }}>
+                {socialLoading === 'facebook' ? <Spinner dark /> : (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="#1877F2">
+                    <path d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.41c0-3.025 1.792-4.697 4.533-4.697 1.312 0 2.686.236 2.686.236v2.97h-1.513c-1.491 0-1.956.93-1.956 1.886v2.267h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"/>
+                  </svg>
+                )}
+                {socialLoading === 'facebook' ? 'Connecting...' : 'Facebook'}
+              </button>
             </div>
 
-            <button
-              type="submit"
-              disabled={loading || !!socialLoading}
+            {/* Sign up / Sign in toggle */}
+            <button type="button" onClick={() => switchMode(isSignUp ? 'signin' : 'signup')}
+              className="sso-signup"
               style={{
-                width: '100%', padding: '12px',
-                background: loading ? 'rgba(124,58,237,0.5)' : 'linear-gradient(135deg, #7c3aed, #06b6d4)',
-                border: 'none', borderRadius: 11, color: 'white',
-                fontWeight: 700, fontSize: 14, cursor: loading ? 'not-allowed' : 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                marginTop: 4, boxShadow: '0 4px 16px rgba(124,58,237,0.35)',
-              }}
-            >
-              {loading ? <><Spinner />{isSignUp ? 'Creating...' : 'Signing in...'}</> : <>{isSignUp ? 'Create Account' : 'Sign In'} <ArrowRight size={16} /></>}
-            </button>
-          </form>
-
-          <div style={{ marginTop: 20, textAlign: 'center' }}>
-            <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13 }}>
-              {isSignUp ? 'Already have an account? ' : "Don't have an account? "}
-            </span>
-            <button
-              onClick={() => switchMode(isSignUp ? 'signin' : 'signup')}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#a78bfa', fontWeight: 600, fontSize: 13, padding: 0 }}
-            >
-              {isSignUp ? 'Sign in' : 'Create one'}
+                width:'100%', padding:'13px',
+                background:'#f0ede8', border:'none', borderRadius:50,
+                color:'#333', fontWeight:700, fontSize:15, cursor:'pointer',
+                transition:'background 0.15s', fontFamily:'inherit',
+              }}>
+              {isSignUp ? 'Already have an account? Sign in' : 'Sign up'}
             </button>
           </div>
         </div>

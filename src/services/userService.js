@@ -7,6 +7,8 @@ import { db } from '../firebase'
 // users/{uid}:
 //   tokenBalance: number
 //   socialAccounts: { facebook, instagram, linkedin, whatsapp }
+//   onboardingComplete: boolean
+//   onboardingData: { background, industry, goal }
 //   createdAt: timestamp
 
 export async function getOrCreateUser(uid, displayName, email) {
@@ -25,11 +27,20 @@ export async function getOrCreateUser(uid, displayName, email) {
         whatsapp:  { connected: false, phoneNumberId: '', accessToken: '' },
         gmail:     { connected: false, email: '' },
       },
+      onboardingComplete: false,
       createdAt: serverTimestamp(),
     })
-    return { tokenBalance: 0, socialAccounts: {} }
+    return { tokenBalance: 0, socialAccounts: {}, onboardingComplete: false }
   }
   return snap.data()
+}
+
+export async function saveOnboardingData(uid, data) {
+  await updateDoc(doc(db, 'users', uid), {
+    onboardingComplete: true,
+    onboardingData: data,
+    onboardingCompletedAt: serverTimestamp(),
+  })
 }
 
 export async function getUserData(uid) {

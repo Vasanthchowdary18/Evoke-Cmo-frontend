@@ -43,7 +43,14 @@
             { "id": "f22", "name": "adBody",           "value": "={{ $json.body?.adBody ?? $json.adBody ?? '' }}", "type": "string" },
             { "id": "f23", "name": "timestamp",        "value": "={{ DateTime.now().toISO() }}", "type": "string" },
             { "id": "f24", "name": "userCredentials",  "value": "={{ $json.body?.userCredentials ?? $json.userCredentials ?? {} }}", "type": "object" },
-            { "id": "f25", "name": "tiktokCaption",    "value": "={{ $json.body?.tiktokCaption ?? $json.tiktokCaption ?? '' }}", "type": "string" }
+            { "id": "f25", "name": "tiktokCaption",        "value": "={{ $json.body?.tiktokCaption ?? $json.tiktokCaption ?? '' }}", "type": "string" },
+            { "id": "f26", "name": "tiktokVideoUrl",      "value": "={{ $json.body?.tiktokVideoUrl ?? $json.tiktokVideoUrl ?? '' }}", "type": "string" },
+            { "id": "f27", "name": "whatsappRecipients",  "value": "={{ $json.body?.whatsappRecipients ?? $json.whatsappRecipients ?? '' }}", "type": "string" },
+            { "id": "f28", "name": "emailRecipients",    "value": "={{ $json.body?.emailRecipients ?? $json.emailRecipients ?? '' }}", "type": "string" },
+            { "id": "f29", "name": "campaignDays",       "value": "={{ $json.body?.campaignDays ?? $json.campaignDays ?? 1 }}", "type": "number" },
+            { "id": "f30", "name": "dailyPostTime",      "value": "={{ $json.body?.dailyPostTime ?? $json.dailyPostTime ?? '09:00' }}", "type": "string" },
+            { "id": "f31", "name": "dailySchedule",      "value": "={{ $json.body?.dailySchedule ?? $json.dailySchedule ?? [] }}", "type": "array" },
+            { "id": "f32", "name": "campaignBrief",      "value": "={{ $json.body?.campaignBrief ?? $json.campaignBrief ?? '' }}", "type": "string" }
           ]
         },
         "includeOtherFields": true,
@@ -57,7 +64,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const d = $input.item.json;\nconst creds = d.userCredentials || {};\nreturn { json: { ...d, status: 'Posting', timestamp: new Date().toISOString(), _fb: creds.facebook || null, _ig: creds.instagram || null, _li: creds.linkedin || null, _gmail: creds.gmail || null, _tiktok: creds.tiktok || null } };"
+        "jsCode": "const d = $input.item.json;\nconst creds = d.userCredentials || {};\nreturn { json: { ...d, status: 'Posting', timestamp: new Date().toISOString(), _fb: creds.facebook || null, _ig: creds.instagram || null, _li: creds.linkedin || null, _gmail: creds.gmail || null, _tiktok: creds.tiktok || null, _eventbrite: creds.eventbrite || null, _luma: creds.luma || null, _meetup: creds.meetup || null } };"
       },
       "id": "node-03",
       "name": "Flatten User Credentials",
@@ -65,6 +72,108 @@
       "typeVersion": 2,
       "position": [680, 300]
     },
+
+    {
+      "parameters": {
+        "jsCode": "const d = $input.item.json;\nif (d.imageUrl && d.imageUrl.trim() !== '') {\n  return { json: { ...d, _skipImageGen: true } };\n}\nconst name = (d.name || '').trim();\nconst desc = (d.description || '').substring(0, 200).trim();\nconst loc = (d.location || '').trim();\nconst time = (d.time || '').trim();\nconst email = (d.contactEmail || '').trim();\nconst type = d.campaignType || 'event';\nlet dateStr = '';\nif (d.date) {\n  try {\n    const dt = new Date(d.date + 'T00:00:00');\n    dateStr = dt.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });\n  } catch(_) { dateStr = d.date; }\n}\nconst pts = [dateStr ? 'Date: ' + dateStr : null, time ? 'Time: ' + time : null, loc ? 'Venue: ' + loc : null, email ? 'Contact: ' + email : null].filter(Boolean);\nconst prompt = 'Create a stunning professional ' + type + ' marketing poster. Title: \"' + name + '\". ' + (desc ? 'About: ' + desc + '. ' : '') + pts.join('. ') + ' Design: dark premium background with deep purple and electric blue gradient, event title in very large bold white text at top, all event details clearly listed in clean white text, modern corporate conference poster style, EVOKE CMO branding at bottom, 1:1 square format.';\nreturn { json: { ...d, _skipImageGen: false, _geminiPrompt: prompt } };"
+      },
+      "id": "node-build-prompt",
+      "name": "Build Gemini Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [790, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict", "version": 2 },
+          "conditions": [
+            { "id": "skip1", "leftValue": "={{ $json._skipImageGen }}", "rightValue": true, "operator": { "type": "boolean", "operation": "equals" } }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-skip-if",
+      "name": "Skip If Has Image",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [960, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=AIzaSyD4zsvoxcg6WrL1R3GcP66RgiXW4y2lqN0",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ contents: [{ parts: [{ text: $json._geminiPrompt }] }], generationConfig: { responseModalities: ['IMAGE', 'TEXT'] } }) }}",
+        "options": {}
+      },
+      "id": "node-gemini-http",
+      "name": "Call Gemini API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [1130, 480],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.item.json;\nconst orig = $('Build Gemini Prompt').first().json;\nconst parts = d.candidates?.[0]?.content?.parts || [];\nconst imgPart = parts.find(p => p.inlineData && p.inlineData.data);\nconst base64Image = imgPart ? imgPart.inlineData.data : null;\nif (!base64Image) {\n  return { json: { ...orig, _aiError: 'Gemini returned no image' } };\n}\nreturn { json: { ...orig, _base64Image: base64Image } };"
+      },
+      "id": "node-extract",
+      "name": "Extract Image Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1350, 480]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.imgbb.com/1/upload",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "key",   "value": "5bd861d246cfae2342a0b898282ab18e" },
+            { "name": "image", "value": "={{ $json._base64Image }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-imgbb-http",
+      "name": "Upload to ImgBB",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [1570, 480],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const imgbbResp = $input.item.json;\nconst orig = $('Extract Image Data').first().json;\nconst imageUrl = imgbbResp.data && imgbbResp.data.url ? imgbbResp.data.url : '';\nif (!imageUrl) {\n  return { json: { ...orig, imageUrl: '', _aiError: 'ImgBB upload failed' } };\n}\nreturn { json: { ...orig, imageUrl, _aiImageGenerated: true } };"
+      },
+      "id": "node-set-url",
+      "name": "Set Image URL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1790, 480]
+    },
+    {
+      "parameters": {
+        "jsCode": "return { json: $input.item.json };"
+      },
+      "id": "node-capture-imgurl",
+      "name": "Capture Image URL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1060, 300]
+    },
+
     {
       "parameters": {
         "respondWith": "json",
@@ -157,7 +266,7 @@
 
     {
       "parameters": {
-        "jsCode": "const reg = $input.item.json;\nconst orig = $('Flatten User Credentials').first().json;\nconst uploadUrl = reg.value?.uploadMechanism?.['com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest']?.uploadUrl;\nconst assetUrn = reg.value?.asset;\nreturn [{ json: { ...orig, _liUploadUrl: uploadUrl, _liAssetUrn: assetUrn } }];"
+        "jsCode": "const reg = $input.item.json;\nconst orig = $('Capture Image URL').first().json;\nconst uploadUrl = reg.value?.uploadMechanism?.['com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest']?.uploadUrl;\nconst assetUrn = reg.value?.asset;\nreturn [{ json: { ...orig, _liUploadUrl: uploadUrl, _liAssetUrn: assetUrn } }];"
       },
       "id": "node-09",
       "name": "LI Merge Upload Data",
@@ -264,7 +373,8 @@
         "conditions": {
           "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict", "version": 2 },
           "conditions": [
-            { "id": "c3", "leftValue": "={{ $('Flatten User Credentials').first().json._ig !== null && $('Flatten User Credentials').first().json._ig !== undefined }}", "rightValue": true, "operator": { "type": "boolean", "operation": "equals" } }
+            { "id": "c3", "leftValue": "={{ $('Flatten User Credentials').first().json._ig !== null && $('Flatten User Credentials').first().json._ig !== undefined }}", "rightValue": true, "operator": { "type": "boolean", "operation": "equals" } },
+            { "id": "c3b", "leftValue": "={{ $('Capture Image URL').first().json.imageUrl }}", "rightValue": "", "operator": { "type": "string", "operation": "notEquals" } }
           ],
           "combinator": "and"
         },
@@ -284,7 +394,7 @@
         "contentType": "form-urlencoded",
         "bodyParameters": {
           "parameters": [
-            { "name": "image_url",    "value": "={{ $('Flatten User Credentials').first().json.imageUrl }}" },
+            { "name": "image_url",    "value": "={{ $('Capture Image URL').first().json.imageUrl }}" },
             { "name": "caption",      "value": "={{ $('Flatten User Credentials').first().json.instagramCaption }}" },
             { "name": "access_token", "value": "={{ $('Flatten User Credentials').first().json._ig.pageAccessToken }}" }
           ]
@@ -336,6 +446,25 @@
       "typeVersion": 2.2,
       "position": [3540, 300]
     },
+
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict", "version": 2 },
+          "conditions": [
+            { "id": "fbimg1", "leftValue": "={{ $('Capture Image URL').first().json.imageUrl }}", "rightValue": "", "operator": { "type": "string", "operation": "notEquals" } }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-has-fb-image",
+      "name": "Has FB Image?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [3760, 180]
+    },
+
     {
       "parameters": {
         "method": "POST",
@@ -345,7 +474,7 @@
         "bodyParameters": {
           "parameters": [
             { "name": "caption",      "value": "={{ $('Flatten User Credentials').first().json.facebookPost }}" },
-            { "name": "url",          "value": "={{ $('Flatten User Credentials').first().json.imageUrl }}" },
+            { "name": "url",          "value": "={{ $('Capture Image URL').first().json.imageUrl }}" },
             { "name": "access_token", "value": "={{ $('Flatten User Credentials').first().json._fb.pageAccessToken }}" }
           ]
         },
@@ -384,7 +513,8 @@
         "conditions": {
           "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict", "version": 2 },
           "conditions": [
-            { "id": "c5", "leftValue": "={{ $('Flatten User Credentials').first().json.whatsappRecipients !== '' && $('Flatten User Credentials').first().json.whatsappRecipients !== null && $('Flatten User Credentials').first().json.whatsappRecipients !== undefined }}", "rightValue": true, "operator": { "type": "boolean", "operation": "equals" } }
+            { "id": "c5a", "leftValue": "={{ $('Flatten User Credentials').first().json.platforms || '' }}", "rightValue": "whatsapp", "operator": { "type": "string", "operation": "contains" } },
+            { "id": "c5b", "leftValue": "={{ $('Flatten User Credentials').first().json.whatsappRecipients || '' }}", "rightValue": "", "operator": { "type": "string", "operation": "notEquals" } }
           ],
           "combinator": "and"
         },
@@ -398,7 +528,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const d = $('Flatten User Credentials').first().json;\nconst raw = d.whatsappRecipients || '';\nconst numbers = raw.split(',').map(r => {\n  let n = r.trim().replace(/^\\+/, '').replace(/\\s/g, '');\n  // If number has no country code (10 digits starting with 6,7,8,9 = Indian number), prepend 91\n  if (n.length === 10 && /^[6-9]/.test(n)) n = '91' + n;\n  return n;\n}).filter(r => r.length >= 10);\nif (numbers.length === 0) return [];\nreturn numbers.map(phone => ({ json: { ...d, waPhone: phone } }));"
+        "jsCode": "const d = $('Flatten User Credentials').first().json;\nconst raw = d.whatsappRecipients || '';\nconst numbers = raw.split(',').map(r => {\n  let n = r.trim().replace(/^\\+/, '').replace(/\\s/g, '');\n  // If number has no country code (10 digits starting with 6,7,8,9 = Indian number), prepend 91\n  if (n.length === 10 && /^[6-9]/.test(n)) n = '91' + n;\n  return n;\n}).filter(r => r.length >= 10);\nif (numbers.length === 0) return [{ json: { ...d, _waSkip: true } }];\nreturn numbers.map(phone => ({ json: { ...d, waPhone: phone } }));"
       },
       "id": "node-wa-split",
       "name": "Split WA Recipients",
@@ -419,7 +549,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ messaging_product: 'whatsapp', to: $json.waPhone, type: 'template', template: { name: 'hello_world', language: { code: 'en_US' } } }) }}",
+        "jsonBody": "={{ JSON.stringify({ messaging_product: 'whatsapp', to: $json.waPhone, type: 'text', text: { preview_url: false, body: ($json.whatsappMessage || ('🎉 You are invited to ' + ($json.name || 'our upcoming event') + '!\\n\\n' + ($json.description || '') + '\\n\\n📅 ' + ($json.date || '') + ' | 📍 ' + ($json.location || '') + '\\n\\nFor more info contact: ' + ($json.contactEmail || ''))) } }) }}",
         "options": {}
       },
       "id": "node-21",
@@ -481,18 +611,28 @@
     },
     {
       "parameters": {
-        "sendTo":  "={{ $('Flatten User Credentials').first().json.contactEmail }}",
-        "subject": "={{ $('Flatten User Credentials').first().json.emailSubject || 'You are invited: ' + $('Flatten User Credentials').first().json.name }}",
-        "message": "={{ $('Flatten User Credentials').first().json.emailBody }}",
+        "jsCode": "const d = $input.item.json;\nconst allRecipients = (d.emailRecipients || d.contactEmail || '').split(',').map(r => r.trim()).filter(r => r && r.includes('@'));\nif (allRecipients.length === 0) {\n  const fallback = d.contactEmail || '';\n  if (!fallback) return [{ json: { ...d, _emailSkip: true } }];\n  return [{ json: { ...d, _recipientEmail: fallback } }];\n}\nreturn allRecipients.map(email => ({ json: { ...d, _recipientEmail: email } }));"
+      },
+      "id": "node-split-email",
+      "name": "Split Email Recipients",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [5080, 180]
+    },
+    {
+      "parameters": {
+        "sendTo":  "={{ $json._recipientEmail }}",
+        "subject": "={{ $json.emailSubject || ('You are invited: ' + $json.name) }}",
+        "message": "={{ $json.emailBody }}",
         "options": {
-          "replyTo": "={{ $('Flatten User Credentials').first().json._gmail?.email || '' }}"
+          "replyTo": "={{ $json._gmail?.email || $json._freshGmailToken || '' }}"
         }
       },
       "id": "node-send-gmail-api",
       "name": "Send via Gmail API",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.2,
-      "position": [5080, 180],
+      "position": [5300, 180],
       "credentials": {
         "gmailOAuth2": { "id": "56gcL5bWilDrSr8T", "name": "Gmail account" }
       },
@@ -513,11 +653,16 @@
             "location":         "={{ $('Flatten User Credentials').first().json.location }}",
             "contactName":      "={{ $('Flatten User Credentials').first().json.contactName }}",
             "contactEmail":     "={{ $('Flatten User Credentials').first().json.contactEmail }}",
+            "emailRecipients":  "={{ $('Flatten User Credentials').first().json.emailRecipients }}",
             "linkedinPost":     "={{ $('Flatten User Credentials').first().json.linkedinPost }}",
             "facebookPost":     "={{ $('Flatten User Credentials').first().json.facebookPost }}",
             "instagramCaption": "={{ $('Flatten User Credentials').first().json.instagramCaption }}",
+            "whatsappMessage":  "={{ $('Flatten User Credentials').first().json.whatsappMessage }}",
             "emailSubject":     "={{ $('Flatten User Credentials').first().json.emailSubject }}",
-            "imageUrl":         "={{ $('Flatten User Credentials').first().json.imageUrl }}",
+            "imageUrl":         "={{ $('Capture Image URL').first().json.imageUrl }}",
+            "campaignDays":     "={{ $('Flatten User Credentials').first().json.campaignDays }}",
+            "dailyPostTime":    "={{ $('Flatten User Credentials').first().json.dailyPostTime }}",
+            "campaignBrief":    "={{ $('Flatten User Credentials').first().json.campaignBrief }}",
             "status":           "Posted",
             "timestamp":        "={{ $('Flatten User Credentials').first().json.timestamp }}",
             "platforms":        "={{ $('Flatten User Credentials').first().json.platforms }}"
@@ -530,7 +675,7 @@
       "name": "Save to Google Sheet1",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
-      "position": [5760, 300],
+      "position": [6860, 300],
       "credentials": {
         "googleSheetsOAuth2Api": { "id": "DDDHd5r2vMehujiw", "name": "Google Sheets account" }
       },
@@ -542,9 +687,9 @@
         "conditions": {
           "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict", "version": 2 },
           "conditions": [
-            { "id": "tt1", "leftValue": "={{ $('Flatten User Credentials').first().json._tiktok !== null && $('Flatten User Credentials').first().json._tiktok !== undefined }}", "rightValue": true, "operator": { "type": "boolean", "operation": "equals" } },
-            { "id": "tt2", "leftValue": "={{ $('Flatten User Credentials').first().json.platforms.includes('tiktok') }}", "rightValue": true, "operator": { "type": "boolean", "operation": "equals" } },
-            { "id": "tt3", "leftValue": "={{ ($('Flatten User Credentials').first().json.imageUrl || '') !== '' }}", "rightValue": true, "operator": { "type": "boolean", "operation": "equals" } }
+            { "id": "tt1", "leftValue": "={{ $('Flatten User Credentials').first().json._tiktok?.accessToken || '' }}", "rightValue": "", "operator": { "type": "string", "operation": "notEquals" } },
+            { "id": "tt2", "leftValue": "={{ $('Flatten User Credentials').first().json.platforms || '' }}", "rightValue": "tiktok", "operator": { "type": "string", "operation": "contains" } },
+            { "id": "tt3", "leftValue": "={{ $('Flatten User Credentials').first().json.tiktokVideoUrl || '' }}", "rightValue": "", "operator": { "type": "string", "operation": "notEquals" } }
           ],
           "combinator": "and"
         },
@@ -560,7 +705,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://open.tiktokapis.com/v2/post/publish/content/init/",
+        "url": "https://open.tiktokapis.com/v2/post/publish/video/init/",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -571,7 +716,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ post_info: { title: ($('Flatten User Credentials').first().json.tiktokCaption || $('Flatten User Credentials').first().json.instagramCaption || '').substring(0, 2200), privacy_level: 'SELF_ONLY', disable_duet: false, disable_comment: false, disable_stitch: false }, source_info: { source: 'PULL_FROM_URL', photo_images: [$('Flatten User Credentials').first().json.imageUrl], photo_cover_index: 0 }, media_type: 'PHOTO', post_mode: 'DIRECT_POST' }) }}",
+        "body": "={{ JSON.stringify({ post_mode: 'DIRECT_POST', post_info: { title: ($('Flatten User Credentials').first().json.tiktokCaption || $('Flatten User Credentials').first().json.instagramCaption || '').substring(0, 2200), privacy_level: 'PUBLIC_TO_EVERYONE', disable_duet: false, disable_comment: false, disable_stitch: false }, source_info: { source: 'PULL_FROM_URL', video_url: $('Flatten User Credentials').first().json.tiktokVideoUrl } }) }}",
         "options": {}
       },
       "id": "node-tiktok-post",
@@ -579,7 +724,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [5540, 180],
-      "onError": "continueErrorOutput"
+      "onError": "continueErrorOutput",
+      "notes": "VIDEO post via PULL_FROM_URL. Requires video.publish scope (production). In sandbox (video.upload scope) use UPLOAD_FROM_URL — switch DIRECT_POST to UPLOAD_FROM_URL for sandbox testing."
     },
 
     {
@@ -1028,6 +1174,199 @@
     {
       "parameters": {
         "httpMethod": "POST",
+        "path": "eventbrite-oauth",
+        "responseMode": "responseNode",
+        "options": { "allowedOrigins": "*" }
+      },
+      "id": "node-eb-01",
+      "name": "Eventbrite OAuth Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [240, 1600],
+      "webhookId": "eventbrite-oauth-evoke-cmo"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.item.json.body || $input.item.json;\nreturn { json: { code: body.code, redirectUri: body.redirectUri, uid: body.uid } };"
+      },
+      "id": "node-eb-02",
+      "name": "Eventbrite Extract Params",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 1600]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.eventbrite.com/oauth/token",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/x-www-form-urlencoded" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "grant_type",    "value": "authorization_code" },
+            { "name": "client_id",     "value": "AQUWB7RTTS3CUWMCXM" },
+            { "name": "client_secret", "value": "Z376CKS6E23KBGLOXJFRKYCHVZQBE2M4XSAGDE4CYIFXCG6SIR" },
+            { "name": "code",          "value": "={{ $json.code }}" },
+            { "name": "redirect_uri",  "value": "={{ $json.redirectUri }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-eb-03",
+      "name": "Eventbrite Exchange Code",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [680, 1600],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "url": "https://www.eventbriteapi.com/v3/users/me/organizations/",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "={{ 'Bearer ' + $json.access_token }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-eb-04",
+      "name": "Eventbrite Get Orgs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [900, 1600],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const tokenData = $('Eventbrite Exchange Code').first().json;\nconst orgData   = $input.item.json;\nconst uid       = $('Eventbrite Extract Params').first().json.uid;\nconst accessToken = tokenData.access_token || '';\nconst org = (orgData.organizations || [])[0] || {};\nreturn { json: { accessToken, organizationId: org.id || '', organizationName: org.name || 'My Organization', uid } };"
+      },
+      "id": "node-eb-05",
+      "name": "Eventbrite Build Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 1600]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ accessToken: $json.accessToken, organizationId: $json.organizationId, organizationName: $json.organizationName }) }}",
+        "options": {}
+      },
+      "id": "node-eb-06",
+      "name": "Eventbrite Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [1340, 1540]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ JSON.stringify({ error: true, message: 'Eventbrite OAuth failed' }) }",
+        "options": {}
+      },
+      "id": "node-eb-07",
+      "name": "Eventbrite Error Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [1340, 1680]
+    },
+
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict", "version": 2 },
+          "conditions": [
+            { "id": "eb1", "leftValue": "={{ $('Flatten User Credentials').first().json._eventbrite?.accessToken || '' }}", "rightValue": "", "operator": { "type": "string", "operation": "notEquals" } },
+            { "id": "eb2", "leftValue": "={{ $('Flatten User Credentials').first().json.platforms || '' }}", "rightValue": "eventbrite", "operator": { "type": "string", "operation": "contains" } }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-has-eventbrite",
+      "name": "Has Eventbrite?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [5980, 300]
+    },
+
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://www.eventbriteapi.com/v3/organizations/' + $('Flatten User Credentials').first().json._eventbrite.organizationId + '/events/' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "={{ 'Bearer ' + $('Flatten User Credentials').first().json._eventbrite.accessToken }}" },
+            { "name": "Content-Type",  "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ (function() { const d = $('Flatten User Credentials').first().json; const dateStr = d.date || ''; const timeStr = d.time || '09:00'; const parts = dateStr.split('-'); const timeParts = timeStr.split(':'); const year = parseInt(parts[0] || new Date().getFullYear()); const month = parseInt(parts[1] || 1) - 1; const day = parseInt(parts[2] || 1); const hour = parseInt(timeParts[0] || 9); const min = parseInt(timeParts[1] || 0); const startDt = new Date(year, month, day, hour, min); const endDt = new Date(startDt.getTime() + 2 * 60 * 60 * 1000); const pad = n => String(n).padStart(2, '0'); const fmt = dt => dt.getUTCFullYear() + '-' + pad(dt.getUTCMonth()+1) + '-' + pad(dt.getUTCDate()) + 'T' + pad(dt.getUTCHours()) + ':' + pad(dt.getUTCMinutes()) + ':00Z'; return JSON.stringify({ event: { name: { html: d.name || 'Event' }, description: { html: (d.description || '') + (d.facebookPost ? '<br/><br/>' + d.facebookPost : '') }, start: { timezone: 'Asia/Kolkata', utc: fmt(startDt) }, end: { timezone: 'Asia/Kolkata', utc: fmt(endDt) }, currency: 'INR', online_event: false, listed: true } }); })() }}",
+        "options": {}
+      },
+      "id": "node-eb-post",
+      "name": "Create Eventbrite Event",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [6200, 180],
+      "onError": "continueErrorOutput"
+    },
+
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict", "version": 2 },
+          "conditions": [
+            { "id": "mu1", "leftValue": "={{ $('Flatten User Credentials').first().json._meetup?.accessToken || '' }}", "rightValue": "", "operator": { "type": "string", "operation": "notEquals" } },
+            { "id": "mu2", "leftValue": "={{ $('Flatten User Credentials').first().json.platforms || '' }}", "rightValue": "meetup", "operator": { "type": "string", "operation": "contains" } }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-has-meetup",
+      "name": "Has Meetup?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [6420, 300]
+    },
+
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.meetup.com/' + $('Flatten User Credentials').first().json._meetup.groupUrlName + '/events' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "={{ 'Bearer ' + $('Flatten User Credentials').first().json._meetup.accessToken }}" },
+            { "name": "Content-Type",  "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ (function() { const d = $('Flatten User Credentials').first().json; const dateStr = d.date || ''; const timeStr = d.time || '09:00'; const parts = dateStr.split('-'); const timeParts = timeStr.split(':'); const year = parseInt(parts[0] || new Date().getFullYear()); const month = parseInt(parts[1] || 1) - 1; const day = parseInt(parts[2] || 1); const hour = parseInt(timeParts[0] || 9); const min = parseInt(timeParts[1] || 0); const startDt = new Date(year, month, day, hour, min); return JSON.stringify({ name: d.name || 'Event', description: (d.description || '') + (d.linkedinPost ? '\\n\\n' + d.linkedinPost : ''), time: startDt.getTime(), duration: 7200000, venue_visibility: 'public', publish_status: 'published' }); })() }}",
+        "options": {}
+      },
+      "id": "node-meetup-post",
+      "name": "Create Meetup Event",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [6640, 180],
+      "onError": "continueErrorOutput"
+    },
+
+    {
+      "parameters": {
+        "httpMethod": "POST",
         "path": "tiktok-oauth",
         "responseMode": "responseNode",
         "options": { "allowedOrigins": "*" }
@@ -1136,6 +1475,420 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
       "position": [1340, 1300]
+    },
+
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "evoke-cmo-day",
+        "responseMode": "responseNode",
+        "options": { "allowedOrigins": "*" }
+      },
+      "id": "node-day-01",
+      "name": "Day Campaign Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [240, 2000],
+      "webhookId": "evoke-cmo-day-trigger"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, message: 'Day ' + ($json.body?.day ?? $json.day ?? 1) + ' campaign posting started', name: ($json.body?.name ?? $json.name ?? ''), day: ($json.body?.day ?? $json.day ?? 1) }) }}",
+        "options": { "responseHeaders": { "entries": [{ "name": "Access-Control-Allow-Origin", "value": "*" }] } }
+      },
+      "id": "node-day-respond",
+      "name": "Day Campaign Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [460, 2000]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.item.json.body || $input.item.json;\nconst creds = body.userCredentials || {};\nconst day = parseInt(body.day || 1);\nconst schedule = body.dailySchedule || [];\nconst dayContent = schedule[day - 1] || {};\nreturn { json: {\n  ...body,\n  day,\n  linkedinPost:     dayContent.linkedinPost     || body.linkedinPost     || '',\n  instagramCaption: dayContent.instagramCaption  || body.instagramCaption || '',\n  facebookPost:     dayContent.facebookPost      || body.facebookPost     || '',\n  whatsappMessage:  dayContent.whatsappMessage   || body.whatsappMessage  || '',\n  emailSubject:     dayContent.emailSubject      || body.emailSubject     || '',\n  emailBody:        dayContent.emailBody         || body.emailBody        || '',\n  imageUrl:         body.imageUrl                || '',\n  platforms:        body.platforms               || 'linkedin,instagram,facebook,whatsapp,email',\n  whatsappRecipients: body.whatsappRecipients    || '',\n  emailRecipients:  body.emailRecipients         || body.contactEmail     || '',\n  _fb:   creds.facebook  || null,\n  _ig:   creds.instagram || null,\n  _li:   creds.linkedin  || null,\n  _gmail: creds.gmail    || null,\n  timestamp: new Date().toISOString()\n} };"
+      },
+      "id": "node-day-normalize",
+      "name": "Day Normalize & Flatten",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 2000]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict", "version": 2 },
+          "conditions": [
+            { "id": "dli1", "leftValue": "={{ $json._li !== null && $json._li !== undefined }}", "rightValue": true, "operator": { "type": "boolean", "operation": "equals" } }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-day-has-li",
+      "name": "Day Has LinkedIn?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [900, 2000]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.linkedin.com/v2/ugcPosts",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization",              "value": "={{ 'Bearer ' + $json._li.accessToken }}" },
+            { "name": "X-Restli-Protocol-Version", "value": "2.0.0" },
+            { "name": "Content-Type",              "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ author: $json._li.personUrn, lifecycleState: 'PUBLISHED', specificContent: { 'com.linkedin.ugc.ShareContent': { shareCommentary: { text: $json.linkedinPost || '' }, shareMediaCategory: 'NONE' } }, visibility: { 'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC' } }) }}",
+        "options": {}
+      },
+      "id": "node-day-li-post",
+      "name": "Day LinkedIn Post",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [1120, 1880],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict", "version": 2 },
+          "conditions": [
+            { "id": "dig1", "leftValue": "={{ $json._ig !== null && $json._ig !== undefined }}", "rightValue": true, "operator": { "type": "boolean", "operation": "equals" } },
+            { "id": "dig2", "leftValue": "={{ $json.imageUrl }}", "rightValue": "", "operator": { "type": "string", "operation": "notEquals" } }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-day-has-ig",
+      "name": "Day Has Instagram?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1340, 2000]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://graph.instagram.com/v21.0/' + $json._ig.businessAccountId + '/media' }}",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "image_url",    "value": "={{ $json.imageUrl }}" },
+            { "name": "caption",      "value": "={{ $json.instagramCaption }}" },
+            { "name": "access_token", "value": "={{ $json._ig.pageAccessToken }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-day-ig-create",
+      "name": "Day IG Create Media",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [1560, 1880],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://graph.instagram.com/v21.0/' + $('Day Normalize & Flatten').first().json._ig.businessAccountId + '/media_publish' }}",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "creation_id",  "value": "={{ $json.id }}" },
+            { "name": "access_token", "value": "={{ $('Day Normalize & Flatten').first().json._ig.pageAccessToken }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-day-ig-publish",
+      "name": "Day IG Publish Media",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [1780, 1880],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict", "version": 2 },
+          "conditions": [
+            { "id": "dfb1", "leftValue": "={{ $('Day Normalize & Flatten').first().json._fb !== null && $('Day Normalize & Flatten').first().json._fb !== undefined }}", "rightValue": true, "operator": { "type": "boolean", "operation": "equals" } }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-day-has-fb",
+      "name": "Day Has Facebook?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [2000, 2000]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://graph.facebook.com/v21.0/' + $('Day Normalize & Flatten').first().json._fb.pageId + '/photos' }}",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "caption",      "value": "={{ $('Day Normalize & Flatten').first().json.facebookPost }}" },
+            { "name": "url",          "value": "={{ $('Day Normalize & Flatten').first().json.imageUrl }}" },
+            { "name": "access_token", "value": "={{ $('Day Normalize & Flatten').first().json._fb.pageAccessToken }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-day-fb-post",
+      "name": "Day Facebook Post",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [2220, 1880],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict", "version": 2 },
+          "conditions": [
+            { "id": "dwa1", "leftValue": "={{ $('Day Normalize & Flatten').first().json.platforms || '' }}", "rightValue": "whatsapp", "operator": { "type": "string", "operation": "contains" } },
+            { "id": "dwa2", "leftValue": "={{ $('Day Normalize & Flatten').first().json.whatsappRecipients || '' }}", "rightValue": "", "operator": { "type": "string", "operation": "notEquals" } }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-day-has-wa",
+      "name": "Day Has WhatsApp?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [2440, 2000]
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $('Day Normalize & Flatten').first().json;\nconst raw = d.whatsappRecipients || '';\nconst numbers = raw.split(',').map(r => {\n  let n = r.trim().replace(/^\\+/, '').replace(/\\s/g, '');\n  if (n.length === 10 && /^[6-9]/.test(n)) n = '91' + n;\n  return n;\n}).filter(r => r.length >= 10);\nif (numbers.length === 0) return [{ json: { ...d, _waSkip: true } }];\nreturn numbers.map(phone => ({ json: { ...d, waPhone: phone } }));"
+      },
+      "id": "node-day-wa-split",
+      "name": "Day Split WA",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2660, 1880]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v21.0/1036970086175468/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer EAAVDWE6ATl8BRjwHq406XFg9pwNL5rrLb67z304SZCxyCYL8wSHfNFgt9Tffr2DnBRCZBmziolBndmTJEAwtkvPxRvrj1s9XDepRYf6ZCdSUV2y1XYXf4HWpIM01KQ4qh31itZBLGRbzbbtVZCrlpO1YWZB8scaLYpYpflSGo20jZBdwwXHNX4tw9DpIeom5mdp09YAhHxFCynZAaJ3gwi1odtJezleUdYJgY3Nu30f872TNDLk8BLSluCruF8gWJqwZCnmpCAH6ScI8Dk59BxZAAi" },
+            { "name": "Content-Type",  "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ messaging_product: 'whatsapp', to: $json.waPhone, type: 'text', text: { preview_url: false, body: ($json.whatsappMessage || ('🎉 Day ' + ($json.day || 1) + ' Update: ' + ($json.name || '') + '!\\n\\n' + ($json.description || ''))) } }) }}",
+        "options": {}
+      },
+      "id": "node-day-wa-send",
+      "name": "Day Send WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [2880, 1880],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict", "version": 2 },
+          "conditions": [
+            { "id": "dem1", "leftValue": "={{ $('Day Normalize & Flatten').first().json._gmail !== null && $('Day Normalize & Flatten').first().json._gmail !== undefined }}", "rightValue": true, "operator": { "type": "boolean", "operation": "equals" } }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-day-has-gmail",
+      "name": "Day Has Gmail?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [3100, 2000]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://oauth2.googleapis.com/token",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "grant_type",    "value": "refresh_token" },
+            { "name": "client_id",     "value": "53481639003-g903a5274f1bcq4jvkgpeoispls7aps9.apps.googleusercontent.com" },
+            { "name": "client_secret", "value": "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" },
+            { "name": "refresh_token", "value": "={{ $('Day Normalize & Flatten').first().json._gmail.refreshToken }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-day-refresh-gmail",
+      "name": "Day Refresh Gmail Token",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [3320, 1880],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $('Day Normalize & Flatten').first().json;\nconst allRecipients = (d.emailRecipients || d.contactEmail || '').split(',').map(r => r.trim()).filter(r => r && r.includes('@'));\nif (allRecipients.length === 0) return [{ json: { ...d, _emailSkip: true } }];\nreturn allRecipients.map(email => ({ json: { ...d, _recipientEmail: email } }));"
+      },
+      "id": "node-day-split-email",
+      "name": "Day Split Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3540, 1880]
+    },
+    {
+      "parameters": {
+        "sendTo":  "={{ $json._recipientEmail }}",
+        "subject": "={{ $json.emailSubject || ('Day ' + ($json.day || 1) + ' Update: ' + $json.name) }}",
+        "message": "={{ $json.emailBody }}",
+        "options": {
+          "replyTo": "={{ $json._gmail?.email || '' }}"
+        }
+      },
+      "id": "node-day-send-gmail",
+      "name": "Day Send Gmail",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [3760, 1880],
+      "credentials": {
+        "gmailOAuth2": { "id": "56gcL5bWilDrSr8T", "name": "Gmail account" }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": { "__rl": true, "value": "1gdwIWOkasERi9MTIbZ_HaA7Oqn4NyCzoqjTcURk4Uu4", "mode": "id" },
+        "sheetName":  { "__rl": true, "value": "gid=0", "mode": "list", "cachedResultName": "Sheet1" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "campaignType":  "={{ $('Day Normalize & Flatten').first().json.campaignType }}",
+            "name":          "={{ $('Day Normalize & Flatten').first().json.name }}",
+            "day":           "={{ $('Day Normalize & Flatten').first().json.day }}",
+            "imageUrl":      "={{ $('Day Normalize & Flatten').first().json.imageUrl }}",
+            "platforms":     "={{ $('Day Normalize & Flatten').first().json.platforms }}",
+            "status":        "Day Posted",
+            "timestamp":     "={{ $('Day Normalize & Flatten').first().json.timestamp }}"
+          },
+          "matchingColumns": []
+        },
+        "options": {}
+      },
+      "id": "node-day-sheet",
+      "name": "Day Save to Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [3980, 2000],
+      "credentials": {
+        "googleSheetsOAuth2Api": { "id": "DDDHd5r2vMehujiw", "name": "Google Sheets account" }
+      },
+      "onError": "continueErrorOutput"
+    },
+
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "evoke-agents",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "agent-webhook",
+      "name": "Agents Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [240, 2600],
+      "webhookId": "evoke-agents-v1"
+    },
+
+    {
+      "parameters": {
+        "jsCode": "const d = $input.item.json;\nconst body = d.body || d;\nconst agentType = body.agentType || 'seo';\n\nconst prompts = {\n  reddit: `You are a Reddit marketing expert. Inputs:\\n- Subreddit(s): ${body.subreddit || ''}\\n- Topic: ${body.topic || ''}\\n- Brand Context: ${body.brandContext || ''}\\n\\nGenerate 3 authentic Reddit reply drafts that add genuine value and naturally reference the brand without being promotional. Also provide subreddit recommendations and an engagement strategy.\\n\\nRespond ONLY with valid JSON (no markdown code fences, no extra text):\\n{\"title\":\"Reddit Reply Drafts\",\"sections\":[{\"heading\":\"Draft Reply 1\",\"content\":\"...\"},{\"heading\":\"Draft Reply 2\",\"content\":\"...\"},{\"heading\":\"Draft Reply 3\",\"content\":\"...\"},{\"heading\":\"Best Subreddits to Target\",\"content\":\"...\"},{\"heading\":\"Reddit Engagement Strategy\",\"content\":\"...\"}]}`,\n\n  seo: `You are a senior SEO strategist. Inputs:\\n- Website: ${body.websiteUrl || ''}\\n- Target Keyword: ${body.targetKeyword || ''}\\n- Industry: ${body.industry || 'General'}\\n\\nGenerate a full SEO content package.\\n\\nRespond ONLY with valid JSON (no markdown code fences, no extra text):\\n{\"title\":\"SEO Content Package\",\"sections\":[{\"heading\":\"Keyword Opportunities (15 keywords)\",\"content\":\"...\"},{\"heading\":\"Full SEO Blog Post (800+ words)\",\"content\":\"...\"},{\"heading\":\"Meta Tags & On-Page SEO\",\"content\":\"...\"},{\"heading\":\"Featured Snippet Content\",\"content\":\"...\"},{\"heading\":\"Internal Linking Strategy\",\"content\":\"...\"}]}`,\n\n  writer: `You are a professional brand content writer. Inputs:\\n- Topic: ${body.topic || ''}\\n- Brand: ${body.brandName || ''}\\n- Audience: ${body.audience || ''}\\n- Tone: ${body.tone || 'Professional'}\\n\\nWrite a comprehensive long-form article.\\n\\nRespond ONLY with valid JSON (no markdown code fences, no extra text):\\n{\"title\":\"Long-Form Article\",\"sections\":[{\"heading\":\"Full Article (1200+ words)\",\"content\":\"...\"},{\"heading\":\"Social Media Snippets (5 quotes)\",\"content\":\"...\"},{\"heading\":\"Email Newsletter Version (300 words)\",\"content\":\"...\"},{\"heading\":\"Key Takeaways\",\"content\":\"...\"}]}`,\n\n  twitter: `You are an X (Twitter) growth strategist. Inputs:\\n- Topic: ${body.topic || ''}\\n- Brand: ${body.brandName || ''}\\n- Tone: ${body.tone || 'Bold and engaging'}\\n\\nGenerate high-engagement Twitter/X content.\\n\\nRespond ONLY with valid JSON (no markdown code fences, no extra text):\\n{\"title\":\"X (Twitter) Content Drafts\",\"sections\":[{\"heading\":\"Standalone Tweets (5)\",\"content\":\"...\"},{\"heading\":\"Thread Draft (7 tweets)\",\"content\":\"...\"},{\"heading\":\"Engagement Hook Tweets (3)\",\"content\":\"...\"},{\"heading\":\"Hashtag Strategy\",\"content\":\"...\"}]}`,\n\n  linkedin_agent: `You are a LinkedIn content strategist. Inputs:\\n- Topic: ${body.topic || ''}\\n- Brand/Person: ${body.brandName || ''}\\n- Audience: ${body.audience || 'B2B professionals'}\\n\\nGenerate LinkedIn content.\\n\\nRespond ONLY with valid JSON (no markdown code fences, no extra text):\\n{\"title\":\"LinkedIn Post Drafts\",\"sections\":[{\"heading\":\"Post Draft 1 — Story Format\",\"content\":\"...\"},{\"heading\":\"Post Draft 2 — Insight Format\",\"content\":\"...\"},{\"heading\":\"Post Draft 3 — Engagement Format\",\"content\":\"...\"},{\"heading\":\"Best Posting Schedule & Hashtags\",\"content\":\"...\"}]}`,\n\n  hackernews: `You are a Hacker News community expert. Inputs:\\n- Topic: ${body.topic || ''}\\n- Brand/Product: ${body.brandName || ''}\\n- Value Proposition: ${body.value || ''}\\n\\nGenerate an HN engagement strategy.\\n\\nRespond ONLY with valid JSON (no markdown code fences, no extra text):\\n{\"title\":\"Hacker News Engagement Strategy\",\"sections\":[{\"heading\":\"Show HN Post Draft\",\"content\":\"...\"},{\"heading\":\"Comment Draft 1\",\"content\":\"...\"},{\"heading\":\"Comment Draft 2\",\"content\":\"...\"},{\"heading\":\"Comment Draft 3\",\"content\":\"...\"},{\"heading\":\"Thread Targeting Strategy\",\"content\":\"...\"}]}`,\n\n  geo: `You are a Generative Engine Optimization (GEO) expert specializing in getting brands cited in ChatGPT and Google AI Overviews. Inputs:\\n- Brand: ${body.brandName || ''}\\n- Keywords: ${body.keywords || ''}\\n- Description: ${body.description || ''}\\n\\nGenerate a complete GEO optimization package.\\n\\nRespond ONLY with valid JSON (no markdown code fences, no extra text):\\n{\"title\":\"GEO Optimization Package\",\"sections\":[{\"heading\":\"AI Citation-Ready Content Blocks\",\"content\":\"...\"},{\"heading\":\"Entity & Authority Building Strategy\",\"content\":\"...\"},{\"heading\":\"FAQ Content for AI Overviews (10 Q&As)\",\"content\":\"...\"},{\"heading\":\"Schema Markup Recommendations\",\"content\":\"...\"},{\"heading\":\"Content Distribution Plan for AI Citations\",\"content\":\"...\"}]}`,\n\n  coding: `You are a technical SEO engineer. Inputs:\\n- Website: ${body.websiteUrl || ''}\\n- Issue/Goal: ${body.issue || ''}\\n- Tech Stack: ${body.techStack || 'Unknown'}\\n\\nGenerate technical SEO fixes with code.\\n\\nRespond ONLY with valid JSON (no markdown code fences, no extra text):\\n{\"title\":\"Technical SEO Fix Plan\",\"sections\":[{\"heading\":\"Diagnosis & Priority Issues\",\"content\":\"...\"},{\"heading\":\"Code Fix 1 (Primary)\",\"content\":\"...\"},{\"heading\":\"Code Fix 2 (Secondary)\",\"content\":\"...\"},{\"heading\":\"Performance Optimizations\",\"content\":\"...\"},{\"heading\":\"Testing & Verification Checklist\",\"content\":\"...\"}]}`,\n\n  ugc_videos: `You are a UGC video content strategist. Inputs:\\n- Product/Service: ${body.product || ''}\\n- Style: ${body.style || ''}\\n- Audience: ${body.audience || 'General consumers'}\\n- Platforms: ${body.platforms || 'Instagram, TikTok'}\\n\\nGenerate UGC video briefs and scripts.\\n\\nRespond ONLY with valid JSON (no markdown code fences, no extra text):\\n{\"title\":\"UGC Video Brief & Scripts\",\"sections\":[{\"heading\":\"Video Brief & Creative Direction\",\"content\":\"...\"},{\"heading\":\"Full Script — Version 1 (60 seconds)\",\"content\":\"...\"},{\"heading\":\"Short Script — Version 2 (30 seconds)\",\"content\":\"...\"},{\"heading\":\"Hook Options (5 variations)\",\"content\":\"...\"},{\"heading\":\"Platform Adaptations & Hashtags\",\"content\":\"...\"}]}`\n};\n\nconst prompt = prompts[agentType] || prompts.seo;\nreturn { json: { ...body, agentType, _agentPrompt: prompt } };"
+      },
+      "id": "agent-build-prompt",
+      "name": "Build Agent Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 2600]
+    },
+
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=AIzaSyD4zsvoxcg6WrL1R3GcP66RgiXW4y2lqN0",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ contents: [{ parts: [{ text: $json._agentPrompt }] }], generationConfig: { temperature: 0.7, maxOutputTokens: 4096 } }) }}",
+        "options": {}
+      },
+      "id": "agent-gemini-call",
+      "name": "Call Gemini Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [680, 2600],
+      "onError": "continueErrorOutput"
+    },
+
+    {
+      "parameters": {
+        "jsCode": "const geminiResp = $input.item.json;\nconst orig = $('Build Agent Prompt').first().json;\n\nconst rawText = geminiResp.candidates?.[0]?.content?.parts?.[0]?.text || '';\n\nif (!rawText) {\n  return { json: { success: false, error: 'Gemini returned no content', agentResult: { title: 'Error', sections: [{ heading: 'Error', content: 'The AI agent did not return content. Please try again.' }] } } };\n}\n\nlet agentResult;\ntry {\n  let clean = rawText.trim();\n  clean = clean.replace(/^```json\\s*/i, '').replace(/```\\s*$/i, '').trim();\n  clean = clean.replace(/^```\\s*/i, '').replace(/```\\s*$/i, '').trim();\n  agentResult = JSON.parse(clean);\n} catch (e) {\n  agentResult = {\n    title: orig.agentType + ' Results',\n    sections: [{ heading: 'Generated Content', content: rawText }]\n  };\n}\n\nreturn { json: { success: true, agentType: orig.agentType, agentResult } };"
+      },
+      "id": "agent-format-response",
+      "name": "Format Agent Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 2600]
+    },
+
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "agent-respond",
+      "name": "Respond to Agent Request",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [1120, 2600]
+    },
+
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: false, error: 'Gemini API call failed', agentResult: { title: 'Error', sections: [{ heading: 'Agent Error', content: 'The AI service is temporarily unavailable. Please try again in a moment.' }] } }) }}",
+        "options": {}
+      },
+      "id": "agent-respond-error",
+      "name": "Respond Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [900, 2780]
     }
   ],
 
@@ -1147,9 +1900,39 @@
       "main": [[{ "node": "Flatten User Credentials", "type": "main", "index": 0 }]]
     },
     "Flatten User Credentials": {
-      "main": [[{ "node": "Respond to Webhook1", "type": "main", "index": 0 }]]
+      "main": [[
+        { "node": "Respond to Webhook1", "type": "main", "index": 0 },
+        { "node": "Build Gemini Prompt", "type": "main", "index": 0 }
+      ]]
     },
-    "Respond to Webhook1": {
+    "Build Gemini Prompt": {
+      "main": [[{ "node": "Skip If Has Image", "type": "main", "index": 0 }]]
+    },
+    "Skip If Has Image": {
+      "main": [
+        [{ "node": "Capture Image URL", "type": "main", "index": 0 }],
+        [{ "node": "Call Gemini API",   "type": "main", "index": 0 }]
+      ]
+    },
+    "Call Gemini API": {
+      "main": [
+        [{ "node": "Extract Image Data", "type": "main", "index": 0 }],
+        [{ "node": "Extract Image Data", "type": "main", "index": 0 }]
+      ]
+    },
+    "Extract Image Data": {
+      "main": [[{ "node": "Upload to ImgBB", "type": "main", "index": 0 }]]
+    },
+    "Upload to ImgBB": {
+      "main": [
+        [{ "node": "Set Image URL", "type": "main", "index": 0 }],
+        [{ "node": "Set Image URL", "type": "main", "index": 0 }]
+      ]
+    },
+    "Set Image URL": {
+      "main": [[{ "node": "Capture Image URL", "type": "main", "index": 0 }]]
+    },
+    "Capture Image URL": {
       "main": [[{ "node": "Has Image?1", "type": "main", "index": 0 }]]
     },
     "Has Image?1": {
@@ -1223,8 +2006,14 @@
     },
     "Has Facebook?": {
       "main": [
+        [{ "node": "Has FB Image?",  "type": "main", "index": 0 }],
+        [{ "node": "Has WhatsApp?",  "type": "main", "index": 0 }]
+      ]
+    },
+    "Has FB Image?": {
+      "main": [
         [{ "node": "Facebook (with image)1", "type": "main", "index": 0 }],
-        [{ "node": "Has WhatsApp?",          "type": "main", "index": 0 }]
+        [{ "node": "Facebook (text only)1",  "type": "main", "index": 0 }]
       ]
     },
     "Facebook (with image)1": {
@@ -1269,6 +2058,11 @@
       ]
     },
     "Build Gmail Email": {
+      "main": [
+        [{ "node": "Split Email Recipients", "type": "main", "index": 0 }]
+      ]
+    },
+    "Split Email Recipients": {
       "main": [
         [{ "node": "Send via Gmail API", "type": "main", "index": 0 }]
       ]
@@ -1357,10 +2151,34 @@
     "Has TikTok?": {
       "main": [
         [{ "node": "TikTok Post Content",  "type": "main", "index": 0 }],
-        [{ "node": "Save to Google Sheet1","type": "main", "index": 0 }]
+        [{ "node": "Has Eventbrite?",      "type": "main", "index": 0 }]
       ]
     },
     "TikTok Post Content": {
+      "main": [
+        [{ "node": "Has Eventbrite?", "type": "main", "index": 0 }],
+        [{ "node": "Has Eventbrite?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Has Eventbrite?": {
+      "main": [
+        [{ "node": "Create Eventbrite Event", "type": "main", "index": 0 }],
+        [{ "node": "Has Meetup?",             "type": "main", "index": 0 }]
+      ]
+    },
+    "Create Eventbrite Event": {
+      "main": [
+        [{ "node": "Has Meetup?", "type": "main", "index": 0 }],
+        [{ "node": "Has Meetup?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Has Meetup?": {
+      "main": [
+        [{ "node": "Create Meetup Event",   "type": "main", "index": 0 }],
+        [{ "node": "Save to Google Sheet1", "type": "main", "index": 0 }]
+      ]
+    },
+    "Create Meetup Event": {
       "main": [
         [{ "node": "Save to Google Sheet1", "type": "main", "index": 0 }],
         [{ "node": "Save to Google Sheet1", "type": "main", "index": 0 }]
@@ -1392,6 +2210,134 @@
     },
     "TikTok Error Response": {
       "main": [[{ "node": "TikTok Respond to Webhook", "type": "main", "index": 0 }]]
+    },
+    "Eventbrite OAuth Webhook": {
+      "main": [[{ "node": "Eventbrite Extract Params", "type": "main", "index": 0 }]]
+    },
+    "Eventbrite Extract Params": {
+      "main": [[{ "node": "Eventbrite Exchange Code", "type": "main", "index": 0 }]]
+    },
+    "Eventbrite Exchange Code": {
+      "main": [
+        [{ "node": "Eventbrite Get Orgs", "type": "main", "index": 0 }],
+        [{ "node": "Eventbrite Error Response", "type": "main", "index": 0 }]
+      ]
+    },
+    "Eventbrite Get Orgs": {
+      "main": [
+        [{ "node": "Eventbrite Build Response", "type": "main", "index": 0 }],
+        [{ "node": "Eventbrite Error Response", "type": "main", "index": 0 }]
+      ]
+    },
+    "Eventbrite Build Response": {
+      "main": [[{ "node": "Eventbrite Respond to Webhook", "type": "main", "index": 0 }]]
+    },
+    "Eventbrite Error Response": {
+      "main": [[{ "node": "Eventbrite Respond to Webhook", "type": "main", "index": 0 }]]
+    },
+
+    "Day Campaign Webhook": {
+      "main": [[
+        { "node": "Day Campaign Respond",   "type": "main", "index": 0 },
+        { "node": "Day Normalize & Flatten","type": "main", "index": 0 }
+      ]]
+    },
+    "Day Normalize & Flatten": {
+      "main": [[{ "node": "Day Has LinkedIn?", "type": "main", "index": 0 }]]
+    },
+    "Day Has LinkedIn?": {
+      "main": [
+        [{ "node": "Day LinkedIn Post",   "type": "main", "index": 0 }],
+        [{ "node": "Day Has Instagram?",  "type": "main", "index": 0 }]
+      ]
+    },
+    "Day LinkedIn Post": {
+      "main": [
+        [{ "node": "Day Has Instagram?", "type": "main", "index": 0 }],
+        [{ "node": "Day Has Instagram?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Day Has Instagram?": {
+      "main": [
+        [{ "node": "Day IG Create Media", "type": "main", "index": 0 }],
+        [{ "node": "Day Has Facebook?",   "type": "main", "index": 0 }]
+      ]
+    },
+    "Day IG Create Media": {
+      "main": [
+        [{ "node": "Day IG Publish Media", "type": "main", "index": 0 }],
+        [{ "node": "Day Has Facebook?",    "type": "main", "index": 0 }]
+      ]
+    },
+    "Day IG Publish Media": {
+      "main": [
+        [{ "node": "Day Has Facebook?", "type": "main", "index": 0 }],
+        [{ "node": "Day Has Facebook?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Day Has Facebook?": {
+      "main": [
+        [{ "node": "Day Facebook Post",  "type": "main", "index": 0 }],
+        [{ "node": "Day Has WhatsApp?",  "type": "main", "index": 0 }]
+      ]
+    },
+    "Day Facebook Post": {
+      "main": [
+        [{ "node": "Day Has WhatsApp?", "type": "main", "index": 0 }],
+        [{ "node": "Day Has WhatsApp?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Day Has WhatsApp?": {
+      "main": [
+        [{ "node": "Day Split WA",    "type": "main", "index": 0 }],
+        [{ "node": "Day Has Gmail?",  "type": "main", "index": 0 }]
+      ]
+    },
+    "Day Split WA": {
+      "main": [[{ "node": "Day Send WhatsApp", "type": "main", "index": 0 }]]
+    },
+    "Day Send WhatsApp": {
+      "main": [
+        [{ "node": "Day Has Gmail?", "type": "main", "index": 0 }],
+        [{ "node": "Day Has Gmail?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Day Has Gmail?": {
+      "main": [
+        [{ "node": "Day Refresh Gmail Token", "type": "main", "index": 0 }],
+        [{ "node": "Day Save to Sheet",       "type": "main", "index": 0 }]
+      ]
+    },
+    "Day Refresh Gmail Token": {
+      "main": [
+        [{ "node": "Day Split Email", "type": "main", "index": 0 }],
+        [{ "node": "Day Save to Sheet", "type": "main", "index": 0 }]
+      ]
+    },
+    "Day Split Email": {
+      "main": [[{ "node": "Day Send Gmail", "type": "main", "index": 0 }]]
+    },
+    "Day Send Gmail": {
+      "main": [
+        [{ "node": "Day Save to Sheet", "type": "main", "index": 0 }],
+        [{ "node": "Day Save to Sheet", "type": "main", "index": 0 }]
+      ]
+    },
+
+    "Agents Webhook": {
+      "main": [[{ "node": "Build Agent Prompt", "type": "main", "index": 0 }]]
+    },
+    "Build Agent Prompt": {
+      "main": [[{ "node": "Call Gemini Agent", "type": "main", "index": 0 }]]
+    },
+    "Call Gemini Agent": {
+      "main": [
+        [{ "node": "Format Agent Response", "type": "main", "index": 0 }],
+        [{ "node": "Respond Error",         "type": "main", "index": 0 }]
+      ]
+    },
+    "Format Agent Response": {
+      "main": [[{ "node": "Respond to Agent Request", "type": "main", "index": 0 }]]
     }
   },
 

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, FileText, Sparkles, ChevronDown, Check, Copy, AlertCircle, Loader2, Key, Eye, EyeOff } from 'lucide-react'
+import { ArrowLeft, FileText, Sparkles, ChevronDown, Check, Copy, AlertCircle, Loader2, Key, Eye, EyeOff, Settings2, Hash } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
 
 const PRODUCT_CATEGORIES = [
@@ -29,15 +29,17 @@ Target Audience: ${audience || 'General consumers'}
 
 Return ONLY valid JSON in this exact structure:
 {
-  "productTitle": "SEO-optimized product title (60-80 chars)",
+  "productTitle": "SEO-optimized product title (60-80 chars, include key benefit and category)",
   "marketingTagline": "Short punchy tagline (max 12 words)",
   "shortDescription": "2-3 sentence product summary for search results",
-  "fullDescription": "Detailed 150-200 word marketing description",
-  "bulletPoints": ["feature 1", "feature 2", "feature 3", "feature 4", "feature 5", "feature 6"],
+  "fullDescription": "Detailed 200-300 word benefit-led marketing description: opening hook, key features paragraph, ideal-for paragraph, closing CTA. Keyword-rich and conversion-focused.",
+  "bulletPoints": ["Feature 1: specific benefit", "Feature 2: specific benefit", "Feature 3: specific benefit", "Feature 4: specific benefit", "Feature 5: specific benefit", "Feature 6: specific benefit"],
+  "technicalSpecs": {"Spec Label 1": "value", "Spec Label 2": "value", "Spec Label 3": "value", "Spec Label 4": "value", "Spec Label 5": "value"},
   "altText": "Image alt text for accessibility and SEO (max 125 chars)",
   "metaTitle": "SEO meta title (max 60 chars)",
   "metaDescription": "SEO meta description (max 160 chars)",
-  "keywords": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"]
+  "keywords": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"],
+  "searchKeywords": ["broad keyword 1", "broad keyword 2", "broad keyword 3", "broad keyword 4", "broad keyword 5", "broad keyword 6", "broad keyword 7", "broad keyword 8", "broad keyword 9", "broad keyword 10", "long-tail phrase 1", "long-tail phrase 2"]
 }`
 
   const res = await fetch(
@@ -254,6 +256,50 @@ export default function ProductDescription() {
                     ))}
                   </div>
                 </OutputCard>
+
+                {result.technicalSpecs && Object.keys(result.technicalSpecs).length > 0 && (
+                  <div style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:'12px',overflow:'hidden',marginBottom:'12px'}}>
+                    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 16px',borderBottom:'1px solid rgba(255,255,255,0.06)',background:'rgba(255,255,255,0.02)'}}>
+                      <div style={{display:'flex',alignItems:'center',gap:'6px'}}>
+                        <Settings2 size={12} style={{color:'rgba(255,255,255,0.4)'}}/>
+                        <span style={{fontSize:'12px',fontWeight:700,color:'rgba(255,255,255,0.5)',letterSpacing:'0.05em',textTransform:'uppercase'}}>Technical Specifications</span>
+                      </div>
+                      <button onClick={()=>copy(Object.entries(result.technicalSpecs).map(([k,v])=>`${k}: ${v}`).join('\n'),'specs')}
+                        style={{display:'flex',alignItems:'center',gap:'5px',padding:'5px 10px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'6px',color:copied==='specs'?'#4ade80':'rgba(255,255,255,0.5)',fontSize:'11px',cursor:'pointer',fontWeight:600}}>
+                        <Copy size={11}/>{copied==='specs'?'Copied!':'Copy'}
+                      </button>
+                    </div>
+                    <div style={{padding:'14px 16px',display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:'8px'}}>
+                      {Object.entries(result.technicalSpecs).map(([label,value],i)=>(
+                        <div key={i} style={{padding:'10px 12px',background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:'8px'}}>
+                          <p style={{color:'rgba(255,255,255,0.35)',fontSize:'10px',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:'3px',margin:'0 0 3px'}}>{label}</p>
+                          <p style={{color:'rgba(255,255,255,0.8)',fontSize:'13px',fontWeight:500,margin:0}}>{value}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {result.searchKeywords?.length > 0 && (
+                  <div style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:'12px',overflow:'hidden',marginBottom:'12px'}}>
+                    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 16px',borderBottom:'1px solid rgba(255,255,255,0.06)',background:'rgba(255,255,255,0.02)'}}>
+                      <div style={{display:'flex',alignItems:'center',gap:'6px'}}>
+                        <Hash size={12} style={{color:'rgba(255,255,255,0.4)'}}/>
+                        <span style={{fontSize:'12px',fontWeight:700,color:'rgba(255,255,255,0.5)',letterSpacing:'0.05em',textTransform:'uppercase'}}>SEO Search Keywords</span>
+                      </div>
+                      <button onClick={()=>copy(result.searchKeywords.join(', '),'searchkw')}
+                        style={{display:'flex',alignItems:'center',gap:'5px',padding:'5px 10px',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'6px',color:copied==='searchkw'?'#4ade80':'rgba(255,255,255,0.5)',fontSize:'11px',cursor:'pointer',fontWeight:600}}>
+                        <Copy size={11}/>{copied==='searchkw'?'Copied!':'Copy'}
+                      </button>
+                    </div>
+                    <div style={{padding:'14px 16px',display:'flex',flexWrap:'wrap',gap:'6px'}}>
+                      {result.searchKeywords.map((k,i)=>(
+                        <span key={i} style={{padding:'4px 11px',background:'rgba(124,58,237,0.1)',border:'1px solid rgba(124,58,237,0.22)',borderRadius:'100px',fontSize:'12px',color:'rgba(167,139,250,0.9)',fontWeight:500}}>{k}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
               </motion.div>
             )}
           </motion.div>
