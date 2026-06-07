@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ArrowRight, Zap, Calendar, Package, Rocket, BookOpen, Globe, Mail, Users, PieChart, TrendingUp } from 'lucide-react'
+import { ArrowRight, Zap, Wallet, Calendar, Package, Rocket, BookOpen, Globe, Mail, Users, PieChart, TrendingUp } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
 import { auth } from '../firebase'
 import { onAuthStateChanged } from 'firebase/auth'
 import SignInModal from '../components/SignInModal.jsx'
 import OnboardingModal from '../components/OnboardingModal.jsx'
-import { getOrCreateUser } from '../services/userService'
+import WalletConnectModal from '../components/WalletConnectModal.jsx'
+import TierSelectModal from '../components/TierSelectModal.jsx'
+import { getOrCreateUser, getWalletAddress, getEGTBalance } from '../services/userService'
 
 /* ─── colour tokens ─── */
 const BG   = '#0e0c09'
@@ -60,9 +62,21 @@ export default function AgentsHub() {
   const [user,            setUser]            = useState(null)
   const [showModal,       setShowModal]       = useState(false)
   const [showOnboarding,  setShowOnboarding]  = useState(false)
+  const [showWallet,      setShowWallet]      = useState(false)
+  const [showTier,        setShowTier]        = useState(false)
   const [pendingHref,     setPendingHref]     = useState(null)
+  const [walletAddress,   setWalletAddress]   = useState('')
+  const [egtBalance,      setEgtBalance]      = useState(0)
 
-  useEffect(() => onAuthStateChanged(auth, u => setUser(u)), [])
+  useEffect(() => onAuthStateChanged(auth, async u => {
+    setUser(u)
+    if (u) {
+      const addr = await getWalletAddress(u.uid)
+      const bal  = await getEGTBalance(u.uid)
+      setWalletAddress(addr)
+      setEgtBalance(bal)
+    }
+  }), [])
 
   const handleLaunch = async (agent) => {
     if (!agent.active) return
@@ -71,15 +85,35 @@ export default function AgentsHub() {
     try {
       const data = await getOrCreateUser(user.uid, user.displayName, user.email)
       if (!data.onboardingComplete) {
-        // Show onboarding first, then go to agent after completion
         setPendingHref(agent.href)
         setShowOnboarding(true)
-      } else {
-        navigate(agent.href)
+        return
       }
-    } catch {
-      navigate(agent.href)
+    } catch { /* proceed */ }
+
+    // Wallet gate
+    if (!walletAddress) {
+      setPendingHref(agent.href)
+      setShowWallet(true)
+      return
     }
+
+    // Tier selection
+    setPendingHref(agent.href)
+    setShowTier(true)
+  }
+
+  const handleWalletConnected = (addr, bal) => {
+    setWalletAddress(addr)
+    setEgtBalance(bal)
+    setShowWallet(false)
+    if (bal > 0) setShowTier(true)
+  }
+
+  const handleTierSelected = (tierId, remainingBal) => {
+    setEgtBalance(remainingBal)
+    setShowTier(false)
+    navigate(pendingHref || '/cmo')
   }
 
   const goldGrad = {
@@ -91,14 +125,30 @@ export default function AgentsHub() {
     <div style={{ minHeight: '100vh', background: BG, color: TEXT, fontFamily: "'Inter',sans-serif" }}>
       {showModal && <SignInModal onClose={() => setShowModal(false)} />}
 
-      {/* Onboarding — fires when new user clicks Launch CMO Agent */}
       {showOnboarding && user && (
         <OnboardingModal
           user={user}
           onComplete={() => {
             setShowOnboarding(false)
-            if (pendingHref) navigate(pendingHref)
+            if (!walletAddress) { setShowWallet(true) } else { setShowTier(true) }
           }}
+        />
+      )}
+
+      {showWallet && user && (
+        <WalletConnectModal
+          user={user}
+          onConnected={handleWalletConnected}
+          onClose={() => setShowWallet(false)}
+        />
+      )}
+
+      {showTier && user && (
+        <TierSelectModal
+          user={user}
+          egtBalance={egtBalance}
+          onTierSelected={handleTierSelected}
+          onClose={() => setShowTier(false)}
         />
       )}
 
@@ -109,6 +159,43 @@ export default function AgentsHub() {
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
           style={{ textAlign: 'center', marginBottom: 64 }}>
+
+          {/* Wallet Status */}
+          {user && (
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
+              {walletAddress ? (
+                <div style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 10,
+                  padding: '8px 16px',
+                  background: 'rgba(16,185,129,0.08)',
+                  border: '1px solid rgba(16,185,129,0.25)',
+                  borderRadius: 99,
+                }}>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981' }} />
+                  <span style={{ fontSize: 12, color: 'rgba(16,185,129,0.9)', fontWeight: 600 }}>
+                    {walletAddress.slice(0,6)}…{walletAddress.slice(-4)}
+                  </span>
+                  <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: 12 }}>|</span>
+                  <img src="/gratitude-token.png" alt="" style={{ width: 16, height: 16, borderRadius: '50%' }} />
+                  <span style={{ color: '#c8973e', fontWeight: 800, fontSize: 13 }}>{egtBalance.toLocaleString()} EGT</span>
+                </div>
+              ) : (
+                <button
+                  onClick={() => user && setShowWallet(true)}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 8,
+                    padding: '8px 18px',
+                    background: GDIM, border: `1px solid ${GBORDER}`,
+                    borderRadius: 99, cursor: 'pointer', color: GOLD,
+                    fontSize: 12, fontWeight: 700,
+                  }}
+                >
+                  <Wallet size={14} /> Connect EGT Wallet
+                </button>
+              )}
+            </div>
+          )}
+
           <div style={{
             display: 'inline-flex', alignItems: 'center', gap: 7,
             padding: '5px 16px', background: GDIM, border: `1px solid ${GBORDER}`,

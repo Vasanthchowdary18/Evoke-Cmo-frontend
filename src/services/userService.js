@@ -19,6 +19,8 @@ export async function getOrCreateUser(uid, displayName, email) {
       displayName: displayName || '',
       email: email || '',
       tokenBalance: 0,
+      egtBalance: 0,
+      walletAddress: '',
       socialAccounts: {
         facebook:  { connected: false, pageId: '', pageAccessToken: '', pageName: '' },
         instagram: { connected: false, businessAccountId: '', pageName: '' },
@@ -65,6 +67,32 @@ export async function deductToken(uid) {
   await updateDoc(doc(db, 'users', uid), {
     tokenBalance: increment(-1),
   })
+}
+
+// ─── EGT Token functions ───────────────────────────────────────────────────
+export async function getEGTBalance(uid) {
+  const data = await getUserData(uid)
+  return data?.egtBalance ?? 0
+}
+
+export async function deductEGT(uid, amount) {
+  const data = await getUserData(uid)
+  const current = data?.egtBalance ?? 0
+  if (current < amount) throw new Error(`Insufficient EGT. Need ${amount}, have ${current}.`)
+  await updateDoc(doc(db, 'users', uid), { egtBalance: increment(-amount) })
+}
+
+export async function addEGT(uid, amount) {
+  await updateDoc(doc(db, 'users', uid), { egtBalance: increment(amount) })
+}
+
+export async function saveWalletAddress(uid, address) {
+  await updateDoc(doc(db, 'users', uid), { walletAddress: address })
+}
+
+export async function getWalletAddress(uid) {
+  const data = await getUserData(uid)
+  return data?.walletAddress || ''
 }
 
 export async function saveSocialAccount(uid, platform, accountData) {

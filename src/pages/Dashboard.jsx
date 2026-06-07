@@ -64,7 +64,7 @@ import { auth, db } from "../firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, updateDoc } from "firebase/firestore";
 import { getOrCreateUser, getTokenBalance } from "../services/userService";
-import { DAY_WEBHOOK_URL } from "../config.js";
+import { DAY_WEBHOOK_URL, EGT_TIERS } from "../config.js";
 
 const campaignCards = [
   {
@@ -856,6 +856,8 @@ export default function Dashboard() {
   const [showNoAccounts, setShowNoAccounts] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showProductModal, setShowProductModal] = useState(false);
+  const egtTierId = sessionStorage.getItem('egtTier') || null;
+  const egtTier   = egtTierId ? EGT_TIERS[egtTierId] : null;
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
@@ -930,6 +932,11 @@ export default function Dashboard() {
   }, []);
 
   const handleLaunch = (type) => {
+    // EGT tier gate — only allow if agent is in the selected tier
+    if (egtTier && !egtTier.agents.includes(type)) {
+      alert(`This agent requires a higher EGT tier. Go back to the Agents Hub and select Pro or Max.`)
+      return;
+    }
     if (tokenBalance !== null && tokenBalance < 1) {
       setShowNoTokens(true);
       return;
@@ -938,7 +945,6 @@ export default function Dashboard() {
       setShowNoAccounts(true);
       return;
     }
-    // Product campaigns → show the AI visual tools modal first
     if (type === 'product') {
       setShowProductModal(true);
       return;
@@ -1106,6 +1112,20 @@ export default function Dashboard() {
                 alignItems: "flex-end",
               }}
             >
+              {/* EGT Tier badge */}
+              {egtTier && (
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '6px 14px',
+                  background: `rgba(${egtTier.id === 'basic' ? '99,102,241' : egtTier.id === 'pro' ? '168,85,247' : '245,197,66'},0.12)`,
+                  border: `1px solid ${egtTier.borderColor}`,
+                  borderRadius: 99,
+                }}>
+                  <img src="/gratitude-token.png" alt="" style={{ width: 16, height: 16, borderRadius: '50%' }} />
+                  <span style={{ color: egtTier.color, fontWeight: 800, fontSize: 12 }}>{egtTier.name}</span>
+                  <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 11 }}>Active session</span>
+                </div>
+              )}
               <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -1549,14 +1569,23 @@ export default function Dashboard() {
                 requiresAccounts: false,
                 featureList: [],
               })),
-            ].map((agent, i) => (
+            ].map((agent, i) => {
+              // EGT tier access check — agentCards use paths like /agent/:type so skip tier check for them
+              const tierLocked = egtTier && agent.group !== 'REDDIT' && agent.group !== 'SEO' && agent.group !== 'WRITER' && agent.group !== 'LINKEDIN'
+                && !egtTier.agents.includes(agent.type)
+
+              return (
               <motion.div
                 key={`${agent.group}-${agent.type}`}
                 initial={{ opacity: 0, y: 24 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: 0.82 + i * 0.035 }}
-                whileHover={{ y: -4, scale: 1.01 }}
+                whileHover={!tierLocked ? { y: -4, scale: 1.01 } : {}}
                 onClick={() => {
+                  if (tierLocked) {
+                    navigate('/agents-hub')
+                    return
+                  }
                   if (tokenBalance !== null && tokenBalance < 1) {
                     setShowNoTokens(true);
                     return;
@@ -1568,17 +1597,18 @@ export default function Dashboard() {
                   navigate(agent.path);
                 }}
                 style={{
-                  background: "#1c1a13",
-                  border: `1px solid ${agent.border || `${agent.color}30`}`,
+                  background: tierLocked ? "rgba(14,12,9,0.6)" : "#1c1a13",
+                  border: `1px solid ${tierLocked ? 'rgba(255,255,255,0.05)' : (agent.border || `${agent.color}30`)}`,
                   borderRadius: 16,
                   padding: 18,
-                  cursor: "pointer",
+                  cursor: tierLocked ? "not-allowed" : "pointer",
                   transition: "all 0.2s",
                   position: "relative",
                   overflow: "hidden",
                   boxShadow: "none",
                   display: "flex",
                   flexDirection: "column",
+                  opacity: tierLocked ? 0.45 : 1,
                 }}
               >
                 {agent.popular && (
@@ -1745,16 +1775,33 @@ export default function Dashboard() {
                       color: agent.color,
                     }}
                   >
-                    {tokenBalance < 1
-                      ? "Buy Tokens"
-                      : agent.requiresAccounts && connectedCount === 0
-                        ? "Connect Accounts"
-                        : agent.cta}
+                    {tierLocked
+                      ? "Locked"
+                      : tokenBalance < 1
+                        ? "Buy Tokens"
+                        : agent.requiresAccounts && connectedCount === 0
+                          ? "Connect Accounts"
+                          : agent.cta}
                     <ChevronRight size={13} />
                   </div>
                 </div>
+
+                {/* Tier lock overlay label */}
+                {tierLocked && (
+                  <div style={{
+                    position: 'absolute', top: 8, right: 8,
+                    background: 'rgba(0,0,0,0.7)',
+                    borderRadius: 6, padding: '2px 8px',
+                    fontSize: 9, fontWeight: 800,
+                    color: 'rgba(255,255,255,0.4)',
+                    letterSpacing: '0.06em',
+                  }}>
+                    🔒 TIER LOCKED
+                  </div>
+                )}
               </motion.div>
-            ))}
+            )
+            })}
           </div>
         </motion.div>
 
