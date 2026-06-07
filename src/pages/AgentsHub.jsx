@@ -5,8 +5,11 @@ import { ArrowRight, Zap, Calendar, Package, Rocket, BookOpen, Globe, Mail, User
 import Navbar from '../components/Navbar.jsx'
 import { auth } from '../firebase'
 import { onAuthStateChanged } from 'firebase/auth'
+import SignInModal from '../components/SignInModal.jsx'
 import OnboardingModal from '../components/OnboardingModal.jsx'
 import { getOrCreateUser } from '../services/userService'
+
+const ON_EVOKE_DOMAIN = window.location.hostname.includes('evokemarketplace.com')
 
 function goToEvokeAuth() {
   const redirectUrl = encodeURIComponent(window.location.href)
@@ -62,6 +65,7 @@ const AGENTS = [
 export default function AgentsHub() {
   const navigate = useNavigate()
   const [user,            setUser]            = useState(null)
+  const [showModal,       setShowModal]       = useState(false)
   const [showOnboarding,  setShowOnboarding]  = useState(false)
   const [pendingHref,     setPendingHref]     = useState(null)
 
@@ -69,7 +73,11 @@ export default function AgentsHub() {
 
   const handleLaunch = async (agent) => {
     if (!agent.active) return
-    if (!user) { goToEvokeAuth(); return }
+    if (!user) {
+      // Evoke domain → redirect to Evoke Auth; everywhere else → show Firebase modal
+      ON_EVOKE_DOMAIN ? goToEvokeAuth() : setShowModal(true)
+      return
+    }
 
     try {
       const data = await getOrCreateUser(user.uid, user.displayName, user.email)
@@ -92,6 +100,7 @@ export default function AgentsHub() {
 
   return (
     <div style={{ minHeight: '100vh', background: BG, color: TEXT, fontFamily: "'Inter',sans-serif" }}>
+      {showModal && <SignInModal onClose={() => setShowModal(false)} />}
 
       {showOnboarding && user && (
         <OnboardingModal

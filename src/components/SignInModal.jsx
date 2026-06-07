@@ -40,7 +40,9 @@ const Spinner = ({ dark }) => (
   }} />
 )
 
-// ── Evoke Auth redirect helper ──────────────────────────────────────
+// ── Evoke Auth — only works on evokemarketplace.com domain ──────────
+const ON_EVOKE_DOMAIN = window.location.hostname.includes('evokemarketplace.com')
+
 function redirectToEvokeAuth() {
   const redirectUrl = encodeURIComponent(window.location.href)
   window.location.href = `https://accounts.evokemarketplace.com/login/?redirect_url=${redirectUrl}`
@@ -61,9 +63,9 @@ export default function SignInModal({ onClose }) {
   const [resetSent, setResetSent] = useState(false)
   const isSignUp = mode === 'signup'
 
-  // On mount → go straight to Evoke Auth
+  // On mount → Evoke Auth on evokemarketplace.com, Firebase modal everywhere else
   useEffect(() => {
-    redirectToEvokeAuth()
+    if (ON_EVOKE_DOMAIN) redirectToEvokeAuth()
   }, [])
 
   // Dismiss on Escape
