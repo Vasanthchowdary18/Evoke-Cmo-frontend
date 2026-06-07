@@ -8,6 +8,7 @@ import { onAuthStateChanged } from 'firebase/auth'
 import SignInModal from '../components/SignInModal.jsx'
 import OnboardingModal from '../components/OnboardingModal.jsx'
 import WalletConnectModal from '../components/WalletConnectModal.jsx'
+import TierSelectModal from '../components/TierSelectModal.jsx'
 import { getOrCreateUser, getWalletAddress, getEGTBalance } from '../services/userService'
 
 /* ─── colour tokens ─── */
@@ -62,6 +63,7 @@ export default function AgentsHub() {
   const [showModal,       setShowModal]       = useState(false)
   const [showOnboarding,  setShowOnboarding]  = useState(false)
   const [showWallet,      setShowWallet]      = useState(false)
+  const [showTier,        setShowTier]        = useState(false)
   const [pendingHref,     setPendingHref]     = useState(null)
   const [walletAddress,   setWalletAddress]   = useState('')
   const [egtBalance,      setEgtBalance]      = useState(0)
@@ -93,14 +95,29 @@ export default function AgentsHub() {
       }
     } catch { /* proceed */ }
 
-    // Go straight to CMO — EGT gating happens inside the dashboard per campaign
-    navigate(agent.href)
+    // Wallet gate
+    if (!walletAddress) {
+      setPendingHref(agent.href)
+      setShowWallet(true)
+      return
+    }
+
+    // Tier selection
+    setPendingHref(agent.href)
+    setShowTier(true)
   }
 
   const handleWalletConnected = (addr, bal) => {
     setWalletAddress(addr)
     setEgtBalance(bal)
     setShowWallet(false)
+    if (bal > 0) setShowTier(true)
+  }
+
+  const handleTierSelected = (tierId, remainingBal) => {
+    setEgtBalance(remainingBal)
+    setShowTier(false)
+    navigate(pendingHref || '/cmo')
   }
 
   const goldGrad = {
@@ -117,7 +134,7 @@ export default function AgentsHub() {
           user={user}
           onComplete={() => {
             setShowOnboarding(false)
-            if (pendingHref) navigate(pendingHref)
+            if (!walletAddress) { setShowWallet(true) } else { setShowTier(true) }
           }}
         />
       )}
@@ -127,6 +144,15 @@ export default function AgentsHub() {
           user={user}
           onConnected={handleWalletConnected}
           onClose={() => setShowWallet(false)}
+        />
+      )}
+
+      {showTier && user && (
+        <TierSelectModal
+          user={user}
+          egtBalance={egtBalance}
+          onTierSelected={handleTierSelected}
+          onClose={() => setShowTier(false)}
         />
       )}
 
