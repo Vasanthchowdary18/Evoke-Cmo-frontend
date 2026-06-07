@@ -10,12 +10,6 @@ import {
 } from 'firebase/auth'
 import { getOrCreateUser } from '../services/userService'
 
-// Evoke Auth — redirect URL for the current environment
-function getEvokeAuthURL() {
-  const redirectUrl = encodeURIComponent(window.location.origin + '/')
-  return `https://accounts.evokemarketplace.com/login/?redirect_url=${redirectUrl}`
-}
-
 const friendlyError = (code) => {
   const map = {
     'auth/email-already-in-use':                   'An account with this email already exists.',
@@ -183,7 +177,7 @@ export default function SignInModal({ onClose }) {
       {/* Backdrop */}
       <div onClick={onClose} style={{
         position:'fixed', inset:0, zIndex:10001,
-        background:'rgba(255,255,255,0.92)', backdropFilter:'blur(4px)',
+        background:'rgba(0,0,0,0.55)', backdropFilter:'blur(8px)',
         display:'flex', alignItems:'center', justifyContent:'center', padding:20,
       }}>
         {/* Card */}
@@ -224,37 +218,9 @@ export default function SignInModal({ onClose }) {
             <h2 style={{ color:'#111', fontSize:30, fontWeight:800, letterSpacing:'-0.025em', margin:'0 0 6px' }}>
               {isSignUp ? 'Create account' : 'Sign in'}
             </h2>
-            <p style={{ color:'#aaa', fontSize:15, margin:'0 0 24px' }}>
+            <p style={{ color:'#aaa', fontSize:15, margin:'0 0 26px' }}>
               {isSignUp ? 'Start your AI marketing journey.' : 'Welcome back. Sign in to continue.'}
             </p>
-
-            {/* ── PRIMARY: Evoke Auth ── */}
-            <button
-              type="button"
-              onClick={() => { window.location.href = getEvokeAuthURL() }}
-              style={{
-                width:'100%', padding:'14px 20px', marginBottom:16,
-                background:'linear-gradient(135deg,#1a0a00,#3d1f00)',
-                border:'1px solid rgba(200,151,62,0.45)',
-                borderRadius:50, cursor:'pointer',
-                display:'flex', alignItems:'center', justifyContent:'center', gap:12,
-                color:'#f5c542', fontSize:16, fontWeight:800,
-                boxShadow:'0 4px 20px rgba(200,151,62,0.25)',
-                transition:'all 0.2s', fontFamily:'inherit',
-              }}
-              onMouseEnter={e => e.currentTarget.style.boxShadow='0 6px 28px rgba(200,151,62,0.45)'}
-              onMouseLeave={e => e.currentTarget.style.boxShadow='0 4px 20px rgba(200,151,62,0.25)'}
-            >
-              <img src="/gratitude-token.png" alt="" style={{ width:22, height:22, borderRadius:'50%' }} />
-              Sign in with Evoke
-            </button>
-
-            {/* Divider */}
-            <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:18 }}>
-              <div style={{ flex:1, height:1, background:'#e8e2d8' }} />
-              <span style={{ fontSize:12, color:'#bbb', whiteSpace:'nowrap' }}>or continue with</span>
-              <div style={{ flex:1, height:1, background:'#e8e2d8' }} />
-            </div>
 
             {/* Auth error */}
             {authError && (

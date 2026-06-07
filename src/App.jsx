@@ -1,32 +1,5 @@
-import React, { useEffect } from 'react'
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
-import { auth } from './firebase'
-import { signInWithCustomToken } from 'firebase/auth'
-import { getOrCreateUser } from './services/userService'
-
-// Handles redirect back from accounts.evokemarketplace.com
-function EvokeAuthCallback() {
-  const navigate = useNavigate()
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const token = params.get('token') || params.get('customToken') || params.get('access_token') || params.get('auth_token')
-    if (!token) return
-    // Clean the URL immediately
-    window.history.replaceState({}, '', window.location.pathname)
-    // Try Firebase custom token first
-    signInWithCustomToken(auth, token)
-      .then(async (cred) => {
-        await getOrCreateUser(cred.user.uid, cred.user.displayName, cred.user.email)
-        navigate('/agents-hub')
-      })
-      .catch(() => {
-        // Token is not a Firebase custom token — store it and treat as session
-        localStorage.setItem('evoke_auth_token', token)
-        navigate('/agents-hub')
-      })
-  }, [navigate])
-  return null
-}
+import React from 'react'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import Landing from './pages/Landing.jsx'
 import SignIn from './pages/SignIn.jsx'
 import Onboarding from './pages/Onboarding.jsx'
@@ -50,7 +23,6 @@ import Chatbot from './components/Chatbot.jsx'
 export default function App() {
   return (
     <BrowserRouter>
-      <EvokeAuthCallback />
       <Routes>
         <Route path="/"                  element={<Landing />} />
         <Route path="/signin"            element={<SignIn />} />
