@@ -40,6 +40,12 @@ const Spinner = ({ dark }) => (
   }} />
 )
 
+// ── Evoke Auth redirect helper ──────────────────────────────────────
+function redirectToEvokeAuth() {
+  const redirectUrl = encodeURIComponent(window.location.href)
+  window.location.href = `https://accounts.evokemarketplace.com/login/?redirect_url=${redirectUrl}`
+}
+
 export default function SignInModal({ onClose }) {
   const navigate = useNavigate()
   const [mode, setMode]           = useState('signin')
@@ -54,6 +60,11 @@ export default function SignInModal({ onClose }) {
   const [errors, setErrors]       = useState({})
   const [resetSent, setResetSent] = useState(false)
   const isSignUp = mode === 'signup'
+
+  // On mount → go straight to Evoke Auth
+  useEffect(() => {
+    redirectToEvokeAuth()
+  }, [])
 
   // Dismiss on Escape
   useEffect(() => {
