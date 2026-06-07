@@ -71,14 +71,10 @@ export default function AgentsHub() {
   useEffect(() => onAuthStateChanged(auth, async u => {
     setUser(u)
     if (u) {
-      try {
-        const addr = await getWalletAddress(u.uid)
-        const bal  = await getEGTBalance(u.uid)
-        setWalletAddress(addr)
-        setEgtBalance(bal)
-      } catch {
-        // Firestore read failed — use defaults, don't crash
-      }
+      const addr = await getWalletAddress(u.uid)
+      const bal  = await getEGTBalance(u.uid)
+      setWalletAddress(addr)
+      setEgtBalance(bal)
     }
   }), [])
 
