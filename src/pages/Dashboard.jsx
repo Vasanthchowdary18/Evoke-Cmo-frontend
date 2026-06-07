@@ -60,10 +60,12 @@ import {
 import Navbar from "../components/Navbar.jsx";
 import OnboardingModal from "../components/OnboardingModal.jsx";
 import ProductLaunchModal from "../components/ProductLaunchModal.jsx";
+import WalletConnectModal from "../components/WalletConnectModal.jsx";
+import TierSelectModal from "../components/TierSelectModal.jsx";
 import { auth, db } from "../firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, updateDoc } from "firebase/firestore";
-import { getOrCreateUser, getTokenBalance } from "../services/userService";
+import { getOrCreateUser, getTokenBalance, getWalletAddress, getEGTBalance } from "../services/userService";
 import { DAY_WEBHOOK_URL, EGT_TIERS } from "../config.js";
 
 const campaignCards = [
@@ -856,6 +858,12 @@ export default function Dashboard() {
   const [showNoAccounts, setShowNoAccounts] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showProductModal, setShowProductModal] = useState(false);
+  // EGT wallet + tier state
+  const [walletAddress, setWalletAddress] = useState('');
+  const [egtBalance, setEgtBalance]       = useState(0);
+  const [showWallet, setShowWallet]       = useState(false);
+  const [showTier, setShowTier]           = useState(false);
+  const [pendingType, setPendingType]     = useState(null);
   const egtTierId = sessionStorage.getItem('egtTier') || null;
   const egtTier   = egtTierId ? EGT_TIERS[egtTierId] : null;
 
@@ -872,6 +880,13 @@ export default function Dashboard() {
       if (data.onboardingData) setOnboardingData(data.onboardingData);
       setAuthReady(true);
       if (!data.onboardingComplete) setShowOnboarding(true);
+      // Load EGT wallet info
+      try {
+        const addr = await getWalletAddress(u.uid);
+        const bal  = await getEGTBalance(u.uid);
+        setWalletAddress(addr);
+        setEgtBalance(bal);
+      } catch { /* ignore — defaults to empty */ }
     });
     return unsub;
   }, [navigate]);
@@ -932,11 +947,25 @@ export default function Dashboard() {
   }, []);
 
   const handleLaunch = (type) => {
-    // EGT tier gate — only allow if agent is in the selected tier
-    if (egtTier && !egtTier.agents.includes(type)) {
-      alert(`This agent requires a higher EGT tier. Go back to the Agents Hub and select Pro or Max.`)
+    // Step 1: EGT wallet gate — must connect wallet first
+    if (!walletAddress) {
+      setPendingType(type);
+      setShowWallet(true);
       return;
     }
+    // Step 2: EGT tier gate — must select tier
+    if (!egtTierId) {
+      setPendingType(type);
+      setShowTier(true);
+      return;
+    }
+    // Step 3: Check if this agent is unlocked in current tier
+    if (egtTier && !egtTier.agents.includes(type)) {
+      setPendingType(type);
+      setShowTier(true);
+      return;
+    }
+    // Step 4: Normal campaign token check
     if (tokenBalance !== null && tokenBalance < 1) {
       setShowNoTokens(true);
       return;
@@ -950,6 +979,26 @@ export default function Dashboard() {
       return;
     }
     navigate(`/campaign/${type}`);
+  };
+
+  const handleWalletConnected = (addr, bal) => {
+    setWalletAddress(addr);
+    setEgtBalance(bal);
+    setShowWallet(false);
+    // After wallet connected, show tier selection
+    if (bal > 0) setShowTier(true);
+  };
+
+  const handleTierSelected = (tierId, remainingBal) => {
+    setEgtBalance(remainingBal);
+    setShowTier(false);
+    // Now launch the pending campaign
+    if (pendingType) {
+      const type = pendingType;
+      setPendingType(null);
+      if (type === 'product') { setShowProductModal(true); return; }
+      navigate(`/campaign/${type}`);
+    }
   };
 
   const viewCampaign = (c) => {
@@ -1004,6 +1053,21 @@ export default function Dashboard() {
           <OnboardingModal
             user={user}
             onComplete={() => setShowOnboarding(false)}
+          />
+        )}
+        {showWallet && user && (
+          <WalletConnectModal
+            user={user}
+            onConnected={handleWalletConnected}
+            onClose={() => setShowWallet(false)}
+          />
+        )}
+        {showTier && user && (
+          <TierSelectModal
+            user={user}
+            egtBalance={egtBalance}
+            onTierSelected={handleTierSelected}
+            onClose={() => setShowTier(false)}
           />
         )}
         {showNoTokens && (
