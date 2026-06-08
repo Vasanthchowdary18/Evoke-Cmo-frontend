@@ -89,7 +89,7 @@ const AGENTS = [
 
 const PLANS = [
   {
-    key: 'assistant', label: 'ASSISTANT', popular: false,
+    key: 'base', label: 'BASE', popular: false,
     tagline: 'For solo marketers – In-house, founders, or freelancers',
     monthly: 299, annual: 239,
     brands: '3 brands', seats: 'Personal workspace',
@@ -100,7 +100,7 @@ const PLANS = [
     cta: 'Start creating', ctaDark: false,
   },
   {
-    key: 'manager', label: 'MANAGER', popular: true,
+    key: 'pro', label: 'PRO', popular: true,
     tagline: 'For teams ready to go autonomous',
     note: 'vs. a marketing manager at $7–10k/mo',
     monthly: 799, annual: 639,
@@ -108,11 +108,11 @@ const PLANS = [
     credits: '5,000 credits/month',
     breakdown: ['~2,500 images', '~200 videos', '~1,000 blog posts, emails or ad copies'],
     perfectFor: ['Startup teams of 2–5 running growth', 'Agencies managing up to 10 client brands', 'Growing e-commerce and SaaS teams'],
-    features: ['Everything in Assistant', 'Autonomous Mode – All agent runs campaigns end-to-end', 'Approval queue with brand guardrails', 'Customer segments & targeting', 'Premium AI models', 'Shared team library & templates', 'Multi brand voice management', 'Workflow automations', 'Priority support'],
+    features: ['Everything in Base', 'Autonomous Mode – All agent runs campaigns end-to-end', 'Approval queue with brand guardrails', 'Customer segments & targeting', 'Premium AI models', 'Shared team library & templates', 'Multi brand voice management', 'Workflow automations', 'Priority support'],
     cta: 'Go autonomous', ctaDark: true,
   },
   {
-    key: 'cmo', label: 'CMO', popular: false,
+    key: 'max', label: 'MAX', popular: false,
     tagline: 'For companies scaling to millions',
     note: 'vs. a marketing CMO at $15–30k/mo',
     monthly: 1499, annual: 1199,
@@ -120,7 +120,7 @@ const PLANS = [
     credits: '10,000 credits/month',
     breakdown: ['~5,000 images', '~400 videos', '~2,000 blog posts, emails or ad copies'],
     perfectFor: ['Scale-up marketing departments', 'Mid-market brands running multi-channel', 'Agencies with multiple premium clients'],
-    features: ['Everything in Manager', 'Data Warehouse (ClickHouse, setup included)', 'Customer Intelligence – AI powered segmentation', 'Bring your own API keys (BYOK)', 'Advanced reasoning models', 'Auto publish with confidence tiers', 'Dedicated success manager', 'Advanced analytics & attribution', 'Integration level customization'],
+    features: ['Everything in Pro', 'Data Warehouse (ClickHouse, setup included)', 'Customer Intelligence – AI powered segmentation', 'Bring your own API keys (BYOK)', 'Advanced reasoning models', 'Auto publish with confidence tiers', 'Dedicated success manager', 'Advanced analytics & attribution', 'Integration level customization'],
     cta: 'Scale marketing', ctaDark: false,
   },
   {
@@ -132,7 +132,7 @@ const PLANS = [
     credits: 'Custom allocation',
     breakdown: ['Negotiated volume', 'Dedicated infrastructure', 'SLAs & uptime commitments'],
     perfectFor: ['In-house marketing teams of 20+', 'Multi-brand holding companies', 'Regulated industries with compliance needs'],
-    features: ['Everything in CMO', 'SSO / SAML authentication', 'SOC 2 artifacts & security review', 'Named CSM + executive sponsor', '99.9% SLA with uptime credits', 'Custom integrations & white glove onboarding', 'Priority feature requests', 'Dedicated infrastructure options', 'MSA, DPA, and procurement support'],
+    features: ['Everything in Max', 'SSO / SAML authentication', 'SOC 2 artifacts & security review', 'Named CSM + executive sponsor', '99.9% SLA with uptime credits', 'Custom integrations & white glove onboarding', 'Priority feature requests', 'Dedicated infrastructure options', 'MSA, DPA, and procurement support'],
     cta: 'Talk to sales', ctaDark: true,
   },
 ]
