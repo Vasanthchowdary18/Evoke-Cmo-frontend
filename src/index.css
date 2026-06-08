@@ -320,4 +320,28 @@ body {
   .egt-coin-flip {
     animation: none;
   }
+
+  /* Agent hub grid → 1 column on mobile */
+  .agents-hub-grid { grid-template-columns: 1fr !important; }
+
+  /* Connect accounts */
+  .connect-platform-row {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+  .connect-platform-btn { width: 100% !important; justify-content: center !important; }
+
+  /* Pricing comparison */
+  .compare-grid { grid-template-columns: 1fr !important; }
+
+  /* Logo grid rows */
+  .logo-grid-row { flex-wrap: wrap !important; }
+  .logo-grid-row > div { flex: 0 0 33.33% !important; border-bottom: 1px solid rgba(255,255,255,0.05) !important; }
+}
+
+/* ── Small mobile ── */
+@media (max-width: 400px) {
+  .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  .csuite-grid { grid-template-columns: 1fr !important; }
 }

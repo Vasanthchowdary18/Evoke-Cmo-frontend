@@ -21,6 +21,34 @@ import ProductDescription from './pages/ProductDescription.jsx'
 import ImageToolPage from './pages/ImageToolPage.jsx'
 import Chatbot from './components/Chatbot.jsx'
 
+// Handles token returned from accounts.evokemarketplace.com after login
+function EvokeAuthHandler() {
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const token  = params.get('token') || params.get('customToken') ||
+                   params.get('access_token') || params.get('auth_token')
+    if (!token) return
+
+    // Clean token from URL immediately
+    window.history.replaceState({}, '', window.location.pathname)
+
+    signInWithCustomToken(auth, token)
+      .then(async (cred) => {
+        await getOrCreateUser(cred.user.uid, cred.user.displayName, cred.user.email)
+        navigate('/agents-hub')
+      })
+      .catch(() => {
+        // Token format not recognised — user may already be signed in via shared session
+        // Just navigate to agents-hub and let Firebase auth state decide
+        navigate('/agents-hub')
+      })
+  }, [navigate])
+
+  return null
+}
+
 export default function App() {
   return (
     <BrowserRouter>
