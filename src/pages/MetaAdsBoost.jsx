@@ -8,8 +8,7 @@ import {
   ChevronDown, ChevronUp, ExternalLink, RefreshCw, X,
 } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
-import { auth } from '../firebase'
-import { onAuthStateChanged } from 'firebase/auth'
+import { useRequireAuth } from '../hooks/useRequireAuth'
 import { META_API_BASE } from '../config.js'
 
 /* ─── colour tokens (matches Landing.jsx / Navbar.jsx) ─── */
@@ -107,7 +106,7 @@ function StatusChip({ ok, label }) {
 
 export default function MetaAdsBoost() {
   const navigate  = useNavigate()
-  const [user, setUser] = useState(null)
+  const { user } = useRequireAuth()
 
   /* ── connection state ── */
   const [metaConn,    setMetaConn]    = useState(null)   // full meta_ads connection object
@@ -138,11 +137,6 @@ export default function MetaAdsBoost() {
 
   /* ── advanced toggle ── */
   const [showAdvanced, setShowAdvanced] = useState(false)
-
-  /* ── auth ── */
-  useEffect(() => {
-    return onAuthStateChanged(auth, u => setUser(u))
-  }, [])
 
   /* ── load connection status ── */
   const loadConnections = useCallback(async (uid) => {

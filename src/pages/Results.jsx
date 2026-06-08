@@ -9,7 +9,8 @@ import {
   Pencil, X, Instagram
 } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
-import { auth } from '../firebase'
+import { getEvokeUserProfile } from '../lib/session'
+import { profileToUser } from '../lib/authUtils'
 import { deductToken } from '../services/userService'
 import { WEBHOOK_URL, DAY_WEBHOOK_URL } from '../config.js'
 
@@ -504,8 +505,8 @@ export default function Results() {
       if (res.ok) {
         setPostingStatus('success')
         sessionStorage.setItem('webhookStatus', 'success')
-        const user = auth.currentUser
-        if (user) { try { await deductToken(user.uid) } catch {} }
+        const ssoUser = profileToUser(getEvokeUserProfile())
+        if (ssoUser) { try { await deductToken(ssoUser.uid) } catch {} }
 
         // ── Save to campaign history ──
         try {

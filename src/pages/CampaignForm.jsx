@@ -22,7 +22,8 @@ import {
   Film,
 } from "lucide-react";
 import Navbar from "../components/Navbar.jsx";
-import { auth } from "../firebase";
+import { getEvokeUserProfile } from "../lib/session";
+import { profileToUser } from "../lib/authUtils";
 import { getUserData } from "../services/userService";
 
 const CLOUDINARY_CLOUD = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "dxbn3vyig";
@@ -1388,7 +1389,7 @@ export default function CampaignForm() {
       } catch (_) {}
 
       // ── Attach user social credentials + CMO profile from Firestore ──
-      const currentUser = auth.currentUser;
+      const currentUser = profileToUser(getEvokeUserProfile());
       if (currentUser) {
         const userData = await getUserData(currentUser.uid);
 

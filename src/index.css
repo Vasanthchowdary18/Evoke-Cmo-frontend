@@ -267,3 +267,81 @@ body {
   .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
   .csuite-grid { grid-template-columns: 1fr !important; }
 }
+
+/* ── EGT wallet coin animation (mirrors evoke_events) ── */
+@keyframes egt-coin-spin-y-double-burst {
+  0% { transform: rotateY(0deg); }
+  30% { transform: rotateY(360deg); }
+  100% { transform: rotateY(360deg); }
+}
+
+.egt-coin-3d-root {
+  perspective: 140px;
+  transform-style: preserve-3d;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.egt-coin-3d-root--lg {
+  perspective: 220px;
+}
+
+.egt-coin-flip {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 9999px;
+  transform-style: preserve-3d;
+  backface-visibility: visible;
+  will-change: transform;
+  animation: egt-coin-spin-y-double-burst 3s linear infinite;
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.25);
+}
+
+.egt-coin-flip--ring-bronze {
+  box-shadow: 0 0 0 1px rgb(177 134 54 / 0.4);
+}
+
+.egt-coin-face {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 9999px;
+  object-fit: cover;
+  transform: translateZ(0.01px);
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .egt-coin-3d-root,
+  .egt-coin-3d-root--lg {
+    perspective: none;
+  }
+  .egt-coin-flip {
+    animation: none;
+  }
+
+  /* Agent hub grid → 1 column on mobile */
+  .agents-hub-grid { grid-template-columns: 1fr !important; }
+
+  /* Connect accounts */
+  .connect-platform-row {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+  .connect-platform-btn { width: 100% !important; justify-content: center !important; }
+
+  /* Pricing comparison */
+  .compare-grid { grid-template-columns: 1fr !important; }
+
+  /* Logo grid rows */
+  .logo-grid-row { flex-wrap: wrap !important; }
+  .logo-grid-row > div { flex: 0 0 33.33% !important; border-bottom: 1px solid rgba(255,255,255,0.05) !important; }
+}
+
+/* ── Small mobile ── */
+@media (max-width: 400px) {
+  .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  .csuite-grid { grid-template-columns: 1fr !important; }
+}

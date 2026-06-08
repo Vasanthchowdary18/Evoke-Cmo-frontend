@@ -60,8 +60,8 @@ import {
 import Navbar from "../components/Navbar.jsx";
 import OnboardingModal from "../components/OnboardingModal.jsx";
 import ProductLaunchModal from "../components/ProductLaunchModal.jsx";
-import { auth, db } from "../firebase";
-import { onAuthStateChanged } from "firebase/auth";
+import { db } from "../firebase";
+import { useRequireAuth } from "../hooks/useRequireAuth";
 import { doc, updateDoc } from "firebase/firestore";
 import { getOrCreateUser, getTokenBalance } from "../services/userService";
 import { DAY_WEBHOOK_URL } from "../config.js";
@@ -847,32 +847,24 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [campaigns, setCampaigns] = useState([]);
   const [showAll, setShowAll] = useState(false);
-  const [user, setUser] = useState(null);
+  const { user, authReady } = useRequireAuth();
   const [tokenBalance, setTokenBalance] = useState(null);
   const [socialAccounts, setSocialAccounts] = useState({});
   const [onboardingData, setOnboardingData] = useState(null);
-  const [authReady, setAuthReady] = useState(false);
   const [showNoTokens, setShowNoTokens] = useState(false);
   const [showNoAccounts, setShowNoAccounts] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showProductModal, setShowProductModal] = useState(false);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (u) => {
-      if (!u) {
-        navigate("/signin");
-        return;
-      }
-      setUser(u);
-      const data = await getOrCreateUser(u.uid, u.displayName, u.email);
+    if (!authReady || !user) return;
+    getOrCreateUser(user.uid, user.displayName, user.email).then((data) => {
       setTokenBalance(data.tokenBalance ?? 0);
       setSocialAccounts(data.socialAccounts || {});
       if (data.onboardingData) setOnboardingData(data.onboardingData);
-      setAuthReady(true);
       if (!data.onboardingComplete) setShowOnboarding(true);
     });
-    return unsub;
-  }, [navigate]);
+  }, [authReady, user]);
 
   useEffect(() => {
     const stored = JSON.parse(localStorage.getItem("evoke_campaigns") || "[]");
