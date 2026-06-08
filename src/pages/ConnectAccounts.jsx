@@ -22,40 +22,44 @@ import {
 } from "../services/userService";
 
 const META_APP_ID = import.meta.env.VITE_META_APP_ID || "1587533479009417";
-const FACEBOOK_REDIRECT = window.location.origin + "/connect-accounts";
+
+// Fixed redirect base — always use the Vercel deployment that handles SPA routing correctly
+const OAUTH_REDIRECT_BASE = "https://evoke-cmo-frontend.vercel.app/connect-accounts";
+
+const FACEBOOK_REDIRECT = OAUTH_REDIRECT_BASE;
 const FACEBOOK_SCOPE =
   "pages_manage_posts,pages_read_engagement,instagram_basic,instagram_content_publish,pages_show_list";
 
 const LINKEDIN_CLIENT_ID =
   import.meta.env.VITE_LINKEDIN_CLIENT_ID || "86xauinshp202e";
-const LINKEDIN_REDIRECT = window.location.origin + "/connect-accounts";
+const LINKEDIN_REDIRECT = OAUTH_REDIRECT_BASE;
 const LINKEDIN_SCOPE = "openid profile email w_member_social";
 const LINKEDIN_N8N =
   "https://vasanthchowadry18.app.n8n.cloud/webhook/linkedin-oauth";
 
 const TWITTER_CLIENT_ID =
   import.meta.env.VITE_TWITTER_CLIENT_ID || "YOUR_TWITTER_CLIENT_ID";
-const TWITTER_REDIRECT = window.location.origin + "/connect-accounts";
+const TWITTER_REDIRECT = OAUTH_REDIRECT_BASE;
 const TWITTER_SCOPE = "tweet.read tweet.write users.read offline.access";
 const TWITTER_N8N =
   "https://vasanthchowadry18.app.n8n.cloud/webhook/twitter-oauth";
 
 const GOOGLE_CLIENT_ID =
   "53481639003-g903a5274f1bcq4jvkgpeoispls7aps9.apps.googleusercontent.com";
-const GOOGLE_REDIRECT = window.location.origin + "/connect-accounts";
+const GOOGLE_REDIRECT = OAUTH_REDIRECT_BASE;
 const GOOGLE_SCOPE =
   "https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile";
 const GMAIL_N8N = "https://vasanthchowadry18.app.n8n.cloud/webhook/gmail-oauth";
 
 const TIKTOK_CLIENT_KEY = "sbawq8ejz7li1bzsf1";
-const TIKTOK_REDIRECT = window.location.origin + "/connect-accounts";
+const TIKTOK_REDIRECT = OAUTH_REDIRECT_BASE;
 const TIKTOK_SCOPE = "user.info.basic,video.upload";
 const TIKTOK_N8N =
   "https://vasanthchowadry18.app.n8n.cloud/webhook/tiktok-oauth";
 
 const EVENTBRITE_CLIENT_ID =
   import.meta.env.VITE_EVENTBRITE_CLIENT_ID || "AQUWB7RTTS3CUWMCXM";
-const EVENTBRITE_REDIRECT = window.location.origin + "/connect-accounts";
+const EVENTBRITE_REDIRECT = OAUTH_REDIRECT_BASE;
 const EVENTBRITE_N8N =
   "https://vasanthchowadry18.app.n8n.cloud/webhook/eventbrite-oauth";
 
@@ -102,7 +106,7 @@ function loadFBSDK() {
   });
 }
 
-const INSTAGRAM_REDIRECT = window.location.origin + "/connect-accounts";
+const INSTAGRAM_REDIRECT = OAUTH_REDIRECT_BASE;
 const INSTAGRAM_SCOPE = "instagram_basic,instagram_content_publish,pages_show_list,pages_read_engagement";
 
 const META_ADS_SCOPE = "ads_management,ads_read,pages_show_list,business_management";
