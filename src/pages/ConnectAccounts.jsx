@@ -613,7 +613,7 @@ export default function ConnectAccounts() {
     } finally {
       setLoad("linkedin", false);
     }
-  }, []);
+  }, [user]);
 
   const connectTwitter = async () => {
     if (!TWITTER_CLIENT_ID || TWITTER_CLIENT_ID === "YOUR_TWITTER_CLIENT_ID") {
@@ -706,7 +706,7 @@ export default function ConnectAccounts() {
     } finally {
       setLoad("twitter", false);
     }
-  }, []);
+  }, [user]);
 
   const connectGmail = () => {
     const url = new URLSearchParams({
@@ -757,7 +757,7 @@ export default function ConnectAccounts() {
     } finally {
       setLoad("gmail", false);
     }
-  }, []);
+  }, [user]);
 
   const connectTikTok = async () => {
     const verifier = genVerifier();
@@ -837,7 +837,7 @@ export default function ConnectAccounts() {
     } finally {
       setLoad("tiktok", false);
     }
-  }, []);
+  }, [user]);
 
   const connectEventbrite = () => {
     const url = new URLSearchParams({
@@ -899,7 +899,7 @@ export default function ConnectAccounts() {
     } finally {
       setLoad("eventbrite", false);
     }
-  }, []);
+  }, [user]);
 
   const saveManual = async (platform, fields) => {
     const form = manualForms[platform] || {};
