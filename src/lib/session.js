@@ -199,12 +199,18 @@ export function isLoggedIn() {
 /**
  * Build the URL to send the user to for sign-in on the accounts portal.
  * After signing in, accounts will redirect back to `redirectUrl`.
+ * On localhost, the redirect_url is omitted — CloudFront blocks localhost URLs.
  */
 export function buildAccountsLoginUrl(redirectUrl) {
   const accountsBaseUrl = (
     import.meta?.env?.VITE_ACCOUNTS_URL ||
     "https://accounts.evokemarketplace.com"
   ).replace(/\/$/, "");
+
+  if (isLocalBrowserHost()) {
+    return `${accountsBaseUrl}/login/`;
+  }
+
   const target =
     redirectUrl || (typeof window !== "undefined" ? window.location.href : "/");
   return `${accountsBaseUrl}/login/?redirect_url=${encodeURIComponent(target)}`;
