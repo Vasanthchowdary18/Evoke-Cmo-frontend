@@ -25,15 +25,14 @@ export function useEvokeSession() {
     if (bootstrapTried) return;
     let cancelled = false;
     (async () => {
-      // Refresh from marketplace when `evoke_user` exists or httpOnly session may
-      // still be valid — keeps token in sync after cross-app SSO.
       const hasCookie = Boolean(getEvokeUser()?.data?.email);
       if (hasCookie || !profile) {
-        let payload = await fetchSessionFromBackend();
+        let payload = null;
 
-        // Local dev fallback: backend session cookie isn't available on localhost
-        // (evoke_user is scoped to .evokemarketplace.com, not localhost)
-        if (!payload && import.meta.env.DEV) {
+        // In dev, skip the backend call entirely — it always fails with a CORS
+        // error from localhost and the red console noise is misleading.
+        // Go straight to the hardcoded dev session.
+        if (import.meta.env.DEV) {
           payload = {
             status: "success",
             message: "Dev session",
@@ -50,6 +49,9 @@ export function useEvokeSession() {
               // No token field — cookie uses 7-day fallback max-age
             },
           };
+        } else {
+          // Production: refresh session from backend (SSO cross-domain)
+          payload = await fetchSessionFromBackend();
         }
 
         if (!cancelled && payload) {
