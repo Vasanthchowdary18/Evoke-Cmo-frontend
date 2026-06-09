@@ -421,6 +421,64 @@ export default function Landing() {
       </section>
 
       {/* ══════════════════════════════════════════════════
+          CMO WORKFLOW PIPELINE
+      ══════════════════════════════════════════════════ */}
+      <section style={{padding:'80px 40px',background:'#0a0908',overflow:'hidden'}}>
+        <div style={{maxWidth:1200,margin:'0 auto'}}>
+          <FadeIn style={{textAlign:'center',marginBottom:52}}>
+            <SBadge>The CMO Framework</SBadge>
+            <h2 style={{fontSize:'clamp(20px,3vw,38px)',fontWeight:800,letterSpacing:'-0.03em',lineHeight:1.2,fontFamily:"'Syne','Inter',sans-serif",color:TEXT,marginBottom:12}}>
+              From Objectives to <span style={goldGrad}>Optimization</span>
+            </h2>
+            <p style={{fontSize:15,color:TEXT2,maxWidth:500,margin:'0 auto',lineHeight:1.65}}>
+              Every EVOX engagement follows this proven C-suite framework — ensuring each dollar drives measurable outcomes.
+            </p>
+          </FadeIn>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:0,position:'relative'}}>
+            <div style={{position:'absolute',top:38,left:'8%',right:'8%',height:2,background:`linear-gradient(90deg,transparent,${GBORDER},${GOLD},${GBORDER},transparent)`,zIndex:0}}/>
+            {WORKFLOW.map((step,i)=>(
+              <FadeIn key={step.label} delay={i*0.08}>
+                <div style={{display:'flex',flexDirection:'column',alignItems:'center',textAlign:'center',padding:'0 6px',position:'relative',zIndex:1}}>
+                  <div style={{width:76,height:76,borderRadius:'50%',background:i===0?`linear-gradient(135deg,${GOLD},#b8803a)`:CARD,border:`2px solid ${i===0?GOLD:GBORDER}`,display:'flex',alignItems:'center',justifyContent:'center',color:i===0?'#0e0c09':GOLD,marginBottom:14,boxShadow:i===0?`0 0 24px rgba(200,151,62,0.3)`:'none'}}>{step.icon}</div>
+                  <div style={{fontSize:11,fontWeight:800,color:TEXT,letterSpacing:'0.06em',textTransform:'uppercase',marginBottom:5}}>{step.label}</div>
+                  <div style={{fontSize:11,color:TEXT3,lineHeight:1.5}}>{step.desc}</div>
+                  {i<WORKFLOW.length-1&&<div style={{position:'absolute',top:28,right:-10,zIndex:2,color:GOLD,fontSize:18,fontWeight:900}}>›</div>}
+                </div>
+              </FadeIn>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════
+          VIDEO
+      ══════════════════════════════════════════════════ */}
+      <section style={{padding:'80px 40px',background:BG}}>
+        <div style={{maxWidth:900,margin:'0 auto'}}>
+          <FadeIn style={{textAlign:'center',marginBottom:40}}>
+            <SBadge>Product Overview</SBadge>
+            <h2 style={{fontSize:'clamp(20px,3vw,38px)',fontWeight:800,letterSpacing:'-0.03em',lineHeight:1.2,fontFamily:"'Syne','Inter',sans-serif",color:TEXT,marginBottom:12}}>
+              See EVOX <span style={goldGrad}>in Action</span>
+            </h2>
+            <p style={{fontSize:15,color:TEXT2,maxWidth:460,margin:'0 auto',lineHeight:1.65}}>
+              Watch how EVOX transforms brand inputs into a complete multi-channel marketing engine — in minutes.
+            </p>
+          </FadeIn>
+          <FadeIn delay={0.1}>
+            <div style={{position:'relative',borderRadius:20,overflow:'hidden',border:`1px solid ${GBORDER}`,boxShadow:'0 0 60px rgba(200,151,62,0.1)',aspectRatio:'16/9',background:'#111008',display:'flex',alignItems:'center',justifyContent:'center'}}>
+              <div style={{position:'absolute',inset:0,background:'linear-gradient(135deg,#1c1a13 0%,#0e0c09 100%)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:12}}>
+                <div style={{fontSize:'clamp(18px,3vw,36px)',fontWeight:800,fontFamily:"'Syne','Inter',sans-serif",...goldGrad,letterSpacing:'-0.03em'}}>EVOX C-Suite Platform</div>
+                <div style={{fontSize:13,color:TEXT3}}>Product walkthrough — coming soon</div>
+              </div>
+              <div style={{position:'relative',zIndex:2,width:72,height:72,borderRadius:'50%',background:'linear-gradient(135deg,#d4a853,#b8803a)',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 0 40px rgba(200,151,62,0.4)'}}>
+                <Play size={26} color="#0e0c09" fill="#0e0c09"/>
+              </div>
+            </div>
+          </FadeIn>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════
           THE SHIFT
       ══════════════════════════════════════════════════ */}
       <section style={{padding:'56px 40px',background:'#0a0908',position:'relative',overflow:'hidden'}}>
@@ -800,74 +858,6 @@ export default function Landing() {
               </FadeIn>
             ))}
           </div>
-        </div>
-      </section>
-
-
-      {/* ══════════════════════════════════════════════════
-          CMO WORKFLOW PIPELINE
-      ══════════════════════════════════════════════════ */}
-      <section style={{padding:'80px 40px',background:'#0a0908',overflow:'hidden'}}>
-        <div style={{maxWidth:1200,margin:'0 auto'}}>
-          <FadeIn style={{textAlign:'center',marginBottom:52}}>
-            <SBadge>The CMO Framework</SBadge>
-            <h2 style={{fontSize:'clamp(20px,3vw,38px)',fontWeight:800,letterSpacing:'-0.03em',lineHeight:1.2,fontFamily:"'Syne','Inter',sans-serif",color:TEXT,marginBottom:12}}>
-              From Objectives to <span style={goldGrad}>Optimization</span>
-            </h2>
-            <p style={{fontSize:15,color:TEXT2,maxWidth:500,margin:'0 auto',lineHeight:1.65}}>
-              Every EVOX engagement follows this proven C-suite framework — ensuring each dollar drives measurable outcomes.
-            </p>
-          </FadeIn>
-
-          <div style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:0,position:'relative'}}>
-            {/* connector line */}
-            <div style={{position:'absolute',top:38,left:'8%',right:'8%',height:2,background:`linear-gradient(90deg,transparent,${GBORDER},${GOLD},${GBORDER},transparent)`,zIndex:0}}/>
-            {WORKFLOW.map((step,i)=>(
-              <FadeIn key={step.label} delay={i*0.08}>
-                <div style={{display:'flex',flexDirection:'column',alignItems:'center',textAlign:'center',padding:'0 6px',position:'relative',zIndex:1}}>
-                  <div style={{
-                    width:76,height:76,borderRadius:'50%',
-                    background:i===0?`linear-gradient(135deg,${GOLD},#b8803a)`:CARD,
-                    border:`2px solid ${i===0?GOLD:GBORDER}`,
-                    display:'flex',alignItems:'center',justifyContent:'center',
-                    color:i===0?'#0e0c09':GOLD,marginBottom:14,
-                    boxShadow:i===0?`0 0 24px rgba(200,151,62,0.3)`:'none',
-                  }}>{step.icon}</div>
-                  <div style={{fontSize:11,fontWeight:800,color:TEXT,letterSpacing:'0.06em',textTransform:'uppercase',marginBottom:5}}>{step.label}</div>
-                  <div style={{fontSize:11,color:TEXT3,lineHeight:1.5}}>{step.desc}</div>
-                  {i<WORKFLOW.length-1&&<div style={{position:'absolute',top:28,right:-10,zIndex:2,color:GOLD,fontSize:18,fontWeight:900}}>›</div>}
-                </div>
-              </FadeIn>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════════════════
-          VIDEO
-      ══════════════════════════════════════════════════ */}
-      <section style={{padding:'80px 40px',background:BG}}>
-        <div style={{maxWidth:900,margin:'0 auto'}}>
-          <FadeIn style={{textAlign:'center',marginBottom:40}}>
-            <SBadge>Product Overview</SBadge>
-            <h2 style={{fontSize:'clamp(20px,3vw,38px)',fontWeight:800,letterSpacing:'-0.03em',lineHeight:1.2,fontFamily:"'Syne','Inter',sans-serif",color:TEXT,marginBottom:12}}>
-              See EVOX <span style={goldGrad}>in Action</span>
-            </h2>
-            <p style={{fontSize:15,color:TEXT2,maxWidth:460,margin:'0 auto',lineHeight:1.65}}>
-              Watch how EVOX transforms brand inputs into a complete multi-channel marketing engine — in minutes.
-            </p>
-          </FadeIn>
-          <FadeIn delay={0.1}>
-            <div style={{position:'relative',borderRadius:20,overflow:'hidden',border:`1px solid ${GBORDER}`,boxShadow:'0 0 60px rgba(200,151,62,0.1)',aspectRatio:'16/9',background:'#111008',display:'flex',alignItems:'center',justifyContent:'center'}}>
-              <div style={{position:'absolute',inset:0,background:'linear-gradient(135deg,#1c1a13 0%,#0e0c09 100%)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:12}}>
-                <div style={{fontSize:'clamp(18px,3vw,36px)',fontWeight:800,fontFamily:"'Syne','Inter',sans-serif",...goldGrad,letterSpacing:'-0.03em'}}>EVOX C-Suite Platform</div>
-                <div style={{fontSize:13,color:TEXT3}}>Product walkthrough — coming soon</div>
-              </div>
-              <div style={{position:'relative',zIndex:2,width:72,height:72,borderRadius:'50%',background:'linear-gradient(135deg,#d4a853,#b8803a)',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 0 40px rgba(200,151,62,0.4)'}}>
-                <Play size={26} color="#0e0c09" fill="#0e0c09"/>
-              </div>
-            </div>
-          </FadeIn>
         </div>
       </section>
 
