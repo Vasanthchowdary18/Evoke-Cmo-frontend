@@ -306,6 +306,65 @@ export default function Landing() {
       </section>
 
       {/* ══════════════════════════════════════════════════
+          CMO WORKFLOW PIPELINE
+      ══════════════════════════════════════════════════ */}
+      <section style={{padding:'80px 40px',background:'#0a0908',overflow:'hidden'}}>
+        <div style={{maxWidth:1200,margin:'0 auto'}}>
+          <FadeIn style={{textAlign:'center',marginBottom:52}}>
+            <SBadge>The CMO Framework</SBadge>
+            <h2 style={{fontSize:'clamp(20px,3vw,38px)',fontWeight:800,letterSpacing:'-0.03em',lineHeight:1.2,fontFamily:"'Syne','Inter',sans-serif",color:TEXT,marginBottom:12}}>
+              From Objectives to <span style={goldGrad}>Optimization</span>
+            </h2>
+            <p style={{fontSize:15,color:TEXT2,maxWidth:500,margin:'0 auto',lineHeight:1.65}}>
+              Every EVOX engagement follows this proven C-suite framework — ensuring each dollar drives measurable outcomes.
+            </p>
+          </FadeIn>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:0,position:'relative'}}>
+            <div style={{position:'absolute',top:38,left:'8%',right:'8%',height:2,background:`linear-gradient(90deg,transparent,${GBORDER},${GOLD},${GBORDER},transparent)`,zIndex:0}}/>
+            {WORKFLOW.map((step,i)=>(
+              <FadeIn key={step.label} delay={i*0.08}>
+                <div style={{display:'flex',flexDirection:'column',alignItems:'center',textAlign:'center',padding:'0 6px',position:'relative',zIndex:1}}>
+                  <div style={{width:76,height:76,borderRadius:'50%',background:i===0?`linear-gradient(135deg,${GOLD},#b8803a)`:CARD,border:`2px solid ${i===0?GOLD:GBORDER}`,display:'flex',alignItems:'center',justifyContent:'center',color:i===0?'#0e0c09':GOLD,marginBottom:14,boxShadow:i===0?`0 0 24px rgba(200,151,62,0.3)`:'none'}}>{step.icon}</div>
+                  <div style={{fontSize:11,fontWeight:800,color:TEXT,letterSpacing:'0.06em',textTransform:'uppercase',marginBottom:5}}>{step.label}</div>
+                  <div style={{fontSize:11,color:TEXT3,lineHeight:1.5}}>{step.desc}</div>
+                  {i<WORKFLOW.length-1&&<div style={{position:'absolute',top:28,right:-10,zIndex:2,color:GOLD,fontSize:18,fontWeight:900}}>›</div>}
+                </div>
+              </FadeIn>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════
+          VIDEO
+      ══════════════════════════════════════════════════ */}
+      <section style={{padding:'80px 40px',background:BG}}>
+        <div style={{maxWidth:900,margin:'0 auto'}}>
+          <FadeIn style={{textAlign:'center',marginBottom:40}}>
+            <SBadge>Product Overview</SBadge>
+            <h2 style={{fontSize:'clamp(20px,3vw,38px)',fontWeight:800,letterSpacing:'-0.03em',lineHeight:1.2,fontFamily:"'Syne','Inter',sans-serif",color:TEXT,marginBottom:12}}>
+              See EVOX <span style={goldGrad}>in Action</span>
+            </h2>
+            <p style={{fontSize:15,color:TEXT2,maxWidth:460,margin:'0 auto',lineHeight:1.65}}>
+              Watch how EVOX transforms brand inputs into a complete multi-channel marketing engine — in minutes.
+            </p>
+          </FadeIn>
+          <FadeIn delay={0.1}>
+            <div style={{position:'relative',borderRadius:20,overflow:'hidden',border:`1px solid ${GBORDER}`,boxShadow:'0 0 60px rgba(200,151,62,0.1)',aspectRatio:'16/9',background:'#111008',display:'flex',alignItems:'center',justifyContent:'center'}}>
+              <div style={{position:'absolute',inset:0,background:'linear-gradient(135deg,#1c1a13 0%,#0e0c09 100%)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:12}}>
+                <div style={{fontSize:'clamp(18px,3vw,36px)',fontWeight:800,fontFamily:"'Syne','Inter',sans-serif",...goldGrad,letterSpacing:'-0.03em'}}>EVOX C-Suite Platform</div>
+                <div style={{fontSize:13,color:TEXT3}}>Product walkthrough — coming soon</div>
+              </div>
+              <div style={{position:'relative',zIndex:2,width:72,height:72,borderRadius:'50%',background:'linear-gradient(135deg,#d4a853,#b8803a)',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 0 40px rgba(200,151,62,0.4)'}}>
+                <Play size={26} color="#0e0c09" fill="#0e0c09"/>
+              </div>
+            </div>
+          </FadeIn>
+        </div>
+      </section>
+
+
+      {/* ══════════════════════════════════════════════════
           AI C-SUITE AGENTS — directly below Hero
       ══════════════════════════════════════════════════ */}
       <section id="agents" style={{padding:'56px 40px',background:'#0a0908',position:'relative',overflow:'hidden'}}>
@@ -421,64 +480,6 @@ export default function Landing() {
       </section>
 
       {/* ══════════════════════════════════════════════════
-          CMO WORKFLOW PIPELINE
-      ══════════════════════════════════════════════════ */}
-      <section style={{padding:'80px 40px',background:'#0a0908',overflow:'hidden'}}>
-        <div style={{maxWidth:1200,margin:'0 auto'}}>
-          <FadeIn style={{textAlign:'center',marginBottom:52}}>
-            <SBadge>The CMO Framework</SBadge>
-            <h2 style={{fontSize:'clamp(20px,3vw,38px)',fontWeight:800,letterSpacing:'-0.03em',lineHeight:1.2,fontFamily:"'Syne','Inter',sans-serif",color:TEXT,marginBottom:12}}>
-              From Objectives to <span style={goldGrad}>Optimization</span>
-            </h2>
-            <p style={{fontSize:15,color:TEXT2,maxWidth:500,margin:'0 auto',lineHeight:1.65}}>
-              Every EVOX engagement follows this proven C-suite framework — ensuring each dollar drives measurable outcomes.
-            </p>
-          </FadeIn>
-          <div style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:0,position:'relative'}}>
-            <div style={{position:'absolute',top:38,left:'8%',right:'8%',height:2,background:`linear-gradient(90deg,transparent,${GBORDER},${GOLD},${GBORDER},transparent)`,zIndex:0}}/>
-            {WORKFLOW.map((step,i)=>(
-              <FadeIn key={step.label} delay={i*0.08}>
-                <div style={{display:'flex',flexDirection:'column',alignItems:'center',textAlign:'center',padding:'0 6px',position:'relative',zIndex:1}}>
-                  <div style={{width:76,height:76,borderRadius:'50%',background:i===0?`linear-gradient(135deg,${GOLD},#b8803a)`:CARD,border:`2px solid ${i===0?GOLD:GBORDER}`,display:'flex',alignItems:'center',justifyContent:'center',color:i===0?'#0e0c09':GOLD,marginBottom:14,boxShadow:i===0?`0 0 24px rgba(200,151,62,0.3)`:'none'}}>{step.icon}</div>
-                  <div style={{fontSize:11,fontWeight:800,color:TEXT,letterSpacing:'0.06em',textTransform:'uppercase',marginBottom:5}}>{step.label}</div>
-                  <div style={{fontSize:11,color:TEXT3,lineHeight:1.5}}>{step.desc}</div>
-                  {i<WORKFLOW.length-1&&<div style={{position:'absolute',top:28,right:-10,zIndex:2,color:GOLD,fontSize:18,fontWeight:900}}>›</div>}
-                </div>
-              </FadeIn>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════════════════
-          VIDEO
-      ══════════════════════════════════════════════════ */}
-      <section style={{padding:'80px 40px',background:BG}}>
-        <div style={{maxWidth:900,margin:'0 auto'}}>
-          <FadeIn style={{textAlign:'center',marginBottom:40}}>
-            <SBadge>Product Overview</SBadge>
-            <h2 style={{fontSize:'clamp(20px,3vw,38px)',fontWeight:800,letterSpacing:'-0.03em',lineHeight:1.2,fontFamily:"'Syne','Inter',sans-serif",color:TEXT,marginBottom:12}}>
-              See EVOX <span style={goldGrad}>in Action</span>
-            </h2>
-            <p style={{fontSize:15,color:TEXT2,maxWidth:460,margin:'0 auto',lineHeight:1.65}}>
-              Watch how EVOX transforms brand inputs into a complete multi-channel marketing engine — in minutes.
-            </p>
-          </FadeIn>
-          <FadeIn delay={0.1}>
-            <div style={{position:'relative',borderRadius:20,overflow:'hidden',border:`1px solid ${GBORDER}`,boxShadow:'0 0 60px rgba(200,151,62,0.1)',aspectRatio:'16/9',background:'#111008',display:'flex',alignItems:'center',justifyContent:'center'}}>
-              <div style={{position:'absolute',inset:0,background:'linear-gradient(135deg,#1c1a13 0%,#0e0c09 100%)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:12}}>
-                <div style={{fontSize:'clamp(18px,3vw,36px)',fontWeight:800,fontFamily:"'Syne','Inter',sans-serif",...goldGrad,letterSpacing:'-0.03em'}}>EVOX C-Suite Platform</div>
-                <div style={{fontSize:13,color:TEXT3}}>Product walkthrough — coming soon</div>
-              </div>
-              <div style={{position:'relative',zIndex:2,width:72,height:72,borderRadius:'50%',background:'linear-gradient(135deg,#d4a853,#b8803a)',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 0 40px rgba(200,151,62,0.4)'}}>
-                <Play size={26} color="#0e0c09" fill="#0e0c09"/>
-              </div>
-            </div>
-          </FadeIn>
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════════════════
           THE SHIFT
       ══════════════════════════════════════════════════ */}
       <section style={{padding:'56px 40px',background:'#0a0908',position:'relative',overflow:'hidden'}}>
@@ -515,224 +516,6 @@ export default function Landing() {
         </div>
       </section>
 
-
-      {/* ══════════════════════════════════════════════════
-          BLUE/PURPLE GLOW ORB  (strip_02 bottom)
-      ══════════════════════════════════════════════════ */}
-      <div style={{position:'relative',height:200,overflow:'hidden',background:BG}}>
-        <div style={{position:'absolute',bottom:-80,left:'50%',transform:'translateX(-50%)',width:700,height:280,borderRadius:'50%',background:'radial-gradient(ellipse, rgba(80,60,200,0.22) 0%, rgba(60,40,160,0.12) 40%, transparent 70%)',filter:'blur(20px)'}} />
-        <div style={{position:'absolute',bottom:-60,left:'50%',transform:'translateX(-50%)',width:500,height:200,borderRadius:'50%',background:'radial-gradient(ellipse, rgba(100,80,220,0.18) 0%, transparent 70%)',filter:'blur(8px)'}} />
-      </div>
-
-      {/* ══════════════════════════════════════════════════
-          AI C-SUITE AGENTS (moved — rendered after Hero)
-      ══════════════════════════════════════════════════ */}
-      <section id="agents" style={{padding:'96px 40px',background:'#0a0908',position:'relative',overflow:'hidden',display:'none'}}>
-        {/* glow */}
-        <div style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)',width:'60vw',height:'50vh',pointerEvents:'none',background:'radial-gradient(ellipse, rgba(200,151,62,0.05) 0%, transparent 70%)'}} />
-
-        <div style={{maxWidth:1100,margin:'0 auto',position:'relative',zIndex:1}}>
-          <FadeIn style={{textAlign:'center',marginBottom:60}}>
-            <SBadge>AI Executive Suite</SBadge>
-            <h2 style={{fontSize:'clamp(18px,2.6vw,38px)',fontWeight:800,letterSpacing:'-0.03em',lineHeight:1.2,fontFamily:"'Syne','Inter',sans-serif",color:TEXT}}>
-              Your AI <span style={goldGrad}>C-Suite Agents</span>
-            </h2>
-            <p style={{fontSize:14,color:TEXT2,maxWidth:480,margin:'12px auto 0',lineHeight:1.7}}>
-              Select an AI agent to run your executive-level business functions. Click an active agent to launch its dashboard.
-            </p>
-          </FadeIn>
-
-          <div className="csuite-grid" style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:16}}>
-            {[
-              {
-                key:'cmo',
-                label:'CMO Agent',
-                role:'Chief Marketing Officer',
-                desc:'Generate complete multi-channel marketing campaigns for events, products, and brands — deployed in seconds.',
-                icon:(
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
-                  </svg>
-                ),
-                color: GOLD,
-                active: true,
-                href: '/dashboard',
-                tags:['Campaigns','Content','Social'],
-              },
-              {
-                key:'cfo',
-                label:'CFO Agent',
-                role:'Chief Financial Officer',
-                desc:'AI-powered financial forecasting, budget planning, and ROI analysis for your marketing campaigns.',
-                icon:(
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="rgba(200,151,62,0.45)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
-                  </svg>
-                ),
-                color:'rgba(200,151,62,0.4)',
-                active: false,
-                tags:['Forecasting','Budgets','ROI'],
-              },
-              {
-                key:'cro',
-                label:'CRO Agent',
-                role:'Chief Revenue Officer',
-                desc:'Revenue growth strategy, funnel optimisation, conversion rate improvements, and sales pipeline management.',
-                icon:(
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="rgba(200,151,62,0.45)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>
-                  </svg>
-                ),
-                color:'rgba(200,151,62,0.4)',
-                active: false,
-                tags:['Revenue','Funnels','Growth'],
-              },
-              {
-                key:'cto',
-                label:'CTO Agent',
-                role:'Chief Technology Officer',
-                desc:'Technology roadmap planning, stack recommendations, and AI integration strategies for your business.',
-                icon:(
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="rgba(200,151,62,0.45)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
-                  </svg>
-                ),
-                color:'rgba(200,151,62,0.4)',
-                active: false,
-                tags:['Roadmap','Stack','AI'],
-              },
-            ].map((agent,i)=>(
-              <FadeIn key={agent.key} delay={i*0.09}>
-                <div
-                  onClick={() => agent.active && (user ? navigate(agent.href) : goSignIn())}
-                  style={{
-                    background: agent.active
-                      ? 'linear-gradient(160deg,#221d10,#1c1a13)'
-                      : 'linear-gradient(160deg,#161410,#131210)',
-                    border:`1px solid ${agent.active ? 'rgba(200,151,62,0.5)' : 'rgba(200,151,62,0.15)'}`,
-                    borderRadius:20,
-                    padding:'28px 22px',
-                    cursor: agent.active ? 'pointer' : 'default',
-                    position:'relative',
-                    opacity: agent.active ? 1 : 0.65,
-                    transition:'all 0.25s ease',
-                    boxShadow: agent.active ? '0 0 40px rgba(200,151,62,0.08)' : 'none',
-                    height:'100%',
-                  }}
-                  onMouseEnter={e=>{
-                    if(agent.active){
-                      e.currentTarget.style.transform='translateY(-5px)'
-                      e.currentTarget.style.boxShadow='0 16px 48px rgba(200,151,62,0.18)'
-                      e.currentTarget.style.borderColor='rgba(200,151,62,0.7)'
-                    }
-                  }}
-                  onMouseLeave={e=>{
-                    if(agent.active){
-                      e.currentTarget.style.transform='translateY(0)'
-                      e.currentTarget.style.boxShadow='0 0 40px rgba(200,151,62,0.08)'
-                      e.currentTarget.style.borderColor='rgba(200,151,62,0.5)'
-                    }
-                  }}
-                >
-                  {/* Coming soon badge */}
-                  {!agent.active && (
-                    <div style={{
-                      position:'absolute',top:14,right:14,
-                      padding:'3px 10px',
-                      background:'rgba(255,255,255,0.05)',
-                      border:'1px solid rgba(255,255,255,0.1)',
-                      borderRadius:100,fontSize:9,fontWeight:700,
-                      color:'rgba(240,235,224,0.35)',letterSpacing:'0.08em',
-                    }}>
-                      COMING SOON
-                    </div>
-                  )}
-
-                  {/* Icon */}
-                  <div style={{
-                    width:52,height:52,borderRadius:14,
-                    background: agent.active ? GDIM : 'rgba(200,151,62,0.05)',
-                    border:`1px solid ${agent.active ? GBORDER : 'rgba(200,151,62,0.12)'}`,
-                    display:'flex',alignItems:'center',justifyContent:'center',
-                    marginBottom:18,
-                    boxShadow: agent.active ? '0 0 16px rgba(200,151,62,0.1)' : 'none',
-                  }}>
-                    {agent.icon}
-                  </div>
-
-                  {/* Label pill */}
-                  <div style={{
-                    display:'inline-flex',alignItems:'center',gap:5,
-                    padding:'3px 10px',
-                    background: agent.active ? GDIM : 'rgba(200,151,62,0.05)',
-                    border:`1px solid ${agent.active ? GBORDER : 'rgba(200,151,62,0.12)'}`,
-                    borderRadius:100,fontSize:10,fontWeight:700,
-                    color: agent.active ? GOLD : 'rgba(200,151,62,0.4)',
-                    letterSpacing:'0.07em',marginBottom:10,
-                  }}>
-                    {agent.label}
-                  </div>
-
-                  <h3 style={{fontSize:15,fontWeight:800,color:agent.active?TEXT:'rgba(240,235,224,0.45)',marginBottom:8,letterSpacing:'-0.02em',fontFamily:"'Syne','Inter',sans-serif",lineHeight:1.25}}>
-                    {agent.role}
-                  </h3>
-                  <p style={{fontSize:12,color:TEXT2,lineHeight:1.65,marginBottom:16,opacity:agent.active?1:0.6}}>
-                    {agent.desc}
-                  </p>
-
-                  {/* Tags */}
-                  <div style={{display:'flex',flexWrap:'wrap',gap:6,marginBottom:20}}>
-                    {agent.tags.map(tag=>(
-                      <span key={tag} style={{
-                        padding:'3px 9px',
-                        background: agent.active ? 'rgba(200,151,62,0.08)' : 'rgba(255,255,255,0.03)',
-                        border:`1px solid ${agent.active ? 'rgba(200,151,62,0.2)' : 'rgba(255,255,255,0.06)'}`,
-                        borderRadius:100,fontSize:10,
-                        color: agent.active ? 'rgba(240,235,224,0.6)' : 'rgba(240,235,224,0.25)',
-                        fontWeight:500,
-                      }}>{tag}</span>
-                    ))}
-                  </div>
-
-                  {/* Launch / Coming Soon button */}
-                  {agent.active ? (
-                    <button
-                      onClick={e=>{e.stopPropagation(); user ? navigate(agent.href) : goSignIn()}}
-                      style={{
-                        width:'100%',padding:'11px',
-                        background:'linear-gradient(135deg,#d4a853,#b8803a)',
-                        border:'none',borderRadius:10,
-                        color:'#0e0c09',fontSize:13,fontWeight:700,
-                        cursor:'pointer',
-                        display:'flex',alignItems:'center',justifyContent:'center',gap:6,
-                        fontFamily:"'Inter',sans-serif",
-                        transition:'all 0.2s',
-                      }}
-                      onMouseEnter={e=>{e.currentTarget.style.boxShadow='0 6px 20px rgba(200,151,62,0.4)'}}
-                      onMouseLeave={e=>{e.currentTarget.style.boxShadow='none'}}
-                    >
-                      Launch CMO Agent
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-                    </button>
-                  ) : (
-                    <div style={{
-                      width:'100%',padding:'11px',
-                      background:'rgba(255,255,255,0.03)',
-                      border:'1px solid rgba(255,255,255,0.08)',
-                      borderRadius:10,color:'rgba(240,235,224,0.25)',
-                      fontSize:13,fontWeight:600,
-                      display:'flex',alignItems:'center',justifyContent:'center',
-                      boxSizing:'border-box',
-                    }}>
-                      Coming Soon
-                    </div>
-                  )}
-                </div>
-              </FadeIn>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* ══════════════════════════════════════════════════
           HOW IT WORKS  (strip_04, strip_05)
