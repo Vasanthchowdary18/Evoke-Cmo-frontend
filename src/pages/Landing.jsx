@@ -358,6 +358,17 @@ export default function Landing() {
     }
   }
 
+  // Navigate directly to a specific CMO agent page.
+  // If not logged in, redirect to accounts portal with the agent route as redirect_url
+  // so they land on the exact agent after signing in — not the landing page.
+  const goFreeAgent = (path) => {
+    if (user) {
+      navigate(path)
+    } else {
+      redirectToLogin(window.location.origin + path)
+    }
+  }
+
   // Open the wizard and scroll to it (used by pricing CTA)
   const openAssessment = () => {
     setWizardOpen(true)
@@ -703,11 +714,11 @@ export default function Landing() {
                   {/* Agent cards — sourced directly from freePlan.features so they always
                       match what's listed in the pricing "WHAT'S INCLUDED" section */}
                   {(()=>{
-                    // Per-index metadata: agent display name, best-for label, badge
+                    // Per-index metadata: agent display name, best-for label, badge, and deep-link path
                     const agentMeta = [
-                      { name:'Strategy Agent', best:'Best for: Defining goals',   badge:null,           bigIcon:<Target size={20}/> },
-                      { name:'Growth Agent',   best:'Best for: Getting clients',  badge:'MOST POPULAR', bigIcon:<TrendingUp size={20}/> },
-                      { name:'Content Agent',  best:'Best for: Brand building',   badge:null,           bigIcon:<Layers size={20}/> },
+                      { name:'Strategy Agent', best:'Best for: Defining goals',   badge:null,           bigIcon:<Target size={20}/>,     path:'/campaign/growth_strategy'  },
+                      { name:'Growth Agent',   best:'Best for: Getting clients',  badge:'MOST POPULAR', bigIcon:<TrendingUp size={20}/>,  path:'/cmo-terminal'              },
+                      { name:'Content Agent',  best:'Best for: Brand building',   badge:null,           bigIcon:<Layers size={20}/>,      path:'/campaign/content_calendar' },
                     ]
                     return (
                       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:14,marginBottom:24}}>
@@ -733,13 +744,13 @@ export default function Landing() {
                               <div style={{fontSize:11,fontWeight:700,color:TEXT3,textTransform:'uppercase',letterSpacing:'0.06em'}}>{f.text}</div>
                               {/* full description from PLANS data */}
                               <p style={{fontSize:12,color:TEXT2,lineHeight:1.65,margin:0,flex:1}}>{f.desc}</p>
-                              {/* CTA */}
+                              {/* CTA — deep links to the specific agent page */}
                               <button
-                                onClick={goFreeStart}
+                                onClick={()=>goFreeAgent(meta.path)}
                                 style={{width:'100%',padding:'10px 0',background:'linear-gradient(135deg,#d4a853,#b8803a)',border:'none',borderRadius:8,color:'#0e0c09',fontSize:12,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:6,transition:'all 0.2s'}}
                                 onMouseEnter={e=>{e.currentTarget.style.opacity='0.85';e.currentTarget.style.transform='translateY(-1px)'}}
                                 onMouseLeave={e=>{e.currentTarget.style.opacity='1';e.currentTarget.style.transform='translateY(0)'}}>
-                                Start with this agent <ArrowRight size={13}/>
+                                Launch {meta.name} <ArrowRight size={13}/>
                               </button>
                             </div>
                           )
