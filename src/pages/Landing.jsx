@@ -313,11 +313,12 @@ export default function Landing() {
   const { user } = useAuth()
   const navigate = useNavigate()
 
-  const [wizardOpen,    setWizardOpen]    = useState(false)
-  const [wizardStep,    setWizardStep]    = useState(0)
-  const [wizardAnswers, setWizardAnswers] = useState({})
-  const [wizardDone,    setWizardDone]    = useState(false)
-  const [expandedFeature, setExpandedFeature] = useState(null) // 'planKey-index'
+  const [wizardOpen,      setWizardOpen]      = useState(false)
+  const [wizardStep,      setWizardStep]      = useState(0)
+  const [wizardAnswers,   setWizardAnswers]   = useState({})
+  const [wizardDone,      setWizardDone]      = useState(false)
+  const [wizardPlanStep,  setWizardPlanStep]  = useState(null) // null | 'choose' | 'free-detail'
+  const [expandedFeature, setExpandedFeature] = useState(null)
 
   const handleWizardSelect = (value) => {
     const step = WIZARD_STEPS[wizardStep]
@@ -335,6 +336,8 @@ export default function Landing() {
     setWizardStep(0)
     setWizardAnswers({})
     setWizardDone(false)
+    setWizardPlanStep(null)
+    setExpandedFeature(null)
   }
 
   // Logged-in users should go straight to the dashboard (skip in dev so landing page is previewable locally)
@@ -558,10 +561,10 @@ export default function Landing() {
             )
           })()}
 
-          {wizardOpen && wizardDone && (()=>{
+          {wizardOpen && wizardDone && wizardPlanStep === null && (()=>{
             const r = getPersonalisedResult(wizardAnswers)
             return (
-              <motion.div initial={{opacity:0,scale:0.97}} animate={{opacity:1,scale:1}} transition={{duration:0.4}}
+              <motion.div key="result" initial={{opacity:0,scale:0.97}} animate={{opacity:1,scale:1}} transition={{duration:0.4}}
                 style={{background:'linear-gradient(160deg,#1c1a13,#161410)',border:`1px solid rgba(200,151,62,0.4)`,borderRadius:20,padding:'44px 40px',textAlign:'center',boxShadow:'0 0 60px rgba(200,151,62,0.08)'}}>
                 <div style={{fontSize:32,marginBottom:12}}>✅</div>
                 <div style={{fontSize:11,fontWeight:700,color:GOLD,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:10}}>Your EVOX Strategy is Ready</div>
@@ -571,22 +574,126 @@ export default function Landing() {
                 <p style={{fontSize:14,color:TEXT2,maxWidth:520,margin:'0 auto 28px',lineHeight:1.7}}>
                   Your focus on <strong style={{color:TEXT}}>{r.objective}</strong> with the challenge of <strong style={{color:TEXT}}>{r.challenge}</strong> — EVOX will activate these modules first:
                 </p>
-                <div style={{display:'flex',gap:10,justifyContent:'center',flexWrap:'wrap',marginBottom:32}}>
+                <div style={{display:'flex',gap:10,justifyContent:'center',flexWrap:'wrap',marginBottom:36}}>
                   {r.modules.map(m=>(
                     <span key={m} style={{padding:'7px 16px',background:'rgba(200,151,62,0.12)',border:`1px solid rgba(200,151,62,0.3)`,borderRadius:100,fontSize:12,fontWeight:600,color:GOLD}}>
                       ✦ {m}
                     </span>
                   ))}
                 </div>
+                <p style={{fontSize:13,color:TEXT3,marginBottom:20}}>Now choose the plan that fits your goals ↓</p>
                 <div style={{display:'flex',gap:12,justifyContent:'center',flexWrap:'wrap'}}>
-                  <button onClick={goBoard} style={{...goldPill,padding:'13px 32px'}}
+                  <button onClick={()=>setWizardPlanStep('choose')} style={{...goldPill,padding:'13px 32px'}}
                     onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 10px 28px rgba(200,151,62,0.4)'}}
                     onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none'}}>
-                    Launch EVOX Now <ArrowRight size={16}/>
+                    Choose Your Plan <ArrowRight size={16}/>
                   </button>
                   <button onClick={resetWizard} style={{...outlinePill,padding:'13px 24px',fontSize:13}}>
                     Retake Assessment
                   </button>
+                </div>
+              </motion.div>
+            )
+          })()}
+
+          {/* ── Plan chooser step ── */}
+          {wizardOpen && wizardDone && wizardPlanStep === 'choose' && (()=>{
+            const planSummary = [
+              { key:'free',      label:'FREE',      price:'$0',          tagline:'Start with AI strategy, zero cost',        badge:null,            features:['Objective & Strategy','Lead Planning','Content Framework'],     cta:'Start Free',        gold:true  },
+              { key:'package-a', label:'PACKAGE A', price:'Contact Us',  tagline:'Professional visuals + social posting',    badge:null,            features:['Everything in Free','Multi-angle Images','Ad-ready Banners'],  cta:'Get Package A',     gold:false },
+              { key:'package-b', label:'PACKAGE B', price:'Contact Us',  tagline:'Video content + 30-day calendar',          badge:'MOST POPULAR',  features:['Everything in A','Brand Story Video','360° Product Video'],   cta:'Get Package B',     gold:false },
+              { key:'package-c', label:'PACKAGE C', price:'Contact Us',  tagline:'Full paid ad deployment at scale',         badge:null,            features:['Everything in B','3D Images','Ads Manager + Deploy'],         cta:'Get Package C',     gold:false },
+            ]
+            return (
+              <motion.div key="plan-choose" initial={{opacity:0,y:16}} animate={{opacity:1,y:0}} transition={{duration:0.35}}
+                style={{background:'linear-gradient(160deg,#161410,#131210)',border:`1px solid ${GBORDER}`,borderRadius:20,padding:'36px 32px'}}>
+                <div style={{textAlign:'center',marginBottom:28}}>
+                  <div style={{fontSize:11,fontWeight:700,color:GOLD,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:8}}>Step 8 of 8 · Choose Your Plan</div>
+                  <h3 style={{fontSize:'clamp(16px,1.8vw,24px)',fontWeight:800,color:TEXT,fontFamily:"'Syne','Inter',sans-serif",marginBottom:8}}>Which plan fits you best?</h3>
+                  <p style={{fontSize:13,color:TEXT2}}>All plans include the AI strategy modules personalised to your answers.</p>
+                </div>
+                <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:12,marginBottom:20}}>
+                  {planSummary.map(p=>(
+                    <button key={p.key}
+                      onClick={()=> p.key==='free' ? setWizardPlanStep('free-detail') : window.open('mailto:hello@evokecmo.com','_blank')}
+                      style={{background:p.gold?'linear-gradient(160deg,#221d10,#1c1a13)':CARD,border:`1px solid ${p.gold?'rgba(200,151,62,0.5)':GBORDER}`,borderRadius:14,padding:'20px 16px',cursor:'pointer',textAlign:'left',transition:'all 0.2s',position:'relative'}}
+                      onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-3px)';e.currentTarget.style.boxShadow='0 8px 24px rgba(200,151,62,0.15)'}}
+                      onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none'}}>
+                      {p.badge&&<div style={{position:'absolute',top:-10,left:'50%',transform:'translateX(-50%)',background:'linear-gradient(135deg,#d4a853,#b8803a)',color:'#0e0c09',fontSize:9,fontWeight:800,padding:'3px 12px',borderRadius:100,whiteSpace:'nowrap',letterSpacing:'0.08em'}}>{p.badge}</div>}
+                      <div style={{fontSize:10,fontWeight:800,color:p.gold?GOLD:TEXT3,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:4}}>{p.label}</div>
+                      <div style={{fontSize:20,fontWeight:800,color:TEXT,fontFamily:"'Syne','Inter',sans-serif",marginBottom:4}}>{p.price}</div>
+                      <div style={{fontSize:11,color:TEXT2,marginBottom:12,lineHeight:1.5}}>{p.tagline}</div>
+                      <div style={{borderTop:`1px solid ${BORDER}`,paddingTop:10,marginBottom:14}}>
+                        {p.features.map(f=>(
+                          <div key={f} style={{display:'flex',alignItems:'center',gap:6,marginBottom:5}}>
+                            <Check size={10} color={p.gold?GOLD:TEXT3}/>
+                            <span style={{fontSize:11,color:TEXT2}}>{f}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div style={{width:'100%',padding:'9px',background:p.gold?'linear-gradient(135deg,#d4a853,#b8803a)':'rgba(255,255,255,0.06)',borderRadius:8,border:p.gold?'none':`1px solid ${BORDER}`,color:p.gold?'#0e0c09':TEXT2,fontSize:12,fontWeight:700,textAlign:'center'}}>
+                        {p.cta} {p.key==='free'&&'→'}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+                <div style={{textAlign:'center'}}>
+                  <button onClick={()=>setWizardPlanStep(null)} style={{background:'none',border:'none',color:TEXT3,cursor:'pointer',fontSize:12}}>← Back to results</button>
+                </div>
+              </motion.div>
+            )
+          })()}
+
+          {/* ── Free plan feature detail page ── */}
+          {wizardOpen && wizardDone && wizardPlanStep === 'free-detail' && (()=>{
+            const freePlan = PLANS.find(p=>p.key==='free')
+            return (
+              <motion.div key="free-detail" initial={{opacity:0,y:16}} animate={{opacity:1,y:0}} transition={{duration:0.35}}
+                style={{background:'linear-gradient(160deg,#1c1a13,#161410)',border:`1px solid rgba(200,151,62,0.4)`,borderRadius:20,padding:'40px 36px',boxShadow:'0 0 60px rgba(200,151,62,0.08)'}}>
+                {/* Header */}
+                <div style={{textAlign:'center',marginBottom:32}}>
+                  <div style={{display:'inline-flex',alignItems:'center',gap:6,padding:'4px 14px',background:'rgba(200,151,62,0.12)',border:`1px solid ${GBORDER}`,borderRadius:100,fontSize:10,fontWeight:800,color:GOLD,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:14}}>FREE PLAN</div>
+                  <h3 style={{fontSize:'clamp(18px,2vw,26px)',fontWeight:800,color:TEXT,fontFamily:"'Syne','Inter',sans-serif",marginBottom:8}}>Everything included in your Free plan</h3>
+                  <p style={{fontSize:13,color:TEXT2,maxWidth:460,margin:'0 auto',lineHeight:1.7}}>Start building your AI marketing strategy at zero cost. Here's exactly what you get — click each feature to see the full detail.</p>
+                </div>
+                {/* Feature accordion */}
+                <div style={{marginBottom:32}}>
+                  {freePlan.features.map((f,fi)=>{
+                    const fKey = `wizard-free-${fi}`
+                    const isOpen = expandedFeature === fKey
+                    return (
+                      <div key={fi} style={{marginBottom:10,borderRadius:12,border:`1px solid ${isOpen?'rgba(200,151,62,0.4)':GBORDER}`,overflow:'hidden',background:isOpen?'rgba(200,151,62,0.05)':'rgba(255,255,255,0.02)',transition:'all 0.25s'}}>
+                        <button onClick={()=>setExpandedFeature(isOpen?null:fKey)}
+                          style={{width:'100%',display:'flex',alignItems:'center',gap:12,padding:'16px 18px',background:'none',border:'none',cursor:'pointer',textAlign:'left'}}>
+                          <div style={{width:36,height:36,borderRadius:'50%',background:isOpen?'linear-gradient(135deg,#d4a853,#b8803a)':'rgba(200,151,62,0.12)',border:`1px solid ${isOpen?GOLD:GBORDER}`,display:'flex',alignItems:'center',justifyContent:'center',color:isOpen?'#0e0c09':GOLD,flexShrink:0,transition:'all 0.25s'}}>
+                            {f.icon}
+                          </div>
+                          <div style={{flex:1}}>
+                            <div style={{fontSize:14,fontWeight:700,color:isOpen?TEXT:TEXT2,marginBottom:2,transition:'color 0.2s'}}>{f.text}</div>
+                            {!isOpen&&<div style={{fontSize:11,color:TEXT3}}>Click to see what's included</div>}
+                          </div>
+                          <span style={{color:GOLD,fontSize:18,transform:isOpen?'rotate(90deg)':'rotate(0deg)',transition:'transform 0.25s',flexShrink:0}}>›</span>
+                        </button>
+                        {isOpen&&(
+                          <div style={{padding:'0 18px 18px 66px'}}>
+                            <p style={{fontSize:13,color:TEXT2,lineHeight:1.75,margin:0}}>{f.desc}</p>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+                {/* CTA */}
+                <div style={{textAlign:'center'}}>
+                  <p style={{fontSize:13,color:TEXT3,marginBottom:16}}>No credit card required · Cancel anytime</p>
+                  <div style={{display:'flex',gap:12,justifyContent:'center',flexWrap:'wrap'}}>
+                    <button onClick={goBoard} style={{...goldPill,padding:'14px 36px',fontSize:15}}
+                      onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 10px 28px rgba(200,151,62,0.4)'}}
+                      onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none'}}>
+                      Get Started Free <ArrowRight size={16}/>
+                    </button>
+                    <button onClick={()=>setWizardPlanStep('choose')} style={{...outlinePill,padding:'14px 24px',fontSize:13}}>← Back to Plans</button>
+                  </div>
                 </div>
               </motion.div>
             )
