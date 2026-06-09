@@ -1037,27 +1037,40 @@ export default function ConnectAccounts() {
             ours.
           </p>
 
-          <div
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 10,
-              marginTop: 20,
-              padding: "8px 18px",
-              background: connectedCount > 0 ? "#1b141400" : "#f8fafc",
-              border: `1px solid ${
-                connectedCount > 0
-                  ? "rgba(16,185,129,0.3)"
-                  : "rgba(245,240,232,0.15)"
-              }`,
-              borderRadius: 100,
-              fontSize: 13,
-              fontWeight: 700,
-            }}
-          >
-            <span style={{ color: connectedCount > 0 ? "#10b981" : "#94a3b8" }}>
-              {connectedCount} / {PLATFORMS.length} connected
-            </span>
+          {/* Marketing Readiness % */}
+          <div style={{ marginTop: 28, maxWidth: 520 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.55)", letterSpacing: "0.06em", textTransform: "uppercase" }}>
+                  Marketing Readiness
+                </span>
+              </div>
+              <span style={{
+                fontSize: 22, fontWeight: 900, letterSpacing: "-0.03em",
+                color: connectedCount === 0 ? "#ef4444"
+                     : connectedCount < 3   ? "#f59e0b"
+                     :                        "#10b981",
+              }}>
+                {Math.round((connectedCount / PLATFORMS.length) * 100)}%
+              </span>
+            </div>
+            {/* Progress bar */}
+            <div style={{ height: 6, background: "rgba(255,255,255,0.08)", borderRadius: 100, overflow: "hidden" }}>
+              <div style={{
+                height: "100%", borderRadius: 100,
+                width: `${Math.round((connectedCount / PLATFORMS.length) * 100)}%`,
+                background: connectedCount === 0 ? "#ef4444"
+                           : connectedCount < 3   ? "linear-gradient(90deg,#f59e0b,#d4a853)"
+                           :                        "linear-gradient(90deg,#10b981,#34d399)",
+                transition: "width 0.6s ease",
+              }} />
+            </div>
+            <div style={{ marginTop: 8, fontSize: 12, color: "rgba(255,255,255,0.35)" }}>
+              {connectedCount} of {PLATFORMS.length} platforms connected
+              {connectedCount === 0 && " — connect at least one platform to start launching campaigns"}
+              {connectedCount > 0 && connectedCount < PLATFORMS.length && ` — connect ${PLATFORMS.length - connectedCount} more to unlock full automation`}
+              {connectedCount === PLATFORMS.length && " — fully connected, all automations available"}
+            </div>
           </div>
         </motion.div>
 

@@ -18,14 +18,20 @@ export default function Navbar() {
   const navigate = useNavigate()
 
   const isApp =
-    location.pathname.startsWith('/dashboard') ||
-    location.pathname.startsWith('/campaign')  ||
-    location.pathname.startsWith('/results')   ||
-    location.pathname.startsWith('/connect')   ||
-    location.pathname.startsWith('/tokens')    ||
-    location.pathname.startsWith('/purchase')  ||
-    location.pathname.startsWith('/agent')     ||
-    location.pathname.startsWith('/cmo-terminal') ||
+    location.pathname.startsWith('/agents-hub')      ||
+    location.pathname.startsWith('/dashboard')       ||
+    location.pathname.startsWith('/campaign')        ||
+    location.pathname.startsWith('/results')         ||
+    location.pathname.startsWith('/connect')         ||
+    location.pathname.startsWith('/tokens')          ||
+    location.pathname.startsWith('/purchase')        ||
+    location.pathname.startsWith('/agent')           ||
+    location.pathname.startsWith('/products')        ||
+    location.pathname.startsWith('/product-desc')    ||
+    location.pathname.startsWith('/image-')          ||
+    location.pathname.startsWith('/meta-ads-boost')  ||
+    location.pathname.startsWith('/evox-services')   ||
+    location.pathname.startsWith('/cmo')             ||
     location.pathname.startsWith('/dashboard-legacy')
 
   useEffect(() => {
@@ -69,9 +75,10 @@ export default function Navbar() {
     { label: 'How It Works', href: '#how-it-works' },
   ]
   const appLinks = [
-    { label: 'Dashboard',  href: '/dashboard'        },
-    { label: 'Agents',     href: '/dashboard-legacy' },
-    { label: 'Connect',    href: '/connect-accounts' },
+    { label: 'Command Center',  href: '/agents-hub'       },
+    { label: 'Campaigns',       href: '/cmo'              },
+    { label: 'Creative Studio', href: '/products'         },
+    { label: 'Connect',         href: '/connect-accounts' },
   ]
   const navLinks = isApp ? appLinks : landingLinks
 

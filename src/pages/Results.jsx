@@ -555,7 +555,7 @@ export default function Results() {
 
   const handleNewCampaign = () => {
     ['campaignResult','campaignType','campaignMeta','webhookStatus','webhookPayload','campaignDays','dailySchedule'].forEach(k => sessionStorage.removeItem(k))
-    navigate('/dashboard')
+    navigate('/agents-hub')
   }
 
   if (error) {
@@ -575,7 +575,7 @@ export default function Results() {
 
     const suggestedFix = isRateLimit  ? { label: 'Wait & Retry',       action: () => navigate(-1),             icon: <RefreshCw size={14} /> }
                        : isNoAccount  ? { label: 'Connect Accounts',    action: () => navigate('/connect-accounts'), icon: <AlertCircle size={14} /> }
-                       : isNoCampaign ? { label: 'Launch New Campaign',  action: () => navigate('/cmo'),         icon: <ArrowLeft size={14} /> }
+                       : isNoCampaign ? { label: 'Launch New Campaign',  action: () => navigate('/agents-hub'),  icon: <ArrowLeft size={14} /> }
                        :                { label: 'Try Again',            action: () => navigate(-1),             icon: <RefreshCw size={14} /> }
 
     return (
