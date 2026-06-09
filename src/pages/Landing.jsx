@@ -93,9 +93,9 @@ const PLANS = [
     tagline: 'Start with strategy — no cost, no commitment',
     price: '$0', priceNote: 'No credit card required',
     features: [
-      { icon: <Target size={13}/>, text: 'Objective & Strategy Development' },
-      { icon: <Megaphone size={13}/>, text: 'New Leads / Client Retention Planning' },
-      { icon: <Layers size={13}/>, text: 'Content Creation Framework' },
+      { icon: <Target size={13}/>, text: 'Objective & Strategy Development', desc: 'EVOX CMO works with you to define clear, measurable marketing goals — whether that\'s lead generation, brand awareness, or revenue growth. It builds a full GTM strategy aligned to your business objectives.' },
+      { icon: <Megaphone size={13}/>, text: 'New Leads / Client Retention Planning', desc: 'Get a custom plan for attracting new customers and keeping existing ones engaged. Includes outreach strategies, nurture sequences, and loyalty campaign frameworks tailored to your audience.' },
+      { icon: <Layers size={13}/>, text: 'Content Creation Framework', desc: 'A structured content blueprint covering your brand voice, content pillars, post formats, and publishing cadence across all channels — so every piece of content works toward your goals.' },
     ],
     cta: 'Get Started Free', ctaDark: false,
   },
@@ -104,11 +104,11 @@ const PLANS = [
     tagline: 'Elevate your brand with professional visuals',
     price: 'Contact Us', priceNote: 'Custom pricing for your brand',
     features: [
-      { icon: <Check size={13}/>, text: 'Everything in Free' },
-      { icon: <Image size={13}/>, text: 'Image to Angles — Multi-angle product shots' },
-      { icon: <Image size={13}/>, text: 'Lifestyle Images — On-brand scene photography' },
-      { icon: <Monitor size={13}/>, text: 'Banner Creation — Ad-ready static banners' },
-      { icon: <Share2 size={13}/>, text: 'Posting on Social Media — Managed scheduling' },
+      { icon: <Check size={13}/>, text: 'Everything in Free', desc: 'Includes all deliverables from the Free plan — Objective & Strategy Development, Leads/Retention Planning, and Content Creation Framework.' },
+      { icon: <Image size={13}/>, text: 'Image to Angles — Multi-angle product shots', desc: 'Professional AI-generated multi-angle product photography. Showcase your product from every angle with studio-quality visuals — no photoshoot required.' },
+      { icon: <Image size={13}/>, text: 'Lifestyle Images — On-brand scene photography', desc: 'Contextual lifestyle images that place your product in real-world scenes. Perfect for social media, ads, and e-commerce listings that convert.' },
+      { icon: <Monitor size={13}/>, text: 'Banner Creation — Ad-ready static banners', desc: 'Conversion-optimised static banners in all standard ad sizes (300×250, 728×90, 160×600, etc.) ready to deploy on Google Display, Meta, and LinkedIn.' },
+      { icon: <Share2 size={13}/>, text: 'Posting on Social Media — Managed scheduling', desc: 'We handle the publishing — your content is scheduled and posted across Instagram, Facebook, LinkedIn, and Twitter on your behalf at the optimal times for engagement.' },
     ],
     cta: 'Choose Package A', ctaDark: false,
   },
@@ -117,10 +117,10 @@ const PLANS = [
     tagline: 'Go full motion with video & 30-day content',
     price: 'Contact Us', priceNote: 'Custom pricing for your brand',
     features: [
-      { icon: <Check size={13}/>, text: 'Everything in Package A' },
-      { icon: <Film size={13}/>, text: 'Lifestyle Video — Brand story short-form video' },
-      { icon: <Monitor size={13}/>, text: '360° Product Video — Immersive product showcase' },
-      { icon: <Layers size={13}/>, text: '30 Days Content — Full month of ready-to-post assets' },
+      { icon: <Check size={13}/>, text: 'Everything in Package A', desc: 'Includes all deliverables from Package A — strategy, product images, lifestyle images, banners, and managed social posting.' },
+      { icon: <Film size={13}/>, text: 'Lifestyle Video — Brand story short-form video', desc: 'A professionally crafted short-form video (15–60 seconds) that tells your brand story. Designed for Instagram Reels, TikTok, YouTube Shorts, and paid video ads.' },
+      { icon: <Monitor size={13}/>, text: '360° Product Video — Immersive product showcase', desc: 'A full 360-degree rotating product video that lets customers see every detail. Dramatically increases purchase confidence on e-commerce and landing pages.' },
+      { icon: <Layers size={13}/>, text: '30 Days Content — Full month of ready-to-post assets', desc: 'A complete 30-day content calendar with daily posts, captions, hashtags, and visual assets for all platforms — fully mapped to your campaign goals and brand voice.' },
     ],
     cta: 'Choose Package B', ctaDark: true,
   },
@@ -129,12 +129,12 @@ const PLANS = [
     tagline: 'Deploy paid ads at scale across FB & Google',
     price: 'Contact Us', priceNote: 'Custom pricing for your brand',
     features: [
-      { icon: <Check size={13}/>, text: 'Everything in Package B' },
-      { icon: <Layers size={13}/>, text: '3D Images — Premium product renders' },
-      { icon: <Monitor size={13}/>, text: 'Ads Creation — Conversion-optimised creatives' },
-      { icon: <Share2 size={13}/>, text: 'Ads Manager Connect — FB & Google campaigns' },
-      { icon: <Target size={13}/>, text: 'Target Audience Selection — Precision segmentation' },
-      { icon: <Rocket size={13}/>, text: 'Deploy Ads — Full campaign launch & management' },
+      { icon: <Check size={13}/>, text: 'Everything in Package B', desc: 'Includes all deliverables from Package B — strategy, images, lifestyle video, 360° product video, and 30-day content calendar.' },
+      { icon: <Layers size={13}/>, text: '3D Images — Premium product renders', desc: 'Photorealistic 3D renders of your product in any environment or configuration. No physical samples needed — ideal for pre-launch campaigns and premium brand positioning.' },
+      { icon: <Monitor size={13}/>, text: 'Ads Creation — Conversion-optimised creatives', desc: 'Complete ad creative packages including static images, animated banners, and video ads — each designed with proven CRO principles to maximise click-through and conversion rates.' },
+      { icon: <Share2 size={13}/>, text: 'Ads Manager Connect — FB & Google campaigns', desc: 'Full integration with your Facebook Ads Manager and Google Ads account. We set up campaigns, ad sets, targeting, and bidding strategies ready for launch.' },
+      { icon: <Target size={13}/>, text: 'Target Audience Selection — Precision segmentation', desc: 'Deep audience research and segmentation — custom audiences, lookalikes, interest targeting, and retargeting lists built specifically for your product and goals.' },
+      { icon: <Rocket size={13}/>, text: 'Deploy Ads — Full campaign launch & management', desc: 'End-to-end campaign launch and ongoing management. We monitor performance daily, optimise bids, rotate creatives, and report results — so you get maximum ROI hands-free.' },
     ],
     cta: 'Choose Package C', ctaDark: false,
   },
@@ -317,6 +317,7 @@ export default function Landing() {
   const [wizardStep,    setWizardStep]    = useState(0)
   const [wizardAnswers, setWizardAnswers] = useState({})
   const [wizardDone,    setWizardDone]    = useState(false)
+  const [expandedFeature, setExpandedFeature] = useState(null) // 'planKey-index'
 
   const handleWizardSelect = (value) => {
     const step = WIZARD_STEPS[wizardStep]
@@ -957,12 +958,29 @@ export default function Landing() {
 
                   <div style={{borderTop:`1px solid ${BORDER}`,paddingTop:16}}>
                     <div style={{fontSize:10,fontWeight:800,color:TEXT3,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:12}}>WHAT'S INCLUDED</div>
-                    {plan.features.map(f=>(
-                      <div key={f.text} style={{display:'flex',alignItems:'flex-start',gap:9,marginBottom:10}}>
-                        <div style={{color:plan.popular?GOLD:TEXT3,flexShrink:0,marginTop:1}}>{f.icon}</div>
-                        <span style={{fontSize:12,color:TEXT2,lineHeight:1.55}}>{f.text}</span>
-                      </div>
-                    ))}
+                    {plan.features.map((f,fi)=>{
+                      const featureKey = `${plan.key}-${fi}`
+                      const isOpen = expandedFeature === featureKey
+                      return (
+                        <div key={f.text} style={{marginBottom:6,borderRadius:8,border:`1px solid ${isOpen?(plan.popular?'rgba(200,151,62,0.35)':BORDER):BORDER}`,overflow:'hidden',transition:'border-color 0.2s',background:isOpen?'rgba(255,255,255,0.03)':'transparent'}}>
+                          {/* Row — always visible */}
+                          <button
+                            onClick={()=>setExpandedFeature(isOpen ? null : featureKey)}
+                            style={{width:'100%',display:'flex',alignItems:'center',gap:9,padding:'9px 10px',background:'none',border:'none',cursor:'pointer',textAlign:'left'}}
+                          >
+                            <div style={{color:plan.popular?GOLD:TEXT3,flexShrink:0}}>{f.icon}</div>
+                            <span style={{fontSize:12,color:isOpen?(plan.popular?GOLD:TEXT):TEXT2,lineHeight:1.5,flex:1,fontWeight:isOpen?600:400,transition:'color 0.2s'}}>{f.text}</span>
+                            <span style={{color:TEXT3,fontSize:14,flexShrink:0,transform:isOpen?'rotate(180deg)':'rotate(0deg)',transition:'transform 0.25s',lineHeight:1}}>›</span>
+                          </button>
+                          {/* Expanded description */}
+                          {isOpen && (
+                            <div style={{padding:'0 10px 10px 32px',fontSize:11,color:TEXT2,lineHeight:1.65,borderTop:`1px solid ${BORDER}`}}>
+                              <div style={{paddingTop:8}}>{f.desc}</div>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
               </FadeIn>
