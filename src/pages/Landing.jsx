@@ -693,16 +693,71 @@ export default function Landing() {
                     )
                   })}
                 </div>
-                {/* CTA */}
-                <div style={{textAlign:'center'}}>
-                  <p style={{fontSize:13,color:TEXT3,marginBottom:16}}>No credit card required · Cancel anytime</p>
-                  <div style={{display:'flex',gap:12,justifyContent:'center',flexWrap:'wrap'}}>
-                    <button onClick={goFreeStart} style={{...goldPill,padding:'14px 36px',fontSize:15}}
-                      onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 10px 28px rgba(200,151,62,0.4)'}}
-                      onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none'}}>
-                      {user ? 'Go to Dashboard' : 'Get Started Free'} <ArrowRight size={16}/>
-                    </button>
-                    <button onClick={()=>setWizardPlanStep('choose')} style={{...outlinePill,padding:'14px 24px',fontSize:13}}>← Back to Plans</button>
+                {/* Agent picker — choose which free agent to start with */}
+                <div style={{marginTop:8}}>
+                  <div style={{textAlign:'center',marginBottom:20}}>
+                    <div style={{fontSize:11,fontWeight:700,color:GOLD,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:6}}>Choose where to start</div>
+                    <p style={{fontSize:13,color:TEXT2,margin:0}}>Pick the agent that fits your biggest need right now — you can switch anytime.</p>
+                  </div>
+
+                  {/* Agent cards */}
+                  <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:14,marginBottom:24}}>
+                    {[
+                      {
+                        icon: <Target size={20}/>,
+                        name: 'Strategy Agent',
+                        best: 'Best for: Defining goals',
+                        desc: 'Turn your objectives into a clear 90-day marketing roadmap with measurable milestones.',
+                        badge: null,
+                      },
+                      {
+                        icon: <TrendingUp size={20}/>,
+                        name: 'Growth Agent',
+                        best: 'Best for: Getting clients',
+                        desc: 'Build a custom lead pipeline and client-retention plan tailored to your market and offer.',
+                        badge: 'MOST POPULAR',
+                      },
+                      {
+                        icon: <Layers size={20}/>,
+                        name: 'Content Agent',
+                        best: 'Best for: Brand building',
+                        desc: 'Get a content framework with brand voice, pillars, post formats, and a 30-day calendar.',
+                        badge: null,
+                      },
+                    ].map((ag,i)=>(
+                      <div key={i}
+                        style={{position:'relative',borderRadius:14,border:`1px solid ${GBORDER}`,background:'rgba(200,151,62,0.04)',padding:'20px 18px',display:'flex',flexDirection:'column',gap:10}}>
+                        {ag.badge&&(
+                          <div style={{position:'absolute',top:-10,left:'50%',transform:'translateX(-50%)',background:'linear-gradient(135deg,#d4a853,#b8803a)',color:'#0e0c09',fontSize:9,fontWeight:800,padding:'3px 12px',borderRadius:100,whiteSpace:'nowrap',letterSpacing:'0.08em'}}>{ag.badge}</div>
+                        )}
+                        {/* icon + name */}
+                        <div style={{display:'flex',alignItems:'center',gap:12}}>
+                          <div style={{width:40,height:40,borderRadius:'50%',background:'linear-gradient(135deg,#d4a853,#b8803a)',display:'flex',alignItems:'center',justifyContent:'center',color:'#0e0c09',flexShrink:0}}>
+                            {ag.icon}
+                          </div>
+                          <div>
+                            <div style={{fontSize:14,fontWeight:800,color:TEXT,fontFamily:"'Syne','Inter',sans-serif"}}>{ag.name}</div>
+                            <div style={{fontSize:10,color:GOLD,fontWeight:600,letterSpacing:'0.04em'}}>{ag.best}</div>
+                          </div>
+                        </div>
+                        {/* desc */}
+                        <p style={{fontSize:12,color:TEXT2,lineHeight:1.65,margin:0,flex:1}}>{ag.desc}</p>
+                        {/* CTA */}
+                        <button
+                          onClick={goFreeStart}
+                          style={{width:'100%',padding:'10px 0',background:'linear-gradient(135deg,#d4a853,#b8803a)',border:'none',borderRadius:8,color:'#0e0c09',fontSize:12,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:6,transition:'all 0.2s'}}
+                          onMouseEnter={e=>{e.currentTarget.style.opacity='0.85';e.currentTarget.style.transform='translateY(-1px)'}}
+                          onMouseLeave={e=>{e.currentTarget.style.opacity='1';e.currentTarget.style.transform='translateY(0)'}}>
+                          Start with this agent <ArrowRight size={13}/>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Fine print + back */}
+                  <div style={{textAlign:'center'}}>
+                    <p style={{fontSize:11,color:TEXT3,marginBottom:12}}>No credit card required · All 3 agents included · Cancel anytime</p>
+                    <button onClick={()=>setWizardPlanStep('choose')} style={{background:'none',border:'none',color:TEXT3,cursor:'pointer',fontSize:12,textDecoration:'underline'}}>← Back to Plans</button>
                   </div>
                 </div>
               </motion.div>
