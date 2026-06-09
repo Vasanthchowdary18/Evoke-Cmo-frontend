@@ -336,13 +336,24 @@ export default function Landing() {
     setWizardDone(false)
   }
 
-  // Logged-in users should go straight to the dashboard
+  // Logged-in users should go straight to the dashboard (skip in dev so landing page is previewable locally)
   useEffect(() => {
-    if (user) navigate('/agents-hub', { replace: true })
+    if (user && !import.meta.env.DEV) navigate('/agents-hub', { replace: true })
   }, [user, navigate])
 
   const goSignIn = () => redirectToLogin()
   const goBoard = () => user ? navigate('/agents-hub') : goSignIn()
+
+  // Open the wizard and scroll to it (used by pricing CTA)
+  const openAssessment = () => {
+    setWizardOpen(true)
+    setWizardStep(0)
+    setWizardAnswers({})
+    setWizardDone(false)
+    setTimeout(() => {
+      document.getElementById('cmo-assessment')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 50)
+  }
 
   /* Gold gradient text helper */
   const goldGrad = {
@@ -440,7 +451,7 @@ export default function Landing() {
       {/* ══════════════════════════════════════════════════
           CMO WORKFLOW PIPELINE + ASSESSMENT WIZARD
       ══════════════════════════════════════════════════ */}
-      <section style={{padding:'80px 40px',background:'#0a0908',overflow:'hidden',position:'relative'}}>
+      <section id="cmo-assessment" style={{padding:'80px 40px',background:'#0a0908',overflow:'hidden',position:'relative'}}>
         <div style={{maxWidth:1200,margin:'0 auto'}}>
 
           {/* ── Static header (always visible) ── */}
@@ -931,18 +942,18 @@ export default function Landing() {
                   <p style={{fontSize:12,color:TEXT2,marginBottom:16,paddingBottom:16,borderBottom:`1px solid ${BORDER}`,lineHeight:1.55}}>{plan.tagline}</p>
 
                   <button
-                    onClick={()=>window.open('mailto:hello@evokecmo.com','_blank')}
+                    onClick={()=> plan.key === 'free' ? openAssessment() : window.open('mailto:hello@evokecmo.com','_blank')}
                     style={{
                       width:'100%',padding:'12px',marginBottom:20,
-                      background:plan.ctaDark?'linear-gradient(135deg,#d4a853,#b8803a)':'rgba(255,255,255,0.06)',
-                      border:plan.ctaDark?'none':`1px solid ${BORDER}`,
-                      borderRadius:10,color:plan.ctaDark?'#0e0c09':TEXT2,
+                      background:plan.key==='free'?'linear-gradient(135deg,#d4a853,#b8803a)':plan.ctaDark?'linear-gradient(135deg,#d4a853,#b8803a)':'rgba(255,255,255,0.06)',
+                      border:plan.ctaDark||plan.key==='free'?'none':`1px solid ${BORDER}`,
+                      borderRadius:10,color:plan.ctaDark||plan.key==='free'?'#0e0c09':TEXT2,
                       fontSize:13,fontWeight:700,cursor:'pointer',
                       fontFamily:"'Inter',sans-serif",transition:'all 0.2s',
                     }}
                     onMouseEnter={e=>{e.currentTarget.style.opacity='0.88';e.currentTarget.style.transform='translateY(-1px)'}}
                     onMouseLeave={e=>{e.currentTarget.style.opacity='1';e.currentTarget.style.transform='translateY(0)'}}
-                  >{plan.cta}</button>
+                  >{plan.key === 'free' ? 'Start Free Assessment' : plan.cta}</button>
 
                   <div style={{borderTop:`1px solid ${BORDER}`,paddingTop:16}}>
                     <div style={{fontSize:10,fontWeight:800,color:TEXT3,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:12}}>WHAT'S INCLUDED</div>
