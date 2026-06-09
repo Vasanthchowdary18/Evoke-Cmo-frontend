@@ -6,7 +6,8 @@ import {
   Search, Calendar, Megaphone, Copy, Check,
   ArrowLeft, Zap, AlertCircle, RefreshCw, Send,
   CheckCircle2, Facebook, Loader2, RotateCcw,
-  Pencil, X, Instagram
+  Pencil, X, Instagram, TrendingUp, BarChart2,
+  Globe, Rocket, Users,
 } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
 import { getEvokeUserProfile } from '../lib/session'
@@ -679,6 +680,16 @@ export default function Results() {
   const calendarDays = parseCalendar(campaignCalendar)
   const launched = postingStatus !== 'idle'
 
+  // Strategy-specific fields (only populated for growth_strategy)
+  const isStrategy         = campaignType === 'growth_strategy'
+  const executiveSummary   = r.executiveSummary   || r.executive_summary   || ''
+  const growthOpportunities= r.growthOpportunities|| r.growth_opportunities|| ''
+  const gtmPlan            = r.gtmPlan            || r.gtm_plan            || ''
+  const revenueProjection  = r.revenueProjection  || r.revenue_projection  || ''
+  const partnershipIdeas   = r.partnershipIdeas   || r.partnership_ideas   || ''
+  const expansionRoadmap   = r.expansionRoadmap   || r.expansion_roadmap   || ''
+  const competitorGaps     = r.competitorGaps     || r.competitor_gaps     || ''
+
   const fullText = [
     editedContent.emailSubject && `EMAIL SUBJECT:\n${editedContent.emailSubject}`,
     editedContent.emailBody    && `EMAIL BODY:\n${editedContent.emailBody}`,
@@ -705,19 +716,23 @@ export default function Results() {
 
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: 32 }}>
-          <button onClick={() => navigate('/dashboard')} className="btn-ghost" style={{ marginBottom: 20 }}>
+          <button onClick={() => navigate('/agents-hub')} className="btn-ghost" style={{ marginBottom: 20 }}>
             <ArrowLeft size={14} /> Back to Dashboard
           </button>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
             <div>
               <div className="badge" style={{ marginBottom: 10, display: 'inline-flex' }}>
-                <Zap size={13} /> Campaign Generated
+                {isStrategy ? <><TrendingUp size={13} /> Strategy Generated</> : <><Zap size={13} /> Campaign Generated</>}
               </div>
               <h1 style={{ fontSize: 'clamp(26px, 5vw, 40px)', fontWeight: 900, letterSpacing: '-0.025em', color: '#0f172a', marginBottom: 6 }}>
-                Your <span className="gradient-text">Campaign is Ready</span>
+                {isStrategy
+                  ? <>Your <span className="gradient-text">Growth Strategy is Ready</span></>
+                  : <>Your <span className="gradient-text">Campaign is Ready</span></>}
               </h1>
               <p style={{ color: '#64748b', fontSize: 14 }}>
-                Review and edit your content below, then launch to post to all platforms.
+                {isStrategy
+                  ? 'Your AI-generated strategy document is below. Copy any section or download the full strategy.'
+                  : 'Review and edit your content below, then launch to post to all platforms.'}
               </p>
             </div>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
@@ -725,21 +740,21 @@ export default function Results() {
                 {copied === 'all' ? <><Check size={13} style={{ color: '#10b981' }} /><span style={{ color: '#10b981' }}>Copied!</span></> : <><Copy size={13} /> Copy All</>}
               </button>
               <button className="btn-ghost" onClick={handleNewCampaign} style={{ fontSize: 13 }}>
-                <RefreshCw size={13} /> New Campaign
+                <RefreshCw size={13} /> {isStrategy ? 'New Strategy' : 'New Campaign'}
               </button>
             </div>
           </div>
         </motion.div>
 
-        {/* Posting status */}
+        {/* Posting status — hidden for strategy (no social posting) */}
         <AnimatePresence>
-          {launched && (
+          {!isStrategy && launched && (
             <PostingStatusBanner postingStatus={postingStatus} selectedPlatforms={selectedPlatforms} onRetry={handleLaunch} />
           )}
         </AnimatePresence>
 
-        {/* Launch Banner (before launch) */}
-        {!launched && (
+        {/* Launch Banner (before launch) — hidden for strategy */}
+        {!isStrategy && !launched && (
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
@@ -800,6 +815,32 @@ export default function Results() {
               </div>
             )}
           </motion.div>
+        )}
+
+        {/* ── Strategy-specific cards (growth_strategy only) ── */}
+        {isStrategy && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 14 }}>
+            {[
+              { key: 'executiveSummary',    value: executiveSummary,    icon: <Zap size={16}/>,          color: '#10b981', title: 'Executive Summary'        },
+              { key: 'growthOpportunities', value: growthOpportunities, icon: <TrendingUp size={16}/>,   color: '#c8973e', title: 'Growth Opportunities'      },
+              { key: 'gtmPlan',             value: gtmPlan,             icon: <Rocket size={16}/>,       color: '#6366f1', title: 'Go-To-Market Plan'         },
+              { key: 'revenueProjection',   value: revenueProjection,   icon: <BarChart2 size={16}/>,    color: '#f59e0b', title: '12-Month Revenue Forecast' },
+              { key: 'partnershipIdeas',    value: partnershipIdeas,    icon: <Users size={16}/>,        color: '#0a66c2', title: 'Strategic Partnerships'    },
+              { key: 'expansionRoadmap',    value: expansionRoadmap,    icon: <Globe size={16}/>,        color: '#14b8a6', title: 'Expansion Roadmap'         },
+              { key: 'competitorGaps',      value: competitorGaps,      icon: <Target size={16}/>,       color: '#a855f7', title: 'Competitor Gaps to Exploit'},
+            ].filter(s => s.value).map((s, i) => (
+              <ResultCard key={s.key}
+                icon={s.icon} title={s.title} color={s.color}
+                copyText={s.value} copyId={s.key}
+                copied={copied} copy={copy}
+                editKey={s.key} editValue={s.value}
+                delay={i * 0.06}
+                {...editProps}
+              >
+                <ContentText value={s.value} />
+              </ResultCard>
+            ))}
+          </div>
         )}
 
         {/* Content Cards */}
@@ -980,47 +1021,82 @@ export default function Results() {
           )}
         </div>
 
-        {/* Bottom Launch CTA */}
-        {!launched && (
+        {/* Bottom CTA — strategy gets "Go to Dashboard", campaigns get "Launch" */}
+        {isStrategy ? (
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
-            style={{ marginTop: 32, padding: '24px 28px', background: '#fff', border: '1px solid rgba(124,58,237,0.2)', borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
+            style={{ marginTop: 32, padding: '24px 28px', background: '#f0fdf4', border: '1px solid rgba(16,185,129,0.25)', borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}
           >
             <div>
               <p style={{ fontWeight: 700, fontSize: 16, color: '#0f172a', marginBottom: 4 }}>
-                {campaignDays > 1 ? `Ready to launch your ${campaignDays}-day campaign?` : 'Ready to go live?'}
+                Your growth strategy is ready 🎉
               </p>
               <p style={{ color: '#64748b', fontSize: 13 }}>
-                {campaignDays > 1
-                  ? `n8n will auto-post unique content every day for ${campaignDays} days across all your connected platforms.`
-                  : 'All edits are saved. Click Launch to post across all your connected platforms.'}
+                Copy individual sections or use the "Copy All" button at the top. Head back to launch your next agent.
               </p>
             </div>
-            <motion.button
-              onClick={handleLaunch}
-              whileTap={{ scale: 0.97 }}
-              whileHover={{ scale: 1.02 }}
-              style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 28px', background: 'linear-gradient(135deg, #d4a853, #b8803a)', border: 'none', borderRadius: 12, color: 'white', fontSize: 15, fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap', boxShadow: '0 4px 24px rgba(200,151,62,0.3)' }}
-            >
-              <Zap size={16} /> {campaignDays > 1 ? `Launch ${campaignDays}-Day Campaign` : 'Launch Campaign'}
-            </motion.button>
-          </motion.div>
-        )}
-
-        {/* Success CTA */}
-        {launched && postingStatus === 'success' && (
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
-            style={{ marginTop: 32, padding: '22px 26px', background: '#f0fdf4', border: '1px solid rgba(16,185,129,0.25)', borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}
-          >
-            <div>
-              <p style={{ fontWeight: 700, color: '#0f172a', marginBottom: 4 }}>Campaign launched successfully!</p>
-              <p style={{ color: '#64748b', fontSize: 13 }}>Ready to create your next campaign?</p>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <motion.button
+                onClick={() => navigate('/agents-hub')}
+                whileTap={{ scale: 0.97 }} whileHover={{ scale: 1.02 }}
+                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '13px 24px', background: 'linear-gradient(135deg, #d4a853, #b8803a)', border: 'none', borderRadius: 12, color: 'white', fontSize: 14, fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap' }}
+              >
+                <Zap size={15} /> Go to Dashboard
+              </motion.button>
+              <motion.button
+                onClick={handleNewCampaign}
+                whileTap={{ scale: 0.97 }}
+                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '13px 20px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, color: '#64748b', fontSize: 14, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
+              >
+                <RefreshCw size={14} /> New Strategy
+              </motion.button>
             </div>
-            <button className="btn-primary" onClick={handleNewCampaign} style={{ whiteSpace: 'nowrap' }}>
-              New Campaign <Zap size={16} />
-            </button>
           </motion.div>
+        ) : (
+          <>
+            {/* Bottom Launch CTA */}
+            {!launched && (
+              <motion.div
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
+                style={{ marginTop: 32, padding: '24px 28px', background: '#fff', border: '1px solid rgba(124,58,237,0.2)', borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
+              >
+                <div>
+                  <p style={{ fontWeight: 700, fontSize: 16, color: '#0f172a', marginBottom: 4 }}>
+                    {campaignDays > 1 ? `Ready to launch your ${campaignDays}-day campaign?` : 'Ready to go live?'}
+                  </p>
+                  <p style={{ color: '#64748b', fontSize: 13 }}>
+                    {campaignDays > 1
+                      ? `n8n will auto-post unique content every day for ${campaignDays} days across all your connected platforms.`
+                      : 'All edits are saved. Click Launch to post across all your connected platforms.'}
+                  </p>
+                </div>
+                <motion.button
+                  onClick={handleLaunch}
+                  whileTap={{ scale: 0.97 }}
+                  whileHover={{ scale: 1.02 }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 28px', background: 'linear-gradient(135deg, #d4a853, #b8803a)', border: 'none', borderRadius: 12, color: 'white', fontSize: 15, fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap', boxShadow: '0 4px 24px rgba(200,151,62,0.3)' }}
+                >
+                  <Zap size={16} /> {campaignDays > 1 ? `Launch ${campaignDays}-Day Campaign` : 'Launch Campaign'}
+                </motion.button>
+              </motion.div>
+            )}
+
+            {/* Success CTA */}
+            {launched && postingStatus === 'success' && (
+              <motion.div
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
+                style={{ marginTop: 32, padding: '22px 26px', background: '#f0fdf4', border: '1px solid rgba(16,185,129,0.25)', borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}
+              >
+                <div>
+                  <p style={{ fontWeight: 700, color: '#0f172a', marginBottom: 4 }}>Campaign launched successfully!</p>
+                  <p style={{ color: '#64748b', fontSize: 13 }}>Ready to create your next campaign?</p>
+                </div>
+                <button className="btn-primary" onClick={handleNewCampaign} style={{ whiteSpace: 'nowrap' }}>
+                  New Campaign <Zap size={16} />
+                </button>
+              </motion.div>
+            )}
+          </>
         )}
       </div>
 
