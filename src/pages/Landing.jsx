@@ -348,6 +348,16 @@ export default function Landing() {
   const goSignIn = () => redirectToLogin()
   const goBoard = () => user ? navigate('/agents-hub') : goSignIn()
 
+  // "Get Started Free" from the wizard free-detail page — always lands on agents-hub
+  // after login instead of bouncing back to the landing page first.
+  const goFreeStart = () => {
+    if (user) {
+      navigate('/agents-hub')
+    } else {
+      redirectToLogin(window.location.origin + '/agents-hub')
+    }
+  }
+
   // Open the wizard and scroll to it (used by pricing CTA)
   const openAssessment = () => {
     setWizardOpen(true)
@@ -687,10 +697,10 @@ export default function Landing() {
                 <div style={{textAlign:'center'}}>
                   <p style={{fontSize:13,color:TEXT3,marginBottom:16}}>No credit card required · Cancel anytime</p>
                   <div style={{display:'flex',gap:12,justifyContent:'center',flexWrap:'wrap'}}>
-                    <button onClick={goBoard} style={{...goldPill,padding:'14px 36px',fontSize:15}}
+                    <button onClick={goFreeStart} style={{...goldPill,padding:'14px 36px',fontSize:15}}
                       onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 10px 28px rgba(200,151,62,0.4)'}}
                       onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none'}}>
-                      Get Started Free <ArrowRight size={16}/>
+                      {user ? 'Go to Dashboard' : 'Get Started Free'} <ArrowRight size={16}/>
                     </button>
                     <button onClick={()=>setWizardPlanStep('choose')} style={{...outlinePill,padding:'14px 24px',fontSize:13}}>← Back to Plans</button>
                   </div>
