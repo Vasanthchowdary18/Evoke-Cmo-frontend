@@ -19,6 +19,7 @@ import AgentsHub from './pages/AgentsHub.jsx'
 import ProductsPage from './pages/ProductsPage.jsx'
 import ProductDescription from './pages/ProductDescription.jsx'
 import ImageToolPage from './pages/ImageToolPage.jsx'
+import EvoxServices from './pages/EvoxServices.jsx'
 import Chatbot from './components/Chatbot.jsx'
 
 // Handles token returned from accounts.evokemarketplace.com after login
@@ -76,6 +77,7 @@ export default function App() {
         <Route path="/image-lifestyle"   element={<ImageToolPage />} />
         <Route path="/meta-ads-boost"    element={<MetaAdsBoost />} />
         <Route path="/agents-hub"         element={<AgentsHub />} />
+        <Route path="/evox-services"      element={<EvoxServices />} />
         <Route path="/privacy"            element={<Privacy />} />
         <Route path="/terms"              element={<Terms />} />
         <Route path="*"                  element={<Navigate to="/" replace />} />
