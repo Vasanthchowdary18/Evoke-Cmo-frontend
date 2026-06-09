@@ -559,25 +559,94 @@ export default function Results() {
   }
 
   if (error) {
-    const isRateLimit = error.toLowerCase().includes('rate limit') || error.toLowerCase().includes('too many')
+    const isRateLimit   = error.toLowerCase().includes('rate limit') || error.toLowerCase().includes('too many')
+    const isNoAccount   = error.toLowerCase().includes('account') || error.toLowerCase().includes('connect') || error.toLowerCase().includes('linked')
+    const isNoCampaign  = error.toLowerCase().includes('no campaign') || error.toLowerCase().includes('not found')
+
+    const errorTitle = isRateLimit  ? 'AI Rate Limit Reached'
+                     : isNoAccount  ? 'Account Not Connected'
+                     : isNoCampaign ? 'No Campaign Found'
+                     : 'Campaign Could Not Complete'
+
+    const errorDesc = isRateLimit  ? 'The AI is temporarily busy. Please wait 30–60 seconds and try again.'
+                    : isNoAccount  ? error
+                    : isNoCampaign ? 'No campaign data was found. Please go back and generate a campaign first.'
+                    : error
+
+    const suggestedFix = isRateLimit  ? { label: 'Wait & Retry',       action: () => navigate(-1),             icon: <RefreshCw size={14} /> }
+                       : isNoAccount  ? { label: 'Connect Accounts',    action: () => navigate('/connect-accounts'), icon: <AlertCircle size={14} /> }
+                       : isNoCampaign ? { label: 'Launch New Campaign',  action: () => navigate('/cmo'),         icon: <ArrowLeft size={14} /> }
+                       :                { label: 'Try Again',            action: () => navigate(-1),             icon: <RefreshCw size={14} /> }
+
     return (
-      <div style={{ minHeight: '100vh', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <div style={{ minHeight: '100vh', background: '#0e0c09', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
         <Navbar />
-        <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} style={{ textAlign: 'center', maxWidth: 480, position: 'relative', zIndex: 1 }}>
-          <div style={{ width: 64, height: 64, borderRadius: 16, background: '#fef2f2', border: '1px solid rgba(239,68,68,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
-            <AlertCircle size={28} style={{ color: '#ef4444' }} />
+        <motion.div
+          initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}
+          style={{ textAlign: 'center', maxWidth: 480, position: 'relative', zIndex: 1 }}
+        >
+          {/* Icon */}
+          <div style={{
+            width: 72, height: 72, borderRadius: 18,
+            background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px',
+          }}>
+            <AlertCircle size={30} style={{ color: '#ef4444' }} />
           </div>
-          <h2 style={{ fontSize: 24, fontWeight: 800, marginBottom: 12, color: '#0f172a' }}>
-            {isRateLimit ? 'AI Rate Limit Reached' : 'Campaign Generation Failed'}
+
+          {/* Title */}
+          <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 10, color: '#ffffff', letterSpacing: '-0.02em' }}>
+            {errorTitle}
           </h2>
-          <p style={{ color: '#64748b', marginBottom: 24, fontSize: 15, lineHeight: 1.65 }}>
-            {isRateLimit ? 'The AI is temporarily busy. Wait 30–60 seconds and try again.' : error}
+
+          {/* Description */}
+          <p style={{ color: 'rgba(255,255,255,0.5)', marginBottom: 8, fontSize: 14, lineHeight: 1.7 }}>
+            {errorDesc}
           </p>
-          <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
-            <button className="btn-primary" onClick={() => navigate(-1)} style={{ fontSize: 14, padding: '11px 24px' }}>
-              <RefreshCw size={15} /> Try Again
+
+          {/* Suggested fix */}
+          <div style={{
+            margin: '20px 0 24px',
+            padding: '14px 18px',
+            background: 'rgba(200,151,62,0.08)', border: '1px solid rgba(200,151,62,0.22)',
+            borderRadius: 12, textAlign: 'left',
+          }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#c8973e', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 6 }}>
+              Suggested Fix
+            </div>
+            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', lineHeight: 1.6 }}>
+              {isRateLimit  ? 'Wait 30–60 seconds, then click "Try Again" below.'
+               : isNoAccount ? 'Go to Connect Accounts and link at least one platform before running campaigns.'
+               : isNoCampaign ? 'Return to the Campaign Dashboard and select a campaign type to generate.'
+               : 'Check your internet connection and campaign settings, then retry.'}
+            </div>
+          </div>
+
+          {/* Action buttons */}
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <button
+              onClick={suggestedFix.action}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '11px 22px',
+                background: 'linear-gradient(135deg, #d4a853, #b8803a)',
+                border: 'none', borderRadius: 10,
+                color: '#0e0c09', fontSize: 14, fontWeight: 800, cursor: 'pointer',
+                fontFamily: 'inherit',
+              }}
+            >
+              {suggestedFix.icon} {suggestedFix.label}
             </button>
-            <button className="btn-ghost" onClick={() => navigate('/dashboard')} style={{ fontSize: 14 }}>
+            <button
+              onClick={() => navigate('/cmo')}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '11px 22px',
+                background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: 10, color: 'rgba(255,255,255,0.55)',
+                fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+              }}
+            >
               <ArrowLeft size={14} /> Dashboard
             </button>
           </div>

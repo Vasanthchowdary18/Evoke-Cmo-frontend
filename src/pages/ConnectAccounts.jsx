@@ -1066,25 +1066,60 @@ export default function ConnectAccounts() {
             ours.
           </p>
 
-          <div
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 10,
-              marginTop: 20,
-              padding: "8px 18px",
-              background: connectedCount > 0 ? "#1a1a0a" : "#1a1a1a",
-              border: `1px solid ${
-                connectedCount > 0 ? "rgba(201,168,76,0.4)" : "#2a2a2a"
-              }`,
-              borderRadius: 100,
-              fontSize: 13,
-              fontWeight: 700,
-            }}
-          >
-            <span style={{ color: connectedCount > 0 ? "#C9A84C" : "rgba(255,255,255,0.45)", fontWeight: 700 }}>
-              {connectedCount} / {PLATFORMS.length} connected
-            </span>
+          {/* Marketing Readiness Meter */}
+          <div style={{ marginTop: 24 }}>
+            <div style={{
+              display: 'inline-flex', flexDirection: 'column', gap: 10,
+              padding: '16px 20px',
+              background: connectedCount > 0 ? 'rgba(200,151,62,0.08)' : '#1a1a1a',
+              border: `1px solid ${connectedCount > 0 ? 'rgba(201,168,76,0.3)' : '#2a2a2a'}`,
+              borderRadius: 14, minWidth: 280,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24 }}>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 4 }}>
+                    Marketing Readiness
+                  </div>
+                  <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: '-0.03em', color: connectedCount > 6 ? '#10b981' : connectedCount > 2 ? '#c8973e' : '#ef4444' }}>
+                    {Math.round((connectedCount / PLATFORMS.length) * 100)}%
+                  </div>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {[
+                    { key: 'gmail',     label: 'Email',    critical: true  },
+                    { key: 'linkedin',  label: 'LinkedIn', critical: true  },
+                    { key: 'facebook',  label: 'Meta',     critical: false },
+                    { key: 'instagram', label: 'Instagram',critical: false },
+                  ].map(p => {
+                    const isConnected = accounts[p.key]?.connected
+                    return (
+                      <div key={p.key} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11 }}>
+                        <div style={{
+                          width: 6, height: 6, borderRadius: '50%',
+                          background: isConnected ? '#10b981' : 'rgba(255,255,255,0.2)',
+                          flexShrink: 0,
+                        }} />
+                        <span style={{ color: isConnected ? 'rgba(255,255,255,0.65)' : 'rgba(255,255,255,0.3)', fontWeight: isConnected ? 700 : 400 }}>
+                          {p.label} {isConnected ? '' : p.critical ? '— Not Connected' : '— Optional'}
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+              {/* Progress bar */}
+              <div style={{ height: 5, background: 'rgba(255,255,255,0.07)', borderRadius: 100, overflow: 'hidden' }}>
+                <div style={{
+                  width: `${(connectedCount / PLATFORMS.length) * 100}%`,
+                  height: '100%',
+                  background: connectedCount > 6 ? '#10b981' : 'linear-gradient(90deg, #c8973e, #d4a853)',
+                  borderRadius: 100, transition: 'width 0.5s ease',
+                }} />
+              </div>
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>
+                {connectedCount} / {PLATFORMS.length} platforms connected
+              </div>
+            </div>
           </div>
         </motion.div>
 

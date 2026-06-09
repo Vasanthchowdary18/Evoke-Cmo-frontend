@@ -247,10 +247,16 @@ export default function Landing() {
         <div style={{position:'absolute',top:-60,left:'50%',transform:'translateX(-50%)',width:'80vw',height:'55vh',pointerEvents:'none',background:'radial-gradient(ellipse at 50% 0%, rgba(200,151,62,0.08) 0%, transparent 65%)'}} />
 
         <div style={{position:'relative',zIndex:1,width:'100%',padding:'0 max(16px, 4vw)',maxWidth:1280,margin:'0 auto'}}>
-          {/* badge */}
+          {/* badge — EVOX branding */}
           <motion.div initial={{opacity:0,y:-10}} animate={{opacity:1,y:0}} transition={{duration:0.4}}
-            style={{display:'inline-flex',alignItems:'center',gap:8,background:'rgba(15,12,8,0.7)',border:`1px solid ${GBORDER}`,borderRadius:100,padding:'7px 18px',marginBottom:44,fontSize:13,color:GOLD,fontWeight:500}}>
-            ✦ AI-Powered Marketing Platform
+            style={{display:'flex',flexDirection:'column',alignItems:'center',gap:10,marginBottom:44}}>
+            <div style={{display:'inline-flex',alignItems:'center',gap:8,background:'rgba(15,12,8,0.7)',border:`1px solid ${GBORDER}`,borderRadius:100,padding:'7px 18px',fontSize:13,color:GOLD,fontWeight:600,letterSpacing:'0.04em'}}>
+              <div style={{width:6,height:6,borderRadius:'50%',background:'#10b981',boxShadow:'0 0 6px #10b981'}} />
+              Powered by EVOX
+            </div>
+            <div style={{display:'inline-flex',alignItems:'center',gap:8,background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:100,padding:'5px 14px',fontSize:11,color:'rgba(240,235,224,0.45)',fontWeight:500,letterSpacing:'0.06em',textTransform:'uppercase'}}>
+              EVOKE OS · AI Executive Workforce Platform
+            </div>
           </motion.div>
 
           {/* H1 — font scales with viewport so each line stays single-line */}
@@ -260,7 +266,7 @@ export default function Landing() {
               fontWeight:800, letterSpacing:'-0.03em', lineHeight:1.14,
               marginBottom:6, fontFamily:"'Syne','Inter',sans-serif", color:TEXT,
             }}>
-              Meet Evoke CMO,
+              Your AI Chief Marketing Officer
             </h1>
             <h1 style={{
               fontSize:'clamp(18px, 3.2vw, 46px)',
@@ -268,7 +274,7 @@ export default function Landing() {
               marginBottom:32, fontFamily:"'Syne','Inter',sans-serif",
               ...goldGrad,
             }}>
-              Your AI Chief Marketing Officer
+              Built on EVOX
             </h1>
           </motion.div>
 
