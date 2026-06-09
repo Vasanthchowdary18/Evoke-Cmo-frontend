@@ -457,52 +457,6 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ══════════════════════════════════════════════════
-          STATS BAR  (strip_01 bottom / strip_02 top)
-      ══════════════════════════════════════════════════ */}
-      <div style={{background:'#141210',borderTop:`1px solid ${BORDER}`,borderBottom:`1px solid ${BORDER}`,padding:'48px 24px'}}>
-        <div className="stats-grid" style={{maxWidth:900,margin:'0 auto',display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:24,textAlign:'center'}}>
-          {STATS.map((s,i)=>(
-            <FadeIn key={s.l} delay={i*0.07}>
-              <div style={{fontSize:'clamp(22px,2.4vw,32px)',fontWeight:800,letterSpacing:'-0.03em',color:TEXT,marginBottom:8,fontFamily:"'Syne','Inter',sans-serif"}}>{s.v}</div>
-              <div style={{fontSize:11,fontWeight:700,letterSpacing:'0.12em',textTransform:'uppercase',color:TEXT3}}>{s.l}</div>
-            </FadeIn>
-          ))}
-        </div>
-      </div>
-
-      {/* ══════════════════════════════════════════════════
-          PLATFORM LOGOS — static 2-row grid  (strip_02)
-      ══════════════════════════════════════════════════ */}
-      <div style={{padding:'72px 40px',background:BG}}>
-        <FadeIn>
-          <p style={{textAlign:'center',fontSize:11,fontWeight:700,letterSpacing:'0.14em',textTransform:'uppercase',color:TEXT3,marginBottom:40}}>
-            POSTS DIRECTLY TO ALL YOUR CHANNELS
-          </p>
-        </FadeIn>
-        <div style={{maxWidth:1000,margin:'0 auto'}}>
-          {[LOGO_ROW1, LOGO_ROW2].map((row,ri)=>(
-            <FadeIn key={ri} delay={ri*0.1}>
-              <div className="logo-grid-row" style={{display:'flex',justifyContent:'center',gap:0,marginBottom:ri===0?0:0}}>
-                {row.map((logo,li)=>(
-                  <div key={logo.label} style={{
-                    flex:1, textAlign:'center',
-                    padding:'18px 12px',
-                    fontSize:'clamp(11px,1.2vw,15px)',
-                    fontWeight:600, color:'rgba(240,235,224,0.45)',
-                    letterSpacing:'0.02em',
-                    fontFamily:"'Inter',sans-serif",
-                    borderRight: li < row.length-1 ? `1px solid rgba(255,255,255,0.05)` : 'none',
-                    borderBottom: ri===0 ? `1px solid rgba(255,255,255,0.05)` : 'none',
-                  }}>
-                    {logo.symbol}
-                  </div>
-                ))}
-              </div>
-            </FadeIn>
-          ))}
-        </div>
-      </div>
 
       {/* ══════════════════════════════════════════════════
           BLUE/PURPLE GLOW ORB  (strip_02 bottom)
@@ -849,68 +803,6 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ══════════════════════════════════════════════════
-          AUTONOMOUS MODE
-      ══════════════════════════════════════════════════ */}
-      <section style={{padding:'96px 40px',background:'#0a0908',position:'relative',overflow:'hidden'}}>
-        <div style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)',width:'60vw',height:'50vh',pointerEvents:'none',background:'radial-gradient(ellipse, rgba(200,151,62,0.04) 0%, transparent 70%)'}}/>
-        <div style={{maxWidth:1100,margin:'0 auto',position:'relative',zIndex:1}}>
-          <div className="auto-grid" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:72,alignItems:'center'}}>
-
-            {/* Left: copy */}
-            <FadeIn>
-              <SBadge>Autonomous Mode</SBadge>
-              <h2 style={{fontSize:'clamp(18px,2.6vw,38px)',fontWeight:800,letterSpacing:'-0.03em',lineHeight:1.2,fontFamily:"'Syne','Inter',sans-serif",color:TEXT,marginBottom:20}}>
-                A 30-day campaign plan.<br/><span style={goldGrad}>Executed without you.</span>
-              </h2>
-              <p style={{fontSize:15,color:TEXT2,lineHeight:1.7,marginBottom:32}}>
-                Evoke CMO doesn&apos;t just generate content — it runs entire campaigns. Strategy, writing, scheduling, publishing, and reporting. All autonomous, all on brand.
-              </p>
-              <div style={{display:'flex',flexDirection:'column',gap:14}}>
-                {[
-                  'Initiates work without waiting for prompts',
-                  'Maintains brand voice across every asset',
-                  'Publishes across channels automatically',
-                  'Adapts based on live performance data',
-                ].map((point,i)=>(
-                  <div key={i} style={{display:'flex',alignItems:'center',gap:12}}>
-                    <div style={{width:22,height:22,borderRadius:'50%',background:GDIM,border:`1px solid ${GBORDER}`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-                      <Check size={10} color={GOLD} strokeWidth={3}/>
-                    </div>
-                    <span style={{fontSize:14,color:TEXT2,lineHeight:1.5}}>{point}</span>
-                  </div>
-                ))}
-              </div>
-            </FadeIn>
-
-            {/* Right: checklist */}
-            <FadeIn delay={0.15}>
-              <div style={{background:'linear-gradient(145deg,#1a1710,#141210)',border:`1px solid rgba(200,151,62,0.22)`,borderRadius:20,padding:28}}>
-                <div style={{fontSize:10,fontWeight:700,color:TEXT3,letterSpacing:'0.08em',marginBottom:20}}>30-DAY LAUNCH PLAN — AUTO-EXECUTING</div>
-                <div style={{display:'flex',flexDirection:'column',gap:2}}>
-                  {AUTO_STEPS.map((step,i)=>(
-                    <div key={i} style={{display:'flex',alignItems:'flex-start',gap:12,padding:'9px 10px',borderRadius:10,background:step.done?'rgba(200,151,62,0.05)':'transparent'}}>
-                      <div style={{width:18,height:18,borderRadius:'50%',background:step.done?GDIM:'rgba(255,255,255,0.04)',border:`1px solid ${step.done?GBORDER:'rgba(255,255,255,0.08)'}`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,marginTop:1}}>
-                        {step.done
-                          ? <Check size={9} color={GOLD} strokeWidth={3}/>
-                          : <div style={{width:4,height:4,borderRadius:'50%',background:'rgba(255,255,255,0.15)'}}/>
-                        }
-                      </div>
-                      <div style={{flex:1,minWidth:0}}>
-                        <span style={{fontSize:12,color:step.done?TEXT2:TEXT3,lineHeight:1.4,display:'block'}}>{step.task}</span>
-                        <span style={{fontSize:10,color:step.done?GOLD:TEXT3,marginTop:2,display:'block'}}>{step.day}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div style={{marginTop:20,padding:'11px 14px',background:'rgba(200,151,62,0.05)',border:`1px solid rgba(200,151,62,0.15)`,borderRadius:10,fontSize:12,color:TEXT3,textAlign:'center'}}>
-                  All steps executed autonomously — no approval pauses required
-                </div>
-              </div>
-            </FadeIn>
-          </div>
-        </div>
-      </section>
 
       {/* ══════════════════════════════════════════════════
           CMO WORKFLOW PIPELINE
