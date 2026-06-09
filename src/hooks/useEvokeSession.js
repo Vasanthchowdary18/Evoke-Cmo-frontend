@@ -29,7 +29,29 @@ export function useEvokeSession() {
       // still be valid — keeps token in sync after cross-app SSO.
       const hasCookie = Boolean(getEvokeUser()?.data?.email);
       if (hasCookie || !profile) {
-        const payload = await fetchSessionFromBackend();
+        let payload = await fetchSessionFromBackend();
+
+        // Local dev fallback: backend session cookie isn't available on localhost
+        // (evoke_user is scoped to .evokemarketplace.com, not localhost)
+        if (!payload && import.meta.env.DEV) {
+          payload = {
+            status: "success",
+            message: "Dev session",
+            data: {
+              email: "vasanthchowdary35@gmail.com",
+              custID: 260417001,
+              firstName: "Vasanth",
+              lastName: "chowdary",
+              role: 4,
+              memberShipTypeID: null,
+              walletAddress: "0x5114eAaC97602E33921A9d474ea70Ec181e8F4b6",
+              referralCode: "Vasanth_h5u0r",
+              referralID: "260417001_h5u0r",
+              // No token field — cookie uses 7-day fallback max-age
+            },
+          };
+        }
+
         if (!cancelled && payload) {
           setLoggedInData(payload);
         }
@@ -39,7 +61,8 @@ export function useEvokeSession() {
     return () => {
       cancelled = true;
     };
-  }, [bootstrapTried, profile]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bootstrapTried]);
 
   const status = profile
     ? "authenticated"

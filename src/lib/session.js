@@ -16,7 +16,7 @@ const SESSION_EXPIRY_KEY = "evoke_session_expiry_ms";
 const SIGNOUT_MARKER_KEY = "evoke_signed_out_at";
 const SIGNOUT_MARKER_GRACE_MS = 5 * 60 * 1000;
 const SIGNOUT_FETCH_TIMEOUT_MS = 4000;
-const ACCESS_TOKEN_FALLBACK_SEC = 60 * 60 * 2;
+const ACCESS_TOKEN_FALLBACK_SEC = 60 * 60 * 24 * 7;
 const SEVEN_DAYS_SEC = 60 * 60 * 24 * 7;
 
 export const EVOKE_SESSION_EVENT = "evoke-session-change";

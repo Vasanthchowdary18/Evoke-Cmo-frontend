@@ -211,9 +211,130 @@ const AUTO_STEPS = [
 
 /* ═══════════════════════════════════════════════════════════ */
 
+const WIZARD_STEPS = [
+  {
+    key: 'background', frameworkIdx: null,
+    question: 'What best describes your background?',
+    sub: 'This helps EVOX personalise your marketing strategy from the start.',
+    options: [
+      { value: 'founder',  label: 'Founder / CEO',          icon: '🚀', desc: 'Building or scaling a startup'              },
+      { value: 'marketer', label: 'Marketing Lead',          icon: '📣', desc: 'CMO, Marketing Manager or Head of Growth'   },
+      { value: 'business', label: 'Business Owner',          icon: '💼', desc: 'Running an established business'            },
+      { value: 'agency',   label: 'Agency / Freelancer',     icon: '🎯', desc: 'Managing marketing for multiple clients'    },
+    ],
+  },
+  {
+    key: 'objective', frameworkIdx: 0,
+    question: 'What is your #1 marketing objective right now?',
+    sub: 'EVOX will align every module and campaign to this goal.',
+    options: [
+      { value: 'leads',     label: 'Generate Leads',      icon: '🎯', desc: 'Fill your pipeline with qualified prospects'    },
+      { value: 'awareness', label: 'Brand Awareness',     icon: '📢', desc: 'Get more people to know and trust your brand'   },
+      { value: 'sales',     label: 'Drive Sales',         icon: '💰', desc: 'Convert leads and increase revenue directly'    },
+      { value: 'retention', label: 'Retain Customers',    icon: '🔄', desc: 'Keep customers engaged and reduce churn'        },
+    ],
+  },
+  {
+    key: 'strategy', frameworkIdx: 1,
+    question: 'Which channel delivers your best marketing results?',
+    sub: 'EVOX will build your strategies around your highest-performing channels.',
+    options: [
+      { value: 'social',  label: 'Social Media',      icon: '📱', desc: 'Instagram, LinkedIn, Twitter & Facebook'   },
+      { value: 'email',   label: 'Email / Outreach',  icon: '📧', desc: 'Newsletters, drip campaigns & cold outreach' },
+      { value: 'content', label: 'Content / SEO',     icon: '✍️', desc: 'Blog posts, SEO & organic search traffic'   },
+      { value: 'paid',    label: 'Paid Ads',          icon: '💡', desc: 'Google Ads, Meta Ads & performance marketing' },
+    ],
+  },
+  {
+    key: 'budget', frameworkIdx: 2,
+    question: 'What is your monthly marketing investment?',
+    sub: 'EVOX will optimise ROI allocation based on your spend tier.',
+    options: [
+      { value: 'low',        label: 'Under ₹50K / mo',     icon: '🌱', desc: 'Starting out or running lean'              },
+      { value: 'mid',        label: '₹50K – ₹2L / mo',    icon: '📈', desc: 'Growing and actively scaling up'           },
+      { value: 'high',       label: '₹2L – ₹10L / mo',    icon: '🚀', desc: 'Established brand with a strong budget'    },
+      { value: 'enterprise', label: '₹10L+ / mo',          icon: '🏢', desc: 'Enterprise-level investment and scale'      },
+    ],
+  },
+  {
+    key: 'execution', frameworkIdx: 3,
+    question: 'How do you currently run your marketing campaigns?',
+    sub: 'EVOX automates whatever takes your team the most time.',
+    options: [
+      { value: 'manual', label: 'Fully Manual',        icon: '✋', desc: 'I do everything by hand — very time-consuming'      },
+      { value: 'tools',  label: 'Mix of Tools',        icon: '🔧', desc: "I use several tools but it's still fragmented"       },
+      { value: 'team',   label: 'In-house Team',       icon: '👥', desc: 'I have a small team but need more output'            },
+      { value: 'agency', label: 'External Agency',     icon: '🏛️', desc: 'Outsourcing but want more control and speed'        },
+    ],
+  },
+  {
+    key: 'analytics', frameworkIdx: 4,
+    question: 'How do you currently measure campaign performance?',
+    sub: 'EVOX will surface the insights that matter most to your role.',
+    options: [
+      { value: 'none',     label: 'Not Tracking Yet', icon: '❓', desc: 'I don\'t have proper analytics set up yet'    },
+      { value: 'basic',    label: 'Basic Metrics',    icon: '📊', desc: 'Likes, clicks and open rates only'            },
+      { value: 'crm',      label: 'CRM + Analytics',  icon: '📉', desc: 'Lead tracking and conversion funnels'         },
+      { value: 'advanced', label: 'Full Dashboard',   icon: '🖥️', desc: 'Custom KPIs, attribution and ROI tracking'   },
+    ],
+  },
+  {
+    key: 'optimization', frameworkIdx: 5,
+    question: 'What is your biggest growth challenge right now?',
+    sub: "EVOX's AI will prioritise optimisation in this area first.",
+    options: [
+      { value: 'content',     label: 'Creating Content',    icon: '✏️', desc: 'Not enough quality content going out regularly'  },
+      { value: 'converting',  label: 'Converting Traffic',  icon: '🔄', desc: 'Visitors aren\'t turning into customers'          },
+      { value: 'consistency', label: 'Staying Consistent',  icon: '⏰', desc: 'Hard to maintain a regular marketing cadence'     },
+      { value: 'roi',         label: 'Proving ROI',         icon: '💹', desc: 'Can\'t clearly show what\'s working'              },
+    ],
+  },
+]
+
+function getPersonalisedResult(answers) {
+  const roleLabel = { founder:'Founder', marketer:'Marketing Leader', business:'Business Owner', agency:'Agency Owner' }
+  const objectiveLabel = { leads:'lead generation', awareness:'brand awareness', sales:'driving sales', retention:'customer retention' }
+  const challengeLabel = { content:'content creation', converting:'conversion optimisation', consistency:'marketing consistency', roi:'ROI measurement' }
+  const modulesMap = {
+    leads:     ['Lead Gen Campaigns','Email Drip Sequences','LinkedIn Outreach'],
+    awareness: ['Brand Strategy','30-Day Content Calendar','Social Media Scheduler'],
+    sales:     ['Sales Enablement','Funnel & CRO Audit','Paid Ad Campaigns'],
+    retention: ['Email Nurture Flows','Customer Re-engagement','Analytics Reports'],
+  }
+  return {
+    role:      roleLabel[answers.background]     || 'Marketing Professional',
+    objective: objectiveLabel[answers.objective] || 'growth',
+    challenge: challengeLabel[answers.optimization] || 'scaling',
+    modules:   modulesMap[answers.objective]     || ['Growth Strategy','Content Calendar','Analytics'],
+  }
+}
+
 export default function Landing() {
   const { user } = useAuth()
   const navigate = useNavigate()
+
+  const [wizardOpen,    setWizardOpen]    = useState(false)
+  const [wizardStep,    setWizardStep]    = useState(0)
+  const [wizardAnswers, setWizardAnswers] = useState({})
+  const [wizardDone,    setWizardDone]    = useState(false)
+
+  const handleWizardSelect = (value) => {
+    const step = WIZARD_STEPS[wizardStep]
+    const next = { ...wizardAnswers, [step.key]: value }
+    setWizardAnswers(next)
+    if (wizardStep < WIZARD_STEPS.length - 1) {
+      setWizardStep(s => s + 1)
+    } else {
+      setWizardDone(true)
+    }
+  }
+
+  const resetWizard = () => {
+    setWizardOpen(false)
+    setWizardStep(0)
+    setWizardAnswers({})
+    setWizardDone(false)
+  }
 
   // Logged-in users should go straight to the dashboard
   useEffect(() => {
@@ -317,10 +438,12 @@ export default function Landing() {
       </section>
 
       {/* ══════════════════════════════════════════════════
-          CMO WORKFLOW PIPELINE
+          CMO WORKFLOW PIPELINE + ASSESSMENT WIZARD
       ══════════════════════════════════════════════════ */}
-      <section style={{padding:'80px 40px',background:'#0a0908',overflow:'hidden'}}>
+      <section style={{padding:'80px 40px',background:'#0a0908',overflow:'hidden',position:'relative'}}>
         <div style={{maxWidth:1200,margin:'0 auto'}}>
+
+          {/* ── Static header (always visible) ── */}
           <FadeIn style={{textAlign:'center',marginBottom:52}}>
             <SBadge>The CMO Framework</SBadge>
             <h2 style={{fontSize:'clamp(20px,3vw,38px)',fontWeight:800,letterSpacing:'-0.03em',lineHeight:1.2,fontFamily:"'Syne','Inter',sans-serif",color:TEXT,marginBottom:12}}>
@@ -330,19 +453,133 @@ export default function Landing() {
               Every EVOX engagement follows this proven C-suite framework — ensuring each dollar drives measurable outcomes.
             </p>
           </FadeIn>
-          <div style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:0,position:'relative'}}>
+
+          {/* ── Framework steps strip ── */}
+          <div style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:0,position:'relative',marginBottom:52}}>
             <div style={{position:'absolute',top:38,left:'8%',right:'8%',height:2,background:`linear-gradient(90deg,transparent,${GBORDER},${GOLD},${GBORDER},transparent)`,zIndex:0}}/>
-            {WORKFLOW.map((step,i)=>(
-              <FadeIn key={step.label} delay={i*0.08}>
-                <div style={{display:'flex',flexDirection:'column',alignItems:'center',textAlign:'center',padding:'0 6px',position:'relative',zIndex:1}}>
-                  <div style={{width:76,height:76,borderRadius:'50%',background:i===0?`linear-gradient(135deg,${GOLD},#b8803a)`:CARD,border:`2px solid ${i===0?GOLD:GBORDER}`,display:'flex',alignItems:'center',justifyContent:'center',color:i===0?'#0e0c09':GOLD,marginBottom:14,boxShadow:i===0?`0 0 24px rgba(200,151,62,0.3)`:'none'}}>{step.icon}</div>
-                  <div style={{fontSize:11,fontWeight:800,color:TEXT,letterSpacing:'0.06em',textTransform:'uppercase',marginBottom:5}}>{step.label}</div>
-                  <div style={{fontSize:11,color:TEXT3,lineHeight:1.5}}>{step.desc}</div>
-                  {i<WORKFLOW.length-1&&<div style={{position:'absolute',top:28,right:-10,zIndex:2,color:GOLD,fontSize:18,fontWeight:900}}>›</div>}
-                </div>
-              </FadeIn>
-            ))}
+            {WORKFLOW.map((step,i)=>{
+              const isActive = wizardOpen && !wizardDone && WIZARD_STEPS[wizardStep]?.frameworkIdx === i
+              const isDone   = wizardOpen && (wizardDone || (WIZARD_STEPS[wizardStep]?.frameworkIdx ?? -1) > i)
+              return (
+                <FadeIn key={step.label} delay={i*0.08}>
+                  <div style={{display:'flex',flexDirection:'column',alignItems:'center',textAlign:'center',padding:'0 6px',position:'relative',zIndex:1}}>
+                    <div style={{
+                      width:76,height:76,borderRadius:'50%',
+                      background: isActive ? `linear-gradient(135deg,${GOLD},#b8803a)` : isDone ? 'rgba(200,151,62,0.18)' : i===0&&!wizardOpen ? `linear-gradient(135deg,${GOLD},#b8803a)` : CARD,
+                      border:`2px solid ${isActive||isDone?GOLD:i===0&&!wizardOpen?GOLD:GBORDER}`,
+                      display:'flex',alignItems:'center',justifyContent:'center',
+                      color: isActive ? '#0e0c09' : GOLD,
+                      marginBottom:14,
+                      boxShadow: isActive ? `0 0 28px rgba(200,151,62,0.45)` : isDone ? `0 0 12px rgba(200,151,62,0.2)` : i===0&&!wizardOpen?`0 0 24px rgba(200,151,62,0.3)`:'none',
+                      transition:'all 0.35s ease',
+                    }}>
+                      {isDone ? <Check size={18}/> : step.icon}
+                    </div>
+                    <div style={{fontSize:11,fontWeight:800,color:isActive?GOLD:TEXT,letterSpacing:'0.06em',textTransform:'uppercase',marginBottom:5,transition:'color 0.3s'}}>{step.label}</div>
+                    <div style={{fontSize:11,color:TEXT3,lineHeight:1.5}}>{step.desc}</div>
+                    {i<WORKFLOW.length-1&&<div style={{position:'absolute',top:28,right:-10,zIndex:2,color:GOLD,fontSize:18,fontWeight:900}}>›</div>}
+                  </div>
+                </FadeIn>
+              )
+            })}
           </div>
+
+          {/* ── Wizard panel ── */}
+          {!wizardOpen && (
+            <motion.div initial={{opacity:0,y:12}} animate={{opacity:1,y:0}} style={{textAlign:'center'}}>
+              <button
+                onClick={()=>setWizardOpen(true)}
+                style={{...goldPill,fontSize:15,padding:'14px 36px'}}
+                onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 10px 28px rgba(200,151,62,0.4)'}}
+                onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none'}}
+              >
+                Get Your Free CMO Assessment <ArrowRight size={16}/>
+              </button>
+              <p style={{marginTop:12,fontSize:12,color:TEXT3}}>7 quick questions · Takes under 2 minutes · No sign-up needed</p>
+            </motion.div>
+          )}
+
+          {wizardOpen && !wizardDone && (()=>{
+            const step = WIZARD_STEPS[wizardStep]
+            return (
+              <motion.div key={wizardStep} initial={{opacity:0,y:20}} animate={{opacity:1,y:0}} transition={{duration:0.35}}
+                style={{background:'linear-gradient(160deg,#161410,#131210)',border:`1px solid ${GBORDER}`,borderRadius:20,padding:'40px 36px',position:'relative'}}>
+
+                {/* progress bar */}
+                <div style={{marginBottom:28}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+                    <span style={{fontSize:11,color:GOLD,fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase'}}>
+                      {step.frameworkIdx !== null ? WORKFLOW[step.frameworkIdx].label : 'Your Background'} · Step {wizardStep+1} of {WIZARD_STEPS.length}
+                    </span>
+                    <button onClick={resetWizard} style={{background:'none',border:'none',color:TEXT3,cursor:'pointer',fontSize:12,padding:0}}>✕ Close</button>
+                  </div>
+                  <div style={{height:4,borderRadius:4,background:'rgba(200,151,62,0.12)',overflow:'hidden'}}>
+                    <div style={{height:'100%',borderRadius:4,background:`linear-gradient(90deg,${GOLD},#b8803a)`,width:`${((wizardStep+1)/WIZARD_STEPS.length)*100}%`,transition:'width 0.4s ease'}}/>
+                  </div>
+                </div>
+
+                {/* question */}
+                <div style={{marginBottom:8,fontSize:'clamp(16px,1.6vw,22px)',fontWeight:700,color:TEXT,fontFamily:"'Syne','Inter',sans-serif",lineHeight:1.3}}>{step.question}</div>
+                <div style={{fontSize:13,color:TEXT2,marginBottom:28,lineHeight:1.6}}>{step.sub}</div>
+
+                {/* options */}
+                <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:14}}>
+                  {step.options.map(opt=>(
+                    <button key={opt.value} onClick={()=>handleWizardSelect(opt.value)}
+                      style={{background:CARD,border:`1px solid ${GBORDER}`,borderRadius:14,padding:'18px 16px',cursor:'pointer',textAlign:'left',transition:'all 0.2s',display:'flex',flexDirection:'column',gap:6}}
+                      onMouseEnter={e=>{e.currentTarget.style.borderColor=GOLD;e.currentTarget.style.background='rgba(200,151,62,0.08)';e.currentTarget.style.transform='translateY(-2px)'}}
+                      onMouseLeave={e=>{e.currentTarget.style.borderColor=GBORDER;e.currentTarget.style.background=CARD;e.currentTarget.style.transform='translateY(0)'}}>
+                      <span style={{fontSize:22}}>{opt.icon}</span>
+                      <span style={{fontSize:13,fontWeight:700,color:TEXT}}>{opt.label}</span>
+                      <span style={{fontSize:11,color:TEXT2,lineHeight:1.5}}>{opt.desc}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {wizardStep > 0 && (
+                  <button onClick={()=>setWizardStep(s=>s-1)}
+                    style={{marginTop:20,background:'none',border:'none',color:TEXT3,cursor:'pointer',fontSize:12,padding:0,display:'inline-flex',alignItems:'center',gap:4}}>
+                    ← Back
+                  </button>
+                )}
+              </motion.div>
+            )
+          })()}
+
+          {wizardOpen && wizardDone && (()=>{
+            const r = getPersonalisedResult(wizardAnswers)
+            return (
+              <motion.div initial={{opacity:0,scale:0.97}} animate={{opacity:1,scale:1}} transition={{duration:0.4}}
+                style={{background:'linear-gradient(160deg,#1c1a13,#161410)',border:`1px solid rgba(200,151,62,0.4)`,borderRadius:20,padding:'44px 40px',textAlign:'center',boxShadow:'0 0 60px rgba(200,151,62,0.08)'}}>
+                <div style={{fontSize:32,marginBottom:12}}>✅</div>
+                <div style={{fontSize:11,fontWeight:700,color:GOLD,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:10}}>Your EVOX Strategy is Ready</div>
+                <h3 style={{fontSize:'clamp(18px,2vw,28px)',fontWeight:800,color:TEXT,fontFamily:"'Syne','Inter',sans-serif",marginBottom:12,lineHeight:1.3}}>
+                  As a <span style={goldGrad}>{r.role}</span>, here's what EVOX will do for you
+                </h3>
+                <p style={{fontSize:14,color:TEXT2,maxWidth:520,margin:'0 auto 28px',lineHeight:1.7}}>
+                  Your focus on <strong style={{color:TEXT}}>{r.objective}</strong> with the challenge of <strong style={{color:TEXT}}>{r.challenge}</strong> — EVOX will activate these modules first:
+                </p>
+                <div style={{display:'flex',gap:10,justifyContent:'center',flexWrap:'wrap',marginBottom:32}}>
+                  {r.modules.map(m=>(
+                    <span key={m} style={{padding:'7px 16px',background:'rgba(200,151,62,0.12)',border:`1px solid rgba(200,151,62,0.3)`,borderRadius:100,fontSize:12,fontWeight:600,color:GOLD}}>
+                      ✦ {m}
+                    </span>
+                  ))}
+                </div>
+                <div style={{display:'flex',gap:12,justifyContent:'center',flexWrap:'wrap'}}>
+                  <button onClick={goBoard} style={{...goldPill,padding:'13px 32px'}}
+                    onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 10px 28px rgba(200,151,62,0.4)'}}
+                    onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none'}}>
+                    Launch EVOX Now <ArrowRight size={16}/>
+                  </button>
+                  <button onClick={resetWizard} style={{...outlinePill,padding:'13px 24px',fontSize:13}}>
+                    Retake Assessment
+                  </button>
+                </div>
+              </motion.div>
+            )
+          })()}
+
         </div>
       </section>
 
