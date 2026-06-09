@@ -266,9 +266,51 @@ function EmailCard({
   )
 }
 
+// Safely convert any value (including nested objects/arrays from AI) to a plain string.
+// Handles: string | array-of-objects | array-of-strings | plain object | number
+function safeStr(val) {
+  if (!val) return ''
+  if (typeof val === 'string') return val
+
+  // ── Arrays: e.g. partnershipIdeas: [{partnerType, valueExchange, approach}, …] ──
+  if (Array.isArray(val)) {
+    return val.map((item, i) => {
+      if (typeof item !== 'object' || item === null) return `• ${item}`
+      const entries = Object.entries(item)
+      // Try to find a meaningful "title" field to use as the bullet header
+      const titleEntry = entries.find(([k]) =>
+        ['partnerType','type','name','title','phase','quarter','category',
+         'strategy','channel','tactic','partner','role','step','goal','action']
+          .some(t => k.toLowerCase().includes(t))
+      )
+      if (titleEntry) {
+        const header = `${i + 1}. ${titleEntry[1]}`
+        const rest = entries
+          .filter(([k]) => k !== titleEntry[0])
+          .map(([, v]) => `   › ${typeof v === 'object' ? JSON.stringify(v) : v}`)
+          .join('\n')
+        return rest ? `${header}\n${rest}` : header
+      }
+      // Generic fallback: join all values separated by " — "
+      return `${i + 1}. ${entries.map(([, v]) => typeof v === 'object' ? JSON.stringify(v) : v).join(' — ')}`
+    }).join('\n\n')
+  }
+
+  // ── Plain objects: e.g. { "Phase 1": "...", "Phase 2": "..." } ──
+  if (typeof val === 'object') {
+    return Object.entries(val)
+      .map(([k, v]) => `${k}:\n${typeof v === 'object' ? safeStr(v) : v}`)
+      .join('\n\n')
+  }
+
+  return String(val)
+}
+
 function ContentText({ value, fallback = 'Not generated' }) {
   if (!value) return <p style={{ color: '#cbd5e1', fontSize: 14, fontStyle: 'italic' }}>{fallback}</p>
-  return <p style={{ color: '#334155', fontSize: 14, lineHeight: 1.75, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{value}</p>
+  // Delegate all serialisation to safeStr — handles strings, arrays, and nested objects uniformly
+  const text = safeStr(value)
+  return <p style={{ color: '#334155', fontSize: 14, lineHeight: 1.75, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{text || fallback}</p>
 }
 
 function FieldRow({ label, value }) {
@@ -417,7 +459,8 @@ export default function Results() {
     try {
       const flat = flattenResult(JSON.parse(raw))
       const hasContent = flat.emailSubject || flat.emailBody || flat.linkedinPost ||
-        flat.instagramCaption || flat.facebookPost || flat.whatsappMessage || flat.tiktokCaption || flat.adHeadline
+        flat.instagramCaption || flat.facebookPost || flat.whatsappMessage || flat.tiktokCaption || flat.adHeadline ||
+        flat.executiveSummary || flat.growthOpportunities || flat.gtmPlan
       if (!hasContent && flat.error) { setError(flat.error); return }
       setResult(flat)
       setEditedContent({
@@ -434,6 +477,34 @@ export default function Results() {
         adHeadline:           flat.adHeadline           || '',
         adBody:               flat.adBody               || '',
       })
+
+      // ── Auto-save growth_strategy to dashboard (no launch step for strategy docs) ──
+      if ((type === 'growth_strategy' || type === 'growth_agent' || type === 'content_calendar') && (flat.executiveSummary || flat.gtmPlan)) {
+        try {
+          const metaRaw = sessionStorage.getItem('campaignMeta')
+          const meta    = metaRaw ? JSON.parse(metaRaw) : {}
+          const newEntry = {
+            id:       Date.now().toString(),
+            name:     flat.campaignName || meta.name || 'Growth Strategy',
+            type:     'growth_strategy',
+            date:     new Date().toISOString(),
+            platforms: [],
+            goal:     meta.goal || '',
+            status:   'completed',
+            result:   flat,
+          }
+          const existing = JSON.parse(localStorage.getItem('evoke_campaigns') || '[]')
+          // Avoid exact duplicates (same name + type within last 90 seconds)
+          const isDup = existing.some(c =>
+            c.type === 'growth_strategy' &&
+            c.name === newEntry.name &&
+            Date.now() - new Date(c.date).getTime() < 90000
+          )
+          if (!isDup) {
+            localStorage.setItem('evoke_campaigns', JSON.stringify([newEntry, ...existing]))
+          }
+        } catch {}
+      }
     } catch { setError('Failed to parse campaign results.') }
   }, [])
 
@@ -680,8 +751,12 @@ export default function Results() {
   const calendarDays = parseCalendar(campaignCalendar)
   const launched = postingStatus !== 'idle'
 
-  // Strategy-specific fields (only populated for growth_strategy)
-  const isStrategy         = campaignType === 'growth_strategy'
+  // Free trial detection — memberShipTypeID is null for free/trial users
+  const profile    = getEvokeUserProfile()
+  const isFreeUser = !profile?.data?.memberShipTypeID
+
+  // Strategy-specific fields (populated for growth_strategy, growth_agent and content_calendar free-form)
+  const isStrategy         = campaignType === 'growth_strategy' || campaignType === 'growth_agent' || campaignType === 'content_calendar'
   const executiveSummary   = r.executiveSummary   || r.executive_summary   || ''
   const growthOpportunities= r.growthOpportunities|| r.growth_opportunities|| ''
   const gtmPlan            = r.gtmPlan            || r.gtm_plan            || ''
@@ -831,9 +906,9 @@ export default function Results() {
             ].filter(s => s.value).map((s, i) => (
               <ResultCard key={s.key}
                 icon={s.icon} title={s.title} color={s.color}
-                copyText={s.value} copyId={s.key}
+                copyText={safeStr(s.value)} copyId={s.key}
                 copied={copied} copy={copy}
-                editKey={s.key} editValue={s.value}
+                editKey={s.key} editValue={safeStr(s.value)}
                 delay={i * 0.06}
                 {...editProps}
               >
@@ -843,92 +918,94 @@ export default function Results() {
           </div>
         )}
 
-        {/* Content Cards */}
+        {/* Content Cards — hidden entirely for growth_strategy (pure strategy doc, no social posts needed) */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-          {(emailSubject || emailBody) && (
-            <EmailCard emailSubject={emailSubject} emailBody={emailBody} editedContent={editedContent} setEditedContent={setEditedContent} copied={copied} copy={copy} delay={0.05} {...editProps} />
-          )}
+          {!isStrategy && <>
+            {(emailSubject || emailBody) && (
+              <EmailCard emailSubject={emailSubject} emailBody={emailBody} editedContent={editedContent} setEditedContent={setEditedContent} copied={copied} copy={copy} delay={0.05} {...editProps} />
+            )}
 
-          {linkedinPost && (
-            <ResultCard icon={<Linkedin size={16} />} title="LinkedIn Post" color="#0a66c2" copyText={linkedinPost} copyId="linkedin" copied={copied} copy={copy} editKey="linkedinPost" editValue={editedContent.linkedinPost} delay={0.08} {...editProps}>
-              <ContentText value={editedContent.linkedinPost || linkedinPost} />
-            </ResultCard>
-          )}
+            {linkedinPost && (
+              <ResultCard icon={<Linkedin size={16} />} title="LinkedIn Post" color="#0a66c2" copyText={linkedinPost} copyId="linkedin" copied={copied} copy={copy} editKey="linkedinPost" editValue={editedContent.linkedinPost} delay={0.08} {...editProps}>
+                <ContentText value={editedContent.linkedinPost || linkedinPost} />
+              </ResultCard>
+            )}
 
-          {facebookPost && (
-            <ResultCard icon={<Facebook size={16} />} title="Facebook Post" color="#1877f2" copyText={facebookPost} copyId="facebook" copied={copied} copy={copy} editKey="facebookPost" editValue={editedContent.facebookPost} delay={0.11} {...editProps}>
-              <ContentText value={editedContent.facebookPost || facebookPost} />
-            </ResultCard>
-          )}
+            {facebookPost && (
+              <ResultCard icon={<Facebook size={16} />} title="Facebook Post" color="#1877f2" copyText={facebookPost} copyId="facebook" copied={copied} copy={copy} editKey="facebookPost" editValue={editedContent.facebookPost} delay={0.11} {...editProps}>
+                <ContentText value={editedContent.facebookPost || facebookPost} />
+              </ResultCard>
+            )}
 
-          {tiktokCaption && (
-            <ResultCard icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.75a4.85 4.85 0 01-1.01-.06z"/></svg>}
-              title="TikTok Caption" color="#ff0050" copyText={tiktokCaption} copyId="tiktok" copied={copied} copy={copy} editKey="tiktokCaption" editValue={editedContent.tiktokCaption} delay={0.14} {...editProps}>
-              <ContentText value={editedContent.tiktokCaption || tiktokCaption} />
-            </ResultCard>
-          )}
+            {tiktokCaption && (
+              <ResultCard icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.75a4.85 4.85 0 01-1.01-.06z"/></svg>}
+                title="TikTok Caption" color="#ff0050" copyText={tiktokCaption} copyId="tiktok" copied={copied} copy={copy} editKey="tiktokCaption" editValue={editedContent.tiktokCaption} delay={0.14} {...editProps}>
+                <ContentText value={editedContent.tiktokCaption || tiktokCaption} />
+              </ResultCard>
+            )}
 
-          {whatsappMessage && (
-            <ResultCard icon={<MessageSquare size={16} />} title="WhatsApp Message" color="#25d366" copyText={whatsappMessage} copyId="whatsapp" copied={copied} copy={copy} editKey="whatsappMessage" editValue={editedContent.whatsappMessage} delay={0.17} {...editProps}>
-              <ContentText value={editedContent.whatsappMessage || whatsappMessage} />
-            </ResultCard>
-          )}
+            {whatsappMessage && (
+              <ResultCard icon={<MessageSquare size={16} />} title="WhatsApp Message" color="#25d366" copyText={whatsappMessage} copyId="whatsapp" copied={copied} copy={copy} editKey="whatsappMessage" editValue={editedContent.whatsappMessage} delay={0.17} {...editProps}>
+                <ContentText value={editedContent.whatsappMessage || whatsappMessage} />
+              </ResultCard>
+            )}
 
-          {instagramCaption && (
-            <ResultCard icon={<Instagram size={16} />} title="Instagram Caption" color="#e1306c" copyText={instagramCaption} copyId="instagram" copied={copied} copy={copy} editKey="instagramCaption" editValue={editedContent.instagramCaption} delay={0.2} {...editProps}>
-              <ContentText value={editedContent.instagramCaption || instagramCaption} />
-            </ResultCard>
-          )}
+            {instagramCaption && (
+              <ResultCard icon={<Instagram size={16} />} title="Instagram Caption" color="#e1306c" copyText={instagramCaption} copyId="instagram" copied={copied} copy={copy} editKey="instagramCaption" editValue={editedContent.instagramCaption} delay={0.2} {...editProps}>
+                <ContentText value={editedContent.instagramCaption || instagramCaption} />
+              </ResultCard>
+            )}
 
-          {smsMessage && (
-            <ResultCard icon={<Phone size={16} />} title="SMS Message" color="#c8973e" copyText={smsMessage} copyId="sms" copied={copied} copy={copy} editKey="smsMessage" editValue={editedContent.smsMessage} delay={0.2} {...editProps}>
-              <ContentText value={editedContent.smsMessage || smsMessage} />
-            </ResultCard>
-          )}
+            {smsMessage && (
+              <ResultCard icon={<Phone size={16} />} title="SMS Message" color="#c8973e" copyText={smsMessage} copyId="sms" copied={copied} copy={copy} editKey="smsMessage" editValue={editedContent.smsMessage} delay={0.2} {...editProps}>
+                <ContentText value={editedContent.smsMessage || smsMessage} />
+              </ResultCard>
+            )}
 
-          {positioningStatement && (
-            <ResultCard icon={<Target size={16} />} title="Positioning Statement" color="#a855f7" copyText={positioningStatement} copyId="positioning" copied={copied} copy={copy} editKey="positioningStatement" editValue={editedContent.positioningStatement} delay={0.23} {...editProps}>
-              <ContentText value={editedContent.positioningStatement || positioningStatement} />
-            </ResultCard>
-          )}
+            {positioningStatement && (
+              <ResultCard icon={<Target size={16} />} title="Positioning Statement" color="#a855f7" copyText={positioningStatement} copyId="positioning" copied={copied} copy={copy} editKey="positioningStatement" editValue={editedContent.positioningStatement} delay={0.23} {...editProps}>
+                <ContentText value={editedContent.positioningStatement || positioningStatement} />
+              </ResultCard>
+            )}
 
-          {(seoTitle || seoDescription) && (
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.26 }}
-              style={{ background: '#fff', border: '1px solid rgba(245,240,232,0.15)', borderRadius: 16, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid #f5f0e8', background: '#fafbff' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ width: 32, height: 32, borderRadius: 9, background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f59e0b' }}><Search size={16} /></div>
-                  <span style={{ fontWeight: 700, fontSize: 14, color: '#0f172a' }}>SEO Content</span>
+            {(seoTitle || seoDescription) && (
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.26 }}
+                style={{ background: '#fff', border: '1px solid rgba(245,240,232,0.15)', borderRadius: 16, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid #f5f0e8', background: '#fafbff' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ width: 32, height: 32, borderRadius: 9, background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f59e0b' }}><Search size={16} /></div>
+                    <span style={{ fontWeight: 700, fontSize: 14, color: '#0f172a' }}>SEO Content</span>
+                  </div>
+                  <button onClick={() => copy(`${seoTitle}\n\n${seoDescription}`, 'seo')} style={copyBtnSmall(copied === 'seo')}>{copied === 'seo' ? <Check size={11} /> : <Copy size={11} />}</button>
                 </div>
-                <button onClick={() => copy(`${seoTitle}\n\n${seoDescription}`, 'seo')} style={copyBtnSmall(copied === 'seo')}>{copied === 'seo' ? <Check size={11} /> : <Copy size={11} />}</button>
-              </div>
-              <div style={{ padding: '16px 18px' }}>
-                <FieldRow label="SEO Title" value={seoTitle} />
-                <FieldRow label="Meta Description" value={seoDescription} />
-              </div>
-            </motion.div>
-          )}
-
-          {(adHeadline || adBody) && (
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.29 }}
-              style={{ background: '#fff', border: '1px solid rgba(245,240,232,0.15)', borderRadius: 16, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid #f5f0e8', background: '#fafbff' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ width: 32, height: 32, borderRadius: 9, background: 'rgba(236,72,153,0.12)', border: '1px solid rgba(236,72,153,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ec4899' }}><Megaphone size={16} /></div>
-                  <span style={{ fontWeight: 700, fontSize: 14, color: '#0f172a' }}>Ad Copy</span>
+                <div style={{ padding: '16px 18px' }}>
+                  <FieldRow label="SEO Title" value={seoTitle} />
+                  <FieldRow label="Meta Description" value={seoDescription} />
                 </div>
-                <button onClick={() => copy(`${adHeadline}\n\n${adBody}`, 'ad')} style={copyBtnSmall(copied === 'ad')}>{copied === 'ad' ? <Check size={11} /> : <Copy size={11} />}</button>
-              </div>
-              <div style={{ padding: '16px 18px' }}>
-                <FieldRow label="Headline" value={adHeadline} />
-                <FieldRow label="Ad Body" value={adBody} />
-              </div>
-            </motion.div>
-          )}
+              </motion.div>
+            )}
 
-          {/* ── Campaign Calendar (N-day) ── */}
-          {(calendarDays.length > 0 || dailySchedule.length > 0) && (
+            {(adHeadline || adBody) && (
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.29 }}
+                style={{ background: '#fff', border: '1px solid rgba(245,240,232,0.15)', borderRadius: 16, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid #f5f0e8', background: '#fafbff' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ width: 32, height: 32, borderRadius: 9, background: 'rgba(236,72,153,0.12)', border: '1px solid rgba(236,72,153,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ec4899' }}><Megaphone size={16} /></div>
+                    <span style={{ fontWeight: 700, fontSize: 14, color: '#0f172a' }}>Ad Copy</span>
+                  </div>
+                  <button onClick={() => copy(`${adHeadline}\n\n${adBody}`, 'ad')} style={copyBtnSmall(copied === 'ad')}>{copied === 'ad' ? <Check size={11} /> : <Copy size={11} />}</button>
+                </div>
+                <div style={{ padding: '16px 18px' }}>
+                  <FieldRow label="Headline" value={adHeadline} />
+                  <FieldRow label="Ad Body" value={adBody} />
+                </div>
+              </motion.div>
+            )}
+          </>}
+
+          {/* ── Campaign Calendar (N-day) — hidden for free trial users on growth_strategy ── */}
+          {!(isStrategy && isFreeUser) && (calendarDays.length > 0 || dailySchedule.length > 0) && (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.32 }}
               style={{ background: '#fff', border: '1px solid rgba(245,240,232,0.15)', borderRadius: 16, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid #f5f0e8', background: '#fafbff' }}>
@@ -1010,7 +1087,7 @@ export default function Results() {
             </motion.div>
           )}
 
-          {!emailSubject && !emailBody && !linkedinPost && !facebookPost && !tiktokCaption && !whatsappMessage && !smsMessage && !positioningStatement && !seoTitle && !adHeadline && calendarDays.length === 0 && (
+          {!emailSubject && !emailBody && !linkedinPost && !facebookPost && !tiktokCaption && !whatsappMessage && !smsMessage && !positioningStatement && !seoTitle && !adHeadline && calendarDays.length === 0 && !executiveSummary && !growthOpportunities && !gtmPlan && !revenueProjection && !partnershipIdeas && !expansionRoadmap && !competitorGaps && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ padding: '48px 24px', textAlign: 'center', background: '#fff', border: '1px dashed #cbd5e1', borderRadius: 16 }}>
               <AlertCircle size={32} style={{ color: '#cbd5e1', marginBottom: 14 }} />
               <p style={{ color: '#94a3b8', fontSize: 15, marginBottom: 20 }}>No campaign content was generated. Please try again.</p>

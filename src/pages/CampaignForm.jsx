@@ -1,5 +1,5 @@
 ﻿import React, { useState, useRef, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Calendar,
@@ -247,6 +247,25 @@ async function generateCampaignContent(form, campaignType, campaignDays) {
   const isProduct = campaignType === "product";
   const isNewType = !["event", "product", "brand", "event_full"].includes(campaignType);
 
+  // ── Jina AI website reader (growth_strategy only) ──────────────────────────
+  // r.jina.ai converts any URL into clean readable text — no API key needed.
+  let websiteContent = '';
+  if ((campaignType === 'growth_strategy' || campaignType === 'growth_agent' || campaignType === 'content_calendar') && form.website) {
+    try {
+      const jinaUrl = form.website.startsWith('http') ? form.website : `https://${form.website}`;
+      const jinaRes = await fetch(`https://r.jina.ai/${jinaUrl}`, {
+        headers: { 'Accept': 'text/plain', 'X-Return-Format': 'text' },
+      });
+      if (jinaRes.ok) {
+        const raw = await jinaRes.text();
+        websiteContent = raw.slice(0, 4000); // cap at 4k chars to stay within token limits
+      }
+    } catch (e) {
+      console.warn('Jina AI website read failed, generating without site content:', e.message);
+    }
+  }
+  // ────────────────────────────────────────────────────────────────────────────
+
   const baseContext = `
 Campaign Type: ${campaignType}
 Name/Title: ${form.name}
@@ -261,6 +280,8 @@ ${form.competitorUrl ? `Competitor URL: ${form.competitorUrl}` : ""}
 ${form.industry ? `Industry: ${form.industry}` : ""}
 ${form.budget ? `Budget: ${form.budget}` : ""}
 ${form.keywords ? `Keywords: ${form.keywords}` : ""}
+${form.toneOfVoice ? `Brand Tone of Voice: ${form.toneOfVoice}` : ""}
+${websiteContent ? `\n--- LIVE WEBSITE CONTENT (use this to deeply understand the business, products, and tone) ---\n${websiteContent}\n---` : ""}
 `.trim();
 
   const context = isEvent
@@ -305,18 +326,23 @@ Post Date: ${form.postDate || "ASAP"}`
     const schemas = {
       growth_strategy: `{
   "campaignName": "${form.name}",
-  "executiveSummary": "3-paragraph executive growth strategy summary",
-  "growthOpportunities": "5 specific revenue and market opportunities (numbered list)",
-  "gtmPlan": "Complete go-to-market plan with phases and tactics",
-  "revenueProjection": "12-month revenue forecast with milestones",
-  "partnershipIdeas": "5 strategic partnership recommendations",
-  "expansionRoadmap": "Step-by-step expansion roadmap (Q1-Q4)",
-  "competitorGaps": "Key competitor gaps to exploit",
-  "emailSubject": "compelling executive briefing email subject",
-  "emailBody": "executive growth strategy email (3-4 paragraphs)",
-  "linkedinPost": "thought-leadership LinkedIn post about growth strategy",
-  "positioningStatement": "company growth positioning statement",
-  "campaignCalendar": "${Array.from({length:form.campaignDays||7},(_,i)=>'Day '+(i+1)+': [action]').join('\\n')}"
+  "executiveSummary": "3-paragraph executive growth strategy summary covering current position, core opportunity, and recommended strategic direction",
+  "growthOpportunities": "5 specific revenue and market opportunities with estimated impact — numbered list, each with a short rationale",
+  "gtmPlan": "Full go-to-market plan as plain text: describe each phase (Phase 1, Phase 2, Phase 3) with timelines and specific tactics on separate lines",
+  "revenueProjection": "12-month revenue forecast as plain text: describe Month 1-3, Month 4-6, Month 7-9, Month 10-12 milestones on separate lines with realistic figures",
+  "partnershipIdeas": "5 strategic partnership recommendations with partner type, value exchange, and how to approach them",
+  "expansionRoadmap": "Quarter-by-quarter expansion roadmap as plain text: Q1, Q2, Q3, Q4 goals and key actions on separate lines",
+  "competitorGaps": "Key competitor gaps to exploit — 4-5 specific weaknesses in the market with a recommended counter-move for each"
+}`,
+      growth_agent: `{
+  "campaignName": "${form.name}",
+  "executiveSummary": "3-paragraph client acquisition summary: ideal client profile, biggest pain point you solve, and why they choose you over competitors",
+  "growthOpportunities": "5 specific client acquisition channels with estimated monthly lead volume and cost — numbered list with short rationale for each",
+  "gtmPlan": "Lead generation plan as plain text: Phase 1 (outreach setup & quick wins in 30 days), Phase 2 (scale what works in 60-90 days), Phase 3 (retention & referral system). Each phase on separate lines with specific daily/weekly actions",
+  "revenueProjection": "12-month new client revenue forecast as plain text: Month 1-3 (initial pipeline), Month 4-6 (conversion ramp), Month 7-9 (recurring revenue), Month 10-12 (scale target). Include realistic client numbers and deal sizes",
+  "partnershipIdeas": "5 referral or partnership channels to generate clients — partner type, how many leads per month expected, and exact outreach script or approach",
+  "expansionRoadmap": "Quarter-by-quarter new client roadmap as plain text: Q1 (foundation), Q2 (momentum), Q3 (scale), Q4 (optimise). Each quarter on separate lines with client targets and key actions",
+  "competitorGaps": "4-5 reasons why clients leave your competitors and come to you — specific pain points, your counter-positioning for each, and the one-liner pitch to use"
 }`,
       competitive_intel: `{
   "campaignName": "${form.name}",
@@ -335,18 +361,13 @@ Post Date: ${form.postDate || "ASAP"}`
 }`,
       content_calendar: `{
   "campaignName": "${form.name}",
-  "contentThemes": "5 monthly content themes with rationale",
-  "monthlyCalendar": "Full 30-day content calendar (Day 1-30, platform + content type + topic)",
-  "platformStrategy": "Platform-by-platform content strategy (LinkedIn, Instagram, TikTok, Facebook)",
-  "contentMix": "Content mix breakdown (educational, promotional, entertainment percentages)",
-  "postingSchedule": "Optimal posting times and frequency per platform",
-  "contentIdeas": "20 specific post ideas with hooks",
-  "kpis": "5 content KPIs to track",
-  "emailSubject": "content strategy newsletter email subject",
-  "emailBody": "content calendar briefing email",
-  "linkedinPost": "content strategy announcement LinkedIn post",
-  "campaignCalendar": "${Array.from({length:form.campaignDays||7},(_,i)=>'Day '+(i+1)+': [action]').join('\\n')}",
-  "positioningStatement": "content brand positioning statement"
+  "executiveSummary": "3-paragraph content strategy overview: brand position, content opportunity, and core message framework${form.toneOfVoice ? ` — use a ${form.toneOfVoice} tone throughout` : ""}",
+  "growthOpportunities": "5 specific content channels and formats that will drive the most growth — numbered list with rationale and estimated reach for each",
+  "gtmPlan": "30-day content launch plan as plain text: Week 1 (foundation & first posts), Week 2 (build momentum), Week 3 (engage & amplify), Week 4 (review & optimise). Each week on separate lines with specific content actions",
+  "revenueProjection": "Content ROI forecast as plain text: Month 1 (awareness metrics), Month 2-3 (engagement growth), Month 4-6 (lead gen from content), Month 7-12 (content driving revenue). Realistic numbers per phase on separate lines",
+  "partnershipIdeas": "5 content collaboration and cross-promotion ideas — collaborator type, what content to create together, and expected audience reach",
+  "expansionRoadmap": "Quarter-by-quarter content expansion plan as plain text: Q1 (establish core channels), Q2 (add video/short-form), Q3 (community & UGC), Q4 (paid amplification). Each quarter with specific content milestones",
+  "competitorGaps": "4-5 content gaps in your competitors — what topics they miss, what formats they ignore, and exactly what content you should create to own that space"
 }`,
       seo_blog: `{
   "campaignName": "${form.name}",
@@ -648,6 +669,12 @@ const campaignMeta = {
     icon: <Zap size={22} />,
     badge: "STRATEGY",
   },
+  growth_agent: {
+    title: "Growth Agent",
+    color: "#10b981",
+    icon: <Zap size={22} />,
+    badge: "GROWTH",
+  },
   competitive_intel: {
     title: "Competitive Intel",
     color: "#f59e0b",
@@ -719,7 +746,9 @@ const campaignMeta = {
 // â"€â"€â"€ Main CampaignForm component â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 export default function CampaignForm() {
   const { type } = useParams();
-  const navigate = useNavigate();
+  const navigate  = useNavigate();
+  const location  = useLocation();
+  const backPath  = location.state?.from || "/agents-hub";
   const meta = campaignMeta[type] || campaignMeta.product;
 
   const INDIAN_CITIES = [
@@ -1112,6 +1141,7 @@ export default function CampaignForm() {
     keywords: "",
     reportPeriod: "",
     funnelStage: "",
+    toneOfVoice: "",
   });
   const [audienceOpen, setAudienceOpen] = useState(false);
   const [locationOpen, setLocationOpen] = useState(false);
@@ -1261,7 +1291,7 @@ export default function CampaignForm() {
     if (!form.description.trim()) return setSubmitError("Please enter a description.");
     if (!form.goal.trim()) return setSubmitError("Please enter a campaign goal.");
     if (needsBrandName && !form.brandName.trim()) return setSubmitError("Please enter a brand name.");
-    if (type !== "growth_strategy" && !form.contactEmail.trim()) return setSubmitError("Please enter a contact email.");
+    if (type !== "growth_strategy" && type !== "growth_agent" && type !== "content_calendar" && !form.contactEmail.trim()) return setSubmitError("Please enter a contact email.");
     if (form.targetAudience.length === 0) return setSubmitError("Please select at least one target audience.");
 
     setLoading(true);
@@ -1296,7 +1326,12 @@ export default function CampaignForm() {
       }
 
       // â"€â"€ Generate AI campaign content â"€â"€
-      setLoadingPhase("generating");
+      // For growth_strategy with a website, show "reading" phase first (Jina fetch happens inside the function)
+      if ((type === 'growth_strategy' || type === 'growth_agent' || type === 'content_calendar') && form.website) {
+        setLoadingPhase("reading-website");
+      } else {
+        setLoadingPhase("generating");
+      }
       const campaignData = await generateCampaignContent(form, type, form.campaignDays);
 
       // â"€â"€ Generate daily schedule for multi-day campaigns â"€â"€
@@ -1450,8 +1485,9 @@ export default function CampaignForm() {
     product:          { name: "Product Name",         namePh: "Enter product name",            desc: "Product Description"       },
     brand:            { name: "Campaign Name",        namePh: "Enter campaign name",           desc: "Brand Description"         },
     growth_strategy:  { name: "Company / Brand",      namePh: "Your company or brand name",    desc: "Business Overview & Goals"  },
+    growth_agent:     { name: "Company / Brand",      namePh: "Your company or brand name",    desc: "Business Overview & Client Goals" },
     competitive_intel:{ name: "Your Brand",           namePh: "Your brand name",               desc: "Your Product / Service to Analyze" },
-    content_calendar: { name: "Brand / Channel",      namePh: "Brand or social channel name", desc: "Content Goals & Brand Voice" },
+    content_calendar: { name: "Brand / Channel",      namePh: "Brand or social channel name", desc: "What content do you want to create & what are your goals?" },
     seo_blog:         { name: "Blog Topic",           namePh: "e.g. How to grow on LinkedIn",  desc: "Target Audience & Context" },
     email_drip:       { name: "Campaign / Product",   namePh: "What this email series is for", desc: "Funnel Goal & Audience Segment" },
     influencer:       { name: "Brand / Campaign",     namePh: "Brand or campaign name",        desc: "Campaign Objectives & Key Messages" },
@@ -1577,7 +1613,7 @@ export default function CampaignForm() {
       <Navbar />
       <div style={s.container}>
         <button
-          onClick={() => navigate("/agents-hub")}
+          onClick={() => navigate(backPath)}
           style={{
             display: "inline-flex",
             alignItems: "center",
@@ -1637,8 +1673,11 @@ export default function CampaignForm() {
             {meta.title}
           </h1>
           <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "15px", fontFamily: FONT, fontWeight: 400 }}>
-            Fill in the details below and your AI CMO will generate a complete,
-            multi-channel marketing campaign in seconds.
+            {type === "growth_agent"
+              ? "Fill in your business details and your AI CMO will build a complete client acquisition & growth plan."
+              : type === "content_calendar"
+              ? "Fill in your brand details and your AI CMO will create a tailored content strategy and calendar."
+              : "Fill in the details below and your AI CMO will generate a complete, multi-channel marketing campaign in seconds."}
           </p>
         </motion.div>
 
@@ -1679,7 +1718,43 @@ export default function CampaignForm() {
               <input value={form.industry} onChange={(e) => set("industry", e.target.value)} placeholder="e.g. SaaS, E-commerce, Events" style={s.input} />
             </>
           )}
-          {(type === "growth_strategy" || type === "analytics_report") && (
+
+          {/* ── Content Calendar — brand/website + industry/niche ── */}
+          {type === "content_calendar" && (
+            <>
+              <label style={s.label}>Industry / Niche <span style={s.req}>*</span></label>
+              <select value={form.industry || ""} onChange={(e) => set("industry", e.target.value)} style={{ ...s.input, cursor: "pointer", colorScheme: "dark" }}>
+                {["","Technology / SaaS","E-commerce / Retail","Healthcare / Wellness","Finance / Fintech","Education / EdTech","Real Estate","Food & Beverage","Fashion & Apparel","Travel & Hospitality","Marketing & Advertising","Media & Entertainment","Manufacturing","Professional Services","Non-profit / NGO","Other"].map((v) => (
+                  <option key={v} value={v} style={{ background: "#1c1a13", color: v ? "#f0ebe0" : "rgba(240,235,224,0.4)" }}>{v || "Select industry..."}</option>
+                ))}
+              </select>
+
+              <label style={s.label}>
+                Your Website URL
+                <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 12, fontWeight: 400 }}> (optional — AI will read your brand)</span>
+              </label>
+              <div style={{ position: "relative" }}>
+                <Link size={14} style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.35)", pointerEvents: "none" }} />
+                <input
+                  value={form.website}
+                  onChange={(e) => set("website", e.target.value)}
+                  placeholder="https://yourbrand.com"
+                  style={{ ...s.input, paddingLeft: "36px" }}
+                />
+              </div>
+              <p style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginTop: -6, marginBottom: 4 }}>
+                The AI will scan your site to match your brand tone and voice in the content calendar.
+              </p>
+
+              <label style={s.label}>Brand Tone of Voice</label>
+              <select value={form.toneOfVoice || ""} onChange={(e) => set("toneOfVoice", e.target.value)} style={{ ...s.input, cursor: "pointer", colorScheme: "dark" }}>
+                {["","Professional & Authoritative","Friendly & Conversational","Bold & Energetic","Inspirational & Motivational","Educational & Informative","Witty & Humorous","Luxury & Sophisticated","Casual & Relatable"].map((v) => (
+                  <option key={v} value={v} style={{ background: "#1c1a13", color: v ? "#f0ebe0" : "rgba(240,235,224,0.4)" }}>{v || "Select tone..."}</option>
+                ))}
+              </select>
+            </>
+          )}
+          {(type === "growth_strategy" || type === "growth_agent" || type === "analytics_report") && (
             <>
               <label style={s.label}>Industry / Sector <span style={s.req}>*</span></label>
               <select value={form.industry || ""} onChange={(e) => set("industry", e.target.value)} style={{ ...s.input, cursor: "pointer", colorScheme: "dark" }}>
@@ -1703,6 +1778,29 @@ export default function CampaignForm() {
               </select>
             </>
           )}
+
+          {/* ── Website URL — growth_strategy & growth_agent (Jina AI will read & feed it to the AI) ── */}
+          {(type === "growth_strategy" || type === "growth_agent") && (
+            <>
+              <label style={s.label}>
+                Your Website URL
+                <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 12, fontWeight: 400 }}> (optional — AI will read your site)</span>
+              </label>
+              <div style={{ position: "relative" }}>
+                <Link size={14} style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.35)", pointerEvents: "none" }} />
+                <input
+                  value={form.website}
+                  onChange={(e) => set("website", e.target.value)}
+                  placeholder="https://yourcompany.com"
+                  style={{ ...s.input, paddingLeft: "36px" }}
+                />
+              </div>
+              <p style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginTop: -6, marginBottom: 4 }}>
+                The AI CMO will scan your site and use it to build a strategy tailored to your actual business.
+              </p>
+            </>
+          )}
+
           {type === "seo_blog" && (
             <>
               <label style={s.label}>Primary Keyword <span style={s.req}>*</span></label>
@@ -2052,7 +2150,7 @@ export default function CampaignForm() {
             </>
           )}
 
-          {type !== "event" && type !== "growth_strategy" && (
+          {type !== "event" && type !== "growth_strategy" && type !== "growth_agent" && type !== "content_calendar" && (
             <>
               <label style={s.label}>
                 Price / Pricing Info{" "}
@@ -2166,7 +2264,7 @@ export default function CampaignForm() {
             style={s.textarea}
           />
 
-          {type !== "event" && type !== "growth_strategy" && (
+          {type !== "event" && type !== "growth_strategy" && type !== "growth_agent" && type !== "content_calendar" && (
             <>
               <label style={s.label}>
                 Brand Name <span style={s.req}>*</span>
@@ -2374,8 +2472,8 @@ export default function CampaignForm() {
             </>
           )}
 
-          {/* Contact Info — hidden for growth_strategy (not needed for AI strategy doc) */}
-          {type !== "growth_strategy" && (
+          {/* Contact Info — hidden for growth_strategy / growth_agent / content_calendar */}
+          {type !== "growth_strategy" && type !== "growth_agent" && type !== "content_calendar" && (
             <>
               <div style={s.divider} />
               <p style={s.sectionTitle}>Contact Info</p>
@@ -2422,8 +2520,8 @@ export default function CampaignForm() {
             </>
           )}
 
-          {/* Publishing Settings — hidden for growth_strategy (strategy doc, not a social post) */}
-          {type !== "growth_strategy" && (
+          {/* Publishing Settings — hidden for growth_strategy / growth_agent / content_calendar */}
+          {type !== "growth_strategy" && type !== "growth_agent" && type !== "content_calendar" && (
             <>
           <div style={s.divider} />
           <p style={s.sectionTitle}>Publishing Settings</p>
@@ -2660,6 +2758,7 @@ export default function CampaignForm() {
                 />
                 {loadingPhase === "uploading-image" && "Uploading image…"}
                 {loadingPhase === "uploading-video" && `Uploading video… ${tiktokVideoUploadProgress}%`}
+                {loadingPhase === "reading-website" && "Reading your website…"}
                 {loadingPhase === "generating" && "Generating campaign content…"}
                 {loadingPhase === "generating-schedule" && `Building ${form.campaignDays}-day schedule…`}
                 {!loadingPhase && "Processing…"}

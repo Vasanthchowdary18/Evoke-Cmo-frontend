@@ -336,13 +336,6 @@ Extract:
               <span style={{ fontSize: 11, color: 'rgba(240,235,224,0.45)', fontWeight: 500 }}>Your AI Chief Marketing Officer · Online</span>
             </div>
           </div>
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 6, padding: '5px 12px',
-            background: 'rgba(200,151,62,0.1)', border: '1px solid rgba(200,151,62,0.22)', borderRadius: 100,
-          }}>
-            <Sparkles size={11} color="#c8973e" />
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#c8973e', letterSpacing: '0.05em' }}>CMO SETUP</span>
-          </div>
         </div>
 
         {/* ── Step progress bar ── */}

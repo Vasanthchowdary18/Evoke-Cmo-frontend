@@ -1432,322 +1432,129 @@ export default function Dashboard() {
           )}
         </AnimatePresence>
 
-        {/* All AI Agents in One Continuous Section */}
+        {/* ═══ All AI Agents — organised by category ═══ */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.75 }}
           style={{ marginTop: 40 }}
         >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "flex-start",
-              justifyContent: "space-between",
-              marginBottom: 28,
-              flexWrap: "wrap",
-              gap: 12,
-            }}
-          >
+          {/* Section header */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 32, flexWrap: "wrap", gap: 12 }}>
             <div>
-              <div
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 6,
-                  padding: "4px 12px",
-                  background: "rgba(200,151,62,0.12)",
-                  border: "1px solid rgba(124,58,237,0.25)",
-                  borderRadius: 100,
-                  fontSize: 11,
-                  fontWeight: 700,
-                  color: "#c8973e",
-                  letterSpacing: "0.06em",
-                  marginBottom: 12,
-                }}
-              >
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 12px", background: "rgba(200,151,62,0.12)", border: "1px solid rgba(200,151,62,0.25)", borderRadius: 100, fontSize: 11, fontWeight: 700, color: "#c8973e", letterSpacing: "0.06em", marginBottom: 12 }}>
                 <Bot size={11} /> ALL AI AGENTS
               </div>
-              <h2
-                style={{
-                  fontSize: 28,
-                  fontWeight: 900,
-                  letterSpacing: "-0.02em",
-                  color: "#ffffff",
-                  marginBottom: 8,
-                }}
-              >
+              <h2 style={{ fontSize: 26, fontWeight: 900, letterSpacing: "-0.02em", color: "#fff", marginBottom: 6 }}>
                 All AI Marketing Agents
               </h2>
-              <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 14, maxWidth: 650 }}>
-                Choose any agent below to create campaigns, content, strategy,
-                events, emails, SEO, growth assets, and platform-specific
-                marketing drafts in one place.
+              <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 13, maxWidth: 560 }}>
+                Click any agent to generate campaigns, content, strategy, and more — each one takes under 60 seconds.
               </p>
             </div>
-            <div
-              style={{
-                padding: "8px 16px",
-                background: "rgba(16,185,129,0.1)",
-                border: "1px solid rgba(16,185,129,0.25)",
-                borderRadius: 10,
-                fontSize: 12,
-                color: "#10b981",
-                fontWeight: 700,
-              }}
-            >
-              {campaignCards.length +
-                cmoIntelligenceModules.length +
-                agentCards.length}{" "}
-              Agents Active
+            <div style={{ padding: "8px 16px", background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.25)", borderRadius: 10, fontSize: 12, color: "#10b981", fontWeight: 700 }}>
+              {campaignCards.length + cmoIntelligenceModules.length + agentCards.length} Agents Active
             </div>
           </div>
 
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))",
-              gap: 14,
-            }}
-          >
-            {[
-              ...campaignCards.map((card) => ({
-                ...card,
-                group: "CAMPAIGN",
-                cta: "Launch Campaign",
-                path: `/campaign/${card.type}`,
-                requiresAccounts: true,
-                featureList:
-                  card.features?.map((f) => ({
-                    label: f.label,
-                    icon: f.icon,
-                  })) || [],
-              })),
-              ...cmoIntelligenceModules.map((mod) => ({
-                ...mod,
-                group: mod.category,
-                badge: mod.category,
-                cta: "Generate",
-                path: `/campaign/${mod.type}`,
-                requiresAccounts: true,
-                featureList: mod.features?.map((f) => ({ label: f })) || [],
-              })),
-              ...agentCards.map((ag) => ({
-                ...ag,
-                group: ag.badge,
-                description: ag.subtitle,
-                cta: "Run Agent",
-                path: `/agent/${ag.type}`,
-                requiresAccounts: false,
-                featureList: [],
-              })),
-            ].map((agent, i) => (
+          {/* Helper to render one agent card */}
+          {(() => {
+            const renderCard = (agent, i) => (
               <motion.div
                 key={`${agent.group}-${agent.type}`}
-                initial={{ opacity: 0, y: 24 }}
+                initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: 0.82 + i * 0.035 }}
-                whileHover={{ y: -4, scale: 1.01 }}
+                transition={{ duration: 0.35, delay: 0.05 + i * 0.04 }}
+                whileHover={{ y: -3 }}
                 onClick={() => {
-                  if (tokenBalance !== null && tokenBalance < 1) {
-                    setShowNoTokens(true);
-                    return;
-                  }
-                  if (agent.requiresAccounts && connectedCount === 0) {
-                    setShowNoAccounts(true);
-                    return;
-                  }
+                  if (tokenBalance !== null && tokenBalance < 1) { setShowNoTokens(true); return; }
+                  if (agent.requiresAccounts && connectedCount === 0) { setShowNoAccounts(true); return; }
                   navigate(agent.path);
                 }}
-                style={{
-                  background: "#1c1a13",
-                  border: `1px solid ${agent.border || `${agent.color}30`}`,
-                  borderRadius: 16,
-                  padding: 18,
-                  cursor: "pointer",
-                  transition: "all 0.2s",
-                  position: "relative",
-                  overflow: "hidden",
-                  boxShadow: "none",
-                  display: "flex",
-                  flexDirection: "column",
-                }}
+                style={{ background: "#1c1a13", border: `1px solid ${agent.border || `${agent.color}22`}`, borderRadius: 14, padding: "18px 16px", cursor: "pointer", transition: "all 0.2s", position: "relative", overflow: "hidden", display: "flex", flexDirection: "column", gap: 8 }}
               >
+                {/* top colour strip */}
+                <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg,${agent.color}60,transparent)` }} />
                 {agent.popular && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: 18,
-                      right: 18,
-                      padding: "4px 11px",
-                      background: "linear-gradient(135deg, #d4a853, #b8803a)",
-                      borderRadius: 100,
-                      fontSize: 10,
-                      fontWeight: 800,
-                      color: "white",
-                      letterSpacing: "0.05em",
-                    }}
-                  >
-                    POPULAR
-                  </div>
+                  <div style={{ position: "absolute", top: 12, right: 12, padding: "3px 9px", background: "linear-gradient(135deg,#d4a853,#b8803a)", borderRadius: 100, fontSize: 9, fontWeight: 800, color: "#0e0c09", letterSpacing: "0.05em" }}>POPULAR</div>
                 )}
 
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "flex-start",
-                    justifyContent: "space-between",
-                    marginBottom: 16,
-                  }}
-                >
-                  <div
-                    style={{
-                      width: 42,
-                      height: 42,
-                      borderRadius: 11,
-                      background: `${agent.color}12`,
-                      border: `1px solid ${agent.border || `${agent.color}30`}`,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      color: agent.color,
-                      flexShrink: 0,
-                    }}
-                  >
-                    {React.cloneElement(agent.icon, { size: 20 })}
+                {/* icon row */}
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ width: 38, height: 38, borderRadius: 10, background: `${agent.color}14`, border: `1px solid ${agent.color}30`, display: "flex", alignItems: "center", justifyContent: "center", color: agent.color, flexShrink: 0 }}>
+                    {React.cloneElement(agent.icon, { size: 18 })}
                   </div>
-                  <div
-                    style={{
-                      padding: "2px 8px",
-                      background: `${agent.color}10`,
-                      border: `1px solid ${agent.border || `${agent.color}30`}`,
-                      borderRadius: 100,
-                      fontSize: 9,
-                      fontWeight: 800,
-                      color: agent.color,
-                      letterSpacing: "0.06em",
-                      maxWidth: 100,
-                      textAlign: "center",
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                    }}
-                  >
-                    {(agent.badge || agent.group).toUpperCase()}
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: "#fff", lineHeight: 1.25 }}>{agent.title}</div>
+                    {agent.subtitle && <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", fontWeight: 600, marginTop: 1 }}>{agent.subtitle}</div>}
                   </div>
                 </div>
 
-                <h3
-                  style={{
-                    fontSize: 14,
-                    fontWeight: 800,
-                    letterSpacing: "-0.01em",
-                    color: "#ffffff",
-                    marginBottom: 4,
-                    lineHeight: 1.3,
-                  }}
-                >
-                  {agent.title}
-                </h3>
-                {agent.subtitle && (
-                  <p
-                    style={{
-                      color: "rgba(255,255,255,0.35)",
-                      fontSize: 11,
-                      fontWeight: 600,
-                      marginBottom: 8,
-                    }}
-                  >
-                    {agent.subtitle}
-                  </p>
-                )}
-                <p
-                  style={{
-                    color: "rgba(255,255,255,0.5)",
-                    fontSize: 12,
-                    lineHeight: 1.55,
-                    marginBottom: 12,
-                    flex: 1,
-                    display: "-webkit-box",
-                    WebkitLineClamp: 3,
-                    WebkitBoxOrient: "vertical",
-                    overflow: "hidden",
-                  }}
-                >
+                {/* description */}
+                <p style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", lineHeight: 1.6, margin: 0, flex: 1, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
                   {agent.description}
                 </p>
 
-                {agent.featureList.length > 0 && (
-                  <div
-                    style={{
-                      display: "flex",
-                      flexWrap: "wrap",
-                      gap: 5,
-                      marginBottom: 12,
-                    }}
-                  >
+                {/* feature pills */}
+                {agent.featureList?.length > 0 && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
                     {agent.featureList.slice(0, 3).map((f) => (
-                      <div
-                        key={f.label}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 3,
-                          padding: "2px 7px",
-                          background: `${agent.color}08`,
-                          border: `1px solid ${agent.border || `${agent.color}30`}`,
-                          borderRadius: 100,
-                          fontSize: 10,
-                          color: "rgba(255,255,255,0.5)",
-                        }}
-                      >
-                        {f.icon && (
-                          <span style={{ color: agent.color, display: "flex" }}>
-                            {React.cloneElement(f.icon, { size: 10 })}
-                          </span>
-                        )}
+                      <div key={f.label} style={{ display: "flex", alignItems: "center", gap: 3, padding: "2px 7px", background: `${agent.color}09`, border: `1px solid ${agent.color}22`, borderRadius: 100, fontSize: 9, color: "rgba(255,255,255,0.45)" }}>
+                        {f.icon && <span style={{ color: agent.color, display: "flex" }}>{React.cloneElement(f.icon, { size: 9 })}</span>}
                         {f.label}
                       </div>
                     ))}
                   </div>
                 )}
 
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    paddingTop: 10,
-                    borderTop: "1px solid rgba(255,255,255,0.06)",
-                    marginTop: "auto",
-                  }}
-                >
-                  <span
-                    style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", fontWeight: 700 }}
-                  >
-                    1 token
-                  </span>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 3,
-                      fontSize: 12,
-                      fontWeight: 800,
-                      color: agent.color,
-                    }}
-                  >
-                    {tokenBalance < 1
-                      ? "Buy Tokens"
-                      : agent.requiresAccounts && connectedCount === 0
-                        ? "Connect Accounts"
-                        : agent.cta}
-                    <ChevronRight size={13} />
+                {/* CTA */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", paddingTop: 8, borderTop: "1px solid rgba(255,255,255,0.05)", marginTop: "auto" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 11, fontWeight: 800, color: agent.color }}>
+                    {tokenBalance < 1 ? "Buy Tokens" : agent.requiresAccounts && connectedCount === 0 ? "Connect first" : agent.cta}
+                    <ChevronRight size={12} />
                   </div>
                 </div>
               </motion.div>
-            ))}
-          </div>
+            )
+
+            const strategyAgents = [
+              ...cmoIntelligenceModules.filter(m => ["growth_strategy","competitive_intel","analytics_report"].includes(m.type)).map(m => ({ ...m, group: m.category, badge: m.category, cta: "Generate", path: `/campaign/${m.type}`, requiresAccounts: false, featureList: m.features?.map(f => ({ label: f })) || [] })),
+            ]
+            const contentAgents = [
+              ...cmoIntelligenceModules.filter(m => ["content_calendar","seo_blog","email_drip"].includes(m.type)).map(m => ({ ...m, group: m.category, badge: m.category, cta: "Generate", path: `/campaign/${m.type}`, requiresAccounts: false, featureList: m.features?.map(f => ({ label: f })) || [] })),
+              ...agentCards.filter(a => ["writer","linkedin_agent"].includes(a.type)).map(a => ({ ...a, group: a.badge, description: a.subtitle, cta: "Run Agent", path: `/agent/${a.type}`, requiresAccounts: false, featureList: [] })),
+            ]
+            const campaignAgents = [
+              ...campaignCards.map(c => ({ ...c, group: "CAMPAIGN", cta: "Launch", path: `/campaign/${c.type}`, requiresAccounts: true, featureList: c.features?.map(f => ({ label: f.label, icon: f.icon })) || [] })),
+              ...cmoIntelligenceModules.filter(m => ["sales_enablement","event_full","influencer","marketplace"].includes(m.type)).map(m => ({ ...m, group: m.category, badge: m.category, cta: "Generate", path: `/campaign/${m.type}`, requiresAccounts: false, featureList: m.features?.map(f => ({ label: f })) || [] })),
+            ]
+            const liveAgents = [
+              ...agentCards.filter(a => ["reddit","seo"].includes(a.type)).map(a => ({ ...a, group: a.badge, description: a.subtitle, cta: "Run Agent", path: `/agent/${a.type}`, requiresAccounts: false, featureList: [] })),
+            ]
+
+            const SECTIONS = [
+              { id: "strategy", label: "Strategy & Intelligence", badge: "STRATEGY", badgeColor: "#10b981", badgeBg: "rgba(16,185,129,0.1)", badgeBorder: "rgba(16,185,129,0.25)", desc: "Build growth plans, analyse competitors, and measure performance.", agents: strategyAgents },
+              { id: "content",  label: "Content & SEO",           badge: "CONTENT",  badgeColor: "#3b82f6", badgeBg: "rgba(59,130,246,0.1)", badgeBorder: "rgba(59,130,246,0.25)", desc: "Generate content calendars, blog posts, email sequences, and LinkedIn drafts.", agents: contentAgents },
+              { id: "campaigns",label: "Campaigns & Outreach",    badge: "CAMPAIGNS",badgeColor: "#c8973e", badgeBg: "rgba(200,151,62,0.1)", badgeBorder: "rgba(200,151,62,0.25)", desc: "Launch multi-channel campaigns for events, products, brands, influencers, and sales.", agents: campaignAgents },
+              { id: "live",     label: "Live AI Agents",          badge: "LIVE",     badgeColor: "#ff4500", badgeBg: "rgba(255,69,0,0.1)",   badgeBorder: "rgba(255,69,0,0.25)",   desc: "Always-on agents that scan Reddit and SEO opportunities for you.", agents: liveAgents },
+            ]
+
+            return SECTIONS.map(section => (
+              <div key={section.id} style={{ marginBottom: 40 }}>
+                {/* Section sub-header */}
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+                  <div style={{ padding: "3px 10px", background: section.badgeBg, border: `1px solid ${section.badgeBorder}`, borderRadius: 100, fontSize: 10, fontWeight: 800, color: section.badgeColor, letterSpacing: "0.07em" }}>
+                    {section.badge}
+                  </div>
+                  <h3 style={{ fontSize: 16, fontWeight: 800, color: "#fff", margin: 0, letterSpacing: "-0.01em" }}>{section.label}</h3>
+                  <span style={{ fontSize: 11, color: "rgba(255,255,255,0.3)" }}>— {section.desc}</span>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))", gap: 12 }}>
+                  {section.agents.map((agent, i) => renderCard(agent, i))}
+                </div>
+              </div>
+            ))
+          })()}
         </motion.div>
 
         {/* ── Product & E-Commerce Tools ── */}

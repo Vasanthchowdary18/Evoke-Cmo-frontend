@@ -16,6 +16,8 @@ import Privacy from './pages/Privacy.jsx'
 import Terms from './pages/Terms.jsx'
 import MetaAdsBoost from './pages/MetaAdsBoost.jsx'
 import AgentsHub from './pages/AgentsHub.jsx'
+import PlansPage from './pages/PlansPage.jsx'
+import FreePlanPage from './pages/FreePlanPage.jsx'
 import ProductsPage from './pages/ProductsPage.jsx'
 import ProductDescription from './pages/ProductDescription.jsx'
 import ImageToolPage from './pages/ImageToolPage.jsx'
@@ -77,6 +79,8 @@ export default function App() {
         <Route path="/image-lifestyle"   element={<ImageToolPage />} />
         <Route path="/meta-ads-boost"    element={<MetaAdsBoost />} />
         <Route path="/agents-hub"         element={<AgentsHub />} />
+        <Route path="/plans"              element={<PlansPage />} />
+        <Route path="/free-plan"          element={<FreePlanPage />} />
         <Route path="/evox-services"      element={<EvoxServices />} />
         <Route path="/privacy"            element={<Privacy />} />
         <Route path="/terms"              element={<Terms />} />
