@@ -52,7 +52,10 @@
       "Bash(Measure-Object -Line)",
       "Bash(Select-Object -ExpandProperty Lines)",
       "WebFetch(domain:okara.ai)",
-      "Bash(node_modules/.bin/vite build *)"
+      "Bash(node_modules/.bin/vite build *)",
+      "Bash(nslookup agents.evokemarketplace.com)",
+      "Bash(aws s3:*)",
+      "Bash(ls -la *.sh)"
     ]
   }
 }

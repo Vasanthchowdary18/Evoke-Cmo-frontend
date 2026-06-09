@@ -1,7 +1,11 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
+  Linkedin,
+  Facebook,
+  Mail,
+  MessageSquare,
   Check,
   X,
   Loader2,
@@ -11,10 +15,10 @@ import {
   ExternalLink,
   Link2,
   Unlink,
-  ChevronLeft,
 } from "lucide-react";
 import Navbar from "../components/Navbar.jsx";
-import { useRequireAuth } from "../hooks/useRequireAuth";
+import { auth } from "../firebase";
+import { onAuthStateChanged } from "firebase/auth";
 import {
   getOrCreateUser,
   saveSocialAccount,
@@ -103,142 +107,195 @@ function loadFBSDK() {
 }
 
 const INSTAGRAM_REDIRECT = window.location.origin + "/connect-accounts";
-const INSTAGRAM_SCOPE = "instagram_basic,instagram_content_publish,pages_show_list,pages_read_engagement";
+const INSTAGRAM_SCOPE =
+  "instagram_basic,instagram_content_publish,pages_show_list,pages_read_engagement";
 
-const META_ADS_SCOPE = "ads_management,ads_read,pages_show_list,business_management";
-
-/* Brand icon helper */
-const BrandImg = ({ src, alt, size = 22 }) => (
-  <img src={src} alt={alt} width={size} height={size} style={{ objectFit: "contain", display: "block" }} />
-);
+const META_ADS_SCOPE =
+  "ads_management,ads_read,pages_show_list,business_management";
 
 const PLATFORMS = [
-  // 1. Facebook
-  {
-    key: "facebook",
-    label: "Facebook",
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 36 36" fill="none">
-        <rect width="36" height="36" rx="6" fill="#1877F2"/>
-        <path d="M25 18.5h-4.5V15c0-1.1.9-2 2-2H24V9h-1.5C19.4 9 17 11.4 17 14.5V18.5h-3V23h3v10h4.5V23H25l.5-4.5z" fill="white"/>
-      </svg>
-    ),
-    color: "#1877f2",
-    description: "Post to your Facebook Page automatically from every campaign.",
-    oauthType: "facebook",
-    btnLabel: "Connect with Facebook",
-  },
-  // 2. Instagram
   {
     key: "instagram",
     label: "Instagram",
     icon: (
-      <svg width="22" height="22" viewBox="0 0 36 36" fill="none">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
         <defs>
-          <linearGradient id="ig2" x1="0" y1="36" x2="36" y2="0" gradientUnits="userSpaceOnUse">
-            <stop stopColor="#F58529"/><stop offset="0.5" stopColor="#DD2A7B"/><stop offset="1" stopColor="#8134AF"/>
+          <linearGradient id="ig-grad" x1="0" y1="24" x2="24" y2="0">
+            <stop offset="0%" stopColor="#f58529" />
+            <stop offset="50%" stopColor="#dd2a7b" />
+            <stop offset="100%" stopColor="#8134af" />
           </linearGradient>
         </defs>
-        <rect width="36" height="36" rx="8" fill="url(#ig2)"/>
-        <rect x="8" y="8" width="20" height="20" rx="5" stroke="white" strokeWidth="2" fill="none"/>
-        <circle cx="18" cy="18" r="5" stroke="white" strokeWidth="2" fill="none"/>
-        <circle cx="24" cy="12" r="1.5" fill="white"/>
+        <rect
+          x="2"
+          y="2"
+          width="20"
+          height="20"
+          rx="6"
+          stroke="url(#ig-grad)"
+          strokeWidth="2"
+          fill="none"
+        />
+        <circle
+          cx="12"
+          cy="12"
+          r="4"
+          stroke="url(#ig-grad)"
+          strokeWidth="2"
+          fill="none"
+        />
+        <circle cx="17.5" cy="6.5" r="1.2" fill="#dd2a7b" />
       </svg>
     ),
     color: "#dd2a7b",
-    description: "Post Reels, Stories, and feed content from your campaigns directly to Instagram.",
+    description:
+      "Post Reels, Stories, and feed content from your campaigns directly to Instagram.",
     oauthType: "instagram",
     btnLabel: "Connect with Instagram",
   },
-  // 3. LinkedIn
   {
-    key: "linkedin",
-    label: "LinkedIn",
+    key: "meta-ads",
+    label: "Meta Ads",
     icon: (
-      <svg width="22" height="22" viewBox="0 0 36 36" fill="none">
-        <rect width="36" height="36" rx="6" fill="#0A66C2"/>
-        <path d="M10 13.5a2 2 0 100-4 2 2 0 000 4zM8.5 15.5h3V27h-3zM14 15.5h2.9v1.6c.4-.8 1.5-1.9 3.6-1.9 3.8 0 4.5 2.5 4.5 5.8V27H22v-5.6c0-1.3 0-3-1.8-3-1.9 0-2.2 1.5-2.2 3V27H15.5V15.5H14z" fill="white"/>
+      <svg width="22" height="22" viewBox="0 0 40 40" fill="none">
+        <rect width="40" height="40" rx="10" fill="#0866FF" />
+        <path
+          d="M8 20.5C8 13.596 13.596 8 20.5 8S33 13.596 33 20.5c0 6.27-4.587 11.464-10.594 12.373V24.18h3.3l.628-4.096h-3.928v-2.66c0-1.12.549-2.212 2.309-2.212H26.6v-3.487s-1.586-.271-3.101-.271c-3.165 0-5.232 1.918-5.232 5.39v3.24h-3.52V24.18h3.52v8.693C12.587 31.964 8 26.77 8 20.5z"
+          fill="white"
+        />
       </svg>
     ),
-    color: "#0a66c2",
-    description: "Share posts and articles to your LinkedIn profile or company page.",
-    oauthType: "linkedin",
-    btnLabel: "Connect with LinkedIn",
+    color: "#0866FF",
+    description:
+      "Create and manage Facebook & Instagram ad campaigns directly from Evoke CMO.",
+    oauthType: "meta-ads",
+    btnLabel: "Connect Meta Ads",
   },
-  // 4. Eventbrite
-  {
-    key: "eventbrite",
-    label: "Eventbrite",
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 36 36" fill="none">
-        <rect width="36" height="36" rx="6" fill="#F05537"/>
-        <path d="M18 8C12.5 8 8 12.5 8 18s4.5 10 10 10 10-4.5 10-10S23.5 8 18 8zm-1 14v-8h-2v-2h4v10h-2z" fill="white"/>
-        <path d="M12 16h12M12 18h9M12 20h10M12 22h8" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-        <rect x="9" y="14" width="18" height="10" rx="2" stroke="white" strokeWidth="1.5" fill="none"/>
-        <text x="13" y="22" fontFamily="Arial" fontWeight="bold" fontSize="9" fill="white">eb</text>
-      </svg>
-    ),
-    color: "#F05537",
-    description: "Create and publish events directly to your Eventbrite account.",
-    oauthType: "eventbrite",
-    btnLabel: "Connect with Eventbrite",
-  },
-  // 5. Gmail
-  {
-    key: "gmail",
-    label: "Gmail / Email",
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 36 36" fill="none">
-        <rect width="36" height="36" rx="6" fill="white" stroke="#ddd" strokeWidth="1"/>
-        <path d="M6 11l12 9 12-9" stroke="#EA4335" strokeWidth="2" fill="none" strokeLinecap="round"/>
-        <path d="M6 11h24v16H6V11z" fill="none" stroke="#4285F4" strokeWidth="2"/>
-        <path d="M6 11l7 7M30 11l-7 7" stroke="#EA4335" strokeWidth="2" strokeLinecap="round"/>
-        <path d="M6 27l8-8M30 27l-8-8" stroke="#34A853" strokeWidth="2" strokeLinecap="round"/>
-      </svg>
-    ),
-    color: "#ea4335",
-    description: "Send campaign emails directly from your Gmail account to your contacts.",
-    oauthType: "gmail",
-    btnLabel: "Connect with Gmail",
-  },
-  // 6. Reddit
   {
     key: "reddit",
     label: "Reddit",
     icon: (
-      <svg width="22" height="22" viewBox="0 0 36 36" fill="none">
-        <rect width="36" height="36" rx="18" fill="#FF4500"/>
-        <circle cx="24" cy="10" r="2.5" fill="white"/>
-        <path d="M14 10l6 1.5" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-        <circle cx="18" cy="20" r="6" fill="white"/>
-        <circle cx="15.5" cy="19.5" r="1" fill="#FF4500"/>
-        <circle cx="20.5" cy="19.5" r="1" fill="#FF4500"/>
-        <path d="M15.5 22.5c.7.7 2.8.7 3.5 0" stroke="#FF4500" strokeWidth="1" strokeLinecap="round"/>
-        <circle cx="26" cy="17" r="2.5" fill="white"/>
-        <circle cx="10" cy="17" r="2.5" fill="white"/>
-        <path d="M10.5 17a7.5 7.5 0 0115 0" fill="none"/>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0zm5.01 4.744c.688 0 1.25.561 1.25 1.249a1.25 1.25 0 0 1-2.498.056l-2.597-.547-.8 3.747c1.824.07 3.48.632 4.674 1.488.308-.309.73-.491 1.207-.491.968 0 1.754.786 1.754 1.754 0 .716-.435 1.333-1.01 1.614a3.111 3.111 0 0 1 .042.52c0 2.694-3.13 4.87-7.004 4.87-3.874 0-7.004-2.176-7.004-4.87 0-.183.015-.366.043-.534A1.748 1.748 0 0 1 4.028 12c0-.968.786-1.754 1.754-1.754.463 0 .898.196 1.207.49 1.207-.883 2.878-1.43 4.744-1.487l.885-4.182a.342.342 0 0 1 .14-.197.35.35 0 0 1 .238-.042l2.906.617a1.214 1.214 0 0 1 1.108-.701zM9.25 12C8.561 12 8 12.562 8 13.25c0 .687.561 1.248 1.25 1.248.687 0 1.248-.561 1.248-1.249 0-.688-.561-1.249-1.249-1.249zm5.5 0c-.687 0-1.248.561-1.248 1.25 0 .687.561 1.248 1.249 1.248.688 0 1.249-.561 1.249-1.249 0-.687-.562-1.249-1.25-1.249zm-5.466 3.99a.327.327 0 0 0-.231.094.33.33 0 0 0 0 .463c.842.842 2.484.913 2.961.913.477 0 2.105-.056 2.961-.913a.361.361 0 0 0 .029-.463.33.33 0 0 0-.464 0c-.547.533-1.684.73-2.512.73-.828 0-1.979-.196-2.512-.73a.326.326 0 0 0-.232-.095z" />
       </svg>
     ),
     color: "#ff4500",
-    description: "Post Reddit content and campaign updates to your selected subreddit.",
+    description:
+      "Post Reddit content and campaign updates to your selected subreddit.",
     note: "Enter your Reddit API details and subreddit name.",
     oauthType: "manual",
     fields: [
-      { name: "clientId",     label: "Reddit Client ID",      placeholder: "Your Reddit app client ID",        help: "Reddit app settings → client ID" },
-      { name: "clientSecret", label: "Reddit Client Secret",  placeholder: "Your Reddit app secret",           help: "Reddit app settings → secret" },
-      { name: "refreshToken", label: "Reddit Refresh Token",  placeholder: "Your Reddit OAuth refresh token",  help: "Used to keep Reddit connected" },
-      { name: "subreddit",    label: "Subreddit",             placeholder: "example: entrepreneur",            help: "Do not include r/" },
+      {
+        name: "clientId",
+        label: "Reddit Client ID",
+        placeholder: "Your Reddit app client ID",
+        help: "Reddit app settings → client ID",
+      },
+      {
+        name: "clientSecret",
+        label: "Reddit Client Secret",
+        placeholder: "Your Reddit app secret",
+        help: "Reddit app settings → secret",
+      },
+      {
+        name: "refreshToken",
+        label: "Reddit Refresh Token",
+        placeholder: "Your Reddit OAuth refresh token",
+        help: "Used to keep Reddit connected",
+      },
+      {
+        name: "subreddit",
+        label: "Subreddit",
+        placeholder: "example: entrepreneur",
+        help: "Do not include r/",
+      },
     ],
   },
-  // 7. Luma
+  {
+    key: "facebook",
+    label: "Facebook",
+    icon: <Facebook size={22} />,
+    color: "#1877f2",
+    description: "Post to your Facebook Page automatically",
+    oauthType: "facebook",
+    btnLabel: "Connect with Facebook",
+  },
+  {
+    key: "linkedin",
+    label: "LinkedIn",
+    icon: <Linkedin size={22} />,
+    color: "#0a66c2",
+    description: "Share posts to your LinkedIn profile",
+    oauthType: "linkedin",
+    btnLabel: "Connect with LinkedIn",
+  },
+  {
+    key: "twitter",
+    label: "X / Twitter",
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.748l7.73-8.835L1.254 2.25H8.08l4.258 5.625L18.244 2.25zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77z" />
+      </svg>
+    ),
+    color: "#ffffff",
+    description:
+      "Post campaign updates and short-form content to your X / Twitter account.",
+    oauthType: "twitter",
+    btnLabel: "Connect with X",
+  },
+  {
+    key: "tiktok",
+    label: "TikTok",
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.75a4.85 4.85 0 01-1.01-.06z" />
+      </svg>
+    ),
+    color: "#ff0050",
+    description: "Post videos and content to your TikTok Business account",
+    oauthType: "tiktok",
+    btnLabel: "Connect with TikTok",
+  },
+  {
+    key: "whatsapp",
+    label: "WhatsApp Campaigns",
+    icon: <MessageSquare size={22} />,
+    color: "#25d366",
+    description:
+      "Platform WhatsApp Business API is active. Add recipient numbers in your campaign form to send invitation messages.",
+    oauthType: "platform_whatsapp",
+    note: "No setup needed. When creating a campaign, select WhatsApp and paste the phone numbers you want to invite.",
+  },
+  {
+    key: "gmail",
+    label: "Gmail / Email",
+    icon: <Mail size={22} />,
+    color: "#ea4335",
+    description:
+      "Send campaign emails directly from your Gmail account to your contacts.",
+    oauthType: "gmail",
+    btnLabel: "Connect with Gmail",
+  },
+  {
+    key: "eventbrite",
+    label: "Eventbrite",
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z" />
+      </svg>
+    ),
+    color: "#F05537",
+    description:
+      "Create and publish events directly to your Eventbrite account.",
+    oauthType: "eventbrite",
+    btnLabel: "Connect with Eventbrite",
+  },
   {
     key: "luma",
     label: "Luma",
     icon: (
-      <svg width="22" height="22" viewBox="0 0 36 36" fill="none">
-        <rect width="36" height="36" rx="8" fill="#6C47FF"/>
-        <circle cx="18" cy="18" r="8" fill="none" stroke="white" strokeWidth="2"/>
-        <circle cx="18" cy="18" r="4" fill="white"/>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
       </svg>
     ),
     color: "#6C47FF",
@@ -246,20 +303,20 @@ const PLATFORMS = [
     note: "Get your API Key from lu.ma → Settings → API",
     oauthType: "manual",
     fields: [
-      { name: "apiKey", label: "Luma API Key", placeholder: "luma-api-key-xxxxxxxxxxxxxxxx", help: "lu.ma → Settings → Integrations → API → Create API Key" },
+      {
+        name: "apiKey",
+        label: "Luma API Key",
+        placeholder: "luma-api-key-xxxxxxxxxxxxxxxx",
+        help: "lu.ma → Settings → Integrations → API → Create API Key",
+      },
     ],
   },
-  // 8. Meetup
   {
     key: "meetup",
     label: "Meetup",
     icon: (
-      <svg width="22" height="22" viewBox="0 0 36 36" fill="none">
-        <rect width="36" height="36" rx="6" fill="#ED1C40"/>
-        <text x="18" y="25" textAnchor="middle" fontFamily="Arial" fontWeight="bold" fontSize="16" fill="white">m</text>
-        <circle cx="24" cy="10" r="3" fill="white"/>
-        <circle cx="12" cy="13" r="2" fill="white"/>
-        <circle cx="28" cy="17" r="2" fill="white"/>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M19.24 12.94c-.36-.07-.72-.13-1.08-.18.03-.18.05-.36.05-.55 0-1.66-1.35-3.01-3.01-3.01-.34 0-.67.06-.98.16C13.78 8.2 12.54 7.3 11.1 7.3c-1.83 0-3.32 1.49-3.32 3.32 0 .1.01.19.02.29-.19-.03-.38-.05-.58-.05-1.66 0-3.01 1.35-3.01 3.01 0 1.66 1.35 3.01 3.01 3.01h11.58c1.1 0 2-.9 2-2 0-1.01-.75-1.85-1.56-1.94zM12 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm4 1.5c.41 0 .75.34.75.75s-.34.75-.75.75-.75-.34-.75-.75.34-.75.75-.75zM7.5 6c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1z" />
       </svg>
     ),
     color: "#ED1C40",
@@ -267,88 +324,65 @@ const PLATFORMS = [
     note: "Get your Access Token from meetup.com → Settings → API",
     oauthType: "manual",
     fields: [
-      { name: "accessToken",  label: "Meetup Access Token", placeholder: "Your Meetup OAuth access token", help: "meetup.com → Account Settings → API → Get OAuth Token" },
-      { name: "groupUrlName", label: "Group URL Name",       placeholder: "my-meetup-group",                help: "The URL slug of your group, meetup.com/YOUR-GROUP-NAME" },
+      {
+        name: "accessToken",
+        label: "Meetup Access Token",
+        placeholder: "Your Meetup OAuth access token",
+        help: "meetup.com → Account Settings → API → Get OAuth Token",
+      },
+      {
+        name: "groupUrlName",
+        label: "Group URL Name",
+        placeholder: "my-meetup-group",
+        help: "The URL slug of your group, meetup.com/YOUR-GROUP-NAME",
+      },
     ],
-  },
-  // 9. TikTok
-  {
-    key: "tiktok",
-    label: "TikTok",
-    icon: <BrandImg src="/icons/tiktok.png" alt="TikTok" />,
-    color: "#ff0050",
-    description: "Post videos and content to your TikTok Business account.",
-    oauthType: "tiktok",
-    btnLabel: "Connect with TikTok",
-  },
-  // 10. Meta Ads
-  {
-    key: "meta-ads",
-    label: "Meta Ads",
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 36 36" fill="none">
-        <rect width="36" height="36" rx="6" fill="#0866FF"/>
-        <path d="M20 8a10 10 0 100 20 10 10 0 000-20zm1.5 15.4V18h2l.4-2.5h-2.4v-1.6c0-.7.3-1.4 1.4-1.4H24V10.2s-1-.2-1.9-.2c-2 0-3.2 1.2-3.2 3.3v1.2H16.5V17h2.4v5.4h2.6z" fill="white"/>
-      </svg>
-    ),
-    color: "#0866FF",
-    description: "Create and manage Facebook & Instagram ad campaigns directly from Evoke CMO.",
-    oauthType: "meta-ads",
-    btnLabel: "Connect Meta Ads",
-  },
-  // 11. WhatsApp
-  {
-    key: "whatsapp",
-    label: "WhatsApp Campaigns",
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 36 36" fill="none">
-        <rect width="36" height="36" rx="18" fill="#25D366"/>
-        <path d="M18 9C13 9 9 13 9 18c0 1.6.4 3.1 1.2 4.4L9 27l4.7-1.2A9 9 0 0018 27c5 0 9-4 9-9s-4-9-9-9zm4.8 12.4c-.2.6-1.2 1.1-1.7 1.2-.4 0-.9.1-2.8-.6-2.3-.9-3.8-3.2-3.9-3.3-.1-.2-.9-1.2-.9-2.3 0-1.1.6-1.6.8-1.8.2-.2.4-.3.6-.3h.4c.2 0 .4 0 .5.4.2.4.7 1.7.7 1.9 0 .1 0 .3-.1.4l-.3.4c-.1.1-.2.3-.1.5.5.8 1.1 1.4 1.7 1.9.6.4 1.2.6 1.5.7.2.1.4 0 .5-.1l.3-.4c.2-.2.3-.2.5-.1l1.6.8c.2.1.3.2.4.3 0 .3-.1.8-.2 1z" fill="white"/>
-      </svg>
-    ),
-    color: "#25d366",
-    description: "Platform WhatsApp Business API is active. Add recipient numbers in your campaign form to send invitation messages.",
-    oauthType: "platform_whatsapp",
-    note: "No setup needed. When creating a campaign, select WhatsApp and paste the phone numbers you want to invite.",
   },
 ];
 
 export default function ConnectAccounts() {
   const navigate = useNavigate();
-  const location = useLocation();
-  const searchParams = new URLSearchParams(location.search);
-  const isSetupMode  = searchParams.get('setup') === '1';
-  const targetCampaign = searchParams.get('campaign') || '/cmo';
-  const { user, authReady } = useRequireAuth();
+  const [user, setUser] = useState(null);
   const [accounts, setAccounts] = useState({});
   const [loading, setLoading] = useState({});
   const [errors, setErrors] = useState({});
   const [success, setSuccess] = useState({});
   const [manualForms, setManualForms] = useState({});
   const [expanded, setExpanded] = useState(null);
+  const [authReady, setAuthReady] = useState(false);
 
   useEffect(() => {
-    if (!authReady || !user) return;
-
     const hash = new URLSearchParams(window.location.hash.slice(1));
     const fbToken = hash.get("access_token");
     const fbState = hash.get("state");
 
     if (fbToken && fbState === "facebook_connect") {
       window.history.replaceState({}, "", window.location.pathname);
-      handleFacebookTokenConnect(fbToken, user.uid);
+      const unsub = onAuthStateChanged(auth, (u) => {
+        if (!u) return;
+        unsub();
+        handleFacebookTokenConnect(fbToken, u.uid);
+      });
       return;
     }
 
     if (fbToken && fbState === "instagram_connect") {
       window.history.replaceState({}, "", window.location.pathname);
-      handleInstagramTokenConnect(fbToken, user.uid);
+      const unsub = onAuthStateChanged(auth, (u) => {
+        if (!u) return;
+        unsub();
+        handleInstagramTokenConnect(fbToken, u.uid);
+      });
       return;
     }
 
     if (fbToken && fbState === "metaads_connect") {
       window.history.replaceState({}, "", window.location.pathname);
-      handleMetaAdsTokenConnect(fbToken, user.uid);
+      const unsub = onAuthStateChanged(auth, (u) => {
+        if (!u) return;
+        unsub();
+        handleMetaAdsTokenConnect(fbToken, u.uid);
+      });
       return;
     }
 
@@ -360,22 +394,36 @@ export default function ConnectAccounts() {
 
     window.history.replaceState({}, "", window.location.pathname);
 
-    if (state === "linkedin_connect") handleLinkedInCallback(code);
-    if (state === "twitter_connect") handleTwitterCallback(code);
-    if (state === "gmail_connect") handleGmailCallback(code);
-    if (state === "tiktok_connect") handleTikTokCallback(code);
-    if (state === "eventbrite_connect") handleEventbriteCallback(code);
-  }, [authReady, user]); // eslint-disable-line
+    const unsub = onAuthStateChanged(auth, (u) => {
+      if (!u) return;
+      unsub();
+
+      if (state === "linkedin_connect") handleLinkedInCallback(code);
+      if (state === "twitter_connect") handleTwitterCallback(code);
+      if (state === "gmail_connect") handleGmailCallback(code);
+      if (state === "tiktok_connect") handleTikTokCallback(code);
+      if (state === "eventbrite_connect") handleEventbriteCallback(code);
+    });
+  }, []); // eslint-disable-line
 
   useEffect(() => {
-    if (!authReady || !user) return;
+    const unsub = onAuthStateChanged(auth, async (u) => {
+      if (!u) {
+        navigate("/signin");
+        return;
+      }
 
-    getOrCreateUser(user.uid, user.displayName, user.email).then((data) => {
+      setUser(u);
+
+      const data = await getOrCreateUser(u.uid, u.displayName, u.email);
       setAccounts(data.socialAccounts || {});
+      setAuthReady(true);
     });
 
     loadFBSDK();
-  }, [authReady, user]);
+
+    return unsub;
+  }, [navigate]);
 
   const setErr = (k, m) => setErrors((e) => ({ ...e, [k]: m }));
 
@@ -475,7 +523,6 @@ export default function ConnectAccounts() {
     setLoad("instagram", true);
     clrErr("instagram");
     try {
-      // Step 1: get Facebook pages with linked IG business accounts
       const res = await fetch(
         `https://graph.facebook.com/v21.0/me/accounts?fields=id,name,instagram_business_account&access_token=${accessToken}`,
       );
@@ -483,38 +530,18 @@ export default function ConnectAccounts() {
       if (data.error) throw new Error(data.error.message);
 
       const igAccount = data.data?.find((p) => p.instagram_business_account);
-      const igId = igAccount?.instagram_business_account?.id;
-
-      // Step 2: fetch actual Instagram username + name using the IG user ID
-      let igName = igAccount?.name || "";
-      let igUsername = "";
-      if (igId) {
-        try {
-          const igRes = await fetch(
-            `https://graph.facebook.com/v21.0/${igId}?fields=name,username&access_token=${accessToken}`,
-          );
-          const igData = await igRes.json();
-          if (!igData.error) {
-            igUsername = igData.username || "";
-            igName = igData.name || igName;
-          }
-        } catch (_) { /* use fallback name */ }
-      }
-
-      const displayName = igUsername
-        ? `@${igUsername}`
-        : igName || "Instagram Account";
+      const igId = igAccount?.instagram_business_account?.id || "connected";
+      const pageName = igAccount?.name || "Instagram Account";
 
       await saveSocialAccount(uid, "instagram", {
         accessToken,
-        instagramId: igId || "connected",
-        pageName: displayName,
-        name: displayName,
+        instagramId: igId,
+        pageName,
         connected: true,
       });
       setAccounts((a) => ({
         ...a,
-        instagram: { connected: true, name: displayName, pageName: displayName },
+        instagram: { connected: true, name: pageName },
       }));
       setOk("instagram", true);
     } catch (e) {
@@ -543,7 +570,10 @@ export default function ConnectAccounts() {
       });
       setAccounts((a) => ({
         ...a,
-        "meta-ads": { connected: true, name: adAccount?.name || "Meta Ads Account" },
+        "meta-ads": {
+          connected: true,
+          name: adAccount?.name || "Meta Ads Account",
+        },
       }));
       setOk("meta-ads", true);
     } catch (e) {
@@ -571,9 +601,9 @@ export default function ConnectAccounts() {
   };
 
   const handleLinkedInCallback = useCallback(async (code) => {
-    if (!user) return;
+    if (!auth.currentUser) return;
 
-    const uid = user.uid;
+    const uid = auth.currentUser.uid;
 
     setLoad("linkedin", true);
     clrErr("linkedin");
@@ -613,7 +643,7 @@ export default function ConnectAccounts() {
     } finally {
       setLoad("linkedin", false);
     }
-  }, [user]);
+  }, []);
 
   const connectTwitter = async () => {
     if (!TWITTER_CLIENT_ID || TWITTER_CLIENT_ID === "YOUR_TWITTER_CLIENT_ID") {
@@ -643,9 +673,9 @@ export default function ConnectAccounts() {
   };
 
   const handleTwitterCallback = useCallback(async (code) => {
-    if (!user) return;
+    if (!auth.currentUser) return;
 
-    const uid = user.uid;
+    const uid = auth.currentUser.uid;
     const verifier = sessionStorage.getItem("twitter_verifier") || "";
 
     sessionStorage.removeItem("twitter_verifier");
@@ -706,7 +736,7 @@ export default function ConnectAccounts() {
     } finally {
       setLoad("twitter", false);
     }
-  }, [user]);
+  }, []);
 
   const connectGmail = () => {
     const url = new URLSearchParams({
@@ -723,9 +753,9 @@ export default function ConnectAccounts() {
   };
 
   const handleGmailCallback = useCallback(async (code) => {
-    if (!user) return;
+    if (!auth.currentUser) return;
 
-    const uid = user.uid;
+    const uid = auth.currentUser.uid;
 
     setLoad("gmail", true);
     clrErr("gmail");
@@ -757,7 +787,7 @@ export default function ConnectAccounts() {
     } finally {
       setLoad("gmail", false);
     }
-  }, [user]);
+  }, []);
 
   const connectTikTok = async () => {
     const verifier = genVerifier();
@@ -779,9 +809,9 @@ export default function ConnectAccounts() {
   };
 
   const handleTikTokCallback = useCallback(async (code) => {
-    if (!user) return;
+    if (!auth.currentUser) return;
 
-    const uid = user.uid;
+    const uid = auth.currentUser.uid;
     const verifier = sessionStorage.getItem("tiktok_verifier") || "";
 
     sessionStorage.removeItem("tiktok_verifier");
@@ -817,18 +847,16 @@ export default function ConnectAccounts() {
         throw new Error("No access token returned from TikTok");
       }
 
-      const tiktokName = displayName || openId || "TikTok Account";
       await saveSocialAccount(uid, "tiktok", {
         accessToken,
         openId,
-        displayName: tiktokName,
-        name: tiktokName,
+        displayName,
         connected: true,
       });
 
       setAccounts((a) => ({
         ...a,
-        tiktok: { connected: true, name: tiktokName, openId },
+        tiktok: { connected: true, name: displayName, openId },
       }));
 
       setOk("tiktok", true);
@@ -837,7 +865,7 @@ export default function ConnectAccounts() {
     } finally {
       setLoad("tiktok", false);
     }
-  }, [user]);
+  }, []);
 
   const connectEventbrite = () => {
     const url = new URLSearchParams({
@@ -851,9 +879,9 @@ export default function ConnectAccounts() {
   };
 
   const handleEventbriteCallback = useCallback(async (code) => {
-    if (!user) return;
+    if (!auth.currentUser) return;
 
-    const uid = user.uid;
+    const uid = auth.currentUser.uid;
 
     setLoad("eventbrite", true);
     clrErr("eventbrite");
@@ -899,7 +927,7 @@ export default function ConnectAccounts() {
     } finally {
       setLoad("eventbrite", false);
     }
-  }, [user]);
+  }, []);
 
   const saveManual = async (platform, fields) => {
     const form = manualForms[platform] || {};
@@ -972,69 +1000,6 @@ export default function ConnectAccounts() {
       <div
         style={{ maxWidth: 820, margin: "0 auto", padding: "108px 24px 80px" }}
       >
-
-        {/* ── Back to Dashboard ── */}
-        <button
-          onClick={() => navigate("/cmo")}
-          style={{
-            display: "inline-flex", alignItems: "center", gap: "6px",
-            background: "none", border: "none",
-            color: "rgba(255,255,255,0.45)", fontSize: "13px", fontWeight: 600,
-            cursor: "pointer", marginBottom: "28px", padding: 0,
-            transition: "color 0.15s",
-          }}
-          onMouseEnter={e => e.currentTarget.style.color = "rgba(255,255,255,0.85)"}
-          onMouseLeave={e => e.currentTarget.style.color = "rgba(255,255,255,0.45)"}
-        >
-          <ChevronLeft size={16} />
-          Back to Dashboard
-        </button>
-
-        {/* ── SETUP MODE: Progress banner ── */}
-        {isSetupMode && (
-          <motion.div
-            initial={{ opacity: 0, y: -12 }}
-            animate={{ opacity: 1, y: 0 }}
-            style={{
-              marginBottom: 28,
-              padding: "16px 20px",
-              background: "linear-gradient(135deg, rgba(200,151,62,0.12), rgba(200,151,62,0.05))",
-              border: "1px solid rgba(200,151,62,0.3)",
-              borderRadius: 16,
-            }}
-          >
-            {/* Step progress */}
-            <div style={{ display: "flex", alignItems: "center", gap: 0, marginBottom: 12 }}>
-              {["CMO Setup", "Connect Accounts", "Launch Campaign"].map((s, i) => (
-                <React.Fragment key={s}>
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-                    <div style={{
-                      width: 28, height: 28, borderRadius: "50%",
-                      background: i === 0 ? "#10b981" : i === 1 ? "#c8973e" : connectedCount > 0 ? "#c8973e" : "rgba(255,255,255,0.08)",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: 11, fontWeight: 800,
-                      color: i <= 1 || connectedCount > 0 ? "#0e0c09" : "rgba(240,235,224,0.3)",
-                    }}>
-                      {i === 0 ? "✓" : i === 2 && connectedCount > 0 ? "✓" : i + 1}
-                    </div>
-                    <span style={{ fontSize: 10, fontWeight: 700, color: i === 1 ? "#c8973e" : i === 0 ? "#10b981" : connectedCount > 0 ? "#10b981" : "rgba(240,235,224,0.3)", whiteSpace: "nowrap" }}>{s}</span>
-                  </div>
-                  {i < 2 && (
-                    <div style={{ flex: 1, height: 2, background: i === 0 ? "rgba(16,185,129,0.4)" : connectedCount > 0 ? "rgba(16,185,129,0.4)" : "rgba(255,255,255,0.07)", margin: "0 8px", marginBottom: 18, borderRadius: 1 }} />
-                  )}
-                </React.Fragment>
-              ))}
-            </div>
-
-            <div style={{ fontSize: 13, color: "rgba(240,235,224,0.6)", lineHeight: 1.55 }}>
-              {connectedCount === 0
-                ? <span>✅ CMO profile saved! Now connect <strong style={{ color: "#c8973e" }}>at least 1 platform</strong> below to start posting campaigns automatically.</span>
-                : <span>🎉 <strong style={{ color: "#10b981" }}>{connectedCount} platform{connectedCount > 1 ? 's' : ''} connected!</strong> You're all set — click the button below to launch your campaign.</span>
-              }
-            </div>
-          </motion.div>
-        )}
-
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -1053,73 +1018,46 @@ export default function ConnectAccounts() {
               fontSize: "clamp(28px, 4vw, 44px)",
               fontWeight: 900,
               letterSpacing: "-0.025em",
-              color: "#ffffff",
+              color: "#14121204",
               marginBottom: 12,
             }}
           >
             Connect <span className="gradient-text">your social accounts</span>
           </h1>
 
-          <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 16, maxWidth: 520 }}>
+          <p
+            style={{
+              color: "rgba(255,255,255,0.5)",
+              fontSize: 16,
+              maxWidth: 520,
+            }}
+          >
             Click the button next to each platform and log in with your own
             account. Your campaigns will post directly to your accounts, not
             ours.
           </p>
 
-          {/* Marketing Readiness Meter */}
-          <div style={{ marginTop: 24 }}>
-            <div style={{
-              display: 'inline-flex', flexDirection: 'column', gap: 10,
-              padding: '16px 20px',
-              background: connectedCount > 0 ? 'rgba(200,151,62,0.08)' : '#1a1a1a',
-              border: `1px solid ${connectedCount > 0 ? 'rgba(201,168,76,0.3)' : '#2a2a2a'}`,
-              borderRadius: 14, minWidth: 280,
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24 }}>
-                <div>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 4 }}>
-                    Marketing Readiness
-                  </div>
-                  <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: '-0.03em', color: connectedCount > 6 ? '#10b981' : connectedCount > 2 ? '#c8973e' : '#ef4444' }}>
-                    {Math.round((connectedCount / PLATFORMS.length) * 100)}%
-                  </div>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  {[
-                    { key: 'gmail',     label: 'Email',    critical: true  },
-                    { key: 'linkedin',  label: 'LinkedIn', critical: true  },
-                    { key: 'facebook',  label: 'Meta',     critical: false },
-                    { key: 'instagram', label: 'Instagram',critical: false },
-                  ].map(p => {
-                    const isConnected = accounts[p.key]?.connected
-                    return (
-                      <div key={p.key} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11 }}>
-                        <div style={{
-                          width: 6, height: 6, borderRadius: '50%',
-                          background: isConnected ? '#10b981' : 'rgba(255,255,255,0.2)',
-                          flexShrink: 0,
-                        }} />
-                        <span style={{ color: isConnected ? 'rgba(255,255,255,0.65)' : 'rgba(255,255,255,0.3)', fontWeight: isConnected ? 700 : 400 }}>
-                          {p.label} {isConnected ? '' : p.critical ? '— Not Connected' : '— Optional'}
-                        </span>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-              {/* Progress bar */}
-              <div style={{ height: 5, background: 'rgba(255,255,255,0.07)', borderRadius: 100, overflow: 'hidden' }}>
-                <div style={{
-                  width: `${(connectedCount / PLATFORMS.length) * 100}%`,
-                  height: '100%',
-                  background: connectedCount > 6 ? '#10b981' : 'linear-gradient(90deg, #c8973e, #d4a853)',
-                  borderRadius: 100, transition: 'width 0.5s ease',
-                }} />
-              </div>
-              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>
-                {connectedCount} / {PLATFORMS.length} platforms connected
-              </div>
-            </div>
+          <div
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 10,
+              marginTop: 20,
+              padding: "8px 18px",
+              background: connectedCount > 0 ? "#1b141400" : "#f8fafc",
+              border: `1px solid ${
+                connectedCount > 0
+                  ? "rgba(16,185,129,0.3)"
+                  : "rgba(245,240,232,0.15)"
+              }`,
+              borderRadius: 100,
+              fontSize: 13,
+              fontWeight: 700,
+            }}
+          >
+            <span style={{ color: connectedCount > 0 ? "#10b981" : "#94a3b8" }}>
+              {connectedCount} / {PLATFORMS.length} connected
+            </span>
           </div>
         </motion.div>
 
@@ -1152,22 +1090,18 @@ export default function ConnectAccounts() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.07 }}
                 style={{
-                  background: connected
-                    ? `linear-gradient(135deg, #1f1b0e, #161410)`
-                    : "#141414",
+                  background: connected ? `${p.color}08` : "#fff",
                   border: `1px solid ${
                     connected
-                      ? "rgba(201,168,76,0.5)"
+                      ? p.color + "35"
                       : hasError
-                        ? "rgba(239,68,68,0.35)"
-                        : "#2a2a2a"
+                        ? "rgba(239,68,68,0.3)"
+                        : "rgba(245,240,232,0.15)"
                   }`,
                   borderRadius: 16,
                   overflow: "hidden",
-                  boxShadow: connected
-                    ? "0 0 18px rgba(201,168,76,0.08)"
-                    : "none",
-                  transition: "all 0.3s",
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+                  transition: "border-color 0.3s",
                 }}
               >
                 {/* Row */}
@@ -1184,8 +1118,8 @@ export default function ConnectAccounts() {
                       width: 48,
                       height: 48,
                       borderRadius: 13,
-                      background: `#0a0a0a`,
-                      border: `1px solid ${p.color}45`,
+                      background: `${p.color}12`,
+                      border: `1px solid ${p.color}30`,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
@@ -1241,63 +1175,341 @@ export default function ConnectAccounts() {
 
                     {p.note && !connected && (
                       <p
-                        style={{ color: "rgba(255,255,255,0.35)", fontSize: 11, marginTop: 3 }}
+                        style={{
+                          color: "rgba(255,255,255,0.35)",
+                          fontSize: 11,
+                          marginTop: 3,
+                        }}
                       >
                         {p.note}
                       </p>
                     )}
                   </div>
 
-                  {/* Action button — clean logic: WhatsApp=always on, connected=disconnect, else=connect */}
+                  {/* Action button */}
                   <div style={{ flexShrink: 0 }}>
-                    {p.oauthType === "platform_whatsapp" ? (
-                      /* WhatsApp: always enabled, no connect/disconnect */
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 16px", background: "rgba(16,185,129,0.1)", border: "1px solid rgba(37,211,102,0.3)", borderRadius: 10, color: "#25d366", fontSize: 13, fontWeight: 700 }}>
+                    {p.oauthType === "instagram" ? (
+                      <button
+                        onClick={connectInstagram}
+                        disabled={isLoading}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                          padding: "10px 18px",
+                          background:
+                            "linear-gradient(135deg, #f58529, #dd2a7b, #8134af)",
+                          border: "none",
+                          borderRadius: 10,
+                          color: "white",
+                          fontSize: 14,
+                          fontWeight: 700,
+                          cursor: isLoading ? "not-allowed" : "pointer",
+                        }}
+                      >
+                        {isLoading ? (
+                          <Loader2
+                            size={14}
+                            style={{ animation: "spin 1s linear infinite" }}
+                          />
+                        ) : (
+                          <>{p.btnLabel}</>
+                        )}
+                      </button>
+                    ) : p.oauthType === "meta-ads" ? (
+                      <button
+                        onClick={connectMetaAds}
+                        disabled={isLoading}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                          padding: "10px 18px",
+                          background: "#0866FF",
+                          border: "none",
+                          borderRadius: 10,
+                          color: "white",
+                          fontSize: 14,
+                          fontWeight: 700,
+                          cursor: isLoading ? "not-allowed" : "pointer",
+                        }}
+                      >
+                        {isLoading ? (
+                          <Loader2
+                            size={14}
+                            style={{ animation: "spin 1s linear infinite" }}
+                          />
+                        ) : (
+                          <>{p.btnLabel}</>
+                        )}
+                      </button>
+                    ) : p.oauthType === "platform_whatsapp" ? (
+                      <span
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 6,
+                          padding: "8px 16px",
+                          background: "rgba(16,185,129,0.1)",
+                          border: "1px solid rgba(37,211,102,0.3)",
+                          borderRadius: 10,
+                          color: "#25d366",
+                          fontSize: 13,
+                          fontWeight: 700,
+                        }}
+                      >
                         <Check size={13} /> Always Enabled
                       </span>
                     ) : connected ? (
-                      /* ANY platform connected → show Disconnect */
                       <button
                         onClick={() => disconnect(p.key)}
                         disabled={isLoading}
-                        style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)", borderRadius: 10, color: "#ef4444", fontSize: 13, fontWeight: 600, cursor: isLoading ? "not-allowed" : "pointer" }}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                          padding: "8px 14px",
+                          background: "rgba(239,68,68,0.1)",
+                          border: "1px solid rgba(239,68,68,0.25)",
+                          borderRadius: 10,
+                          color: "#ef4444",
+                          fontSize: 13,
+                          fontWeight: 600,
+                          cursor: "pointer",
+                        }}
                       >
-                        {isLoading ? <Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} /> : <Unlink size={13} />}
+                        {isLoading ? (
+                          <Loader2
+                            size={13}
+                            style={{ animation: "spin 1s linear infinite" }}
+                          />
+                        ) : (
+                          <Unlink size={13} />
+                        )}
                         Disconnect
                       </button>
                     ) : p.oauthType === "facebook" ? (
-                      <button onClick={connectFacebook} disabled={isLoading} style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 18px", background: "#1877f2", border: "none", borderRadius: 10, color: "white", fontSize: 14, fontWeight: 700, cursor: isLoading ? "not-allowed" : "pointer" }}>
-                        {isLoading ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> : <>Connect Facebook</>}
-                      </button>
-                    ) : p.oauthType === "instagram" ? (
-                      <button onClick={connectInstagram} disabled={isLoading} style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 18px", background: "linear-gradient(135deg,#f58529,#dd2a7b,#8134af)", border: "none", borderRadius: 10, color: "white", fontSize: 14, fontWeight: 700, cursor: isLoading ? "not-allowed" : "pointer" }}>
-                        {isLoading ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> : <>Connect Instagram</>}
+                      <button
+                        onClick={connectFacebook}
+                        disabled={isLoading}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                          padding: "10px 18px",
+                          background: p.color,
+                          border: "none",
+                          borderRadius: 10,
+                          color: "white",
+                          fontSize: 14,
+                          fontWeight: 700,
+                          cursor: isLoading ? "not-allowed" : "pointer",
+                        }}
+                      >
+                        {isLoading ? (
+                          <Loader2
+                            size={14}
+                            style={{ animation: "spin 1s linear infinite" }}
+                          />
+                        ) : (
+                          <>
+                            <Facebook size={14} /> {p.btnLabel}
+                          </>
+                        )}
                       </button>
                     ) : p.oauthType === "linkedin" ? (
-                      <button onClick={connectLinkedIn} disabled={isLoading} style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 18px", background: "#0a66c2", border: "none", borderRadius: 10, color: "white", fontSize: 14, fontWeight: 700, cursor: isLoading ? "not-allowed" : "pointer" }}>
-                        {isLoading ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> : <>Connect LinkedIn</>}
+                      <button
+                        onClick={connectLinkedIn}
+                        disabled={isLoading}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                          padding: "10px 18px",
+                          background: p.color,
+                          border: "none",
+                          borderRadius: 10,
+                          color: "white",
+                          fontSize: 14,
+                          fontWeight: 700,
+                          cursor: isLoading ? "not-allowed" : "pointer",
+                        }}
+                      >
+                        {isLoading ? (
+                          <Loader2
+                            size={14}
+                            style={{ animation: "spin 1s linear infinite" }}
+                          />
+                        ) : (
+                          <>
+                            <Linkedin size={14} /> {p.btnLabel}
+                          </>
+                        )}
+                      </button>
+                    ) : p.oauthType === "twitter" ? (
+                      <button
+                        onClick={connectTwitter}
+                        disabled={isLoading}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                          padding: "10px 18px",
+                          background: p.color,
+                          border: "none",
+                          borderRadius: 10,
+                          color: "white",
+                          fontSize: 14,
+                          fontWeight: 700,
+                          cursor: isLoading ? "not-allowed" : "pointer",
+                        }}
+                      >
+                        {isLoading ? (
+                          <Loader2
+                            size={14}
+                            style={{ animation: "spin 1s linear infinite" }}
+                          />
+                        ) : (
+                          <>
+                            <svg
+                              width="14"
+                              height="14"
+                              viewBox="0 0 24 24"
+                              fill="currentColor"
+                            >
+                              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.748l7.73-8.835L1.254 2.25H8.08l4.258 5.625L18.244 2.25zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77z" />
+                            </svg>
+                            {p.btnLabel}
+                          </>
+                        )}
                       </button>
                     ) : p.oauthType === "tiktok" ? (
-                      <button onClick={connectTikTok} disabled={isLoading} style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 18px", background: "#ff0050", border: "none", borderRadius: 10, color: "white", fontSize: 14, fontWeight: 700, cursor: isLoading ? "not-allowed" : "pointer" }}>
-                        {isLoading ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> : <>Connect TikTok</>}
-                      </button>
-                    ) : p.oauthType === "meta-ads" ? (
-                      <button onClick={connectMetaAds} disabled={isLoading} style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 18px", background: "#0866FF", border: "none", borderRadius: 10, color: "white", fontSize: 14, fontWeight: 700, cursor: isLoading ? "not-allowed" : "pointer" }}>
-                        {isLoading ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> : <>Connect Meta Ads</>}
+                      <button
+                        onClick={connectTikTok}
+                        disabled={isLoading}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                          padding: "10px 18px",
+                          background: "#ff0050",
+                          border: "none",
+                          borderRadius: 10,
+                          color: "white",
+                          fontSize: 14,
+                          fontWeight: 700,
+                          cursor: isLoading ? "not-allowed" : "pointer",
+                        }}
+                      >
+                        {isLoading ? (
+                          <Loader2
+                            size={14}
+                            style={{ animation: "spin 1s linear infinite" }}
+                          />
+                        ) : (
+                          <>
+                            <svg
+                              width="14"
+                              height="14"
+                              viewBox="0 0 24 24"
+                              fill="currentColor"
+                            >
+                              <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.75a4.85 4.85 0 01-1.01-.06z" />
+                            </svg>
+                            {p.btnLabel}
+                          </>
+                        )}
                       </button>
                     ) : p.oauthType === "gmail" ? (
-                      <button onClick={connectGmail} disabled={isLoading} style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 18px", background: "#ea4335", border: "none", borderRadius: 10, color: "white", fontSize: 14, fontWeight: 700, cursor: isLoading ? "not-allowed" : "pointer" }}>
-                        {isLoading ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> : <>Connect Gmail</>}
+                      <button
+                        onClick={connectGmail}
+                        disabled={isLoading}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                          padding: "10px 18px",
+                          background: "#ea4335",
+                          border: "none",
+                          borderRadius: 10,
+                          color: "white",
+                          fontSize: 14,
+                          fontWeight: 700,
+                          cursor: isLoading ? "not-allowed" : "pointer",
+                        }}
+                      >
+                        {isLoading ? (
+                          <Loader2
+                            size={14}
+                            style={{ animation: "spin 1s linear infinite" }}
+                          />
+                        ) : (
+                          <>
+                            <svg
+                              width="14"
+                              height="14"
+                              viewBox="0 0 24 24"
+                              fill="currentColor"
+                            >
+                              <path d="M20 4H4C2.9 4 2 4.9 2 6v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z" />
+                            </svg>
+                            {p.btnLabel}
+                          </>
+                        )}
                       </button>
                     ) : p.oauthType === "eventbrite" ? (
-                      <button onClick={connectEventbrite} disabled={isLoading} style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 18px", background: "#F05537", border: "none", borderRadius: 10, color: "white", fontSize: 14, fontWeight: 700, cursor: isLoading ? "not-allowed" : "pointer" }}>
-                        {isLoading ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> : <>Connect Eventbrite</>}
+                      <button
+                        onClick={connectEventbrite}
+                        disabled={isLoading}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                          padding: "10px 18px",
+                          background: "#F05537",
+                          border: "none",
+                          borderRadius: 10,
+                          color: "white",
+                          fontSize: 14,
+                          fontWeight: 700,
+                          cursor: isLoading ? "not-allowed" : "pointer",
+                        }}
+                      >
+                        {isLoading ? (
+                          <Loader2
+                            size={14}
+                            style={{ animation: "spin 1s linear infinite" }}
+                          />
+                        ) : (
+                          <>
+                            <svg
+                              width="14"
+                              height="14"
+                              viewBox="0 0 24 24"
+                              fill="currentColor"
+                            >
+                              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z" />
+                            </svg>
+                            {p.btnLabel}
+                          </>
+                        )}
                       </button>
                     ) : (
-                      /* manual credentials (Reddit, Luma, Meetup) */
                       <button
                         onClick={() => setExpanded(isOpen ? null : p.key)}
-                        style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 18px", background: p.color, border: "none", borderRadius: 10, color: "white", fontSize: 14, fontWeight: 700, cursor: "pointer" }}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                          padding: "10px 18px",
+                          background: p.color,
+                          border: "none",
+                          borderRadius: 10,
+                          color: "white",
+                          fontSize: 14,
+                          fontWeight: 700,
+                          cursor: "pointer",
+                        }}
                       >
                         {isOpen ? "Cancel" : "Enter Credentials"}
                       </button>
@@ -1472,62 +1684,28 @@ export default function ConnectAccounts() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
-          style={{ marginTop: 40, display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}
+          style={{ marginTop: 40, display: "flex", justifyContent: "center" }}
         >
-          {/* Setup mode: Launch Campaign button (enabled only after connecting) */}
-          {isSetupMode ? (
-            <>
-              <button
-                onClick={() => connectedCount > 0 && navigate(targetCampaign)}
-                disabled={connectedCount === 0}
-                style={{
-                  display: "flex", alignItems: "center", gap: 10,
-                  padding: "15px 36px",
-                  background: connectedCount > 0
-                    ? "linear-gradient(135deg, #c8973e, #a87030)"
-                    : "rgba(255,255,255,0.05)",
-                  border: connectedCount > 0 ? "none" : "1px solid rgba(255,255,255,0.1)",
-                  borderRadius: 14, fontSize: 16, fontWeight: 800,
-                  color: connectedCount > 0 ? "#0e0c09" : "rgba(240,235,224,0.2)",
-                  cursor: connectedCount > 0 ? "pointer" : "not-allowed",
-                  fontFamily: "'Syne','Inter',sans-serif",
-                  transition: "all 0.2s",
-                  boxShadow: connectedCount > 0 ? "0 8px 28px rgba(200,151,62,0.4)" : "none",
-                  letterSpacing: "-0.01em",
-                }}
-              >
-                🚀
-                {connectedCount > 0 ? "Launch Your Campaign →" : `Connect ${1 - connectedCount > 0 ? 'at least 1 platform first' : ''} to Launch`}
-                {connectedCount > 0 && <ArrowRight size={18} />}
-              </button>
-              {connectedCount === 0 && (
-                <p style={{ fontSize: 12, color: "rgba(240,235,224,0.3)", textAlign: "center" }}>
-                  Connect at least 1 platform above to unlock this button
-                </p>
-              )}
-              <button
-                onClick={() => navigate(targetCampaign)}
-                style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "rgba(240,235,224,0.3)", fontFamily: "inherit", textDecoration: "underline" }}
-              >
-                Skip → Go to my Campaign
-              </button>
-            </>
-          ) : (
-            <button
-              onClick={() => navigate("/dashboard")}
-              style={{
-                display: "flex", alignItems: "center", gap: 8,
-                padding: "14px 32px",
-                background: "linear-gradient(135deg, #d4a853, #b8803a)",
-                border: "none", borderRadius: 12,
-                color: "white", fontSize: 15, fontWeight: 700, cursor: "pointer",
-              }}
-            >
-              <Zap size={16} />
-              {connectedCount > 0 ? "Start Creating Campaigns" : "Skip for now"}
-              <ArrowRight size={16} />
-            </button>
-          )}
+          <button
+            onClick={() => navigate("/dashboard")}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "14px 32px",
+              background: "linear-gradient(135deg, #d4a853, #b8803a)",
+              border: "none",
+              borderRadius: 12,
+              color: "white",
+              fontSize: 15,
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            <Zap size={16} />
+            {connectedCount > 0 ? "Start Creating Campaigns" : "Skip for now"}
+            <ArrowRight size={16} />
+          </button>
         </motion.div>
 
         {/* Security note */}
@@ -1543,7 +1721,13 @@ export default function ConnectAccounts() {
             borderRadius: 12,
           }}
         >
-          <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 13, lineHeight: 1.7 }}>
+          <p
+            style={{
+              color: "rgba(255,255,255,0.5)",
+              fontSize: 13,
+              lineHeight: 1.7,
+            }}
+          >
             <strong style={{ color: "#ffffff" }}>
               Your credentials are encrypted
             </strong>{" "}
