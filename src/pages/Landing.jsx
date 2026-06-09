@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, useInView } from 'framer-motion'
-import { ArrowRight, Check, Star, Zap, TrendingUp, Target, Calendar, Search, Mail, Users, BarChart2, Briefcase, Megaphone, ShoppingCart, Sparkles, Activity } from 'lucide-react'
+import { ArrowRight, Check, Star, Zap, TrendingUp, Target, Calendar, Search, Mail, Users, BarChart2, Briefcase, Megaphone, ShoppingCart, Sparkles, Activity, Lightbulb, DollarSign, Rocket, Image, Film, Monitor, Share2, Layers, Play } from 'lucide-react'
 // OnboardingModal moved to AgentsHub — not triggered on landing page
 import Navbar from '../components/Navbar.jsx'
 import { useAuth } from '../components/AuthProvider.jsx'
@@ -89,52 +89,64 @@ const AGENTS = [
 
 const PLANS = [
   {
-    key: 'base', label: 'BASE', popular: false,
-    tagline: 'For solo marketers – In-house, founders, or freelancers',
-    monthly: 299, annual: 239,
-    brands: '3 brands', seats: 'Personal workspace',
-    credits: '1,000 credits/month',
-    breakdown: ['~500 images', '~40 videos', '~200 blog posts, emails or ad copies'],
-    perfectFor: ['In-house marketers at small & mid-size businesses', 'Founders and owners running their own marketing', 'Consultants and freelancers with a small client roster'],
-    features: ['100+ marketing tools – Image Center, Video Studio, PPC & SEO, Blog Writer', 'Strategy Creator & Strategy Tracker', 'Marketing Pulse – performance dashboard with alerts', 'Brand voice training & memory across every output', 'Competitor Spy – track rival ads, pricing, positioning', 'Landing page + email campaign builders', 'Creative Analyzer – ad grading & feedback', 'Ad copy for Google, Meta, LinkedIn, TikTok', 'Email & chat support'],
-    cta: 'Start creating', ctaDark: false,
+    key: 'free', label: 'FREE', popular: false,
+    tagline: 'Start with strategy — no cost, no commitment',
+    price: '$0', priceNote: 'No credit card required',
+    features: [
+      { icon: <Target size={13}/>, text: 'Objective & Strategy Development' },
+      { icon: <Megaphone size={13}/>, text: 'New Leads / Client Retention Planning' },
+      { icon: <Layers size={13}/>, text: 'Content Creation Framework' },
+    ],
+    cta: 'Get Started Free', ctaDark: false,
   },
   {
-    key: 'pro', label: 'PRO', popular: true,
-    tagline: 'For teams ready to go autonomous',
-    note: 'vs. a marketing manager at $7–10k/mo',
-    monthly: 799, annual: 639,
-    brands: '10 brands', seats: 'Up to 5 team members',
-    credits: '5,000 credits/month',
-    breakdown: ['~2,500 images', '~200 videos', '~1,000 blog posts, emails or ad copies'],
-    perfectFor: ['Startup teams of 2–5 running growth', 'Agencies managing up to 10 client brands', 'Growing e-commerce and SaaS teams'],
-    features: ['Everything in Base', 'Autonomous Mode – All agent runs campaigns end-to-end', 'Approval queue with brand guardrails', 'Customer segments & targeting', 'Premium AI models', 'Shared team library & templates', 'Multi brand voice management', 'Workflow automations', 'Priority support'],
-    cta: 'Go autonomous', ctaDark: true,
+    key: 'package-a', label: 'PACKAGE A', popular: false,
+    tagline: 'Elevate your brand with professional visuals',
+    price: 'Contact Us', priceNote: 'Custom pricing for your brand',
+    features: [
+      { icon: <Check size={13}/>, text: 'Everything in Free' },
+      { icon: <Image size={13}/>, text: 'Image to Angles — Multi-angle product shots' },
+      { icon: <Image size={13}/>, text: 'Lifestyle Images — On-brand scene photography' },
+      { icon: <Monitor size={13}/>, text: 'Banner Creation — Ad-ready static banners' },
+      { icon: <Share2 size={13}/>, text: 'Posting on Social Media — Managed scheduling' },
+    ],
+    cta: 'Choose Package A', ctaDark: false,
   },
   {
-    key: 'max', label: 'MAX', popular: false,
-    tagline: 'For companies scaling to millions',
-    note: 'vs. a marketing CMO at $15–30k/mo',
-    monthly: 1499, annual: 1199,
-    brands: '25 brands', seats: 'Up to 15 team members',
-    credits: '10,000 credits/month',
-    breakdown: ['~5,000 images', '~400 videos', '~2,000 blog posts, emails or ad copies'],
-    perfectFor: ['Scale-up marketing departments', 'Mid-market brands running multi-channel', 'Agencies with multiple premium clients'],
-    features: ['Everything in Pro', 'Data Warehouse (ClickHouse, setup included)', 'Customer Intelligence – AI powered segmentation', 'Bring your own API keys (BYOK)', 'Advanced reasoning models', 'Auto publish with confidence tiers', 'Dedicated success manager', 'Advanced analytics & attribution', 'Integration level customization'],
-    cta: 'Scale marketing', ctaDark: false,
+    key: 'package-b', label: 'PACKAGE B', popular: true,
+    tagline: 'Go full motion with video & 30-day content',
+    price: 'Contact Us', priceNote: 'Custom pricing for your brand',
+    features: [
+      { icon: <Check size={13}/>, text: 'Everything in Package A' },
+      { icon: <Film size={13}/>, text: 'Lifestyle Video — Brand story short-form video' },
+      { icon: <Monitor size={13}/>, text: '360° Product Video — Immersive product showcase' },
+      { icon: <Layers size={13}/>, text: '30 Days Content — Full month of ready-to-post assets' },
+    ],
+    cta: 'Choose Package B', ctaDark: true,
   },
   {
-    key: 'enterprise', label: 'ENTERPRISE', popular: false,
-    tagline: 'Your marketing team, amplified',
-    note: 'Replaces a marketing department',
-    monthly: null, annual: null,
-    brands: 'Unlimited brands', seats: 'Unlimited members',
-    credits: 'Custom allocation',
-    breakdown: ['Negotiated volume', 'Dedicated infrastructure', 'SLAs & uptime commitments'],
-    perfectFor: ['In-house marketing teams of 20+', 'Multi-brand holding companies', 'Regulated industries with compliance needs'],
-    features: ['Everything in Max', 'SSO / SAML authentication', 'SOC 2 artifacts & security review', 'Named CSM + executive sponsor', '99.9% SLA with uptime credits', 'Custom integrations & white glove onboarding', 'Priority feature requests', 'Dedicated infrastructure options', 'MSA, DPA, and procurement support'],
-    cta: 'Talk to sales', ctaDark: true,
+    key: 'package-c', label: 'PACKAGE C', popular: false,
+    tagline: 'Deploy paid ads at scale across FB & Google',
+    price: 'Contact Us', priceNote: 'Custom pricing for your brand',
+    features: [
+      { icon: <Check size={13}/>, text: 'Everything in Package B' },
+      { icon: <Layers size={13}/>, text: '3D Images — Premium product renders' },
+      { icon: <Monitor size={13}/>, text: 'Ads Creation — Conversion-optimised creatives' },
+      { icon: <Share2 size={13}/>, text: 'Ads Manager Connect — FB & Google campaigns' },
+      { icon: <Target size={13}/>, text: 'Target Audience Selection — Precision segmentation' },
+      { icon: <Rocket size={13}/>, text: 'Deploy Ads — Full campaign launch & management' },
+    ],
+    cta: 'Choose Package C', ctaDark: false,
   },
+]
+
+const WORKFLOW = [
+  { label: 'Objectives',   icon: <Target size={18}/>,      desc: 'Define clear goals aligned to revenue' },
+  { label: 'Strategies',   icon: <Lightbulb size={18}/>,   desc: 'Build channel & messaging frameworks'  },
+  { label: 'Budget',       icon: <DollarSign size={18}/>,  desc: 'Allocate spend based on ROI benchmarks' },
+  { label: 'Execution',    icon: <Rocket size={18}/>,      desc: 'Deploy campaigns with precision'        },
+  { label: 'Analytics',    icon: <BarChart2 size={18}/>,   desc: 'Track KPIs & surface insights'          },
+  { label: 'Optimization', icon: <TrendingUp size={18}/>,  desc: 'Refine through AI-driven iteration'     },
 ]
 
 const COMPARE = [
@@ -201,7 +213,6 @@ const AUTO_STEPS = [
 
 export default function Landing() {
   const { user } = useAuth()
-  const [billingAnnual,  setBillingAnnual]  = useState(false)
   const navigate = useNavigate()
 
   const goSignIn = () => redirectToLogin()
@@ -902,116 +913,154 @@ export default function Landing() {
       </section>
 
       {/* ══════════════════════════════════════════════════
-          PRICING
+          CMO WORKFLOW PIPELINE
+      ══════════════════════════════════════════════════ */}
+      <section style={{padding:'80px 40px',background:'#0a0908',overflow:'hidden'}}>
+        <div style={{maxWidth:1200,margin:'0 auto'}}>
+          <FadeIn style={{textAlign:'center',marginBottom:52}}>
+            <SBadge>The CMO Framework</SBadge>
+            <h2 style={{fontSize:'clamp(20px,3vw,38px)',fontWeight:800,letterSpacing:'-0.03em',lineHeight:1.2,fontFamily:"'Syne','Inter',sans-serif",color:TEXT,marginBottom:12}}>
+              From Objectives to <span style={goldGrad}>Optimization</span>
+            </h2>
+            <p style={{fontSize:15,color:TEXT2,maxWidth:500,margin:'0 auto',lineHeight:1.65}}>
+              Every EVOX engagement follows this proven C-suite framework — ensuring each dollar drives measurable outcomes.
+            </p>
+          </FadeIn>
+
+          <div style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:0,position:'relative'}}>
+            {/* connector line */}
+            <div style={{position:'absolute',top:38,left:'8%',right:'8%',height:2,background:`linear-gradient(90deg,transparent,${GBORDER},${GOLD},${GBORDER},transparent)`,zIndex:0}}/>
+            {WORKFLOW.map((step,i)=>(
+              <FadeIn key={step.label} delay={i*0.08}>
+                <div style={{display:'flex',flexDirection:'column',alignItems:'center',textAlign:'center',padding:'0 6px',position:'relative',zIndex:1}}>
+                  <div style={{
+                    width:76,height:76,borderRadius:'50%',
+                    background:i===0?`linear-gradient(135deg,${GOLD},#b8803a)`:CARD,
+                    border:`2px solid ${i===0?GOLD:GBORDER}`,
+                    display:'flex',alignItems:'center',justifyContent:'center',
+                    color:i===0?'#0e0c09':GOLD,marginBottom:14,
+                    boxShadow:i===0?`0 0 24px rgba(200,151,62,0.3)`:'none',
+                  }}>{step.icon}</div>
+                  <div style={{fontSize:11,fontWeight:800,color:TEXT,letterSpacing:'0.06em',textTransform:'uppercase',marginBottom:5}}>{step.label}</div>
+                  <div style={{fontSize:11,color:TEXT3,lineHeight:1.5}}>{step.desc}</div>
+                  {i<WORKFLOW.length-1&&<div style={{position:'absolute',top:28,right:-10,zIndex:2,color:GOLD,fontSize:18,fontWeight:900}}>›</div>}
+                </div>
+              </FadeIn>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════
+          VIDEO
+      ══════════════════════════════════════════════════ */}
+      <section style={{padding:'80px 40px',background:BG}}>
+        <div style={{maxWidth:900,margin:'0 auto'}}>
+          <FadeIn style={{textAlign:'center',marginBottom:40}}>
+            <SBadge>Product Overview</SBadge>
+            <h2 style={{fontSize:'clamp(20px,3vw,38px)',fontWeight:800,letterSpacing:'-0.03em',lineHeight:1.2,fontFamily:"'Syne','Inter',sans-serif",color:TEXT,marginBottom:12}}>
+              See EVOX <span style={goldGrad}>in Action</span>
+            </h2>
+            <p style={{fontSize:15,color:TEXT2,maxWidth:460,margin:'0 auto',lineHeight:1.65}}>
+              Watch how EVOX transforms brand inputs into a complete multi-channel marketing engine — in minutes.
+            </p>
+          </FadeIn>
+          <FadeIn delay={0.1}>
+            <div style={{position:'relative',borderRadius:20,overflow:'hidden',border:`1px solid ${GBORDER}`,boxShadow:'0 0 60px rgba(200,151,62,0.1)',aspectRatio:'16/9',background:'#111008',display:'flex',alignItems:'center',justifyContent:'center'}}>
+              <div style={{position:'absolute',inset:0,background:'linear-gradient(135deg,#1c1a13 0%,#0e0c09 100%)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:12}}>
+                <div style={{fontSize:'clamp(18px,3vw,36px)',fontWeight:800,fontFamily:"'Syne','Inter',sans-serif",...goldGrad,letterSpacing:'-0.03em'}}>EVOX C-Suite Platform</div>
+                <div style={{fontSize:13,color:TEXT3}}>Product walkthrough — coming soon</div>
+              </div>
+              <div style={{position:'relative',zIndex:2,width:72,height:72,borderRadius:'50%',background:'linear-gradient(135deg,#d4a853,#b8803a)',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 0 40px rgba(200,151,62,0.4)'}}>
+                <Play size={26} color="#0e0c09" fill="#0e0c09"/>
+              </div>
+            </div>
+          </FadeIn>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════
+          PRICING — EVOX SERVICE PACKAGES
       ══════════════════════════════════════════════════ */}
       <section id="pricing" style={{padding:'96px 40px',background:'#0a0908'}}>
         <div style={{maxWidth:1280,margin:'0 auto'}}>
 
-          {/* Header */}
           <FadeIn style={{textAlign:'center',marginBottom:48}}>
-            <SBadge>Pricing</SBadge>
+            <SBadge>Packages & Rates</SBadge>
             <h2 style={{fontSize:'clamp(22px,3vw,40px)',fontWeight:800,letterSpacing:'-0.03em',lineHeight:1.2,fontFamily:"'Syne','Inter',sans-serif",color:TEXT,marginBottom:14}}>
-              Simple, transparent pricing
+              Choose your <span style={goldGrad}>production tier</span>
             </h2>
-            <p style={{fontSize:15,color:TEXT2,maxWidth:480,margin:'0 auto 32px',lineHeight:1.65}}>
-              Choose the plan that fits your team. Upgrade or downgrade anytime.
+            <p style={{fontSize:15,color:TEXT2,maxWidth:480,margin:'0 auto',lineHeight:1.65}}>
+              Start with strategy and scale up to full paid-ad deployment. Each tier builds on the previous.
             </p>
-
-            {/* Monthly / Annual toggle */}
-            <div style={{display:'inline-flex',alignItems:'center',gap:0,background:'#1c1a13',border:`1px solid ${GBORDER}`,borderRadius:100,padding:4}}>
-              <button onClick={()=>setBillingAnnual(false)} style={{padding:'7px 20px',borderRadius:100,border:'none',cursor:'pointer',fontSize:13,fontWeight:700,transition:'all 0.2s',background:!billingAnnual?GOLD:'transparent',color:!billingAnnual?'#0e0c09':TEXT2,fontFamily:"'Inter',sans-serif"}}>Monthly</button>
-              <button onClick={()=>setBillingAnnual(true)}  style={{padding:'7px 20px',borderRadius:100,border:'none',cursor:'pointer',fontSize:13,fontWeight:700,transition:'all 0.2s',background:billingAnnual?GOLD:'transparent',color:billingAnnual?'#0e0c09':TEXT2,fontFamily:"'Inter',sans-serif",display:'flex',alignItems:'center',gap:7}}>
-                Annual <span style={{fontSize:10,fontWeight:800,background:'rgba(16,185,129,0.2)',color:'#10b981',border:'1px solid rgba(16,185,129,0.3)',borderRadius:100,padding:'1px 7px'}}>Save 20%</span>
-              </button>
-            </div>
           </FadeIn>
 
-          {/* Plan cards */}
+          {/* Package cards */}
           <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(270px,1fr))',gap:16,alignItems:'start'}}>
-            {PLANS.map((plan, i) => {
-              const price = plan.monthly === null ? null : billingAnnual ? plan.annual : plan.monthly
-              return (
-                <FadeIn key={plan.key} delay={i*0.07}>
-                  <div style={{
-                    background: plan.popular ? 'linear-gradient(160deg,#221d10,#1c1a13)' : CARD,
-                    border: `1px solid ${plan.popular ? 'rgba(200,151,62,0.5)' : BORDER}`,
-                    borderRadius:20, padding:'28px 24px', position:'relative',
-                    boxShadow: plan.popular ? '0 0 48px rgba(200,151,62,0.1)' : 'none',
-                    height:'100%', boxSizing:'border-box',
-                  }}>
+            {PLANS.map((plan,i)=>(
+              <FadeIn key={plan.key} delay={i*0.07}>
+                <div style={{
+                  background:plan.popular?'linear-gradient(160deg,#221d10,#1c1a13)':CARD,
+                  border:`1px solid ${plan.popular?'rgba(200,151,62,0.5)':BORDER}`,
+                  borderRadius:20,padding:'28px 24px',position:'relative',
+                  boxShadow:plan.popular?'0 0 48px rgba(200,151,62,0.1)':'none',
+                  height:'100%',boxSizing:'border-box',
+                }}>
+                  {plan.popular&&(
+                    <div style={{position:'absolute',top:-12,left:'50%',transform:'translateX(-50%)',background:'linear-gradient(135deg,#d4a853,#b8803a)',color:'#0e0c09',fontSize:10,fontWeight:800,padding:'4px 16px',borderRadius:100,letterSpacing:'0.08em',whiteSpace:'nowrap'}}>
+                      MOST POPULAR
+                    </div>
+                  )}
 
-                    {/* Popular badge */}
-                    {plan.popular && (
-                      <div style={{position:'absolute',top:-12,left:'50%',transform:'translateX(-50%)',background:'linear-gradient(135deg,#d4a853,#b8803a)',color:'#0e0c09',fontSize:10,fontWeight:800,padding:'4px 16px',borderRadius:100,letterSpacing:'0.08em',whiteSpace:'nowrap'}}>
-                        MOST POPULAR
+                  <div style={{fontSize:10,fontWeight:800,color:plan.popular?GOLD:TEXT3,letterSpacing:'0.12em',textTransform:'uppercase',marginBottom:10}}>{plan.label}</div>
+                  <div style={{fontSize:30,fontWeight:800,letterSpacing:'-0.03em',color:TEXT,fontFamily:"'Syne','Inter',sans-serif",marginBottom:4}}>{plan.price}</div>
+                  <div style={{fontSize:11,color:TEXT3,marginBottom:10}}>{plan.priceNote}</div>
+                  <p style={{fontSize:12,color:TEXT2,marginBottom:16,paddingBottom:16,borderBottom:`1px solid ${BORDER}`,lineHeight:1.55}}>{plan.tagline}</p>
+
+                  <button
+                    onClick={()=>window.open('mailto:hello@evokecmo.com','_blank')}
+                    style={{
+                      width:'100%',padding:'12px',marginBottom:20,
+                      background:plan.ctaDark?'linear-gradient(135deg,#d4a853,#b8803a)':'rgba(255,255,255,0.06)',
+                      border:plan.ctaDark?'none':`1px solid ${BORDER}`,
+                      borderRadius:10,color:plan.ctaDark?'#0e0c09':TEXT2,
+                      fontSize:13,fontWeight:700,cursor:'pointer',
+                      fontFamily:"'Inter',sans-serif",transition:'all 0.2s',
+                    }}
+                    onMouseEnter={e=>{e.currentTarget.style.opacity='0.88';e.currentTarget.style.transform='translateY(-1px)'}}
+                    onMouseLeave={e=>{e.currentTarget.style.opacity='1';e.currentTarget.style.transform='translateY(0)'}}
+                  >{plan.cta}</button>
+
+                  <div style={{borderTop:`1px solid ${BORDER}`,paddingTop:16}}>
+                    <div style={{fontSize:10,fontWeight:800,color:TEXT3,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:12}}>WHAT'S INCLUDED</div>
+                    {plan.features.map(f=>(
+                      <div key={f.text} style={{display:'flex',alignItems:'flex-start',gap:9,marginBottom:10}}>
+                        <div style={{color:plan.popular?GOLD:TEXT3,flexShrink:0,marginTop:1}}>{f.icon}</div>
+                        <span style={{fontSize:12,color:TEXT2,lineHeight:1.55}}>{f.text}</span>
                       </div>
-                    )}
-
-                    {/* Plan label */}
-                    <div style={{fontSize:10,fontWeight:800,color: plan.popular ? GOLD : TEXT3,letterSpacing:'0.12em',textTransform:'uppercase',marginBottom:10}}>{plan.label}</div>
-
-                    {/* Price */}
-                    <div style={{marginBottom:4}}>
-                      {price === null ? (
-                        <span style={{fontSize:36,fontWeight:800,letterSpacing:'-0.03em',color:TEXT,fontFamily:"'Syne','Inter',sans-serif"}}>Custom</span>
-                      ) : (
-                        <>
-                          <span style={{fontSize:36,fontWeight:800,letterSpacing:'-0.03em',color:TEXT,fontFamily:"'Syne','Inter',sans-serif"}}>${price.toLocaleString()}</span>
-                          <span style={{fontSize:13,color:TEXT3,fontWeight:400}}>/month</span>
-                        </>
-                      )}
-                    </div>
-                    {plan.note && <p style={{fontSize:11,color:TEXT3,marginBottom:4}}>{plan.note}</p>}
-                    <p style={{fontSize:12,color:TEXT2,marginBottom:16,paddingBottom:16,borderBottom:`1px solid ${BORDER}`}}>{plan.tagline}</p>
-
-                    {/* Seats & credits */}
-                    <div style={{marginBottom:16,paddingBottom:16,borderBottom:`1px solid ${BORDER}`}}>
-                      <div style={{fontSize:13,fontWeight:600,color:TEXT,marginBottom:2}}>{plan.brands}</div>
-                      <div style={{fontSize:12,color:TEXT2,marginBottom:6}}>{plan.seats}</div>
-                      <div style={{fontSize:13,fontWeight:700,color: plan.popular ? GOLD : TEXT,marginBottom:4}}>{plan.credits}</div>
-                      {plan.breakdown.map(b=>(
-                        <div key={b} style={{fontSize:11,color:TEXT3,lineHeight:1.6}}>{b}</div>
-                      ))}
-                    </div>
-
-                    {/* CTA */}
-                    <button
-                      onClick={plan.key==='enterprise' ? ()=>window.open('mailto:hello@evokecmo.com','_blank') : open}
-                      style={{
-                        width:'100%', padding:'12px', marginBottom:20,
-                        background: plan.ctaDark ? 'linear-gradient(135deg,#d4a853,#b8803a)' : 'rgba(255,255,255,0.06)',
-                        border: plan.ctaDark ? 'none' : `1px solid ${BORDER}`,
-                        borderRadius:10, color: plan.ctaDark ? '#0e0c09' : TEXT2,
-                        fontSize:13, fontWeight:700, cursor:'pointer',
-                        fontFamily:"'Inter',sans-serif", transition:'all 0.2s',
-                      }}
-                      onMouseEnter={e=>{e.currentTarget.style.opacity='0.88';e.currentTarget.style.transform='translateY(-1px)'}}
-                      onMouseLeave={e=>{e.currentTarget.style.opacity='1';e.currentTarget.style.transform='translateY(0)'}}
-                    >{plan.cta}</button>
-
-                    {/* Perfect for */}
-                    <div style={{marginBottom:16}}>
-                      <div style={{fontSize:10,fontWeight:800,color:TEXT3,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:8}}>PERFECT FOR</div>
-                      {plan.perfectFor.map(f=>(
-                        <div key={f} style={{fontSize:12,color:TEXT2,lineHeight:1.6,paddingLeft:10,borderLeft:`2px solid ${GBORDER}`,marginBottom:4}}>{f}</div>
-                      ))}
-                    </div>
-
-                    {/* Features */}
-                    <div style={{borderTop:`1px solid ${BORDER}`,paddingTop:16}}>
-                      {plan.features.map(f=>(
-                        <div key={f} style={{display:'flex',alignItems:'flex-start',gap:8,marginBottom:8}}>
-                          <Check size={12} color={plan.popular ? GOLD : '#10b981'} strokeWidth={2.5} style={{flexShrink:0,marginTop:2}}/>
-                          <span style={{fontSize:12,color:TEXT2,lineHeight:1.55}}>{f}</span>
-                        </div>
-                      ))}
-                    </div>
-
+                    ))}
                   </div>
-                </FadeIn>
-              )
-            })}
+                </div>
+              </FadeIn>
+            ))}
           </div>
+
+          {/* Upsell ladder */}
+          <FadeIn delay={0.2} style={{marginTop:32}}>
+            <div style={{background:CARD,border:`1px solid ${BORDER}`,borderRadius:14,padding:'20px 24px',display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:16}}>
+              <div style={{fontSize:13,color:TEXT2,lineHeight:1.6}}>
+                <span style={{fontWeight:700,color:TEXT}}>Build up as you grow.</span>{' '}Every higher tier includes all deliverables from the tier below.
+              </div>
+              <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+                {['Free','Package A','Package B','Package C'].map((t,i,arr)=>(
+                  <React.Fragment key={t}>
+                    <span style={{padding:'4px 12px',borderRadius:100,fontSize:11,fontWeight:700,background:t==='Package B'?'rgba(200,151,62,0.15)':'rgba(255,255,255,0.05)',border:`1px solid ${t==='Package B'?GBORDER:BORDER}`,color:t==='Package B'?GOLD:TEXT2}}>{t}</span>
+                    {i<arr.length-1&&<span style={{color:TEXT3,fontSize:14}}>›</span>}
+                  </React.Fragment>
+                ))}
+              </div>
+            </div>
+          </FadeIn>
         </div>
       </section>
 
