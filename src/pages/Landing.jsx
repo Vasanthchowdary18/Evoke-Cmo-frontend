@@ -215,8 +215,13 @@ export default function Landing() {
   const { user } = useAuth()
   const navigate = useNavigate()
 
+  // Logged-in users should go straight to the dashboard
+  useEffect(() => {
+    if (user) navigate('/agents-hub', { replace: true })
+  }, [user, navigate])
+
   const goSignIn = () => redirectToLogin()
-  const goBoard = () => user ? navigate('/cmo') : goSignIn()
+  const goBoard = () => user ? navigate('/agents-hub') : goSignIn()
 
   /* Gold gradient text helper */
   const goldGrad = {
