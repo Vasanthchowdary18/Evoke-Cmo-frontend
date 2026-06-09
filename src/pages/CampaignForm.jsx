@@ -1261,7 +1261,7 @@ export default function CampaignForm() {
     if (!form.description.trim()) return setSubmitError("Please enter a description.");
     if (!form.goal.trim()) return setSubmitError("Please enter a campaign goal.");
     if (needsBrandName && !form.brandName.trim()) return setSubmitError("Please enter a brand name.");
-    if (!form.contactEmail.trim()) return setSubmitError("Please enter a contact email.");
+    if (type !== "growth_strategy" && !form.contactEmail.trim()) return setSubmitError("Please enter a contact email.");
     if (form.targetAudience.length === 0) return setSubmitError("Please select at least one target audience.");
 
     setLoading(true);
@@ -2052,7 +2052,7 @@ export default function CampaignForm() {
             </>
           )}
 
-          {type !== "event" && (
+          {type !== "event" && type !== "growth_strategy" && (
             <>
               <label style={s.label}>
                 Price / Pricing Info{" "}
@@ -2166,7 +2166,7 @@ export default function CampaignForm() {
             style={s.textarea}
           />
 
-          {type !== "event" && (
+          {type !== "event" && type !== "growth_strategy" && (
             <>
               <label style={s.label}>
                 Brand Name <span style={s.req}>*</span>
@@ -2374,49 +2374,57 @@ export default function CampaignForm() {
             </>
           )}
 
-          <div style={s.divider} />
-          <p style={s.sectionTitle}>Contact Info</p>
+          {/* Contact Info — hidden for growth_strategy (not needed for AI strategy doc) */}
+          {type !== "growth_strategy" && (
+            <>
+              <div style={s.divider} />
+              <p style={s.sectionTitle}>Contact Info</p>
 
-          <label style={{ ...s.label, marginTop: "12px" }}>
-            Contact Name <span style={s.req}>*</span>
-          </label>
-          <input
-            value={form.contactName}
-            onChange={(e) => set("contactName", e.target.value)}
-            placeholder="Your full name"
-            style={s.input}
-          />
+              <label style={{ ...s.label, marginTop: "12px" }}>
+                Contact Name <span style={s.req}>*</span>
+              </label>
+              <input
+                value={form.contactName}
+                onChange={(e) => set("contactName", e.target.value)}
+                placeholder="Your full name"
+                style={s.input}
+              />
 
-          <label style={s.label}>
-            Contact Email <span style={s.req}>*</span>
-          </label>
-          <input
-            type="email"
-            value={form.contactEmail}
-            onChange={(e) => set("contactEmail", e.target.value)}
-            placeholder="Your email address"
-            style={s.input}
-          />
+              <label style={s.label}>
+                Contact Email <span style={s.req}>*</span>
+              </label>
+              <input
+                type="email"
+                value={form.contactEmail}
+                onChange={(e) => set("contactEmail", e.target.value)}
+                placeholder="Your email address"
+                style={s.input}
+              />
 
-          <label style={s.label}>
-            Contact Phone{" "}
-            <span
-              style={{
-                color: "rgba(255,255,255,0.35)",
-                fontSize: "12px",
-                fontWeight: 400,
-              }}
-            >
-              (optional)
-            </span>
-          </label>
-          <input
-            value={form.contactPhone}
-            onChange={(e) => set("contactPhone", e.target.value)}
-            placeholder="Your phone number"
-            style={s.input}
-          />
+              <label style={s.label}>
+                Contact Phone{" "}
+                <span
+                  style={{
+                    color: "rgba(255,255,255,0.35)",
+                    fontSize: "12px",
+                    fontWeight: 400,
+                  }}
+                >
+                  (optional)
+                </span>
+              </label>
+              <input
+                value={form.contactPhone}
+                onChange={(e) => set("contactPhone", e.target.value)}
+                placeholder="Your phone number"
+                style={s.input}
+              />
+            </>
+          )}
 
+          {/* Publishing Settings — hidden for growth_strategy (strategy doc, not a social post) */}
+          {type !== "growth_strategy" && (
+            <>
           <div style={s.divider} />
           <p style={s.sectionTitle}>Publishing Settings</p>
 
@@ -2610,6 +2618,9 @@ export default function CampaignForm() {
             </motion.div>
           )}
 
+            </>
+          )} {/* end type !== "growth_strategy" publishing settings */}
+
           {/* â"€â"€ Error Banner â"€â"€ */}
           <AnimatePresence>
             {submitError && (
@@ -2655,12 +2666,14 @@ export default function CampaignForm() {
               </>
             ) : (
               <>
-                Generate Campaign <ArrowRight size={18} />
+                {type === "growth_strategy" ? "Generate My Strategy" : "Generate Campaign"} <ArrowRight size={18} />
               </>
             )}
           </button>
           <p style={{ textAlign: "center", color: "rgba(255,255,255,0.35)", fontSize: "13px", marginTop: "12px" }}>
-            Content generated by AI  ·  Posted instantly to all platforms via n8n
+            {type === "growth_strategy"
+              ? "Powered by AI · Full strategy document generated in seconds"
+              : "Content generated by AI  ·  Posted instantly to all platforms via n8n"}
           </p>
           <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
         </motion.div>
