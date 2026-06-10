@@ -250,25 +250,25 @@ export default function AgentsHub() {
 
   /* ── Org chart data ── */
   const level1 = [
-    { id: 'strategy',    title: 'Strategy Agent',       role: 'Growth & Market Planning',   model: 'Claude Sonnet', color: '#10b981', path: '/campaign/growth_strategy' },
-    { id: 'content_seo', title: 'Content & SEO Agent',  role: 'Blog, Copy & Keywords',      model: 'Claude Sonnet', color: '#3b82f6', path: '/campaign/content_calendar' },
+    { id: 'strategy',    title: 'Strategy Agent',       role: 'Growth & Market Planning',   model: 'EVOX AI', color: '#10b981', path: '/campaign/growth_strategy' },
+    { id: 'content_seo', title: 'Content & SEO Agent',  role: 'Blog, Copy & Keywords',      model: 'EVOX AI', color: '#3b82f6', path: '/campaign/content_calendar' },
     { id: 'visual',      title: 'Visual Creative Agent', role: 'Images, Videos & Ads',      model: 'DALL-E 3 / Stability AI', color: '#a855f7', path: '/products' },
   ]
   const level2 = {
     strategy:    [
-      { id: 'ads',      title: 'Ads & Paid Agent',      role: 'Google & Meta Campaigns',    model: 'GPT-4o/Claude',   color: '#f59e0b', path: '/campaign/brand' },
-      { id: 'social',   title: 'Social Media Agent',    role: 'Content Calendar & Posts',   model: 'Claude Haiku',    color: '#ec4899', path: '/campaign/content_calendar' },
+      { id: 'ads',      title: 'Ads & Paid Agent',      role: 'Google & Meta Campaigns',    model: 'EVOX AI',   color: '#f59e0b', path: '/campaign/brand' },
+      { id: 'social',   title: 'Social Media Agent',    role: 'Content Calendar & Posts',   model: 'EVOX AI',    color: '#ec4899', path: '/campaign/content_calendar' },
     ],
     content_seo: [
-      { id: 'seo_sub',      title: 'SEO Sub-Agent',     role: 'Keywords & On-Page',         model: 'Claude + web',    color: '#14b8a6', path: '/campaign/seo_blog' },
-      { id: 'content_sub',  title: 'Content Sub-Agent', role: 'Blog & Landing Pages',       model: 'Claude Sonnet',   color: '#6366f1', path: '/campaign/seo_blog' },
+      { id: 'seo_sub',      title: 'SEO Sub-Agent',     role: 'Keywords & On-Page',         model: 'EVOX AI + web',   color: '#14b8a6', path: '/campaign/seo_blog' },
+      { id: 'content_sub',  title: 'Content Sub-Agent', role: 'Blog & Landing Pages',       model: 'EVOX AI',         color: '#6366f1', path: '/campaign/seo_blog' },
     ],
     visual: [
       { id: 'image_gen', title: 'Image Gen Agent',      role: 'Product & Lifestyle Photos', model: 'DALL-E 3 / Replicate', color: '#ec4899', path: '/products' },
       { id: 'video_360', title: 'Video/360 Agent',      role: 'Lifestyle & 360° Videos',    model: 'Runway ML / Luma AI',  color: '#f97316', path: '/products' },
     ],
   }
-  const analyticsAgent = { id: 'analytics', title: 'Analytics & Reporting', role: 'KPIs, ROAS & Insights', model: 'Claude + data tools', color: '#8b5cf6', path: '/campaign/analytics_report' }
+  const analyticsAgent = { id: 'analytics', title: 'Analytics & Reporting', role: 'KPIs, ROAS & Insights', model: 'EVOX AI + data tools', color: '#8b5cf6', path: '/campaign/analytics_report' }
 
   return (
     <div style={{ minHeight: '100vh', background: BG, color: TEXT, fontFamily: "'Inter',sans-serif" }}>
