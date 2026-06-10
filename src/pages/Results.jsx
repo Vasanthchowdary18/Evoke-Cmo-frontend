@@ -787,7 +787,7 @@ export default function Results() {
     <div style={{ minHeight: '100vh', background: '#f8fafc' }}>
       <Navbar />
 
-      <div style={{ maxWidth: 860, margin: '0 auto', padding: '108px 24px 80px' }}>
+      <div style={{ maxWidth: isStrategy ? 1200 : 860, margin: '0 auto', padding: '108px 24px 40px' }}>
 
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: 32 }}>
@@ -894,27 +894,37 @@ export default function Results() {
 
         {/* ── Strategy-specific cards (growth_strategy only) ── */}
         {isStrategy && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 14 }}>
-            {[
-              { key: 'executiveSummary',    value: executiveSummary,    icon: <Zap size={16}/>,          color: '#10b981', title: 'Executive Summary'        },
-              { key: 'growthOpportunities', value: growthOpportunities, icon: <TrendingUp size={16}/>,   color: '#c8973e', title: 'Growth Opportunities'      },
-              { key: 'gtmPlan',             value: gtmPlan,             icon: <Rocket size={16}/>,       color: '#6366f1', title: 'Go-To-Market Plan'         },
-              { key: 'revenueProjection',   value: revenueProjection,   icon: <BarChart2 size={16}/>,    color: '#f59e0b', title: '12-Month Revenue Forecast' },
-              { key: 'partnershipIdeas',    value: partnershipIdeas,    icon: <Users size={16}/>,        color: '#0a66c2', title: 'Strategic Partnerships'    },
-              { key: 'expansionRoadmap',    value: expansionRoadmap,    icon: <Globe size={16}/>,        color: '#14b8a6', title: 'Expansion Roadmap'         },
-              { key: 'competitorGaps',      value: competitorGaps,      icon: <Target size={16}/>,       color: '#a855f7', title: 'Competitor Gaps to Exploit'},
-            ].filter(s => s.value).map((s, i) => (
-              <ResultCard key={s.key}
-                icon={s.icon} title={s.title} color={s.color}
-                copyText={safeStr(s.value)} copyId={s.key}
-                copied={copied} copy={copy}
-                editKey={s.key} editValue={safeStr(s.value)}
-                delay={i * 0.06}
-                {...editProps}
-              >
-                <ContentText value={s.value} />
-              </ResultCard>
-            ))}
+          <div style={{
+            height: 'calc(100vh - 280px)', overflowY: 'auto',
+            paddingRight: 6, marginBottom: 14,
+            scrollbarWidth: 'thin', scrollbarColor: 'rgba(200,151,62,0.3) transparent',
+          }}>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, 1fr)',
+              gap: 14,
+            }}>
+              {[
+                { key: 'executiveSummary',    value: executiveSummary,    icon: <Zap size={16}/>,          color: '#10b981', title: 'Executive Summary'        },
+                { key: 'growthOpportunities', value: growthOpportunities, icon: <TrendingUp size={16}/>,   color: '#c8973e', title: 'Growth Opportunities'      },
+                { key: 'gtmPlan',             value: gtmPlan,             icon: <Rocket size={16}/>,       color: '#6366f1', title: 'Go-To-Market Plan'         },
+                { key: 'revenueProjection',   value: revenueProjection,   icon: <BarChart2 size={16}/>,    color: '#f59e0b', title: '12-Month Revenue Forecast' },
+                { key: 'partnershipIdeas',    value: partnershipIdeas,    icon: <Users size={16}/>,        color: '#0a66c2', title: 'Strategic Partnerships'    },
+                { key: 'expansionRoadmap',    value: expansionRoadmap,    icon: <Globe size={16}/>,        color: '#14b8a6', title: 'Expansion Roadmap'         },
+                { key: 'competitorGaps',      value: competitorGaps,      icon: <Target size={16}/>,       color: '#a855f7', title: 'Competitor Gaps to Exploit'},
+              ].filter(s => s.value).map((s, i) => (
+                <ResultCard key={s.key}
+                  icon={s.icon} title={s.title} color={s.color}
+                  copyText={safeStr(s.value)} copyId={s.key}
+                  copied={copied} copy={copy}
+                  editKey={s.key} editValue={safeStr(s.value)}
+                  delay={i * 0.06}
+                  {...editProps}
+                >
+                  <ContentText value={s.value} />
+                </ResultCard>
+              ))}
+            </div>
           </div>
         )}
 

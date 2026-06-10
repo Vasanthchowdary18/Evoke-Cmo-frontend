@@ -1,9 +1,10 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Check, ArrowRight, ArrowLeft, Target, Image, Film, Monitor, Share2, Layers, Rocket, Megaphone } from 'lucide-react'
+import { Check, ArrowRight, ArrowLeft, Zap } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
+import { useAuth } from '../components/AuthProvider.jsx'
+import { getOrCreateUser } from '../services/userService'
 
-/* ── colours (match Landing.jsx) ── */
 const BG      = '#0e0c09'
 const CARD    = '#1c1a13'
 const GOLD    = '#c8973e'
@@ -27,30 +28,36 @@ const PLANS = [
   {
     key: 'package-a',
     label: 'PACKAGE A',
-    price: 'Contact Us',
+    price: '$1,000',
+    tokens: '500 EGT Tokens',
     tagline: 'Professional visuals + social posting',
     badge: null,
     gold: false,
+    color: '#10b981',
     features: ['Everything in Free', 'Multi-angle Images', 'Ad-ready Banners'],
     cta: 'Get Package A',
   },
   {
     key: 'package-b',
     label: 'PACKAGE B',
-    price: 'Contact Us',
+    price: '$1,800',
+    tokens: '1,200 EGT Tokens',
     tagline: 'Video content + 30-day calendar',
     badge: 'MOST POPULAR',
     gold: false,
+    color: '#c8973e',
     features: ['Everything in A', 'Brand Story Video', '360° Product Video'],
     cta: 'Get Package B',
   },
   {
     key: 'package-c',
     label: 'PACKAGE C',
-    price: 'Contact Us',
+    price: '$4,000',
+    tokens: '3,000 EGT Tokens',
     tagline: 'Full paid ad deployment at scale',
     badge: null,
     gold: false,
+    color: '#a855f7',
     features: ['Everything in B', '3D Images', 'Ads Manager + Deploy'],
     cta: 'Get Package C',
   },
@@ -58,13 +65,19 @@ const PLANS = [
 
 export default function PlansPage() {
   const navigate = useNavigate()
+  const { user } = useAuth()
+  const [balance, setBalance] = useState(0)
+
+  useEffect(() => {
+    if (!user) return
+    getOrCreateUser(user.uid, user.displayName, user.email)
+      .then(d => setBalance(d.tokenBalance || 0))
+  }, [user])
 
   const handlePlan = (key) => {
-    if (key === 'free') {
-      navigate('/free-plan')
-    } else {
-      window.open('mailto:hello@evokecmo.com?subject=Enquiry: ' + key.replace('-', ' ').toUpperCase(), '_blank')
-    }
+    if (key === 'free') navigate('/free-plan')
+    else if (key === 'package-a') navigate('/package-a')
+    else window.open('mailto:hello@evokecmo.com?subject=Enquiry: ' + key.replace('-', ' ').toUpperCase(), '_blank')
   }
 
   return (
@@ -103,6 +116,18 @@ export default function PlansPage() {
           </p>
         </div>
 
+        {/* Token balance bar */}
+        {user && (
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            marginBottom: 28, padding: '10px 20px',
+            background: 'rgba(200,151,62,0.08)', border: '1px solid rgba(200,151,62,0.2)',
+            borderRadius: 12, fontSize: 13, color: GOLD, fontWeight: 700,
+          }}>
+            <Zap size={14} /> Your EGT Balance: {balance} Tokens
+          </div>
+        )}
+
         {/* Plan cards grid */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 40 }}>
           {PLANS.map(p => (
@@ -132,9 +157,19 @@ export default function PlansPage() {
               <div style={{ fontSize: 10, fontWeight: 800, color: p.gold ? GOLD : TEXT3, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 6 }}>
                 {p.label}
               </div>
-              <div style={{ fontSize: 24, fontWeight: 900, color: TEXT, fontFamily: "'Syne','Inter',sans-serif", marginBottom: 6 }}>
+              <div style={{ fontSize: 28, fontWeight: 900, color: TEXT, fontFamily: "'Syne','Inter',sans-serif", marginBottom: 4, letterSpacing: '-0.02em' }}>
                 {p.price}
               </div>
+              {p.tokens && (
+                <div style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                  fontSize: 10, fontWeight: 700, color: GOLD,
+                  background: 'rgba(200,151,62,0.1)', border: '1px solid rgba(200,151,62,0.25)',
+                  borderRadius: 6, padding: '3px 8px', marginBottom: 8,
+                }}>
+                  ⚡ {p.tokens}
+                </div>
+              )}
               <div style={{ fontSize: 12, color: TEXT2, marginBottom: 16, lineHeight: 1.5 }}>
                 {p.tagline}
               </div>

@@ -21,19 +21,19 @@
 // In production the full URL is used directly (n8n cloud accepts cross-origin POST).
 export const WEBHOOK_URL = import.meta.env.DEV
   ? '/n8n-webhook/evoke-cmo'
-  : 'https://vasanthchowadry18.app.n8n.cloud/webhook/evoke-cmo';
+  : 'https://vasanth18.app.n8n.cloud/webhook/evoke-cmo';
 
 // Day campaign webhook — posts a single day's content (Day 2, 3, … N)
 export const DAY_WEBHOOK_URL = import.meta.env.DEV
   ? '/n8n-webhook/evoke-cmo-day'
-  : 'https://vasanthchowadry18.app.n8n.cloud/webhook/evoke-cmo-day';
+  : 'https://vasanth18.app.n8n.cloud/webhook/evoke-cmo-day';
 
 export const ADMIN_EMAIL = "vasanthchowadrythumati@gmail.com"
 
 // Agent webhook — processes all 9 AI agent types (Reddit, SEO, Writer, X, LinkedIn, HN, GEO, Coding, UGC)
 export const AGENT_WEBHOOK_URL = import.meta.env.DEV
   ? '/n8n-webhook/evoke-agents'
-  : 'https://vasanthchowadry18.app.n8n.cloud/webhook/evoke-agents';
+  : 'https://vasanth18.app.n8n.cloud/webhook/evoke-agents';
 
 // Meta / Evoke Marketing API base URL  (FastAPI backend — handler_api.py)
 export const META_API_BASE = import.meta.env.VITE_META_API_BASE || '';

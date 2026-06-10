@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, Sparkles, Copy, Check, Loader2, Video, Link } from 'lucide-react'
+import { ArrowLeft, Sparkles, Copy, Check, Loader2, Video, Link, Send } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
 
 /* ─── Tool configs ─── */
@@ -190,7 +190,7 @@ const inp = {
 
 export default function ImageToolPage() {
   const navigate = useNavigate()
-  const { pathname } = useLocation()
+  const { pathname, state: navState } = useLocation()
   const toolId = pathname.replace('/', '')
   const tool = TOOLS[toolId]
 
@@ -297,8 +297,8 @@ export default function ImageToolPage() {
       <div style={{ maxWidth: 960, margin: '0 auto', padding: '100px 24px 80px' }}>
 
         {/* Back */}
-        <button onClick={() => navigate('/products')} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: TEXT2, fontSize: 14, cursor: 'pointer', marginBottom: 36, padding: 0 }}>
-          <ArrowLeft size={15} /> Back to Tools
+        <button onClick={() => navigate(navState?.from || '/products')} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: TEXT2, fontSize: 14, cursor: 'pointer', marginBottom: 36, padding: 0 }}>
+          <ArrowLeft size={15} /> {navState?.from === '/package-a' ? 'Back to Package A' : 'Back to Tools'}
         </button>
 
         {/* Header */}
@@ -409,6 +409,29 @@ export default function ImageToolPage() {
                       {copied === 'url' ? <Check size={14} /> : <Copy size={14} />}
                     </button>
                   </div>
+
+                  {/* Post to Social Media CTA */}
+                  <button
+                    onClick={() => navigate('/post-content', {
+                      state: {
+                        mediaUrl: videoUrl,
+                        mediaType: 'video',
+                        toolTitle: tool.title,
+                        toolColor: tool.color,
+                        productName: fields.productName || '',
+                        from: pathname,
+                      }
+                    })}
+                    style={{
+                      marginTop: 14, width: '100%', padding: '13px',
+                      background: 'linear-gradient(135deg,#d4a853,#b8803a)',
+                      border: 'none', borderRadius: 12, color: '#0e0c09',
+                      fontSize: 14, fontWeight: 800, cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                    }}
+                  >
+                    <Send size={15} /> Post to Social Media
+                  </button>
                 </motion.div>
               )}
 

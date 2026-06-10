@@ -10,7 +10,6 @@ import {
 } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
 import { useAuth } from '../components/AuthProvider.jsx'
-import OnboardingModal from '../components/OnboardingModal.jsx'
 import { redirectToLogin } from '../lib/authUtils'
 import { getOrCreateUser } from '../services/userService'
 
@@ -204,8 +203,6 @@ function HConnector({ count }) {
 export default function AgentsHub() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const [showOnboarding,  setShowOnboarding]  = useState(false)
-  const [pendingHref,     setPendingHref]     = useState(null)
   const [campaigns,       setCampaigns]       = useState([])
   const [connectedCount,  setConnectedCount]  = useState(0)
   const [tokenBalance,    setTokenBalance]    = useState(null)
@@ -228,38 +225,17 @@ export default function AgentsHub() {
       const accounts = data.socialAccounts || {}
       const count = Object.values(accounts).filter(a => a?.connected).length
       setConnectedCount(count)
-      if (!data.onboardingComplete) setShowOnboarding(true)
     }).catch(() => {})
   }, [user])
 
-  const handleLaunchCMO = async () => {
+  const handleLaunchCMO = () => {
     if (!user) { redirectToLogin(); return }
-    try {
-      const data = await getOrCreateUser(user.uid, user.displayName, user.email)
-      if (!data.onboardingComplete) {
-        setPendingHref('/cmo')
-        setShowOnboarding(true)
-      } else {
-        navigate('/cmo')
-      }
-    } catch {
-      navigate('/cmo')
-    }
+    navigate('/cmo')
   }
 
-  const handleLaunchObjective = async () => {
+  const handleLaunchObjective = () => {
     if (!user) { redirectToLogin(); return }
-    try {
-      const data = await getOrCreateUser(user.uid, user.displayName, user.email)
-      if (!data.onboardingComplete) {
-        setPendingHref('/cmo')
-        setShowOnboarding(true)
-      } else {
-        navigate('/cmo')
-      }
-    } catch {
-      navigate('/cmo')
-    }
+    navigate('/cmo')
   }
 
   /* ── Marketing health score (computed) ── */
@@ -296,16 +272,6 @@ export default function AgentsHub() {
 
   return (
     <div style={{ minHeight: '100vh', background: BG, color: TEXT, fontFamily: "'Inter',sans-serif" }}>
-
-      {showOnboarding && user && (
-        <OnboardingModal
-          user={user}
-          onComplete={() => {
-            setShowOnboarding(false)
-            if (pendingHref) navigate(pendingHref)
-          }}
-        />
-      )}
 
       <Navbar />
 
@@ -448,358 +414,6 @@ export default function AgentsHub() {
               <div style={{ fontSize: 11, color: TEXT3, fontWeight: 500 }}>{metric.sub}</div>
             </motion.div>
           ))}
-        </motion.div>
-
-        {/* ═══ SECTION 3: Launch Marketing Objective ═══ */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-          style={{
-            background: 'linear-gradient(135deg, #1e1a0f, #1c1810)',
-            border: `1px solid ${GBORDER}`,
-            borderRadius: 20, padding: '28px 28px',
-            marginBottom: 40,
-            boxShadow: '0 0 40px rgba(200,151,62,0.07)',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
-            <div style={{
-              width: 48, height: 48, borderRadius: 14, flexShrink: 0,
-              background: 'linear-gradient(135deg, #d4a853, #b8803a)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <Zap size={22} color="#0e0c09" fill="#0e0c09" />
-            </div>
-            <div>
-              <h2 style={{ fontSize: 20, fontWeight: 900, letterSpacing: '-0.02em', color: TEXT, marginBottom: 4 }}>
-                Launch Marketing Objective
-              </h2>
-              <p style={{ fontSize: 13, color: TEXT2, maxWidth: 520, lineHeight: 1.6 }}>
-                Tell EVOX CMO what you want to achieve. Your AI department will build the strategy, create assets, and deploy campaigns automatically.
-              </p>
-            </div>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, marginBottom: 20 }}>
-            {/* Goal */}
-            <div>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: TEXT3, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
-                Campaign Goal
-              </label>
-              <input
-                type="text"
-                placeholder="e.g. Sell 100 event tickets"
-                value={objective}
-                onChange={e => setObjective(e.target.value)}
-                style={{
-                  width: '100%', padding: '11px 14px',
-                  background: BG, border: `1px solid rgba(200,151,62,0.2)`,
-                  borderRadius: 10, color: TEXT, fontSize: 13, fontFamily: 'inherit',
-                  outline: 'none', boxSizing: 'border-box',
-                }}
-                onFocus={e => e.target.style.borderColor = GOLD}
-                onBlur={e => e.target.style.borderColor = 'rgba(200,151,62,0.2)'}
-              />
-            </div>
-
-            {/* Budget */}
-            <div>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: TEXT3, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
-                Budget
-              </label>
-              <input
-                type="text"
-                placeholder="e.g. $2,500"
-                value={budget}
-                onChange={e => setBudget(e.target.value)}
-                style={{
-                  width: '100%', padding: '11px 14px',
-                  background: BG, border: `1px solid rgba(200,151,62,0.2)`,
-                  borderRadius: 10, color: TEXT, fontSize: 13, fontFamily: 'inherit',
-                  outline: 'none', boxSizing: 'border-box',
-                }}
-                onFocus={e => e.target.style.borderColor = GOLD}
-                onBlur={e => e.target.style.borderColor = 'rgba(200,151,62,0.2)'}
-              />
-            </div>
-
-            {/* Deadline */}
-            <div>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: TEXT3, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
-                Deadline
-              </label>
-              <input
-                type="text"
-                placeholder="e.g. 30 days"
-                value={deadline}
-                onChange={e => setDeadline(e.target.value)}
-                style={{
-                  width: '100%', padding: '11px 14px',
-                  background: BG, border: `1px solid rgba(200,151,62,0.2)`,
-                  borderRadius: 10, color: TEXT, fontSize: 13, fontFamily: 'inherit',
-                  outline: 'none', boxSizing: 'border-box',
-                }}
-                onFocus={e => e.target.style.borderColor = GOLD}
-                onBlur={e => e.target.style.borderColor = 'rgba(200,151,62,0.2)'}
-              />
-            </div>
-          </div>
-
-          <button
-            onClick={handleLaunchObjective}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 10,
-              padding: '14px 32px',
-              background: 'linear-gradient(135deg, #d4a853, #b8803a)',
-              border: 'none', borderRadius: 12,
-              color: '#0e0c09', fontSize: 15, fontWeight: 800,
-              cursor: 'pointer', fontFamily: "'Inter',sans-serif",
-              transition: 'all 0.2s', letterSpacing: '-0.01em',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 8px 28px rgba(200,151,62,0.45)' }}
-            onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none' }}
-          >
-            <Zap size={17} fill="#0e0c09" />
-            Launch with EVOX CMO
-            <ArrowRight size={17} />
-          </button>
-
-          <p style={{ marginTop: 12, fontSize: 11, color: TEXT3, lineHeight: 1.6 }}>
-            EVOX CMO will build strategy → create assets → deploy campaigns → monitor performance
-          </p>
-        </motion.div>
-
-        {/* ═══ SECTION 4: Recommended Actions ═══ */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.25 }}
-          style={{ marginBottom: 48 }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-            <div style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              padding: '4px 12px', background: GDIM, border: `1px solid ${GBORDER}`,
-              borderRadius: 100, fontSize: 11, fontWeight: 700, color: GOLD, letterSpacing: '0.06em',
-            }}>
-              <Sparkles size={11} /> RECOMMENDED ACTIONS
-            </div>
-          </div>
-
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
-            gap: 14,
-          }}>
-            {recommendedActions.map((action, i) => (
-              <motion.div
-                key={action.title}
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.28 + i * 0.07 }}
-                whileHover={{ y: -3 }}
-                onClick={() => user ? navigate(action.path) : redirectToLogin()}
-                style={{
-                  background: CARD, border: `1px solid ${action.color}22`,
-                  borderRadius: 16, padding: '18px 20px', cursor: 'pointer',
-                  transition: 'all 0.2s', position: 'relative', overflow: 'hidden',
-                }}
-              >
-                <div style={{
-                  position: 'absolute', top: 0, left: 0, right: 0, height: 2,
-                  background: `linear-gradient(90deg, ${action.color}60, transparent)`,
-                }} />
-
-                <div style={{
-                  width: 38, height: 38, borderRadius: 10,
-                  background: `${action.color}12`, border: `1px solid ${action.color}25`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  color: action.color, marginBottom: 14,
-                }}>
-                  {action.icon}
-                </div>
-
-                <div style={{ fontSize: 14, fontWeight: 800, color: TEXT, letterSpacing: '-0.01em', marginBottom: 6 }}>
-                  {action.title}
-                </div>
-                <p style={{ fontSize: 12, color: TEXT2, lineHeight: 1.6, marginBottom: 14 }}>
-                  {action.desc}
-                </p>
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: 4,
-                  fontSize: 12, fontWeight: 700, color: action.color,
-                }}>
-                  {action.cta} <ChevronRight size={13} />
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
-
-        {/* ═══ SECTION 5: Agent Workforce Org Chart ═══ */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.3 }}
-          style={{ marginBottom: 48 }}
-        >
-          {/* Header */}
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 28, flexWrap: 'wrap', gap: 12 }}>
-            <div>
-              <div style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                padding: '4px 12px', background: GDIM, border: `1px solid ${GBORDER}`,
-                borderRadius: 100, fontSize: 11, fontWeight: 700, color: GOLD, letterSpacing: '0.06em', marginBottom: 12,
-              }}>
-                <Bot size={11} /> AGENT WORKFORCE
-              </div>
-              <h2 style={{ fontSize: 26, fontWeight: 900, letterSpacing: '-0.02em', color: TEXT, marginBottom: 6 }}>
-                Your AI Marketing Department
-              </h2>
-              <p style={{ fontSize: 13, color: TEXT2, maxWidth: 560 }}>
-                9 specialised AI agents working together under the EVOX CMO Director. Click any agent to activate it.
-              </p>
-            </div>
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 16,
-              padding: '10px 16px', background: CARD, border: `1px solid ${BORDER}`,
-              borderRadius: 12, fontSize: 11, fontWeight: 700,
-            }}>
-              {Object.entries(STATUS_COLORS).map(([key, sc]) => (
-                <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: sc.dot }} />
-                  <span style={{ color: TEXT3 }}>{sc.label}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Org chart container */}
-          <div style={{
-            background: CARD, border: `1px solid ${BORDER}`,
-            borderRadius: 20, padding: '32px 24px',
-            overflowX: 'auto',
-          }}>
-            {/* Level 0: CMO Director */}
-            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 0 }}>
-              <motion.div
-                whileHover={{ boxShadow: `0 12px 36px ${GOLD}25` }}
-                onClick={handleLaunchCMO}
-                style={{
-                  background: 'linear-gradient(135deg, #221d10, #1e190e)',
-                  border: `1px solid ${GBORDER}`,
-                  borderRadius: 16, padding: '16px 28px',
-                  cursor: 'pointer', transition: 'all 0.2s',
-                  textAlign: 'center', minWidth: 220,
-                  boxShadow: `0 0 30px ${GOLD}12`,
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 6 }}>
-                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981', boxShadow: '0 0 8px #10b981' }} />
-                  <span style={{ fontSize: 10, fontWeight: 800, color: '#10b981', letterSpacing: '0.06em' }}>ACTIVE</span>
-                </div>
-                <div style={{ fontSize: 15, fontWeight: 900, color: TEXT, letterSpacing: '-0.02em', marginBottom: 3 }}>
-                  EVOX CMO Director
-                </div>
-                <div style={{ fontSize: 11, color: TEXT3, marginBottom: 6 }}>Orchestrates · Holds context · Manages state</div>
-                <div style={{ fontSize: 10, color: GOLD, fontStyle: 'italic' }}>
-                  {getStatus('cmo_director').text}
-                </div>
-              </motion.div>
-            </div>
-
-            {/* Connector: root → L1 */}
-            <div style={{ display: 'flex', justifyContent: 'center' }}>
-              <div style={{ width: 1, height: 24, background: `${GOLD}30` }} />
-            </div>
-
-            {/* Horizontal bar across L1 */}
-            <div style={{ position: 'relative', display: 'flex', justifyContent: 'center', marginBottom: 0 }}>
-              <div style={{
-                position: 'absolute', top: 0, left: '16.66%', right: '16.66%',
-                height: 1, background: `${GOLD}30`,
-              }} />
-              {/* Vertical lines down to L1 nodes */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 24, width: '100%', maxWidth: 820 }}>
-                {level1.map(agent => (
-                  <div key={agent.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    <div style={{ width: 1, height: 20, background: `${GOLD}30` }} />
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Level 1 nodes */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 24, maxWidth: 820, margin: '0 auto', marginBottom: 0 }}>
-              {level1.map(agent => (
-                <div key={agent.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <AgentNode
-                    id={agent.id}
-                    title={agent.title}
-                    role={agent.role}
-                    model={agent.model}
-                    color={agent.color}
-                    onClick={() => user ? navigate(agent.path) : redirectToLogin()}
-                  />
-                  {/* Connector to L2 */}
-                  <div style={{ width: 1, height: 20, background: `${GOLD}30` }} />
-                </div>
-              ))}
-            </div>
-
-            {/* Horizontal bars and Level 2 nodes */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 24, maxWidth: 820, margin: '0 auto' }}>
-              {level1.map(l1agent => {
-                const children = level2[l1agent.id] || []
-                return (
-                  <div key={l1agent.id} style={{ position: 'relative' }}>
-                    {/* Horizontal connector across children */}
-                    {children.length > 1 && (
-                      <div style={{
-                        position: 'absolute', top: 0, left: '25%', right: '25%',
-                        height: 1, background: `${GOLD}30`,
-                      }} />
-                    )}
-                    <div style={{
-                      display: 'grid',
-                      gridTemplateColumns: children.length > 1 ? '1fr 1fr' : '1fr',
-                      gap: 8,
-                    }}>
-                      {children.map(child => (
-                        <div key={child.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                          <AgentNode
-                            id={child.id}
-                            title={child.title}
-                            role={child.role}
-                            model={child.model}
-                            color={child.color}
-                            compact
-                            onClick={() => user ? navigate(child.path) : redirectToLogin()}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-
-            {/* Analytics agent (bottom, under Strategy) */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 24, maxWidth: 820, margin: '0 auto', marginTop: 0 }}>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <div style={{ width: 1, height: 16, background: `${GOLD}30` }} />
-                <AgentNode
-                  id={analyticsAgent.id}
-                  title={analyticsAgent.title}
-                  role={analyticsAgent.role}
-                  model={analyticsAgent.model}
-                  color={analyticsAgent.color}
-                  compact
-                  onClick={() => user ? navigate(analyticsAgent.path) : redirectToLogin()}
-                />
-              </div>
-              <div />
-              <div />
-            </div>
-          </div>
         </motion.div>
 
         {/* ═══ SECTION 6: Quick Access to All Campaign Agents ═══ */}

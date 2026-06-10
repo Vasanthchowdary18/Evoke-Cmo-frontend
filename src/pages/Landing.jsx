@@ -73,18 +73,18 @@ const LOGO_ROW2 = [
 
 /* Agent cards — PDF strip_03/04 */
 const AGENTS = [
-  { title:'Growth Strategy',     desc:'Full GTM plan, revenue forecast, market sizing, and milestone roadmap.',            icon:<TrendingUp size={16}/>,  color:'#b87d3a' },
-  { title:'Competitive Intel',   desc:'SWOT analysis, competitor profiles, pricing analysis, and positioning.',            icon:<Target size={16}/>,      color:'#b87d3a' },
-  { title:'Content Calendar',    desc:'30-day multi-platform content plan with daily post ideas and hashtags.',             icon:<Calendar size={16}/>,    color:'#b87d3a' },
-  { title:'SEO Blog Post',       desc:'Full 1,500-word SEO-optimised blog with meta, keywords, and internal links.',       icon:<Search size={16}/>,      color:'#b87d3a' },
-  { title:'Email Drip Campaign', desc:'5-email nurture sequence with subject lines, preheaders, and CTAs.',                icon:<Mail size={16}/>,        color:'#b87d3a' },
-  { title:'Influencer & PR Brief',desc:'Influencer campaign brief, press release, and media pitch templates.',             icon:<Users size={16}/>,       color:'#b87d3a' },
-  { title:'Analytics Report',    desc:'Executive KPI summary, channel breakdown, and data-driven recommendations.',       icon:<BarChart2 size={16}/>,   color:'#b87d3a' },
-  { title:'Sales Enablement',    desc:'Sales deck, elevator pitch, objection handling, and cold-call scripts.',            icon:<Briefcase size={16}/>,   color:'#b87d3a' },
-  { title:'Event Marketing',     desc:'Full event campaign — promotion timeline, content plan, and post-event follow-up.', icon:<Megaphone size={16}/>,   color:'#b87d3a' },
-  { title:'Marketplace Growth',  desc:'Vendor strategy, buyer acquisition plan, and promotional campaign roadmap.',        icon:<ShoppingCart size={16}/>,color:'#b87d3a' },
-  { title:'Brand Strategy',      desc:'Brand identity, tone of voice, messaging framework, and content pillars.',          icon:<Sparkles size={16}/>,    color:'#b87d3a' },
-  { title:'Funnel & CRO Audit',  desc:'Top-to-bottom funnel audit, A/B test ideas, and quick-win CTA optimisations.',     icon:<Activity size={16}/>,    color:'#b87d3a' },
+  { title:'Growth Strategy',      desc:'Full GTM plan, revenue forecast, market sizing, and milestone roadmap.',            icon:<TrendingUp size={28}/>,  color:'#c8973e', bg:'linear-gradient(135deg,#2a1f0a,#1c1508)' },
+  { title:'Competitive Intel',    desc:'SWOT analysis, competitor profiles, pricing analysis, and positioning.',            icon:<Target size={28}/>,      color:'#ef4444', bg:'linear-gradient(135deg,#2a0a0a,#1c0808)' },
+  { title:'Content Calendar',     desc:'30-day multi-platform content plan with daily post ideas and hashtags.',             icon:<Calendar size={28}/>,    color:'#10b981', bg:'linear-gradient(135deg,#0a2a1a,#081c12)' },
+  { title:'SEO Blog Post',        desc:'Full 1,500-word SEO-optimised blog with meta, keywords, and internal links.',       icon:<Search size={28}/>,      color:'#3b82f6', bg:'linear-gradient(135deg,#0a1a2a,#08121c)' },
+  { title:'Email Drip Campaign',  desc:'5-email nurture sequence with subject lines, preheaders, and CTAs.',                icon:<Mail size={28}/>,        color:'#a855f7', bg:'linear-gradient(135deg,#1a0a2a,#12081c)' },
+  { title:'Influencer & PR Brief',desc:'Influencer campaign brief, press release, and media pitch templates.',              icon:<Users size={28}/>,       color:'#f59e0b', bg:'linear-gradient(135deg,#2a1f0a,#1c1508)' },
+  { title:'Analytics Report',     desc:'Executive KPI summary, channel breakdown, and data-driven recommendations.',       icon:<BarChart2 size={28}/>,   color:'#06b6d4', bg:'linear-gradient(135deg,#0a1f2a,#081418)' },
+  { title:'Sales Enablement',     desc:'Sales deck, elevator pitch, objection handling, and cold-call scripts.',            icon:<Briefcase size={28}/>,   color:'#84cc16', bg:'linear-gradient(135deg,#0f2a0a,#0a1c08)' },
+  { title:'Event Marketing',      desc:'Full event campaign — promotion timeline, content plan, and post-event follow-up.', icon:<Megaphone size={28}/>,   color:'#f97316', bg:'linear-gradient(135deg,#2a1208,#1c0c06)' },
+  { title:'Marketplace Growth',   desc:'Vendor strategy, buyer acquisition plan, and promotional campaign roadmap.',        icon:<ShoppingCart size={28}/>,color:'#ec4899', bg:'linear-gradient(135deg,#2a0a1a,#1c0812)' },
+  { title:'Brand Strategy',       desc:'Brand identity, tone of voice, messaging framework, and content pillars.',          icon:<Sparkles size={28}/>,    color:'#8b5cf6', bg:'linear-gradient(135deg,#1a0a2a,#12081c)' },
+  { title:'Funnel & CRO Audit',   desc:'Top-to-bottom funnel audit, A/B test ideas, and quick-win CTA optimisations.',     icon:<Activity size={28}/>,    color:'#14b8a6', bg:'linear-gradient(135deg,#0a2a28,#081c1a)' },
 ]
 
 const PLANS = [
@@ -943,33 +943,65 @@ export default function Landing() {
       </section>
 
       {/* ══════════════════════════════════════════════════
-          12 AI AGENTS  (strip_02 bottom, strip_03, strip_04 top)
+          12 AI AGENTS
       ══════════════════════════════════════════════════ */}
-      <section id="features" style={{padding:'56px 40px',background:'#0a0908'}}>
+      <section id="features" style={{padding:'80px 40px',background:'#0a0908'}}>
         <div style={{maxWidth:1200,margin:'0 auto'}}>
           <FadeIn style={{textAlign:'center',marginBottom:60}}>
             <SBadge>12 AI Agents</SBadge>
-            <h2 style={{fontSize:'clamp(18px,2.6vw,38px)',fontWeight:800,letterSpacing:'-0.03em',lineHeight:1.2,color:TEXT,fontFamily:"'Syne','Inter',sans-serif"}}>
+            <h2 style={{fontSize:'clamp(22px,2.8vw,42px)',fontWeight:800,letterSpacing:'-0.03em',lineHeight:1.2,color:TEXT,fontFamily:"'Syne','Inter',sans-serif"}}>
               Everything you need to market<br/>
               like a <span style={goldGrad}>Fortune 500 CMO</span>
             </h2>
             <p style={{fontSize:15,color:TEXT2,maxWidth:500,margin:'14px auto 0',lineHeight:1.65}}>
-              12 specialised AI marketing agents. Each one generates complete, professional output in under 60 seconds.
+              12 specialised AI marketing agents — each generates complete, professional output in under 60 seconds.
             </p>
           </FadeIn>
 
           <motion.div initial="hidden" whileInView="visible" viewport={{once:true,margin:'-60px'}} variants={stagger}
-            className="agents-grid" style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:14}}>
-            {AGENTS.map(a=>(
+            style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))',gap:20}}>
+            {AGENTS.map((a,i)=>(
               <motion.div key={a.title} variants={fadeUp}
-                style={{background:CARD,border:`1px solid ${GBORDER}`,borderRadius:16,padding:'26px 24px',transition:'all 0.2s'}}
-                onMouseEnter={e=>{e.currentTarget.style.borderColor='rgba(200,151,62,0.45)';e.currentTarget.style.transform='translateY(-3px)';e.currentTarget.style.boxShadow='0 12px 40px rgba(0,0,0,0.5)'}}
-                onMouseLeave={e=>{e.currentTarget.style.borderColor=GBORDER;e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none'}}>
-                <div style={{width:36,height:36,borderRadius:9,background:GDIM,border:`1px solid ${GBORDER}`,display:'flex',alignItems:'center',justifyContent:'center',color:GOLD,marginBottom:16}}>
-                  {a.icon}
+                style={{background:CARD,border:`1px solid rgba(255,255,255,0.07)`,borderRadius:20,overflow:'hidden',cursor:'pointer',transition:'all 0.25s'}}
+                onMouseEnter={e=>{e.currentTarget.style.borderColor=a.color+'55';e.currentTarget.style.transform='translateY(-4px)';e.currentTarget.style.boxShadow=`0 20px 50px ${a.color}18`}}
+                onMouseLeave={e=>{e.currentTarget.style.borderColor='rgba(255,255,255,0.07)';e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none'}}>
+                {/* Image header zone */}
+                <div style={{
+                  height:130,
+                  background:a.bg,
+                  display:'flex',
+                  alignItems:'center',
+                  justifyContent:'center',
+                  position:'relative',
+                  overflow:'hidden',
+                }}>
+                  {/* glow orb */}
+                  <div style={{position:'absolute',width:120,height:120,borderRadius:'50%',background:a.color,opacity:0.12,filter:'blur(40px)'}}/>
+                  {/* grid lines overlay */}
+                  <div style={{position:'absolute',inset:0,backgroundImage:`linear-gradient(${a.color}08 1px,transparent 1px),linear-gradient(90deg,${a.color}08 1px,transparent 1px)`,backgroundSize:'24px 24px'}}/>
+                  {/* number badge top-right */}
+                  <div style={{position:'absolute',top:12,right:14,fontSize:10,fontWeight:800,color:a.color+'88',letterSpacing:'0.1em'}}>{String(i+1).padStart(2,'0')}</div>
+                  {/* icon */}
+                  <div style={{
+                    width:64,height:64,borderRadius:18,
+                    background:`${a.color}18`,
+                    border:`1.5px solid ${a.color}35`,
+                    display:'flex',alignItems:'center',justifyContent:'center',
+                    color:a.color,
+                    position:'relative',zIndex:1,
+                    boxShadow:`0 0 30px ${a.color}22`,
+                  }}>
+                    {a.icon}
+                  </div>
                 </div>
-                <h3 style={{fontSize:15,fontWeight:700,color:TEXT,marginBottom:8,letterSpacing:'-0.01em'}}>{a.title}</h3>
-                <p style={{fontSize:13,color:TEXT2,lineHeight:1.65}}>{a.desc}</p>
+                {/* Text body */}
+                <div style={{padding:'20px 22px 24px'}}>
+                  <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
+                    <h3 style={{fontSize:15,fontWeight:700,color:TEXT,letterSpacing:'-0.01em',margin:0}}>{a.title}</h3>
+                    <div style={{width:6,height:6,borderRadius:'50%',background:a.color,flexShrink:0,marginLeft:'auto'}}/>
+                  </div>
+                  <p style={{fontSize:13,color:TEXT2,lineHeight:1.65,margin:0}}>{a.desc}</p>
+                </div>
               </motion.div>
             ))}
           </motion.div>

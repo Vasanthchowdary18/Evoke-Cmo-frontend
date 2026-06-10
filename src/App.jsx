@@ -5,19 +5,20 @@ import Landing from './pages/Landing.jsx'
 import SignIn from './pages/SignIn.jsx'
 import Onboarding from './pages/Onboarding.jsx'
 import Dashboard from './pages/Dashboard.jsx'
-import CmoDashboard from './pages/CmoDashboard.jsx'
 import CampaignForm from './pages/CampaignForm.jsx'
 import AgentPage from './pages/AgentPage.jsx'
 import Tokens from './pages/Tokens.jsx'
 import Results from './pages/Results.jsx'
 import Purchase from './pages/Purchase.jsx'
 import ConnectAccounts from './pages/ConnectAccounts.jsx'
+import PostContent from './pages/PostContent.jsx'
 import Privacy from './pages/Privacy.jsx'
 import Terms from './pages/Terms.jsx'
 import MetaAdsBoost from './pages/MetaAdsBoost.jsx'
 import AgentsHub from './pages/AgentsHub.jsx'
 import PlansPage from './pages/PlansPage.jsx'
 import FreePlanPage from './pages/FreePlanPage.jsx'
+import PackageAPage from './pages/PackageAPage.jsx'
 import ProductsPage from './pages/ProductsPage.jsx'
 import ProductDescription from './pages/ProductDescription.jsx'
 import ImageToolPage from './pages/ImageToolPage.jsx'
@@ -63,13 +64,13 @@ export default function App() {
         <Route path="/dashboard"         element={<Navigate to="/agents-hub" replace />} />
         <Route path="/dashboard-legacy"  element={<Dashboard />} />
         <Route path="/cmo"               element={<Dashboard />} />
-        <Route path="/cmo-terminal"      element={<CmoDashboard />} />
         <Route path="/campaign/:type"    element={<CampaignForm />} />
         <Route path="/agent/:agentType"  element={<AgentPage />} />
         <Route path="/results"           element={<Results />} />
         <Route path="/tokens"            element={<Tokens />} />
         <Route path="/purchase"          element={<Purchase />} />
         <Route path="/connect-accounts"  element={<ConnectAccounts />} />
+        <Route path="/post-content"      element={<PostContent />} />
         <Route path="/products"          element={<ProductsPage />} />
         <Route path="/product-desc"      element={<ProductDescription />} />
         <Route path="/image-angles"      element={<ImageToolPage />} />
@@ -81,6 +82,7 @@ export default function App() {
         <Route path="/agents-hub"         element={<AgentsHub />} />
         <Route path="/plans"              element={<PlansPage />} />
         <Route path="/free-plan"          element={<FreePlanPage />} />
+        <Route path="/package-a"          element={<PackageAPage />} />
         <Route path="/evox-services"      element={<EvoxServices />} />
         <Route path="/privacy"            element={<Privacy />} />
         <Route path="/terms"              element={<Terms />} />

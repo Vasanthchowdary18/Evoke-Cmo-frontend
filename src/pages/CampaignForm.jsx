@@ -281,6 +281,7 @@ ${form.industry ? `Industry: ${form.industry}` : ""}
 ${form.budget ? `Budget: ${form.budget}` : ""}
 ${form.keywords ? `Keywords: ${form.keywords}` : ""}
 ${form.toneOfVoice ? `Brand Tone of Voice: ${form.toneOfVoice}` : ""}
+${form.socialPlatforms?.length ? `Connected Social Platforms to target: ${form.socialPlatforms.join(", ")}` : ""}
 ${websiteContent ? `\n--- LIVE WEBSITE CONTENT (use this to deeply understand the business, products, and tone) ---\n${websiteContent}\n---` : ""}
 `.trim();
 
@@ -1142,7 +1143,9 @@ export default function CampaignForm() {
     reportPeriod: "",
     funnelStage: "",
     toneOfVoice: "",
+    socialPlatforms: [],
   });
+  const [connectedAccounts, setConnectedAccounts] = useState({});
   const [audienceOpen, setAudienceOpen] = useState(false);
   const [locationOpen, setLocationOpen] = useState(false);
   const [locationSearch, setLocationSearch] = useState("");
@@ -1284,6 +1287,17 @@ export default function CampaignForm() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Load connected social accounts for Package A social platform selector
+  useEffect(() => {
+    if (type !== 'growth_strategy') return
+    const profile = getEvokeUserProfile()
+    const currentUser = profileToUser(profile)
+    if (!currentUser) return
+    getUserData(currentUser.uid).then(data => {
+      if (data?.socialAccounts) setConnectedAccounts(data.socialAccounts)
+    }).catch(() => {})
+  }, [type]) // eslint-disable-line
+
   const handleSubmit = async () => {
     setSubmitError("");
     const needsBrandName = ["product", "brand", "brand_strategy"].includes(type);
@@ -1309,8 +1323,9 @@ export default function CampaignForm() {
         resolvedImageUrl = await uploadToImgBB(form.imageFile);
       }
 
-      // â"€â"€ Auto-generate AI poster if no image was provided â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
-      if (!resolvedImageUrl && form.name.trim() && form.description.trim()) {
+      // â"€â"€ Auto-generate AI poster — skip for strategy/calendar types (no image needed) â"€â"€
+      const skipPoster = ['growth_strategy','growth_agent','content_calendar','analytics_report','competitive_intel','seo_blog'].includes(type)
+      if (!resolvedImageUrl && !skipPoster && form.name.trim() && form.description.trim()) {
         try {
           setLoadingPhase("generating-image");
           const { file: autoPosterFile } = await generateEventPoster(form);
@@ -1782,10 +1797,10 @@ export default function CampaignForm() {
           {/* ── Website URL — growth_strategy & growth_agent (Jina AI will read & feed it to the AI) ── */}
           {(type === "growth_strategy" || type === "growth_agent") && (
             <>
-              <label style={s.label}>
-                Your Website URL
-                <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 12, fontWeight: 400 }}> (optional — AI will read your site)</span>
-              </label>
+              <label style={s.label}>Your Website URL <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 11, fontWeight: 400 }}>(Optional)</span></label>
+              <p style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginTop: -8, marginBottom: 8 }}>
+                The AI CMO will scan your site and use it to build a strategy tailored to your actual business.
+              </p>
               <div style={{ position: "relative" }}>
                 <Link size={14} style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.35)", pointerEvents: "none" }} />
                 <input
@@ -1795,8 +1810,66 @@ export default function CampaignForm() {
                   style={{ ...s.input, paddingLeft: "36px" }}
                 />
               </div>
-              <p style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginTop: -6, marginBottom: 4 }}>
-                The AI CMO will scan your site and use it to build a strategy tailored to your actual business.
+            </>
+          )}
+
+          {/* ── Social Platforms — Package A growth_strategy only ── */}
+          {type === "growth_strategy" && (
+            <>
+              <label style={s.label}>
+                Social Platforms to Target
+                <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 12, fontWeight: 400 }}> (select your connected accounts)</span>
+              </label>
+              {(() => {
+                const PLAT = [
+                  { key: 'linkedin',  label: 'LinkedIn',  color: '#0a66c2' },
+                  { key: 'instagram', label: 'Instagram', color: '#dd2a7b' },
+                  { key: 'facebook',  label: 'Facebook',  color: '#1877f2' },
+                  { key: 'whatsapp',  label: 'WhatsApp',  color: '#25d366' },
+                  { key: 'gmail',     label: 'Gmail',     color: '#ea4335' },
+                ]
+                const connected = PLAT.filter(p => connectedAccounts[p.key]?.connected || p.key === 'whatsapp')
+                const unconnected = PLAT.filter(p => !connectedAccounts[p.key]?.connected && p.key !== 'whatsapp')
+                const toggle = (key) => {
+                  const cur = form.socialPlatforms || []
+                  set('socialPlatforms', cur.includes(key) ? cur.filter(k => k !== key) : [...cur, key])
+                }
+                return (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+                    {connected.map(p => {
+                      const sel = (form.socialPlatforms || []).includes(p.key)
+                      return (
+                        <button key={p.key} type="button" onClick={() => toggle(p.key)} style={{
+                          display: 'flex', alignItems: 'center', gap: 6,
+                          padding: '7px 14px',
+                          background: sel ? `${p.color}20` : 'rgba(255,255,255,0.05)',
+                          border: `1px solid ${sel ? p.color : 'rgba(255,255,255,0.12)'}`,
+                          borderRadius: 100, cursor: 'pointer',
+                          color: sel ? p.color : 'rgba(255,255,255,0.5)',
+                          fontSize: 12, fontWeight: 700, transition: 'all 0.15s',
+                        }}>
+                          {sel && <Check size={11} />} {p.label}
+                        </button>
+                      )
+                    })}
+                    {unconnected.map(p => (
+                      <span key={p.key} style={{
+                        display: 'flex', alignItems: 'center', gap: 6,
+                        padding: '7px 14px',
+                        background: 'rgba(255,255,255,0.02)',
+                        border: '1px solid rgba(255,255,255,0.06)',
+                        borderRadius: 100,
+                        color: 'rgba(255,255,255,0.2)',
+                        fontSize: 12, fontWeight: 700,
+                      }}>
+                        {p.label} <span style={{ fontSize: 10 }}>— not connected</span>
+                      </span>
+                    ))}
+                  </div>
+                )
+              })()}
+              <p style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginTop: -2, marginBottom: 4 }}>
+                The AI will tailor your strategy specifically for the platforms you select.
               </p>
             </>
           )}

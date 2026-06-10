@@ -1,6 +1,8 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "../components/AuthProvider.jsx";
+import { redirectToLogin } from "../lib/authUtils.js";
 import {
   Linkedin,
   Facebook,
@@ -35,33 +37,33 @@ const LINKEDIN_CLIENT_ID =
 const LINKEDIN_REDIRECT = window.location.origin + "/connect-accounts";
 const LINKEDIN_SCOPE = "openid profile email w_member_social";
 const LINKEDIN_N8N =
-  "https://vasanthchowadry18.app.n8n.cloud/webhook/linkedin-oauth";
+  "https://vasanth18.app.n8n.cloud/webhook/linkedin-oauth";
 
 const TWITTER_CLIENT_ID =
   import.meta.env.VITE_TWITTER_CLIENT_ID || "YOUR_TWITTER_CLIENT_ID";
 const TWITTER_REDIRECT = window.location.origin + "/connect-accounts";
 const TWITTER_SCOPE = "tweet.read tweet.write users.read offline.access";
 const TWITTER_N8N =
-  "https://vasanthchowadry18.app.n8n.cloud/webhook/twitter-oauth";
+  "https://vasanth18.app.n8n.cloud/webhook/twitter-oauth";
 
 const GOOGLE_CLIENT_ID =
   "53481639003-g903a5274f1bcq4jvkgpeoispls7aps9.apps.googleusercontent.com";
 const GOOGLE_REDIRECT = window.location.origin + "/connect-accounts";
 const GOOGLE_SCOPE =
   "https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile";
-const GMAIL_N8N = "https://vasanthchowadry18.app.n8n.cloud/webhook/gmail-oauth";
+const GMAIL_N8N = "https://vasanth18.app.n8n.cloud/webhook/gmail-oauth";
 
 const TIKTOK_CLIENT_KEY = "sbawq8ejz7li1bzsf1";
 const TIKTOK_REDIRECT = window.location.origin + "/connect-accounts";
 const TIKTOK_SCOPE = "user.info.basic,video.upload";
 const TIKTOK_N8N =
-  "https://vasanthchowadry18.app.n8n.cloud/webhook/tiktok-oauth";
+  "https://vasanth18.app.n8n.cloud/webhook/tiktok-oauth";
 
 const EVENTBRITE_CLIENT_ID =
   import.meta.env.VITE_EVENTBRITE_CLIENT_ID || "AQUWB7RTTS3CUWMCXM";
 const EVENTBRITE_REDIRECT = window.location.origin + "/connect-accounts";
 const EVENTBRITE_N8N =
-  "https://vasanthchowadry18.app.n8n.cloud/webhook/eventbrite-oauth";
+  "https://vasanth18.app.n8n.cloud/webhook/eventbrite-oauth";
 
 function genVerifier() {
   const arr = new Uint8Array(32);
@@ -126,222 +128,81 @@ const PLATFORMS = [
             <stop offset="100%" stopColor="#8134af" />
           </linearGradient>
         </defs>
-        <rect
-          x="2"
-          y="2"
-          width="20"
-          height="20"
-          rx="6"
-          stroke="url(#ig-grad)"
-          strokeWidth="2"
-          fill="none"
-        />
-        <circle
-          cx="12"
-          cy="12"
-          r="4"
-          stroke="url(#ig-grad)"
-          strokeWidth="2"
-          fill="none"
-        />
+        <rect x="2" y="2" width="20" height="20" rx="6" stroke="url(#ig-grad)" strokeWidth="2" fill="none" />
+        <circle cx="12" cy="12" r="4" stroke="url(#ig-grad)" strokeWidth="2" fill="none" />
         <circle cx="17.5" cy="6.5" r="1.2" fill="#dd2a7b" />
       </svg>
     ),
     color: "#dd2a7b",
-    description:
-      "Post Reels, Stories, and feed content from your campaigns directly to Instagram.",
+    description: "Post Reels, Stories, and feed content from your campaigns directly to Instagram.",
     oauthType: "instagram",
     btnLabel: "Connect with Instagram",
   },
   {
-    key: "meta-ads",
-    label: "Meta Ads",
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 40 40" fill="none">
-        <rect width="40" height="40" rx="10" fill="#0866FF" />
-        <path
-          d="M8 20.5C8 13.596 13.596 8 20.5 8S33 13.596 33 20.5c0 6.27-4.587 11.464-10.594 12.373V24.18h3.3l.628-4.096h-3.928v-2.66c0-1.12.549-2.212 2.309-2.212H26.6v-3.487s-1.586-.271-3.101-.271c-3.165 0-5.232 1.918-5.232 5.39v3.24h-3.52V24.18h3.52v8.693C12.587 31.964 8 26.77 8 20.5z"
-          fill="white"
-        />
-      </svg>
-    ),
-    color: "#0866FF",
-    description:
-      "Create and manage Facebook & Instagram ad campaigns directly from Evoke CMO.",
-    oauthType: "meta-ads",
-    btnLabel: "Connect Meta Ads",
-  },
-  {
-    key: "reddit",
-    label: "Reddit",
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M12 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0zm5.01 4.744c.688 0 1.25.561 1.25 1.249a1.25 1.25 0 0 1-2.498.056l-2.597-.547-.8 3.747c1.824.07 3.48.632 4.674 1.488.308-.309.73-.491 1.207-.491.968 0 1.754.786 1.754 1.754 0 .716-.435 1.333-1.01 1.614a3.111 3.111 0 0 1 .042.52c0 2.694-3.13 4.87-7.004 4.87-3.874 0-7.004-2.176-7.004-4.87 0-.183.015-.366.043-.534A1.748 1.748 0 0 1 4.028 12c0-.968.786-1.754 1.754-1.754.463 0 .898.196 1.207.49 1.207-.883 2.878-1.43 4.744-1.487l.885-4.182a.342.342 0 0 1 .14-.197.35.35 0 0 1 .238-.042l2.906.617a1.214 1.214 0 0 1 1.108-.701zM9.25 12C8.561 12 8 12.562 8 13.25c0 .687.561 1.248 1.25 1.248.687 0 1.248-.561 1.248-1.249 0-.688-.561-1.249-1.249-1.249zm5.5 0c-.687 0-1.248.561-1.248 1.25 0 .687.561 1.248 1.249 1.248.688 0 1.249-.561 1.249-1.249 0-.687-.562-1.249-1.25-1.249zm-5.466 3.99a.327.327 0 0 0-.231.094.33.33 0 0 0 0 .463c.842.842 2.484.913 2.961.913.477 0 2.105-.056 2.961-.913a.361.361 0 0 0 .029-.463.33.33 0 0 0-.464 0c-.547.533-1.684.73-2.512.73-.828 0-1.979-.196-2.512-.73a.326.326 0 0 0-.232-.095z" />
-      </svg>
-    ),
-    color: "#ff4500",
-    description:
-      "Post Reddit content and campaign updates to your selected subreddit.",
-    note: "Enter your Reddit API details and subreddit name.",
-    oauthType: "manual",
-    fields: [
-      {
-        name: "clientId",
-        label: "Reddit Client ID",
-        placeholder: "Your Reddit app client ID",
-        help: "Reddit app settings → client ID",
-      },
-      {
-        name: "clientSecret",
-        label: "Reddit Client Secret",
-        placeholder: "Your Reddit app secret",
-        help: "Reddit app settings → secret",
-      },
-      {
-        name: "refreshToken",
-        label: "Reddit Refresh Token",
-        placeholder: "Your Reddit OAuth refresh token",
-        help: "Used to keep Reddit connected",
-      },
-      {
-        name: "subreddit",
-        label: "Subreddit",
-        placeholder: "example: entrepreneur",
-        help: "Do not include r/",
-      },
-    ],
-  },
-  {
     key: "facebook",
     label: "Facebook",
-    icon: <Facebook size={22} />,
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="#1877f2">
+        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+      </svg>
+    ),
     color: "#1877f2",
-    description: "Post to your Facebook Page automatically",
+    description: "Post to your Facebook Page automatically.",
     oauthType: "facebook",
     btnLabel: "Connect with Facebook",
   },
   {
     key: "linkedin",
     label: "LinkedIn",
-    icon: <Linkedin size={22} />,
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="#0a66c2">
+        <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+      </svg>
+    ),
     color: "#0a66c2",
-    description: "Share posts to your LinkedIn profile",
+    description: "Share posts to your LinkedIn profile.",
     oauthType: "linkedin",
     btnLabel: "Connect with LinkedIn",
   },
   {
-    key: "twitter",
-    label: "X / Twitter",
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.748l7.73-8.835L1.254 2.25H8.08l4.258 5.625L18.244 2.25zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77z" />
-      </svg>
-    ),
-    color: "#ffffff",
-    description:
-      "Post campaign updates and short-form content to your X / Twitter account.",
-    oauthType: "twitter",
-    btnLabel: "Connect with X",
-  },
-  {
-    key: "tiktok",
-    label: "TikTok",
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.75a4.85 4.85 0 01-1.01-.06z" />
-      </svg>
-    ),
-    color: "#ff0050",
-    description: "Post videos and content to your TikTok Business account",
-    oauthType: "tiktok",
-    btnLabel: "Connect with TikTok",
-  },
-  {
     key: "whatsapp",
-    label: "WhatsApp Campaigns",
-    icon: <MessageSquare size={22} />,
+    label: "WhatsApp",
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="#25d366">
+        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+      </svg>
+    ),
     color: "#25d366",
-    description:
-      "Platform WhatsApp Business API is active. Add recipient numbers in your campaign form to send invitation messages.",
+    description: "Platform WhatsApp Business API is active. Add recipient numbers in your campaign form to send invitation messages.",
     oauthType: "platform_whatsapp",
     note: "No setup needed. When creating a campaign, select WhatsApp and paste the phone numbers you want to invite.",
   },
   {
     key: "gmail",
-    label: "Gmail / Email",
-    icon: <Mail size={22} />,
+    label: "Gmail",
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 48 48">
+        <path fill="#4caf50" d="M45 16.2l-5 2.75-5 4.75L35 40h7c1.657 0 3-1.343 3-3V16.2z"/>
+        <path fill="#1e88e5" d="M3 16.2l3.614 1.71L13 23.7V40H6c-1.657 0-3-1.343-3-3V16.2z"/>
+        <polygon fill="#e53935" points="35,11.2 24,19.45 13,11.2 12,17 13,23.7 24,31.95 35,23.7 36,17"/>
+        <path fill="#c62828" d="M3 12.298V16.2l10 7.5V11.2L9.876 8.859C9.132 8.301 8.228 8 7.298 8 4.924 8 3 9.924 3 12.298z"/>
+        <path fill="#fbc02d" d="M45 12.298V16.2l-10 7.5V11.2l3.124-2.341C38.868 8.301 39.772 8 40.702 8 43.076 8 45 9.924 45 12.298z"/>
+      </svg>
+    ),
     color: "#ea4335",
-    description:
-      "Send campaign emails directly from your Gmail account to your contacts.",
+    description: "Send campaign emails directly from your Gmail account to your contacts.",
     oauthType: "gmail",
     btnLabel: "Connect with Gmail",
-  },
-  {
-    key: "eventbrite",
-    label: "Eventbrite",
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z" />
-      </svg>
-    ),
-    color: "#F05537",
-    description:
-      "Create and publish events directly to your Eventbrite account.",
-    oauthType: "eventbrite",
-    btnLabel: "Connect with Eventbrite",
-  },
-  {
-    key: "luma",
-    label: "Luma",
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-      </svg>
-    ),
-    color: "#6C47FF",
-    description: "Create and manage events on Luma for your community.",
-    note: "Get your API Key from lu.ma → Settings → API",
-    oauthType: "manual",
-    fields: [
-      {
-        name: "apiKey",
-        label: "Luma API Key",
-        placeholder: "luma-api-key-xxxxxxxxxxxxxxxx",
-        help: "lu.ma → Settings → Integrations → API → Create API Key",
-      },
-    ],
-  },
-  {
-    key: "meetup",
-    label: "Meetup",
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M19.24 12.94c-.36-.07-.72-.13-1.08-.18.03-.18.05-.36.05-.55 0-1.66-1.35-3.01-3.01-3.01-.34 0-.67.06-.98.16C13.78 8.2 12.54 7.3 11.1 7.3c-1.83 0-3.32 1.49-3.32 3.32 0 .1.01.19.02.29-.19-.03-.38-.05-.58-.05-1.66 0-3.01 1.35-3.01 3.01 0 1.66 1.35 3.01 3.01 3.01h11.58c1.1 0 2-.9 2-2 0-1.01-.75-1.85-1.56-1.94zM12 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm4 1.5c.41 0 .75.34.75.75s-.34.75-.75.75-.75-.34-.75-.75.34-.75.75-.75zM7.5 6c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1z" />
-      </svg>
-    ),
-    color: "#ED1C40",
-    description: "Post events and invite members of your Meetup group.",
-    note: "Get your Access Token from meetup.com → Settings → API",
-    oauthType: "manual",
-    fields: [
-      {
-        name: "accessToken",
-        label: "Meetup Access Token",
-        placeholder: "Your Meetup OAuth access token",
-        help: "meetup.com → Account Settings → API → Get OAuth Token",
-      },
-      {
-        name: "groupUrlName",
-        label: "Group URL Name",
-        placeholder: "my-meetup-group",
-        help: "The URL slug of your group, meetup.com/YOUR-GROUP-NAME",
-      },
-    ],
   },
 ];
 
 export default function ConnectAccounts() {
   const navigate = useNavigate();
+  const { state: navState } = useLocation();
+  // navState.from is set on direct navigate; sessionStorage survives OAuth full-page redirects
+  const returnTo = navState?.from || sessionStorage.getItem('connectReturnTo');
+  const fromPackageA = returnTo === '/package-a' || returnTo === '/products';
+  const { user: evokeUser, status: authStatus } = useAuth();
   const [user, setUser] = useState(null);
   const [accounts, setAccounts] = useState({});
   const [loading, setLoading] = useState({});
@@ -350,39 +211,47 @@ export default function ConnectAccounts() {
   const [manualForms, setManualForms] = useState({});
   const [expanded, setExpanded] = useState(null);
   const [authReady, setAuthReady] = useState(false);
+  const userRef = useRef(null);
+  const callbackProcessed = useRef(false);
 
+  // Auto-redirect back after successful connection when returnTo is set
   useEffect(() => {
+    const anySuccess = Object.values(success).some(Boolean);
+    if (!anySuccess) return;
+    const dest = sessionStorage.getItem('connectReturnTo');
+    if (!dest) return;
+    // Auto-advance to post-content after connecting (not back to the source page)
+    const t = setTimeout(() => {
+      sessionStorage.removeItem('connectReturnTo');
+      navigate('/post-content', { state: { from: dest, toolTitle: 'Post to Social', toolColor: '#c8973e' } });
+    }, 1500);
+    return () => clearTimeout(t);
+  }, [success]); // eslint-disable-line
+
+  // Handle OAuth callbacks — runs once user is available (Evoke session auth, not Firebase)
+  useEffect(() => {
+    if (!user || callbackProcessed.current) return;
+
     const hash = new URLSearchParams(window.location.hash.slice(1));
     const fbToken = hash.get("access_token");
     const fbState = hash.get("state");
 
     if (fbToken && fbState === "facebook_connect") {
+      callbackProcessed.current = true;
       window.history.replaceState({}, "", window.location.pathname);
-      const unsub = onAuthStateChanged(auth, (u) => {
-        if (!u) return;
-        unsub();
-        handleFacebookTokenConnect(fbToken, u.uid);
-      });
+      handleFacebookTokenConnect(fbToken, user.uid);
       return;
     }
-
     if (fbToken && fbState === "instagram_connect") {
+      callbackProcessed.current = true;
       window.history.replaceState({}, "", window.location.pathname);
-      const unsub = onAuthStateChanged(auth, (u) => {
-        if (!u) return;
-        unsub();
-        handleInstagramTokenConnect(fbToken, u.uid);
-      });
+      handleInstagramTokenConnect(fbToken, user.uid);
       return;
     }
-
     if (fbToken && fbState === "metaads_connect") {
+      callbackProcessed.current = true;
       window.history.replaceState({}, "", window.location.pathname);
-      const unsub = onAuthStateChanged(auth, (u) => {
-        if (!u) return;
-        unsub();
-        handleMetaAdsTokenConnect(fbToken, u.uid);
-      });
+      handleMetaAdsTokenConnect(fbToken, user.uid);
       return;
     }
 
@@ -392,38 +261,31 @@ export default function ConnectAccounts() {
 
     if (!code || !state) return;
 
+    callbackProcessed.current = true;
     window.history.replaceState({}, "", window.location.pathname);
 
-    const unsub = onAuthStateChanged(auth, (u) => {
-      if (!u) return;
-      unsub();
-
-      if (state === "linkedin_connect") handleLinkedInCallback(code);
-      if (state === "twitter_connect") handleTwitterCallback(code);
-      if (state === "gmail_connect") handleGmailCallback(code);
-      if (state === "tiktok_connect") handleTikTokCallback(code);
-      if (state === "eventbrite_connect") handleEventbriteCallback(code);
-    });
-  }, []); // eslint-disable-line
+    if (state === "linkedin_connect") handleLinkedInCallback(code, user.uid);
+    if (state === "twitter_connect") handleTwitterCallback(code, user.uid);
+    if (state === "gmail_connect") handleGmailCallback(code, user.uid);
+    if (state === "tiktok_connect") handleTikTokCallback(code, user.uid);
+    if (state === "eventbrite_connect") handleEventbriteCallback(code, user.uid);
+  }, [user]); // eslint-disable-line
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (u) => {
-      if (!u) {
-        navigate("/signin");
-        return;
-      }
+    if (authStatus === 'loading') return;
+    if (!evokeUser) { redirectToLogin(); return; }
 
-      setUser(u);
-
-      const data = await getOrCreateUser(u.uid, u.displayName, u.email);
-      setAccounts(data.socialAccounts || {});
-      setAuthReady(true);
-    });
+    setUser(evokeUser);
+    userRef.current = evokeUser;
+    getOrCreateUser(evokeUser.uid, evokeUser.displayName, evokeUser.email)
+      .then((data) => {
+        setAccounts(data.socialAccounts || {});
+        setAuthReady(true);
+      })
+      .catch(() => setAuthReady(true));
 
     loadFBSDK();
-
-    return unsub;
-  }, [navigate]);
+  }, [evokeUser, authStatus]); // eslint-disable-line
 
   const setErr = (k, m) => setErrors((e) => ({ ...e, [k]: m }));
 
@@ -589,6 +451,8 @@ export default function ConnectAccounts() {
       return;
     }
 
+    console.log("LinkedIn redirect_uri being sent:", LINKEDIN_REDIRECT);
+
     const url = new URLSearchParams({
       response_type: "code",
       client_id: LINKEDIN_CLIENT_ID,
@@ -600,10 +464,9 @@ export default function ConnectAccounts() {
     window.location.href = `https://www.linkedin.com/oauth/v2/authorization?${url}`;
   };
 
-  const handleLinkedInCallback = useCallback(async (code) => {
-    if (!auth.currentUser) return;
-
-    const uid = auth.currentUser.uid;
+  const handleLinkedInCallback = useCallback(async (code, uid) => {
+    const resolvedUid = uid || auth.currentUser?.uid || userRef.current?.uid;
+    if (!resolvedUid) return;
 
     setLoad("linkedin", true);
     clrErr("linkedin");
@@ -612,17 +475,23 @@ export default function ConnectAccounts() {
       const res = await fetch(LINKEDIN_N8N, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code, redirectUri: LINKEDIN_REDIRECT, uid }),
+        body: JSON.stringify({ code, redirectUri: LINKEDIN_REDIRECT, uid: resolvedUid }),
       });
 
-      if (!res.ok) {
-        throw new Error("Token exchange failed: " + (await res.text()));
+      const rawText = await res.text();
+      console.log("n8n LinkedIn response:", res.status, rawText);
+
+      if (!res.ok || !rawText.trim()) {
+        throw new Error("n8n returned empty/error response. Status: " + res.status + " Body: " + rawText);
       }
 
-      const data = await res.json();
+      const data = JSON.parse(rawText);
+      if (!data.accessToken) {
+        throw new Error("No accessToken in response: " + rawText);
+      }
       const { accessToken, name, personUrn } = data;
 
-      await saveSocialAccount(uid, "linkedin", {
+      await saveSocialAccount(resolvedUid, "linkedin", {
         accessToken,
         name,
         personUrn,
@@ -636,10 +505,8 @@ export default function ConnectAccounts() {
 
       setOk("linkedin", true);
     } catch (e) {
-      setErr(
-        "linkedin",
-        "LinkedIn connection failed. Make sure the n8n LinkedIn OAuth webhook is active.",
-      );
+      console.error("LinkedIn OAuth error:", e.message);
+      setErr("linkedin", "LinkedIn error: " + e.message);
     } finally {
       setLoad("linkedin", false);
     }
@@ -672,10 +539,9 @@ export default function ConnectAccounts() {
     window.location.href = `https://twitter.com/i/oauth2/authorize?${url}`;
   };
 
-  const handleTwitterCallback = useCallback(async (code) => {
-    if (!auth.currentUser) return;
-
-    const uid = auth.currentUser.uid;
+  const handleTwitterCallback = useCallback(async (code, uid) => {
+    const resolvedUid = uid || auth.currentUser?.uid || userRef.current?.uid;
+    if (!resolvedUid) return;
     const verifier = sessionStorage.getItem("twitter_verifier") || "";
 
     sessionStorage.removeItem("twitter_verifier");
@@ -690,7 +556,7 @@ export default function ConnectAccounts() {
         body: JSON.stringify({
           code,
           redirectUri: TWITTER_REDIRECT,
-          uid,
+          uid: resolvedUid,
           codeVerifier: verifier,
         }),
       });
@@ -711,7 +577,7 @@ export default function ConnectAccounts() {
         throw new Error("No access token returned from Twitter/X");
       }
 
-      await saveSocialAccount(uid, "twitter", {
+      await saveSocialAccount(resolvedUid, "twitter", {
         accessToken,
         refreshToken,
         username,
@@ -752,10 +618,9 @@ export default function ConnectAccounts() {
     window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${url}`;
   };
 
-  const handleGmailCallback = useCallback(async (code) => {
-    if (!auth.currentUser) return;
-
-    const uid = auth.currentUser.uid;
+  const handleGmailCallback = useCallback(async (code, uid) => {
+    const resolvedUid = uid || auth.currentUser?.uid || userRef.current?.uid;
+    if (!resolvedUid) return;
 
     setLoad("gmail", true);
     clrErr("gmail");
@@ -764,7 +629,7 @@ export default function ConnectAccounts() {
       const res = await fetch(GMAIL_N8N, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code, redirectUri: GOOGLE_REDIRECT, uid }),
+        body: JSON.stringify({ code, redirectUri: GOOGLE_REDIRECT, uid: resolvedUid }),
       });
 
       if (!res.ok) {
@@ -773,7 +638,7 @@ export default function ConnectAccounts() {
 
       const { accessToken, refreshToken, email } = await res.json();
 
-      await saveSocialAccount(uid, "gmail", {
+      await saveSocialAccount(resolvedUid, "gmail", {
         accessToken,
         refreshToken,
         email,
@@ -808,10 +673,9 @@ export default function ConnectAccounts() {
     window.location.href = `https://www.tiktok.com/v2/auth/authorize?${url}`;
   };
 
-  const handleTikTokCallback = useCallback(async (code) => {
-    if (!auth.currentUser) return;
-
-    const uid = auth.currentUser.uid;
+  const handleTikTokCallback = useCallback(async (code, uid) => {
+    const resolvedUid = uid || auth.currentUser?.uid || userRef.current?.uid;
+    if (!resolvedUid) return;
     const verifier = sessionStorage.getItem("tiktok_verifier") || "";
 
     sessionStorage.removeItem("tiktok_verifier");
@@ -826,7 +690,7 @@ export default function ConnectAccounts() {
         body: JSON.stringify({
           code,
           redirectUri: TIKTOK_REDIRECT,
-          uid,
+          uid: resolvedUid,
           codeVerifier: verifier,
         }),
       });
@@ -847,7 +711,7 @@ export default function ConnectAccounts() {
         throw new Error("No access token returned from TikTok");
       }
 
-      await saveSocialAccount(uid, "tiktok", {
+      await saveSocialAccount(resolvedUid, "tiktok", {
         accessToken,
         openId,
         displayName,
@@ -878,10 +742,9 @@ export default function ConnectAccounts() {
     window.location.href = `https://www.eventbrite.com/oauth/authorize?${url}`;
   };
 
-  const handleEventbriteCallback = useCallback(async (code) => {
-    if (!auth.currentUser) return;
-
-    const uid = auth.currentUser.uid;
+  const handleEventbriteCallback = useCallback(async (code, uid) => {
+    const resolvedUid = uid || auth.currentUser?.uid || userRef.current?.uid;
+    if (!resolvedUid) return;
 
     setLoad("eventbrite", true);
     clrErr("eventbrite");
@@ -890,7 +753,7 @@ export default function ConnectAccounts() {
       const res = await fetch(EVENTBRITE_N8N, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code, redirectUri: EVENTBRITE_REDIRECT, uid }),
+        body: JSON.stringify({ code, redirectUri: EVENTBRITE_REDIRECT, uid: resolvedUid }),
       });
 
       if (!res.ok) {
@@ -909,7 +772,7 @@ export default function ConnectAccounts() {
         throw new Error("No access token returned from Eventbrite");
       }
 
-      await saveSocialAccount(uid, "eventbrite", {
+      await saveSocialAccount(resolvedUid, "eventbrite", {
         accessToken,
         organizationId,
         organizationName,
@@ -1000,6 +863,23 @@ export default function ConnectAccounts() {
       <div
         style={{ maxWidth: 820, margin: "0 auto", padding: "108px 24px 80px" }}
       >
+        {/* Back button — only when coming from another page */}
+        {fromPackageA && (
+          <button
+            onClick={() => { sessionStorage.removeItem('connectReturnTo'); navigate(returnTo) }}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              background: 'none', border: 'none',
+              color: 'rgba(240,235,224,0.32)', cursor: 'pointer',
+              fontSize: 13, marginBottom: 24, padding: 0,
+            }}
+          >
+            <ArrowRight size={14} style={{ transform: 'rotate(180deg)' }} />
+            Back to {returnTo === '/products' ? 'Products' : 'Package A'}
+          </button>
+        )}
+
+
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -1010,7 +890,7 @@ export default function ConnectAccounts() {
             className="badge"
             style={{ marginBottom: 16, display: "inline-flex", gap: 6 }}
           >
-            <Link2 size={13} /> Connect Your Accounts
+            <Link2 size={13} /> {fromPackageA ? 'Social Posting Setup' : 'Connect Your Accounts'}
           </div>
 
           <h1
@@ -1032,9 +912,9 @@ export default function ConnectAccounts() {
               maxWidth: 520,
             }}
           >
-            Click the button next to each platform and log in with your own
-            account. Your campaigns will post directly to your accounts, not
-            ours.
+            {fromPackageA
+              ? 'Connect your platforms below. Once done, use the Content Agent to create your post, then launch it directly to your connected accounts.'
+              : 'Click the button next to each platform and log in with your own account. Your campaigns will post directly to your accounts, not ours.'}
           </p>
 
           {/* Marketing Readiness % */}
@@ -1047,29 +927,25 @@ export default function ConnectAccounts() {
               </div>
               <span style={{
                 fontSize: 22, fontWeight: 900, letterSpacing: "-0.03em",
-                color: connectedCount === 0 ? "#ef4444"
-                     : connectedCount < 3   ? "#f59e0b"
-                     :                        "#10b981",
+                color: connectedCount === 0 ? "#ef4444" : "#10b981",
               }}>
-                {Math.round((connectedCount / PLATFORMS.length) * 100)}%
+                {connectedCount === 0 ? "Not Ready" : "Ready!"}
               </span>
             </div>
             {/* Progress bar */}
             <div style={{ height: 6, background: "rgba(255,255,255,0.08)", borderRadius: 100, overflow: "hidden" }}>
               <div style={{
                 height: "100%", borderRadius: 100,
-                width: `${Math.round((connectedCount / PLATFORMS.length) * 100)}%`,
-                background: connectedCount === 0 ? "#ef4444"
-                           : connectedCount < 3   ? "linear-gradient(90deg,#f59e0b,#d4a853)"
-                           :                        "linear-gradient(90deg,#10b981,#34d399)",
+                width: connectedCount === 0 ? "4%" : "100%",
+                background: connectedCount === 0 ? "#ef4444" : "linear-gradient(90deg,#10b981,#34d399)",
                 transition: "width 0.6s ease",
               }} />
             </div>
             <div style={{ marginTop: 8, fontSize: 12, color: "rgba(255,255,255,0.35)" }}>
-              {connectedCount} of {PLATFORMS.length} platforms connected
-              {connectedCount === 0 && " — connect at least one platform to start launching campaigns"}
-              {connectedCount > 0 && connectedCount < PLATFORMS.length && ` — connect ${PLATFORMS.length - connectedCount} more to unlock full automation`}
-              {connectedCount === PLATFORMS.length && " — fully connected, all automations available"}
+              {connectedCount === 0
+                ? "Connect at least one platform to get started"
+                : `${connectedCount} of ${PLATFORMS.length} platforms connected — you're ready to proceed! Connect more for wider reach.`
+              }
             </div>
           </div>
         </motion.div>
@@ -1103,7 +979,7 @@ export default function ConnectAccounts() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.07 }}
                 style={{
-                  background: connected ? `${p.color}08` : "#fff",
+                  background: connected ? `${p.color}08` : "#1c1a13",
                   border: `1px solid ${
                     connected
                       ? p.color + "35"
@@ -1700,7 +1576,14 @@ export default function ConnectAccounts() {
           style={{ marginTop: 40, display: "flex", justifyContent: "center" }}
         >
           <button
-            onClick={() => navigate("/dashboard")}
+            onClick={() => {
+              sessionStorage.removeItem('connectReturnTo');
+              if (fromPackageA && connectedCount > 0) {
+                navigate('/post-content', { state: { from: returnTo, toolTitle: 'Post to Social', toolColor: '#c8973e' } });
+              } else {
+                navigate(fromPackageA ? returnTo : '/agents-hub');
+              }
+            }}
             style={{
               display: "flex",
               alignItems: "center",
@@ -1716,7 +1599,12 @@ export default function ConnectAccounts() {
             }}
           >
             <Zap size={16} />
-            {connectedCount > 0 ? "Start Creating Campaigns" : "Skip for now"}
+            {fromPackageA
+              ? (connectedCount > 0
+                  ? 'Next: Create & Post Content'
+                  : `Skip — Back to ${returnTo === '/products' ? 'Products' : 'Package A'}`)
+              : (connectedCount > 0 ? 'Start Creating Campaigns' : 'Skip for now')
+            }
             <ArrowRight size={16} />
           </button>
         </motion.div>
