@@ -10,13 +10,13 @@ import { getStorage } from "firebase/storage";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey:            "AIzaSyDGcmVD7_4GnHSIwAN2LYy9hTJoUEE8dE4",
-  authDomain:        "evoke-cmo-agent2.firebaseapp.com",
-  projectId:         "evoke-cmo-agent2",
-  storageBucket:     "evoke-cmo-agent2.firebasestorage.app",
-  messagingSenderId: "899012406813",
-  appId:             "1:899012406813:web:0a6b7e0292f2c39126a0f4",
-  measurementId:     "G-XRPP8CJYH2"
+  apiKey:            import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain:        import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId:         import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket:     import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId:             import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId:     import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
 // ── keep everything below exactly as it is ──
