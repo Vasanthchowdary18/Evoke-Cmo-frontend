@@ -23,6 +23,7 @@ import ProductsPage from './pages/ProductsPage.jsx'
 import ProductDescription from './pages/ProductDescription.jsx'
 import ImageToolPage from './pages/ImageToolPage.jsx'
 import EvoxServices from './pages/EvoxServices.jsx'
+import ApprovalQueue from './pages/ApprovalQueue.jsx'
 import Chatbot from './components/Chatbot.jsx'
 
 // Handles token returned from accounts.evokemarketplace.com after login
@@ -84,6 +85,7 @@ export default function App() {
         <Route path="/free-plan"          element={<FreePlanPage />} />
         <Route path="/package-a"          element={<PackageAPage />} />
         <Route path="/evox-services"      element={<EvoxServices />} />
+        <Route path="/queue"              element={<ApprovalQueue />} />
         <Route path="/privacy"            element={<Privacy />} />
         <Route path="/terms"              element={<Terms />} />
         <Route path="*"                  element={<Navigate to="/" replace />} />

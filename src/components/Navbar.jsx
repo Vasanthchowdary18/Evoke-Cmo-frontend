@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Zap, Menu, X, LayoutDashboard, Image, LogOut, ChevronDown } from 'lucide-react'
+import { Zap, Menu, X, LayoutDashboard, Image, LogOut, ChevronDown, Inbox } from 'lucide-react'
 import { useAuth } from './AuthProvider.jsx'
 import { buildAccountsLoginUrl, signOut as ssoSignOut } from '../lib/session'
 import EgtWalletHeader from './EgtWalletHeader.jsx'
@@ -17,22 +17,7 @@ export default function Navbar() {
   const location = useLocation()
   const navigate = useNavigate()
 
-  const isApp =
-    location.pathname.startsWith('/agents-hub')      ||
-    location.pathname.startsWith('/dashboard')       ||
-    location.pathname.startsWith('/campaign')        ||
-    location.pathname.startsWith('/results')         ||
-    location.pathname.startsWith('/connect')         ||
-    location.pathname.startsWith('/tokens')          ||
-    location.pathname.startsWith('/purchase')        ||
-    location.pathname.startsWith('/agent')           ||
-    location.pathname.startsWith('/products')        ||
-    location.pathname.startsWith('/product-desc')    ||
-    location.pathname.startsWith('/image-')          ||
-    location.pathname.startsWith('/meta-ads-boost')  ||
-    location.pathname.startsWith('/evox-services')   ||
-    location.pathname.startsWith('/cmo')             ||
-    location.pathname.startsWith('/dashboard-legacy')
+  const isApp = location.pathname !== '/'
 
   useEffect(() => {
     const fn = () => setScrolled(window.scrollY > 10)
@@ -54,6 +39,11 @@ export default function Navbar() {
   const handleSignOut = async () => {
     if (signingOut) return
     setSigningOut(true)
+    // Forget the saved assessment + selected package so the next user starts fresh
+    try {
+      localStorage.removeItem('evoke_assessment')
+      localStorage.removeItem('evoke_selected_package')
+    } catch {}
     try {
       await ssoSignOut()
     } finally {
@@ -247,6 +237,7 @@ export default function Navbar() {
                     <div style={{ padding: '8px 0' }}>
                       {[
                         { icon: <LayoutDashboard size={15} />, label: 'Workspace',      action: () => { navigate('/agents-hub'); setProfileOpen(false) } },
+                        { icon: <Inbox size={15} />,           label: 'Approval Queue', action: () => { navigate('/queue');      setProfileOpen(false) } },
                         { icon: <Image size={15} />,           label: 'My Generations', action: () => { navigate('/results');   setProfileOpen(false) } },
                       ].map(item => (
                         <button key={item.label} onClick={item.action}

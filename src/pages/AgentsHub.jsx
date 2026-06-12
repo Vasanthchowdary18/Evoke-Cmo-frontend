@@ -7,6 +7,7 @@ import {
   Calendar, Package, Search, FileText, Megaphone, Activity,
   CheckCircle2, AlertCircle, Play, Sparkles, ChevronRight,
   Link2, Coins, Bot, LayoutDashboard, Camera,
+  Eye, Trash2, Clock, ChevronDown, ChevronUp, ArrowLeft,
 } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
 import { useAuth } from '../components/AuthProvider.jsx'
@@ -34,6 +35,38 @@ function getGreeting() {
   if (h < 12) return 'Good Morning'
   if (h < 17) return 'Good Afternoon'
   return 'Good Evening'
+}
+
+/* ─── Campaign history type metadata ─── */
+const TYPE_META = {
+  event:             { color: '#c8973e', icon: <Calendar size={18} />,   label: 'Event' },
+  product:           { color: '#c8973e', icon: <Package size={18} />,    label: 'Product' },
+  brand:             { color: '#a855f7', icon: <Zap size={18} />,        label: 'Brand' },
+  growth_strategy:   { color: '#10b981', icon: <Rocket size={18} />,     label: 'Growth' },
+  growth_agent:      { color: '#10b981', icon: <Rocket size={18} />,     label: 'Growth' },
+  competitive_intel: { color: '#f59e0b', icon: <Target size={18} />,     label: 'Intel' },
+  content_calendar:  { color: '#3b82f6', icon: <FileText size={18} />,   label: 'Content' },
+  seo_blog:          { color: '#c8973e', icon: <Globe size={18} />,      label: 'SEO' },
+  email_drip:        { color: '#8b5cf6', icon: <Mail size={18} />,       label: 'Email' },
+  influencer:        { color: '#ec4899', icon: <Users size={18} />,      label: 'Influencer' },
+  analytics_report:  { color: '#f97316', icon: <PieChart size={18} />,   label: 'Analytics' },
+  sales_enablement:  { color: '#6366f1', icon: <Activity size={18} />,   label: 'Sales' },
+  event_full:        { color: '#c8973e', icon: <Megaphone size={18} />,  label: 'ELEVATE' },
+  marketplace:       { color: '#14b8a6', icon: <Package size={18} />,    label: 'Marketplace' },
+  brand_strategy:    { color: '#a855f7', icon: <Brain size={18} />,      label: 'Brand' },
+  funnel_cro:        { color: '#ef4444', icon: <Activity size={18} />,   label: 'CRO' },
+}
+
+function timeAgo(iso) {
+  const diff = Date.now() - new Date(iso).getTime()
+  const mins = Math.floor(diff / 60000)
+  const hours = Math.floor(diff / 3600000)
+  const days = Math.floor(diff / 86400000)
+  if (mins < 1) return 'Just now'
+  if (mins < 60) return `${mins}m ago`
+  if (hours < 24) return `${hours}h ago`
+  if (days < 7) return `${days}d ago`
+  return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
 /* ─── Agent Org Chart data ─── */
@@ -210,6 +243,7 @@ export default function AgentsHub() {
   const [objective,       setObjective]       = useState('')
   const [budget,          setBudget]          = useState('')
   const [deadline,        setDeadline]        = useState('')
+  const [showAllHistory,  setShowAllHistory]  = useState(false)
 
   useEffect(() => {
     const stored = JSON.parse(localStorage.getItem('evoke_campaigns') || '[]')
@@ -237,6 +271,21 @@ export default function AgentsHub() {
     if (!user) { redirectToLogin(); return }
     navigate('/cmo')
   }
+
+  const viewCampaign = (c) => {
+    sessionStorage.setItem('campaignResult', JSON.stringify(c.result))
+    sessionStorage.setItem('campaignType', c.type)
+    sessionStorage.setItem('campaignMeta', JSON.stringify(c.meta || { name: c.name }))
+    navigate('/results')
+  }
+
+  const deleteCampaign = (id) => {
+    const updated = campaigns.filter(c => c.id !== id)
+    setCampaigns(updated)
+    localStorage.setItem('evoke_campaigns', JSON.stringify(updated))
+  }
+
+  const displayedHistory = showAllHistory ? campaigns : campaigns.slice(0, 5)
 
   /* ── Marketing health score (computed) ── */
   const healthScore = Math.min(100, Math.round(
@@ -416,10 +465,11 @@ export default function AgentsHub() {
           ))}
         </motion.div>
 
-        {/* ═══ SECTION 6: Quick Access to All Campaign Agents ═══ */}
+        {/* ═══ SECTION 7: Campaign History ═══ */}
         <motion.div
           initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.35 }}
+          transition={{ duration: 0.5, delay: 0.4 }}
+          style={{ marginTop: 56 }}
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
             <div>
@@ -428,76 +478,107 @@ export default function AgentsHub() {
                 padding: '4px 12px', background: GDIM, border: `1px solid ${GBORDER}`,
                 borderRadius: 100, fontSize: 11, fontWeight: 700, color: GOLD, letterSpacing: '0.06em', marginBottom: 10,
               }}>
-                <LayoutDashboard size={11} /> CAMPAIGN STUDIO
+                <Clock size={11} /> CAMPAIGN HISTORY
               </div>
               <h2 style={{ fontSize: 22, fontWeight: 900, letterSpacing: '-0.02em', color: TEXT, marginBottom: 4 }}>
-                Full Campaign Dashboard
+                Your Campaigns
               </h2>
-              <p style={{ fontSize: 13, color: TEXT2 }}>All 17 AI agents, tools and campaign types in one place.</p>
+              <p style={{ fontSize: 13, color: TEXT2 }}>
+                {campaigns.length === 0
+                  ? 'No campaigns yet — launch one above to get started.'
+                  : `${campaigns.length} campaign${campaigns.length > 1 ? 's' : ''} generated · click View Results to reopen any.`}
+              </p>
             </div>
-            <button
-              onClick={handleLaunchCMO}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 8,
-                padding: '12px 24px',
-                background: 'linear-gradient(135deg, #d4a853, #b8803a)',
-                border: 'none', borderRadius: 12,
-                color: '#0e0c09', fontSize: 14, fontWeight: 800,
-                cursor: 'pointer', fontFamily: "'Inter',sans-serif",
-                transition: 'all 0.2s',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 8px 24px rgba(200,151,62,0.4)' }}
-              onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none' }}
-            >
-              Open Campaign Dashboard <ArrowRight size={16} />
-            </button>
+            {campaigns.length > 5 && (
+              <button
+                onClick={() => setShowAllHistory(v => !v)}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', background: GDIM, border: `1px solid ${GBORDER}`, borderRadius: 10, color: GOLD, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                {showAllHistory ? <><ChevronUp size={14} /> Show less</> : <><ChevronDown size={14} /> Show all ({campaigns.length})</>}
+              </button>
+            )}
           </div>
 
-          {/* Quick launch grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 }}>
-            {[
-              { title: 'Events',          color: GOLD,      icon: <Calendar size={16} />,   path: '/campaign/event' },
-              { title: 'Products',        color: '#a855f7', icon: <Package size={16} />,    path: '/campaign/product' },
-              { title: 'Brand Strategy',  color: '#6366f1', icon: <Zap size={16} />,        path: '/campaign/brand' },
-              { title: 'Growth Strategy', color: '#10b981', icon: <Rocket size={16} />,     path: '/campaign/growth_strategy' },
-              { title: 'Content Calendar',color: '#3b82f6', icon: <Calendar size={16} />,   path: '/campaign/content_calendar' },
-              { title: 'SEO & Blog',      color: '#14b8a6', icon: <Globe size={16} />,      path: '/campaign/seo_blog' },
-              { title: 'Email Drip',      color: '#f59e0b', icon: <Mail size={16} />,       path: '/campaign/email_drip' },
-              { title: 'Influencer & PR', color: '#ec4899', icon: <Users size={16} />,      path: '/campaign/influencer' },
-              { title: 'Analytics Report',color: '#8b5cf6', icon: <PieChart size={16} />,   path: '/campaign/analytics_report' },
-              { title: 'Product Images',  color: '#06b6d4', icon: <Camera size={16} />,     path: '/products' },
-              { title: '360° Videos',     color: '#f97316', icon: <Film size={16} />,       path: '/products' },
-              { title: 'Lifestyle Photos',color: '#10b981', icon: <Image size={16} />,      path: '/products' },
-            ].map((item, i) => (
-              <motion.div
-                key={item.title}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.38 + i * 0.03 }}
-                whileHover={{ y: -2 }}
-                onClick={() => user ? navigate(item.path) : redirectToLogin()}
-                style={{
-                  background: CARD, border: `1px solid ${item.color}20`,
-                  borderRadius: 12, padding: '14px 16px', cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', gap: 10,
-                  transition: 'all 0.2s',
-                }}
-              >
-                <div style={{
-                  width: 34, height: 34, borderRadius: 9, flexShrink: 0,
-                  background: `${item.color}12`, border: `1px solid ${item.color}25`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', color: item.color,
-                }}>
-                  {item.icon}
-                </div>
-                <div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: TEXT, letterSpacing: '-0.01em' }}>{item.title}</div>
-                  <div style={{ fontSize: 10, color: TEXT3, marginTop: 1 }}>1 token</div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
+          {campaigns.length === 0 ? (
+            <div style={{ padding: '48px 24px', textAlign: 'center', background: CARD, border: `1px dashed ${BORDER}`, borderRadius: 16 }}>
+              <Clock size={34} style={{ color: TEXT3, marginBottom: 12 }} />
+              <p style={{ color: TEXT2, fontSize: 14 }}>Your generated campaigns will appear here.</p>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <AnimatePresence>
+                {displayedHistory.map((c, i) => {
+                  const cm = TYPE_META[c.type] || TYPE_META.event
+                  return (
+                    <motion.div
+                      key={c.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, x: -20 }}
+                      transition={{ delay: i * 0.04 }}
+                      style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 14, transition: 'border-color 0.2s' }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = `${cm.color}40` }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = BORDER }}
+                    >
+                      <div style={{ width: 46, height: 46, borderRadius: 13, background: `${cm.color}12`, border: `1px solid ${cm.color}25`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: cm.color, flexShrink: 0 }}>
+                        {cm.icon}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 3 }}>
+                          <span style={{ fontWeight: 800, fontSize: 15, color: TEXT }}>{c.name}</span>
+                          <span style={{ padding: '2px 9px', background: `${cm.color}12`, border: `1px solid ${cm.color}25`, borderRadius: 100, fontSize: 10, fontWeight: 700, color: cm.color, letterSpacing: '0.05em' }}>
+                            {cm.label.toUpperCase()}
+                          </span>
+                        </div>
+                        {c.goal && (
+                          <p style={{ fontSize: 12, color: TEXT2, lineHeight: 1.5, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 520 }}>
+                            🎯 {c.goal}
+                          </p>
+                        )}
+                      </div>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: TEXT3, flexShrink: 0 }}>
+                        <Clock size={10} /> {timeAgo(c.date)}
+                      </span>
+                      <button
+                        onClick={() => viewCampaign(c)}
+                        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: GDIM, border: `1px solid ${GBORDER}`, borderRadius: 9, color: GOLD, fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit', flexShrink: 0 }}
+                      >
+                        <Eye size={12} /> View Results
+                      </button>
+                      <button
+                        onClick={() => deleteCampaign(c.id)}
+                        title="Delete"
+                        style={{ padding: '8px 10px', background: 'none', border: `1px solid ${BORDER}`, borderRadius: 9, cursor: 'pointer', color: TEXT3, display: 'flex', alignItems: 'center', flexShrink: 0, transition: 'all 0.2s' }}
+                        onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(239,68,68,0.4)'; e.currentTarget.style.color = '#ef4444' }}
+                        onMouseLeave={e => { e.currentTarget.style.borderColor = BORDER; e.currentTarget.style.color = TEXT3 }}
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </motion.div>
+                  )
+                })}
+              </AnimatePresence>
+            </div>
+          )}
         </motion.div>
+
+        {/* ═══ Back to Agents ═══ */}
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 48 }}>
+          <button
+            onClick={() => navigate('/package-a')}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              padding: '12px 26px', background: CARD,
+              border: `1px solid ${GBORDER}`, borderRadius: 12,
+              color: GOLD, fontSize: 14, fontWeight: 700, cursor: 'pointer',
+              fontFamily: "'Inter',sans-serif", transition: 'all 0.2s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = GDIM; e.currentTarget.style.borderColor = GOLD }}
+            onMouseLeave={e => { e.currentTarget.style.background = CARD; e.currentTarget.style.borderColor = GBORDER }}
+          >
+            <ArrowLeft size={15} /> Back to Agents
+          </button>
+        </div>
 
       </div>
 
