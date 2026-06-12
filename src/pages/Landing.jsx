@@ -337,6 +337,25 @@ export default function Landing() {
   const [otherBgInput,    setOtherBgInput]    = useState('')
   const [otherBgSelected, setOtherBgSelected] = useState(false)
 
+  // Persisted assessment + selected package (remembered until logout)
+  const [selectedPackage, setSelectedPackage] = useState(null)
+
+  const persistAssessment = (answers) => {
+    try { localStorage.setItem('evoke_assessment', JSON.stringify({ answers, ts: Date.now() })) } catch {}
+  }
+
+  // On mount: restore a previously completed assessment + selected package
+  useEffect(() => {
+    try {
+      const a = JSON.parse(localStorage.getItem('evoke_assessment') || 'null')
+      if (a?.answers) { setWizardAnswers(a.answers); setWizardDone(true) }
+    } catch {}
+    try {
+      const pkg = localStorage.getItem('evoke_selected_package')
+      if (pkg) setSelectedPackage(pkg)
+    } catch {}
+  }, [])
+
   const handleWizardSelect = (value) => {
     const step = WIZARD_STEPS[wizardStep]
     if (step.multiSelect) {
@@ -348,13 +367,15 @@ export default function Landing() {
       })
     } else {
       // Single-select — auto-advance
-      setWizardAnswers(prev => ({ ...prev, [step.key]: value }))
+      const finalAnswers = { ...wizardAnswers, [step.key]: value }
+      setWizardAnswers(finalAnswers)
       setOtherBgSelected(false)
       setOtherBgInput('')
       if (wizardStep < WIZARD_STEPS.length - 1) {
         setWizardStep(s => s + 1)
       } else {
         setWizardDone(true)
+        persistAssessment(finalAnswers)
       }
     }
   }
@@ -364,17 +385,20 @@ export default function Landing() {
       setWizardStep(s => s + 1)
     } else {
       setWizardDone(true)
+      persistAssessment(wizardAnswers)
     }
   }
 
+  // "Retake Assessment" — clear the saved result and start fresh
   const resetWizard = () => {
-    setWizardOpen(false)
+    try { localStorage.removeItem('evoke_assessment') } catch {}
     setWizardStep(0)
     setWizardAnswers({})
     setWizardDone(false)
     setOtherBgInput('')
     setOtherBgSelected(false)
     setExpandedFeature(null)
+    setWizardOpen(true)
   }
 
   // Logged-in users should go straight to the dashboard (skip in dev so landing page is previewable locally)
@@ -406,12 +430,21 @@ export default function Landing() {
     }
   }
 
-  // Open the wizard card panel and scroll to it
+  // Open the wizard card panel and scroll to it.
+  // If the user already completed the assessment, show their saved result
+  // instead of asking the questions again.
   const openAssessment = () => {
+    let saved = null
+    try { saved = JSON.parse(localStorage.getItem('evoke_assessment') || 'null') } catch {}
+    if (saved?.answers) {
+      setWizardAnswers(saved.answers)
+      setWizardDone(true)
+    } else {
+      setWizardStep(0)
+      setWizardAnswers({})
+      setWizardDone(false)
+    }
     setWizardOpen(true)
-    setWizardStep(0)
-    setWizardAnswers({})
-    setWizardDone(false)
     setTimeout(() => {
       document.getElementById('cmo-assessment')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }, 50)
@@ -813,12 +846,19 @@ export default function Landing() {
                     </span>
                   ))}
                 </div>
-                <p style={{fontSize:13,color:TEXT3,marginBottom:20}}>Now choose the plan that fits your goals ↓</p>
+                <p style={{fontSize:13,color:TEXT3,marginBottom:20}}>
+                  Your plan is set — jump straight into your campaign ↓
+                </p>
                 <div style={{display:'flex',gap:12,justifyContent:'center',flexWrap:'wrap'}}>
-                  <button onClick={()=>navigate('/plans')} style={{...goldPill,padding:'13px 32px'}}
+                  <button onClick={()=>navigate(selectedPackage === 'free' ? '/free-plan' : '/package-a')} style={{...goldPill,padding:'13px 32px'}}
                     onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 10px 28px rgba(200,151,62,0.4)'}}
                     onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none'}}>
-                    Choose Your Plan <ArrowRight size={16}/>
+                    Start Your Campaign <ArrowRight size={16}/>
+                  </button>
+                  <button onClick={()=>navigate('/plans')} style={{...outlinePill,padding:'13px 24px',fontSize:13}}
+                    onMouseEnter={e=>{e.currentTarget.style.borderColor='rgba(200,151,62,0.6)'}}
+                    onMouseLeave={e=>{e.currentTarget.style.borderColor=''}}>
+                    Choose Plan <ArrowRight size={14}/>
                   </button>
                   <button onClick={resetWizard} style={{...outlinePill,padding:'13px 24px',fontSize:13}}>
                     Retake Assessment
