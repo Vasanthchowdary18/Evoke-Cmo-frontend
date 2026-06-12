@@ -1,3 +1,9 @@
+/**
+ * firebase.js
+ * Initialises the Firebase app and exports shared service instances:
+ * auth, db (Firestore), storage, and OAuth providers.
+ * All config values are loaded from environment variables — never hardcoded.
+ */
 import { initializeApp, getApps, getApp } from "firebase/app";
 import {
   getAuth,

@@ -1,3 +1,9 @@
+/**
+ * userService.js
+ * Handles all Firestore operations for user profiles, token balances,
+ * social account connections, and onboarding state.
+ */
+
 import {
   doc, getDoc, setDoc, updateDoc, increment, serverTimestamp
 } from 'firebase/firestore'
@@ -11,6 +17,11 @@ import { db } from '../firebase'
 //   onboardingData: { background, industry, goal }
 //   createdAt: timestamp
 
+/**
+ * Fetches the user doc from Firestore.
+ * If no doc exists (first login), creates one with default values.
+ * Returns the user data object.
+ */
 export async function getOrCreateUser(uid, displayName, email) {
   const ref = doc(db, 'users', uid)
   const snap = await getDoc(ref)
@@ -35,6 +46,7 @@ export async function getOrCreateUser(uid, displayName, email) {
   return snap.data()
 }
 
+/** Saves completed onboarding answers and marks onboarding as done. */
 export async function saveOnboardingData(uid, data) {
   await updateDoc(doc(db, 'users', uid), {
     onboardingComplete: true,
@@ -43,22 +55,29 @@ export async function saveOnboardingData(uid, data) {
   })
 }
 
+/** Returns the full user document, or null if the user doesn't exist. */
 export async function getUserData(uid) {
   const snap = await getDoc(doc(db, 'users', uid))
   return snap.exists() ? snap.data() : null
 }
 
+/** Returns the user's current token balance (defaults to 0 if not found). */
 export async function getTokenBalance(uid) {
   const data = await getUserData(uid)
   return data?.tokenBalance ?? 0
 }
 
+/** Adds tokens to the user's balance (used after a purchase). */
 export async function addTokens(uid, amount) {
   await updateDoc(doc(db, 'users', uid), {
     tokenBalance: increment(amount),
   })
 }
 
+/**
+ * Deducts 1 token when a campaign is launched.
+ * Throws if the user has no tokens remaining.
+ */
 export async function deductToken(uid) {
   const data = await getUserData(uid)
   if (!data || data.tokenBalance < 1) throw new Error('Insufficient tokens')
@@ -67,24 +86,27 @@ export async function deductToken(uid) {
   })
 }
 
+/** Saves a connected social account's credentials under the user's profile. */
 export async function saveSocialAccount(uid, platform, accountData) {
   await updateDoc(doc(db, 'users', uid), {
     [`socialAccounts.${platform}`]: { connected: true, ...accountData },
   })
 }
 
+/** Marks a social account as disconnected (clears connected flag). */
 export async function disconnectSocialAccount(uid, platform) {
   await updateDoc(doc(db, 'users', uid), {
     [`socialAccounts.${platform}`]: { connected: false },
   })
 }
 
+/** Returns all social accounts linked to the user. */
 export async function getSocialAccounts(uid) {
   const data = await getUserData(uid)
   return data?.socialAccounts || {}
 }
 
-// Token packages on offer
+// Token packages available for purchase
 export const TOKEN_PACKAGES = [
   {
     id:       'starter',

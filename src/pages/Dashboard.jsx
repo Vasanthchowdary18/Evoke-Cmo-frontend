@@ -56,6 +56,7 @@ import {
   UserCheck,
   BadgePercent,
   HeartHandshake,
+  LayoutDashboard,
 } from "lucide-react";
 import Navbar from "../components/Navbar.jsx";
 import OnboardingModal from "../components/OnboardingModal.jsx";
@@ -530,6 +531,7 @@ const PLATFORM_META = {
   meetup: { color: "#ED1C40", label: "Meetup" },
 };
 
+/** Converts an ISO timestamp to a human-readable relative time string (e.g. "3h ago"). */
 function timeAgo(iso) {
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60000);
@@ -546,6 +548,7 @@ function timeAgo(iso) {
   });
 }
 
+/** Modal shown when a user tries to launch a campaign without any connected social accounts. */
 function NoAccountsModal({ onConnect, onClose }) {
   return (
     <motion.div
@@ -693,6 +696,7 @@ function NoAccountsModal({ onConnect, onClose }) {
   );
 }
 
+/** Modal shown when a user tries to launch a campaign but has 0 tokens remaining. */
 function NoTokensModal({ onBuy, onClose }) {
   return (
     <motion.div
@@ -843,6 +847,12 @@ function NoTokensModal({ onBuy, onClose }) {
   );
 }
 
+/**
+ * Dashboard — main page after login.
+ * Loads the user's token balance and social accounts from Firestore,
+ * displays campaign launcher cards, and shows campaign history from localStorage.
+ * Also checks for any overdue scheduled day-posts on mount.
+ */
 export default function Dashboard() {
   const navigate = useNavigate();
   const [campaigns, setCampaigns] = useState([]);
@@ -922,15 +932,8 @@ export default function Dashboard() {
     }
   }, []);
 
+  /** Routes to the campaign form. Product type shows the visual tools modal first. */
   const handleLaunch = (type) => {
-    if (tokenBalance !== null && tokenBalance < 1) {
-      setShowNoTokens(true);
-      return;
-    }
-    if (connectedCount === 0) {
-      setShowNoAccounts(true);
-      return;
-    }
     // Product campaigns → show the AI visual tools modal first
     if (type === 'product') {
       setShowProductModal(true);
@@ -939,6 +942,7 @@ export default function Dashboard() {
     navigate(`/campaign/${type}`);
   };
 
+  /** Stores campaign result in sessionStorage and navigates to the results page. */
   const viewCampaign = (c) => {
     sessionStorage.setItem("campaignResult", JSON.stringify(c.result));
     sessionStorage.setItem("campaignType", c.type);
@@ -946,6 +950,7 @@ export default function Dashboard() {
     navigate("/results");
   };
 
+  /** Removes a campaign from localStorage and updates local state. */
   const deleteCampaign = (id) => {
     const updated = campaigns.filter((c) => c.id !== id);
     setCampaigns(updated);
@@ -957,6 +962,7 @@ export default function Dashboard() {
   ).length;
   const displayed = showAll ? campaigns : campaigns.slice(0, 5);
 
+  /** Resets onboardingComplete in Firestore so the user can redo the CMO setup wizard. */
   const handleRetakeOnboarding = async () => {
     if (!user) return;
     await updateDoc(doc(db, "users", user.uid), { onboardingComplete: false });
@@ -1226,6 +1232,73 @@ export default function Dashboard() {
                 </button>
               </div>
             </div>
+          </div>
+        </motion.div>
+
+        {/* ═══ Campaign Launcher — choose a campaign type to generate ═══ */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.18 }}
+          style={{ marginBottom: 48 }}
+        >
+          <div style={{ marginBottom: 20 }}>
+            <div style={{
+              display: "inline-flex", alignItems: "center", gap: 6,
+              padding: "4px 12px", background: "rgba(200,151,62,0.12)", border: "1px solid rgba(200,151,62,0.28)",
+              borderRadius: 100, fontSize: 11, fontWeight: 700, color: "#c8973e", letterSpacing: "0.06em", marginBottom: 12,
+            }}>
+              <LayoutDashboard size={11} /> CAMPAIGN STUDIO
+            </div>
+            <h2 style={{ fontSize: 22, fontWeight: 900, letterSpacing: "-0.02em", color: "#ffffff", marginBottom: 4 }}>
+              Choose a campaign type
+            </h2>
+            <p style={{ fontSize: 13, color: "rgba(255,255,255,0.45)" }}>All 17 AI agents, tools and campaign types in one place — pick one to generate.</p>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))", gap: 12 }}>
+            {[
+              { title: "Events",           color: "#c8973e", icon: <Calendar size={16} />, type: "event" },
+              { title: "Products",         color: "#a855f7", icon: <Package size={16} />,  type: "product" },
+              { title: "Brand Strategy",   color: "#6366f1", icon: <Zap size={16} />,      type: "brand" },
+              { title: "Growth Strategy",  color: "#10b981", icon: <Rocket size={16} />,   type: "growth_strategy" },
+              { title: "Content Calendar", color: "#3b82f6", icon: <Calendar size={16} />, type: "content_calendar" },
+              { title: "SEO & Blog",       color: "#14b8a6", icon: <Globe size={16} />,    type: "seo_blog" },
+              { title: "Email Drip",       color: "#f59e0b", icon: <Mail size={16} />,     type: "email_drip" },
+              { title: "Influencer & PR",  color: "#ec4899", icon: <Users size={16} />,    type: "influencer" },
+              { title: "Analytics Report", color: "#8b5cf6", icon: <PieChart size={16} />, type: "analytics_report" },
+              { title: "Product Images",   color: "#06b6d4", icon: <Image size={16} />,    path: "/products" },
+              { title: "360° Videos",      color: "#f97316", icon: <Film size={16} />,     path: "/products" },
+              { title: "Lifestyle Photos", color: "#10b981", icon: <Image size={16} />,    path: "/products" },
+            ].map((item, i) => (
+              <motion.div
+                key={item.title}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 + i * 0.03 }}
+                whileHover={{ y: -2 }}
+                onClick={() => item.path ? navigate(item.path) : handleLaunch(item.type)}
+                style={{
+                  background: "#1c1a13", border: `1px solid ${item.color}20`,
+                  borderRadius: 12, padding: "14px 16px", cursor: "pointer",
+                  display: "flex", alignItems: "center", gap: 10, transition: "all 0.2s",
+                }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = `${item.color}55` }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = `${item.color}20` }}
+              >
+                <div style={{
+                  width: 34, height: 34, borderRadius: 9, flexShrink: 0,
+                  background: `${item.color}12`, border: `1px solid ${item.color}25`,
+                  display: "flex", alignItems: "center", justifyContent: "center", color: item.color,
+                }}>
+                  {item.icon}
+                </div>
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "#f0ebe0", letterSpacing: "-0.01em" }}>{item.title}</div>
+                  <div style={{ fontSize: 10, color: "rgba(240,235,224,0.32)", marginTop: 1 }}>1 token</div>
+                </div>
+              </motion.div>
+            ))}
           </div>
         </motion.div>
 

@@ -1,3 +1,10 @@
+/**
+ * contentService.js
+ * Manages all Firestore read/write operations for the content_items collection.
+ * Handles saving, approving, rejecting, scheduling, and publishing
+ * AI-generated content across campaigns.
+ */
+
 import {
   collection, doc, getDocs, query, where,
   updateDoc, serverTimestamp, writeBatch,
@@ -58,6 +65,7 @@ export async function saveContentItems(userId, campaignMeta, items, status = 'dr
   return ids
 }
 
+/** Updates any fields on a single content item and stamps updatedAt. */
 export async function updateContentItem(id, data) {
   await updateDoc(doc(db, COL, id), { ...data, updatedAt: serverTimestamp() })
 }
@@ -76,6 +84,10 @@ export async function markItemsPublished(ids, finalTexts = {}) {
   await batch.commit()
 }
 
+/**
+ * Updates the status of a single content item (draft → approved → published etc.).
+ * Automatically sets publishedAt when status is 'published'.
+ */
 export async function setItemStatus(id, status, extra = {}) {
   await updateDoc(doc(db, COL, id), {
     status,

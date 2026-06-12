@@ -36,6 +36,7 @@ const TYPE_LABELS = {
 
 const FILTERS = ['all', 'draft', 'approved', 'scheduled', 'published', 'rejected']
 
+/** Displays a colour-coded pill badge for a content item's current status. */
 function StatusBadge({ status }) {
   const m = STATUS_META[status] || STATUS_META.draft
   return (
@@ -54,6 +55,7 @@ function StatusBadge({ status }) {
   )
 }
 
+/** Renders a small branded chip showing which platform a content item targets. */
 function PlatformChip({ platform }) {
   const m = PLATFORM_META[platform]
   if (!m) return null
@@ -68,6 +70,10 @@ function PlatformChip({ platform }) {
   )
 }
 
+/**
+ * ContentCard — displays a single AI-generated content item with inline editing,
+ * approve/reject actions, and a date-time scheduler for approved items.
+ */
 function ContentCard({ item, onApprove, onReject, onUndoReject, onSave, onSchedule }) {
   const [editing, setEditing]         = useState(false)
   const [draft, setDraft]             = useState(item.text)
@@ -411,6 +417,11 @@ function ContentCard({ item, onApprove, onReject, onUndoReject, onSave, onSchedu
   )
 }
 
+/**
+ * ApprovalQueue — content review page where users can approve, reject,
+ * edit, or schedule AI-generated content before it goes live.
+ * Fetches all content_items for the logged-in user from Firestore.
+ */
 export default function ApprovalQueue() {
   const navigate = useNavigate()
   const { user } = useAuth()
@@ -420,6 +431,7 @@ export default function ApprovalQueue() {
   const [filter, setFilter]       = useState('draft')
   const [refreshing, setRefreshing] = useState(false)
 
+  /** Fetches all content items for the current user. Pass showSpinner=true for manual refresh. */
   const load = async (showSpinner = false) => {
     if (!user) return
     if (showSpinner) setRefreshing(true)
