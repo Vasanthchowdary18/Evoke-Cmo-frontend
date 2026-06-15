@@ -8,9 +8,10 @@ import {
   CheckCircle2, AlertCircle, Play, Sparkles, ChevronRight,
   Link2, Coins, Bot, LayoutDashboard, Camera,
   Eye, Trash2, Clock, ChevronDown, ChevronUp, ArrowLeft,
+  Shield, Code2, TrendingDown, DollarSign, Crown,
 } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
-import { useAuth } from '../components/AuthProvider.jsx'
+import { useAuth } from '../hooks/useAuth.js'
 import { redirectToLogin } from '../lib/authUtils'
 import { getOrCreateUser } from '../services/userService'
 
@@ -55,6 +56,14 @@ const TYPE_META = {
   marketplace:       { color: '#14b8a6', icon: <Package size={18} />,    label: 'Marketplace' },
   brand_strategy:    { color: '#a855f7', icon: <Brain size={18} />,      label: 'Brand' },
   funnel_cro:        { color: '#ef4444', icon: <Activity size={18} />,   label: 'CRO' },
+  pr_reputation:     { color: '#06b6d4', icon: <Megaphone size={18} />,  label: 'PR' },
+  crm_lifecycle:     { color: '#10b981', icon: <Users size={18} />,      label: 'CRM' },
+  paid_advertising:  { color: '#f59e0b', icon: <Target size={18} />,     label: 'Paid Ads' },
+  ai_cfo:            { color: '#22c55e', icon: <DollarSign size={18} />, label: 'AI CFO' },
+  ai_cto:            { color: '#6366f1', icon: <Code2 size={18} />,      label: 'AI CTO' },
+  ai_cro_exec:       { color: '#f97316', icon: <TrendingUp size={18} />, label: 'AI CRO' },
+  ai_ceo:            { color: '#c8973e', icon: <Crown size={18} />,      label: 'AI CEO' },
+  ai_compliance:     { color: '#64748b', icon: <Shield size={18} />,     label: 'Compliance' },
 }
 
 function timeAgo(iso) {
@@ -463,6 +472,226 @@ export default function AgentsHub() {
               <div style={{ fontSize: 11, color: TEXT3, fontWeight: 500 }}>{metric.sub}</div>
             </motion.div>
           ))}
+        </motion.div>
+
+        {/* ═══ SECTION 5: CMO Modules ═══ */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.25 }}
+          style={{ marginBottom: 56 }}
+        >
+          <div style={{ marginBottom: 20 }}>
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: '4px 12px', background: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.28)',
+              borderRadius: 100, fontSize: 11, fontWeight: 700, color: '#06b6d4', letterSpacing: '0.06em', marginBottom: 10,
+            }}>
+              <Megaphone size={11} /> CMO MODULES
+            </div>
+            <h2 style={{ fontSize: 22, fontWeight: 900, letterSpacing: '-0.02em', color: TEXT, marginBottom: 4 }}>
+              Full CMO Responsibility Suite
+            </h2>
+            <p style={{ fontSize: 13, color: TEXT2 }}>
+              Every executive marketing function — PR, CRM, Paid Ads and more — powered by AI.
+            </p>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>
+            {[
+              {
+                type: 'pr_reputation', color: '#06b6d4', icon: <Megaphone size={20} />,
+                title: 'PR & Reputation Management',
+                desc: 'Press releases, crisis playbooks, review templates, and 12-month PR calendar.',
+                badge: 'PR',
+                path: '/overview/pr_reputation',
+              },
+              {
+                type: 'crm_lifecycle', color: '#10b981', icon: <Users size={20} />,
+                title: 'CRM & Customer Lifecycle',
+                desc: 'Lead scoring, onboarding sequences, win-back campaigns, and churn prevention.',
+                badge: 'CRM',
+                path: '/overview/crm_lifecycle',
+              },
+              {
+                type: 'paid_advertising', color: '#f59e0b', icon: <Target size={20} />,
+                title: 'Paid Advertising Agent',
+                desc: 'Meta, Google, TikTok & LinkedIn ads with audience targeting and A/B test plan.',
+                badge: 'PAID ADS',
+                path: '/overview/paid_advertising',
+              },
+              {
+                type: 'funnel_cro', color: '#ef4444', icon: <Activity size={20} />,
+                title: 'Funnel & CRO Agent',
+                desc: 'Funnel audit, A/B test variants, CTA optimizations, and conversion quick wins.',
+                badge: 'CRO',
+                path: '/overview/funnel_cro',
+              },
+              {
+                type: 'analytics_report', color: '#f97316', icon: <BarChart2 size={20} />,
+                title: 'Analytics & Reporting',
+                desc: 'KPI dashboard, ROAS tracking, channel performance breakdown, and exec reports.',
+                badge: 'ANALYTICS',
+                path: '/overview/analytics_report',
+              },
+              {
+                type: 'influencer', color: '#ec4899', icon: <Users size={20} />,
+                title: 'Influencer & Partnership',
+                desc: 'Influencer briefs, outreach templates, media pitches, and PR campaigns.',
+                badge: 'INFLUENCE',
+                path: '/overview/influencer',
+              },
+            ].map((module, i) => (
+              <motion.div
+                key={module.type}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.28 + i * 0.06 }}
+                whileHover={{ y: -3, boxShadow: `0 12px 32px ${module.color}18` }}
+                onClick={() => navigate(module.path)}
+                style={{
+                  background: CARD, border: `1px solid ${BORDER}`,
+                  borderRadius: 16, padding: '20px 22px', cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = `${module.color}40` }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = BORDER }}
+              >
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
+                  <div style={{
+                    width: 42, height: 42, borderRadius: 12,
+                    background: `${module.color}12`, border: `1px solid ${module.color}25`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', color: module.color,
+                  }}>
+                    {module.icon}
+                  </div>
+                  <span style={{
+                    padding: '3px 10px', background: `${module.color}12`, border: `1px solid ${module.color}25`,
+                    borderRadius: 100, fontSize: 9, fontWeight: 800, color: module.color, letterSpacing: '0.08em',
+                  }}>
+                    {module.badge}
+                  </span>
+                </div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: TEXT, marginBottom: 6, lineHeight: 1.3 }}>
+                  {module.title}
+                </div>
+                <div style={{ fontSize: 12, color: TEXT2, lineHeight: 1.55 }}>
+                  {module.desc}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 14, color: module.color, fontSize: 12, fontWeight: 700 }}>
+                  Launch Agent <ArrowRight size={13} />
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* ═══ SECTION 6: AI Executive Suite ═══ */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.32 }}
+          style={{ marginBottom: 56 }}
+        >
+          <div style={{ marginBottom: 20 }}>
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: '4px 12px', background: GDIM, border: `1px solid ${GBORDER}`,
+              borderRadius: 100, fontSize: 11, fontWeight: 700, color: GOLD, letterSpacing: '0.06em', marginBottom: 10,
+            }}>
+              <Crown size={11} /> AI EXECUTIVE SUITE
+            </div>
+            <h2 style={{ fontSize: 22, fontWeight: 900, letterSpacing: '-0.02em', color: TEXT, marginBottom: 4 }}>
+              AI Executive Workforce
+            </h2>
+            <p style={{ fontSize: 13, color: TEXT2 }}>
+              Hire AI CFO, CTO, CRO, CEO, and Compliance Officer as full digital executives for your company.
+            </p>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>
+            {[
+              {
+                type: 'ai_cfo', color: '#22c55e', icon: <DollarSign size={20} />,
+                title: 'AI CFO',
+                role: 'Chief Financial Officer',
+                desc: 'Financial forecasts, budget allocation, unit economics, and marketing ROI dashboards.',
+                path: '/overview/ai_cfo',
+              },
+              {
+                type: 'ai_cto', color: '#6366f1', icon: <Code2 size={20} />,
+                title: 'AI CTO',
+                role: 'Chief Technology Officer',
+                desc: 'Marketing tech stack audit, AI integration roadmap, automation blueprint, and data infrastructure plan.',
+                path: '/overview/ai_cto',
+              },
+              {
+                type: 'ai_cro_exec', color: '#f97316', icon: <TrendingUp size={20} />,
+                title: 'AI CRO',
+                role: 'Chief Revenue Officer',
+                desc: 'Revenue growth strategy, partnership pipeline, upsell playbook, and 90-day client acquisition sprint.',
+                path: '/overview/ai_cro_exec',
+              },
+              {
+                type: 'ai_ceo', color: '#c8973e', icon: <Crown size={20} />,
+                title: 'AI CEO',
+                role: 'Chief Executive Officer',
+                desc: 'Company vision, strategic priorities, market opportunities, and board-ready executive summary.',
+                path: '/overview/ai_ceo',
+              },
+              {
+                type: 'ai_compliance', color: '#94a3b8', icon: <Shield size={20} />,
+                title: 'AI Compliance Officer',
+                role: 'Compliance & Governance',
+                desc: 'GDPR/CCPA audit, advertising compliance, AI content governance, and risk assessment matrix.',
+                path: '/overview/ai_compliance',
+              },
+            ].map((exec, i) => (
+              <motion.div
+                key={exec.type}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.35 + i * 0.06 }}
+                whileHover={{ y: -3, boxShadow: `0 12px 32px ${exec.color}18` }}
+                onClick={() => navigate(exec.path)}
+                style={{
+                  background: CARD,
+                  border: `1px solid ${BORDER}`,
+                  borderRadius: 16, padding: '20px 22px', cursor: 'pointer',
+                  transition: 'all 0.2s', position: 'relative', overflow: 'hidden',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = `${exec.color}40` }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = BORDER }}
+              >
+                {/* Gold accent bar */}
+                <div style={{
+                  position: 'absolute', top: 0, left: 0, right: 0, height: 2,
+                  background: `linear-gradient(90deg, ${exec.color}00, ${exec.color}, ${exec.color}00)`,
+                }} />
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 12 }}>
+                  <div style={{
+                    width: 46, height: 46, borderRadius: 13, flexShrink: 0,
+                    background: `${exec.color}12`, border: `1px solid ${exec.color}25`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', color: exec.color,
+                  }}>
+                    {exec.icon}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 16, fontWeight: 900, color: exec.color, letterSpacing: '-0.01em', lineHeight: 1.2 }}>
+                      {exec.title}
+                    </div>
+                    <div style={{ fontSize: 11, color: TEXT3, fontWeight: 600, marginTop: 2 }}>
+                      {exec.role}
+                    </div>
+                  </div>
+                </div>
+                <div style={{ fontSize: 12, color: TEXT2, lineHeight: 1.6, marginBottom: 14 }}>
+                  {exec.desc}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: exec.color, fontSize: 12, fontWeight: 700 }}>
+                  Activate Executive <ArrowRight size={13} />
+                </div>
+              </motion.div>
+            ))}
+          </div>
         </motion.div>
 
         {/* ═══ SECTION 7: Campaign History ═══ */}

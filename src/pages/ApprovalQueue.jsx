@@ -7,7 +7,7 @@ import {
   ArrowLeft, Inbox, Loader2, RefreshCw, Zap, Filter, CalendarClock,
 } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
-import { useAuth } from '../components/AuthProvider.jsx'
+import { useAuth } from '../hooks/useAuth.js'
 import { getContentItems, setItemStatus, updateContentItem, scheduleItem } from '../services/contentService'
 
 const PLATFORM_META = {
@@ -269,7 +269,7 @@ function ContentCard({ item, onApprove, onReject, onUndoReject, onSave, onSchedu
                   disabled={acting === 'approve'}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 6,
-                    padding: '7px 14px', borderRadius: 8, border: 'none',
+                    padding: '7px 14px', borderRadius: 8,
                     background: 'rgba(16,185,129,0.1)',
                     border: '1px solid rgba(16,185,129,0.3)',
                     color: '#059669', fontSize: 12, fontWeight: 700, cursor: 'pointer',
@@ -552,7 +552,7 @@ export default function ApprovalQueue() {
               key={f}
               onClick={() => setFilter(f)}
               style={{
-                padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                padding: '6px 14px', borderRadius: 8, cursor: 'pointer',
                 fontSize: 12, fontWeight: 600, fontFamily: 'inherit',
                 background: filter === f ? 'linear-gradient(135deg,#d4a853,#b8803a)' : '#fff',
                 color: filter === f ? '#fff' : '#64748b',

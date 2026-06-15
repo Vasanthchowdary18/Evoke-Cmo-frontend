@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, FileText, Sparkles, ChevronDown, Check, Copy, AlertCircle, Loader2, Key, Eye, EyeOff, Settings2, Hash } from 'lucide-react'
+import { ArrowLeft, FileText, Sparkles, ChevronDown, Check, Copy, AlertCircle, Loader2, Settings2, Hash } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
 
 const PRODUCT_CATEGORIES = [
@@ -15,48 +15,59 @@ const PRODUCT_CATEGORIES = [
   'Backpack / Bag','Luggage / Suitcase','Candle','Gift Set','Book','Notebook / Journal','Other',
 ]
 
-const GEMINI_TEXT_MODEL = 'gemini-2.0-flash'
+const PRICE_RANGES = [
+  'Under ₹500 / Under $10',
+  '₹500 – ₹1,000 / $10 – $20',
+  '₹1,000 – ₹2,500 / $20 – $50',
+  '₹2,500 – ₹5,000 / $50 – $100',
+  '₹5,000 – ₹10,000 / $100 – $200',
+  '₹10,000 – ₹25,000 / $200 – $500',
+  '₹25,000+ / $500+',
+]
 
-async function generateDescription(apiKey, { name, category, features, price, audience, brand }) {
-  const prompt = `You are an expert ecommerce copywriter. Generate complete product listing copy for this product:
+const AUDIENCE_OPTIONS = [
+  'General Consumers',
+  'Young Adults (18–25)',
+  'Millennials (25–40)',
+  'Parents & Families',
+  'Fitness Enthusiasts',
+  'Working Professionals',
+  'Students & College-goers',
+  'Fashion Lovers',
+  'Tech Enthusiasts',
+  'Gamers & Streamers',
+  'Travelers & Adventurers',
+  'Home Cooks & Foodies',
+  'Beauty & Wellness Seekers',
+  'Business Owners & Entrepreneurs',
+]
 
-Product Name: ${name}
-Category: ${category}
-Brand: ${brand || 'N/A'}
-Price: ${price || 'N/A'}
-Key Features: ${features}
-Target Audience: ${audience || 'General consumers'}
+// Webhook URL stored in env — key never touches the browser bundle
+const WEBHOOK_URL = import.meta.env.VITE_PRODUCT_DESC_WEBHOOK_URL
 
-Return ONLY valid JSON in this exact structure:
-{
-  "productTitle": "SEO-optimized product title (60-80 chars, include key benefit and category)",
-  "marketingTagline": "Short punchy tagline (max 12 words)",
-  "shortDescription": "2-3 sentence product summary for search results",
-  "fullDescription": "Detailed 200-300 word benefit-led marketing description: opening hook, key features paragraph, ideal-for paragraph, closing CTA. Keyword-rich and conversion-focused.",
-  "bulletPoints": ["Feature 1: specific benefit", "Feature 2: specific benefit", "Feature 3: specific benefit", "Feature 4: specific benefit", "Feature 5: specific benefit", "Feature 6: specific benefit"],
-  "technicalSpecs": {"Spec Label 1": "value", "Spec Label 2": "value", "Spec Label 3": "value", "Spec Label 4": "value", "Spec Label 5": "value"},
-  "altText": "Image alt text for accessibility and SEO (max 125 chars)",
-  "metaTitle": "SEO meta title (max 60 chars)",
-  "metaDescription": "SEO meta description (max 160 chars)",
-  "keywords": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"],
-  "searchKeywords": ["broad keyword 1", "broad keyword 2", "broad keyword 3", "broad keyword 4", "broad keyword 5", "broad keyword 6", "broad keyword 7", "broad keyword 8", "broad keyword 9", "broad keyword 10", "long-tail phrase 1", "long-tail phrase 2"]
-}`
+async function generateDescription(_unused, { name, category, features, price, audience, brand }) {
+  if (!WEBHOOK_URL) throw new Error('Product description service is not configured.')
 
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_TEXT_MODEL}:generateContent?key=${apiKey}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
-    }
-  )
-  if (!res.ok) { const e = await res.json(); throw new Error(e?.error?.message || `API error ${res.status}`) }
+  const res = await fetch(WEBHOOK_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, category, features, price, audience, brand }),
+  })
+  if (!res.ok) {
+    let msg = `Request failed (${res.status})`
+    try { const e = await res.json(); msg = e?.error?.message || e?.message || msg } catch {}
+    throw new Error(msg)
+  }
   const data = await res.json()
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
-  const clean = text.replace(/```json/gi,'').replace(/```/g,'').trim()
-  const start = clean.indexOf('{'); const end = clean.lastIndexOf('}')
-  if (start===-1||end===-1) throw new Error('Invalid response from AI. Please try again.')
-  return JSON.parse(clean.slice(start, end+1))
+  // n8n may return the JSON directly or nested under a key
+  const payload = data?.output ?? data?.result ?? data?.data ?? data
+  if (typeof payload === 'string') {
+    const clean = payload.replace(/```json/gi,'').replace(/```/g,'').trim()
+    const start = clean.indexOf('{'); const end = clean.lastIndexOf('}')
+    if (start === -1 || end === -1) throw new Error('Invalid response. Please try again.')
+    return JSON.parse(clean.slice(start, end + 1))
+  }
+  return payload
 }
 
 function useCopy() {
@@ -72,6 +83,75 @@ const S = {
   input: { width:'100%', padding:'11px 14px', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'10px', color:'#fff', fontSize:'13px', boxSizing:'border-box', outline:'none' },
 }
 const C = '#06b6d4'
+
+function DropdownCustom({ value, onChange, options, placeholder, customPlaceholder }) {
+  const [open, setOpen] = useState(false)
+  const [isCustom, setIsCustom] = useState(() => value ? !options.includes(value) : false)
+
+  const handleSelect = (opt) => {
+    if (opt === '__custom__') {
+      setIsCustom(true)
+      onChange('')
+    } else {
+      setIsCustom(false)
+      onChange(opt)
+    }
+    setOpen(false)
+  }
+
+  return (
+    <div>
+      <div style={{position:'relative'}}>
+        <button onClick={() => setOpen(v => !v)}
+          style={{...S.input,textAlign:'left',display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'rgba(255,255,255,0.05)'}}>
+          <span style={{color:(value||isCustom)?'#fff':'rgba(255,255,255,0.3)'}}>
+            {isCustom ? 'Custom…' : (value || placeholder)}
+          </span>
+          <ChevronDown size={14} style={{color:'rgba(255,255,255,0.4)',flexShrink:0,transition:'transform 0.2s',transform:open?'rotate(180deg)':'rotate(0deg)'}}/>
+        </button>
+        <AnimatePresence>
+          {open && (
+            <motion.div initial={{opacity:0,y:-8}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-8}}
+              style={{position:'absolute',top:'110%',left:0,right:0,zIndex:100,background:'#1a1a2e',border:`1px solid ${C}25`,borderRadius:'12px',overflow:'hidden',boxShadow:'0 16px 40px rgba(0,0,0,0.6)'}}>
+              <div style={{maxHeight:'220px',overflowY:'auto'}}>
+                {options.map(opt => {
+                  const active = !isCustom && value === opt
+                  return (
+                    <button key={opt} onClick={() => handleSelect(opt)}
+                      style={{width:'100%',padding:'10px 16px',background:active?`${C}12`:'none',border:'none',cursor:'pointer',color:active?C:'rgba(255,255,255,0.7)',fontSize:'13px',textAlign:'left',display:'flex',alignItems:'center',gap:'8px'}}
+                      onMouseEnter={e=>{if(!active)e.currentTarget.style.background='rgba(255,255,255,0.05)'}}
+                      onMouseLeave={e=>{if(!active)e.currentTarget.style.background='none'}}>
+                      {active&&<Check size={12}/>}{opt}
+                    </button>
+                  )
+                })}
+                <button onClick={() => handleSelect('__custom__')}
+                  style={{width:'100%',padding:'10px 16px',background:isCustom?`${C}12`:'none',border:'none',borderTop:'1px solid rgba(255,255,255,0.07)',cursor:'pointer',color:isCustom?C:'rgba(255,255,255,0.45)',fontSize:'13px',textAlign:'left',display:'flex',alignItems:'center',gap:'8px'}}
+                  onMouseEnter={e=>{if(!isCustom)e.currentTarget.style.background='rgba(255,255,255,0.05)'}}
+                  onMouseLeave={e=>{if(!isCustom)e.currentTarget.style.background='none'}}>
+                  {isCustom&&<Check size={12}/>}✏ Enter custom…
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+      <AnimatePresence>
+        {isCustom && (
+          <motion.div initial={{opacity:0,height:0,marginTop:0}} animate={{opacity:1,height:'auto',marginTop:8}} exit={{opacity:0,height:0,marginTop:0}} style={{overflow:'hidden'}}>
+            <input
+              autoFocus
+              value={value}
+              onChange={e => onChange(e.target.value)}
+              placeholder={customPlaceholder}
+              style={S.input}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
 
 function OutputCard({ title, value, id, copied, copy, children }) {
   if (!value && !children) return null
@@ -93,8 +173,6 @@ function OutputCard({ title, value, id, copied, copy, children }) {
 export default function ProductDescription() {
   const navigate = useNavigate()
   const { copied, copy } = useCopy()
-  const [apiKey, setApiKey]       = useState(() => localStorage.getItem('gemini_api_key') || import.meta.env.VITE_GEMINI_API_KEY || '')
-  const [showKey, setShowKey]     = useState(false)
   const [category, setCategory]   = useState('')
   const [catSearch, setCatSearch] = useState('')
   const [catOpen, setCatOpen]     = useState(false)
@@ -108,14 +186,12 @@ export default function ProductDescription() {
 
   const handleGenerate = async () => {
     setError('')
-    if (!apiKey.trim())       return setError('Enter your Gemini API key.')
     if (!form.name.trim())    return setError('Enter the product name.')
     if (!category)            return setError('Select a product category.')
     if (!form.features.trim()) return setError('Enter at least one key feature.')
-    localStorage.setItem('gemini_api_key', apiKey)
     setLoading(true); setResult(null)
     try {
-      const r = await generateDescription(apiKey, { ...form, category })
+      const r = await generateDescription(null, { ...form, category })
       setResult(r)
     } catch(e) { setError(e.message) }
     finally { setLoading(false) }
@@ -144,15 +220,7 @@ export default function ProductDescription() {
           <motion.div initial={{opacity:0,x:-20}} animate={{opacity:1,x:0}} transition={{delay:0.1}}
             style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:'18px',padding:'28px'}}>
 
-            <label style={{...S.label,marginTop:0}}><Key size={10} style={{display:'inline',marginRight:4}}/>Gemini API Key</label>
-            <div style={{position:'relative'}}>
-              <input type={showKey?'text':'password'} value={apiKey} onChange={e=>setApiKey(e.target.value)} placeholder="AIza..." style={{...S.input,paddingRight:'40px'}}/>
-              <button onClick={()=>setShowKey(v=>!v)} style={{position:'absolute',right:12,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',cursor:'pointer',color:'rgba(255,255,255,0.4)',display:'flex'}}>
-                {showKey?<EyeOff size={14}/>:<Eye size={14}/>}
-              </button>
-            </div>
-
-            <label style={S.label}>Product Name *</label>
+            <label style={{...S.label,marginTop:0}}>Product Name *</label>
             <input value={form.name} onChange={e=>set('name',e.target.value)} placeholder="e.g. ProGrip X1 Wireless Earbuds" style={S.input}/>
 
             <label style={S.label}>Category *</label>
@@ -190,10 +258,22 @@ export default function ProductDescription() {
             <textarea value={form.features} onChange={e=>set('features',e.target.value)} placeholder="List the main features, materials, specs…" style={{...S.input,minHeight:'90px',resize:'vertical'}}/>
 
             <label style={S.label}>Price</label>
-            <input value={form.price} onChange={e=>set('price',e.target.value)} placeholder="e.g. ₹2,499 / $29.99" style={S.input}/>
+            <DropdownCustom
+              value={form.price}
+              onChange={v => set('price', v)}
+              options={PRICE_RANGES}
+              placeholder="— select price range —"
+              customPlaceholder="e.g. ₹2,499 / $29.99"
+            />
 
             <label style={S.label}>Target Audience</label>
-            <input value={form.audience} onChange={e=>set('audience',e.target.value)} placeholder="e.g. Fitness enthusiasts, college students…" style={S.input}/>
+            <DropdownCustom
+              value={form.audience}
+              onChange={v => set('audience', v)}
+              options={AUDIENCE_OPTIONS}
+              placeholder="— select target audience —"
+              customPlaceholder="e.g. Fitness enthusiasts, college students…"
+            />
 
             <AnimatePresence>
               {error&&<motion.div initial={{opacity:0,y:-6}} animate={{opacity:1,y:0}} exit={{opacity:0}} style={{marginTop:'14px',padding:'12px 14px',background:'rgba(239,68,68,0.08)',border:'1px solid rgba(239,68,68,0.25)',borderRadius:'10px',display:'flex',gap:'8px',color:'#f87171',fontSize:'13px'}}>

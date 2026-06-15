@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowRight, ArrowLeft, Target, Megaphone, Layers, TrendingUp, ChevronDown } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
-import { useAuth } from '../components/AuthProvider.jsx'
+import { useAuth } from '../hooks/useAuth.js'
 import { redirectToLogin } from '../lib/authUtils.js'
 
 /* ── colours ── */
@@ -87,11 +87,12 @@ export default function FreePlanPage() {
           onClick={() => navigate('/plans')}
           style={{
             display: 'inline-flex', alignItems: 'center', gap: 6,
-            background: 'none', border: 'none', color: TEXT3,
-            cursor: 'pointer', fontSize: 13, marginBottom: 20, padding: 0,
+            background: 'none', border: 'none', color: TEXT2,
+            cursor: 'pointer', fontSize: 13, marginBottom: 24, padding: 0,
+            fontWeight: 600,
           }}
         >
-          <ArrowLeft size={14} /> Back to Choose Plan
+          <ArrowLeft size={14} /> Back to Plans
         </button>
 
         {/* ── Compact header ── */}

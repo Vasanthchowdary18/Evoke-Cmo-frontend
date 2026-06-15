@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Check, ArrowRight, ArrowLeft, Zap } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
-import { useAuth } from '../components/AuthProvider.jsx'
+import { useAuth } from '../hooks/useAuth.js'
 import { getOrCreateUser } from '../services/userService'
 
 const BG      = '#0e0c09'
@@ -46,7 +46,16 @@ const PLANS = [
     badge: 'MOST POPULAR',
     gold: false,
     color: '#c8973e',
-    features: ['Everything in A', 'Brand Story Video', '360° Product Video'],
+    features: [
+      'Everything in A',
+      'Lifestyle Video Generator',
+      '360° Product Video',
+      '30-Day Content Calendar',
+      'Reel & Short-form Scripts',
+      'Multi-platform Captions & Hashtags',
+      'PDF / CSV Content Export',
+      'KPI & Engagement Recommendations',
+    ],
     cta: 'Get Package B',
   },
   {
@@ -58,7 +67,14 @@ const PLANS = [
     badge: null,
     gold: false,
     color: '#a855f7',
-    features: ['Everything in B', '3D Images', 'Ads Manager + Deploy'],
+    features: [
+      'Everything in B',
+      '3D Images — Premium product renders',
+      'Ads Creation — Conversion-optimised creatives',
+      'Ads Manager Connect — FB & Google campaigns',
+      'Target Audience Selection — Precision segmentation',
+      'Deploy Ads — Full campaign launch & management',
+    ],
     cta: 'Get Package C',
   },
 ]
@@ -75,9 +91,14 @@ export default function PlansPage() {
   }, [user])
 
   const handlePlan = (key) => {
+    // Remember the chosen plan so logged-in users aren't re-asked (cleared on logout)
+    if (key === 'free' || key === 'package-a') {
+      try { localStorage.setItem('evoke_selected_package', key) } catch {}
+    }
     if (key === 'free') navigate('/free-plan')
     else if (key === 'package-a') navigate('/package-a')
-    else window.open('mailto:hello@evokecmo.com?subject=Enquiry: ' + key.replace('-', ' ').toUpperCase(), '_blank')
+    else if (key === 'package-b') navigate('/package-b')
+    else if (key === 'package-c') navigate('/package-c')
   }
 
   return (

@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, Sparkles, Copy, Check, Loader2, Video, Link, Send } from 'lucide-react'
+import { ArrowLeft, Sparkles, Copy, Check, Loader2, Video, Send, Upload, Wand2, RefreshCw } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
 
 /* ─── Tool configs ─── */
@@ -144,7 +144,7 @@ async function pollWaveSpeedJob(apiKey, getUrl) {
     const job = data?.data
     if (!job) continue
     if (job.status === 'completed') return job.outputs?.[0] || null
-    if (job.status === 'failed')    throw new Error('Video generation failed. Please try again.')
+    if (job.status === 'failed')    throw new Error('Video generation failed: ' + (job.error || job.failure_reason || 'unknown reason. Check your image URL is a direct image link and your WaveSpeed credits.'))
   }
   throw new Error('Timed out waiting for video. Please try again.')
 }
@@ -178,6 +178,46 @@ function tryParseJSON(text) {
   return null
 }
 
+/* ─── Groq prompt enhancer ─── */
+async function generateGroqPrompt(basePrompt, toolTitle, fields) {
+  const apiKey = import.meta.env.VITE_GROQ_API_KEY
+  const fieldSummary = Object.entries(fields)
+    .filter(([, v]) => v)
+    .map(([k, v]) => `${k}: ${v}`)
+    .join(', ')
+
+  const systemMsg = 'You are a world-class AI video director. Generate a single, highly detailed cinematic video generation prompt. Output ONLY the prompt text — no labels, no explanation, no markdown.'
+  const userMsg = `Create an enhanced video generation prompt for: ${toolTitle}.
+Base prompt: ${basePrompt}
+Product details: ${fieldSummary || 'standard product'}
+Make it vivid, specific, and optimised for AI video generation. Max 3 sentences.`
+
+  const body = JSON.stringify({
+    model: 'llama-3.1-8b-instant',
+    messages: [{ role: 'system', content: systemMsg }, { role: 'user', content: userMsg }],
+    temperature: 0.8,
+    max_tokens: 300,
+  })
+
+  let res
+  if (apiKey && apiKey !== 'your_groq_api_key_here') {
+    res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+      body,
+    })
+  } else {
+    res = await fetch('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+    })
+  }
+  if (!res.ok) throw new Error(`Groq error ${res.status}`)
+  const data = await res.json()
+  return (data.choices?.[0]?.message?.content || '').trim()
+}
+
 /* ─── Colours ─── */
 const BG = '#0e0c09', GOLD = '#c8973e'
 const TEXT = '#f0ebe0', TEXT2 = 'rgba(240,235,224,0.55)', TEXT3 = 'rgba(240,235,224,0.32)'
@@ -206,6 +246,25 @@ export default function ImageToolPage() {
   const [textResult, setTextResult] = useState(null)
   const [error,      setError]      = useState('')
   const [copied,     setCopied]     = useState(null)
+  const [uploading,  setUploading]  = useState(false)
+  const [aiPrompt,   setAiPrompt]   = useState('')
+  const [promptLoading, setPromptLoading] = useState(false)
+  const [promptError,   setPromptError]   = useState('')
+  const fileRef = useRef(null)
+
+  const handleGeneratePrompt = async () => {
+    setPromptError('')
+    setPromptLoading(true)
+    try {
+      const base = tool.buildPrompt(fields)
+      const enhanced = await generateGroqPrompt(base, tool.title, fields)
+      setAiPrompt(enhanced)
+    } catch (e) {
+      setPromptError('Prompt generation failed: ' + e.message)
+    } finally {
+      setPromptLoading(false)
+    }
+  }
 
   if (!tool) {
     return (
@@ -222,15 +281,69 @@ export default function ImageToolPage() {
     navigator.clipboard.writeText(text).then(() => { setCopied(id); setTimeout(() => setCopied(null), 2000) })
   }
 
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) { setError('Please choose an image file (JPG, PNG, WebP).'); return }
+    if (file.size > 32 * 1024 * 1024) { setError('Image must be under 32 MB.'); return }
+    setError(''); setUploading(true)
+    try {
+      const base64 = await new Promise((resolve, reject) => {
+        const r = new FileReader()
+        r.onload = () => resolve(String(r.result).split(',')[1])
+        r.onerror = () => reject(new Error('Could not read the file.'))
+        r.readAsDataURL(file)
+      })
+      const form = new FormData()
+      form.append('key', import.meta.env.VITE_IMGBB_API_KEY || '5bd861d246cfae2342a0b898282ab18e')
+      form.append('image', base64)
+      const res = await fetch('https://api.imgbb.com/1/upload', { method: 'POST', body: form })
+      const data = await res.json()
+      if (!data?.data?.url) throw new Error(data?.error?.message || 'Upload failed. Try again.')
+      setImageUrl(data.data.url)
+    } catch (err) {
+      setError('Image upload failed: ' + err.message)
+    } finally {
+      setUploading(false)
+      if (fileRef.current) fileRef.current.value = ''
+    }
+  }
+
   const generate = async () => {
     setError(''); setLoading(true); setVideoUrl(null); setTextResult(null); setStatus('')
 
     try {
       if (isVideo) {
         if (!wsKey) throw new Error('WaveSpeed API key not configured. Add VITE_WAVESPEED_API_KEY to your .env file.')
-        if (!imageUrl.trim()) throw new Error('Enter your product image URL.')
+        if (!imageUrl.trim()) throw new Error('Upload your product image first.')
 
-        const prompt = tool.buildPrompt(fields)
+        setStatus('Checking your image...')
+        await new Promise((resolve, reject) => {
+          const img = new window.Image()
+          const timer = setTimeout(() => {
+            img.src = ''
+            reject(new Error('Your image took too long to load. Please re-upload and try again.'))
+          }, 15000)
+          img.onload = () => { clearTimeout(timer); resolve() }
+          img.onerror = () => {
+            clearTimeout(timer)
+            reject(new Error('Could not load your product image. Please re-upload and try again.'))
+          }
+          img.src = imageUrl.trim()
+        })
+
+        // Auto-generate AI prompt via Groq before video generation
+        let prompt = aiPrompt.trim()
+        if (!prompt) {
+          setStatus('Crafting AI prompt with Groq…')
+          try {
+            prompt = await generateGroqPrompt(tool.buildPrompt(fields), tool.title, fields)
+            setAiPrompt(prompt)
+          } catch {
+            prompt = tool.buildPrompt(fields)
+          }
+        }
+
         setStatus('Submitting job to WaveSpeed...')
         const job = await submitWaveSpeedJob(wsKey.trim(), tool.model, prompt, imageUrl.trim(), tool.duration)
         if (!job?.urls?.get) throw new Error('No job ID returned from WaveSpeed.')
@@ -292,51 +405,104 @@ export default function ImageToolPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: BG, color: TEXT, fontFamily: "'Inter',sans-serif" }}>
+    <div style={{ height: '100vh', background: BG, color: TEXT, fontFamily: "'Inter',sans-serif", overflow: 'hidden' }}>
       <Navbar />
-      <div style={{ maxWidth: 960, margin: '0 auto', padding: '100px 24px 80px' }}>
 
-        {/* Back */}
-        <button onClick={() => navigate(navState?.from || '/products')} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: TEXT2, fontSize: 14, cursor: 'pointer', marginBottom: 36, padding: 0 }}>
-          <ArrowLeft size={15} /> {navState?.from === '/package-a' ? 'Back to Package A' : 'Back to Tools'}
-        </button>
+      {/* ── Single unified panel ── */}
+      <div style={{
+        position: 'absolute', top: 64, left: 0, right: 0, bottom: 0,
+        display: 'flex', padding: '12px 16px', overflow: 'hidden',
+      }}>
+        <div style={{
+          width: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden',
+          background: '#1c1a13', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 18,
+        }}>
 
-        {/* Header */}
-        <div style={{ marginBottom: 40 }}>
-          <div style={{ display: 'inline-flex', padding: '4px 12px', background: `${tool.color}15`, border: `1px solid ${tool.color}35`, borderRadius: 100, fontSize: 10, fontWeight: 700, color: tool.color, letterSpacing: '0.08em', marginBottom: 14 }}>
-            {tool.badge}
-          </div>
-          <h1 style={{ fontSize: 'clamp(24px,4vw,36px)', fontWeight: 900, letterSpacing: '-0.03em', color: TEXT, marginBottom: 8, fontFamily: "'Syne','Inter',sans-serif", lineHeight: 1.15 }}>{tool.title}</h1>
-          <p style={{ color: TEXT2, fontSize: 15, lineHeight: 1.6, margin: 0 }}>{tool.subtitle}</p>
-          {isVideo && (
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 12, padding: '5px 12px', background: 'rgba(249,115,22,0.1)', border: '1px solid rgba(249,115,22,0.25)', borderRadius: 8, fontSize: 11, color: '#fb923c' }}>
-              <Video size={11} /> Powered by WaveSpeed AI · {tool.model}
+          {/* ── Top bar: back btn + title ── */}
+          <div style={{ padding: '14px 24px', borderBottom: '1px solid rgba(255,255,255,0.07)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 20 }}>
+            <button onClick={() => navigate(navState?.from || '/products')} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: TEXT2, fontSize: 13, cursor: 'pointer', padding: 0, flexShrink: 0 }}>
+              <ArrowLeft size={14} /> {navState?.from === '/package-a' ? 'Back to Package A' : 'Back to Tools'}
+            </button>
+            <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.08)' }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+              <div style={{ display: 'inline-flex', padding: '3px 10px', background: `${tool.color}15`, border: `1px solid ${tool.color}35`, borderRadius: 100, fontSize: 9, fontWeight: 700, color: tool.color, letterSpacing: '0.08em', flexShrink: 0 }}>
+                {tool.badge}
+              </div>
+              <h1 style={{ fontSize: 16, fontWeight: 900, letterSpacing: '-0.02em', color: TEXT, margin: 0 }}>{tool.title}</h1>
+              <span style={{ color: TEXT3, fontSize: 13 }}>·</span>
+              <p style={{ color: TEXT2, fontSize: 12, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tool.subtitle}</p>
+              {isVideo && (
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 10px', background: 'rgba(249,115,22,0.1)', border: '1px solid rgba(249,115,22,0.25)', borderRadius: 6, fontSize: 10, color: '#fb923c', flexShrink: 0 }}>
+                  <Video size={10} /> WaveSpeed AI
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '400px 1fr', gap: 28 }}>
+          {/* ── 2-column body ── */}
+          <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
           {/* ── LEFT: Inputs ── */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ width: 380, flexShrink: 0, borderRight: '1px solid rgba(255,255,255,0.07)', overflowY: 'auto', padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 14 }}>
 
             {/* Image URL (video tools only) */}
             {isVideo && (
               <div>
                 <label style={{ display: 'block', fontSize: 10, color: TEXT3, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 7 }}>
-                  Product Image URL <span style={{ color: '#f87171' }}>*</span>
+                  Product Image <span style={{ color: '#f87171' }}>*</span>
                 </label>
-                <div style={{ position: 'relative' }}>
-                  <Link size={13} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: TEXT3 }} />
-                  <input
-                    type="url"
-                    value={imageUrl}
-                    onChange={e => setImageUrl(e.target.value)}
-                    placeholder="https://your-product-image.jpg"
-                    style={{ ...inp, paddingLeft: 34 }}
-                  />
-                </div>
-                <p style={{ fontSize: 11, color: TEXT3, marginTop: 5 }}>Paste a direct link to your product image (JPG, PNG, WebP)</p>
+                {!imageUrl && (
+                  <button
+                    onClick={() => fileRef.current?.click()}
+                    disabled={uploading}
+                    style={{
+                      width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+                      padding: '26px 14px',
+                      background: 'rgba(200,151,62,0.05)',
+                      border: '1.5px dashed rgba(200,151,62,0.4)', borderRadius: 12,
+                      color: GOLD, fontSize: 13, fontWeight: 700,
+                      cursor: uploading ? 'wait' : 'pointer', fontFamily: "'Inter',sans-serif",
+                    }}
+                  >
+                    {uploading
+                      ? <><Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} /> Uploading your image…</>
+                      : <><Upload size={20} /> Upload Product Image<span style={{ fontSize: 11, color: TEXT3, fontWeight: 400 }}>JPG, PNG or WebP · up to 32 MB</span></>
+                    }
+                  </button>
+                )}
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  style={{ display: 'none' }}
+                  onChange={handleFileUpload}
+                />
+                {imageUrl && !uploading && (
+                  <div>
+                    <img
+                      src={imageUrl}
+                      alt="Product preview"
+                      onError={e => { e.currentTarget.style.display = 'none' }}
+                      onLoad={e => { e.currentTarget.style.display = 'block' }}
+                      style={{ width: '100%', maxHeight: 180, objectFit: 'contain', borderRadius: 12, border: '1px solid rgba(200,151,62,0.3)', background: 'rgba(0,0,0,0.3)' }}
+                    />
+                    <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                      <button
+                        onClick={() => fileRef.current?.click()}
+                        disabled={uploading}
+                        style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px', background: 'rgba(200,151,62,0.12)', border: '1px solid rgba(200,151,62,0.35)', borderRadius: 9, color: GOLD, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: "'Inter',sans-serif" }}
+                      >
+                        <Upload size={12} /> Change Image
+                      </button>
+                      <button
+                        onClick={() => setImageUrl('')}
+                        style={{ padding: '8px 14px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 9, color: '#f87171', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: "'Inter',sans-serif" }}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -369,7 +535,7 @@ export default function ImageToolPage() {
             >
               {loading
                 ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> {status || 'Working...'}</>
-                : <><Sparkles size={16} /> {isVideo ? 'Generate Video' : 'Generate SEO'}</>
+                : <><Sparkles size={16} /> {isVideo ? (aiPrompt ? 'Generate Video' : 'Generate AI Prompt + Video') : 'Generate SEO'}</>
               }
             </button>
 
@@ -378,8 +544,82 @@ export default function ImageToolPage() {
             )}
           </div>
 
+          {/* ── MIDDLE: AI Prompt column (video tools only) ── */}
+          {isVideo && (
+            <div style={{ width: 300, flexShrink: 0, borderRight: '1px solid rgba(255,255,255,0.07)', overflowY: 'auto', padding: '20px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Wand2 size={13} color="#a78bfa" />
+                  <span style={{ fontSize: 10, fontWeight: 700, color: '#a78bfa', letterSpacing: '0.08em', textTransform: 'uppercase' }}>AI Prompt</span>
+                </div>
+                {aiPrompt && (
+                  <button
+                    onClick={handleGeneratePrompt}
+                    disabled={promptLoading}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: TEXT3, display: 'flex', alignItems: 'center', gap: 4, fontSize: 11 }}
+                  >
+                    <RefreshCw size={11} /> Regenerate
+                  </button>
+                )}
+              </div>
+
+              {promptError && (
+                <div style={{ padding: '9px 12px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, color: '#f87171', fontSize: 12 }}>
+                  {promptError}
+                </div>
+              )}
+
+              {promptLoading && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '14px', background: 'rgba(139,92,246,0.07)', border: '1px dashed rgba(139,92,246,0.3)', borderRadius: 12 }}>
+                  <Loader2 size={14} color="#a78bfa" style={{ animation: 'spin 1s linear infinite', flexShrink: 0 }} />
+                  <span style={{ fontSize: 12, color: '#a78bfa' }}>Generating cinematic prompt…</span>
+                </div>
+              )}
+
+              {!promptLoading && aiPrompt && (
+                <AnimatePresence>
+                  <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+                    <textarea
+                      value={aiPrompt}
+                      onChange={e => setAiPrompt(e.target.value)}
+                      rows={10}
+                      style={{ width: '100%', background: 'rgba(139,92,246,0.07)', border: '1.5px solid rgba(139,92,246,0.3)', borderRadius: 12, padding: '12px 14px', color: TEXT, fontSize: 12, lineHeight: 1.7, resize: 'vertical', outline: 'none', boxSizing: 'border-box', fontFamily: "'Inter',sans-serif" }}
+                    />
+                    <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                      <button
+                        onClick={() => { navigator.clipboard.writeText(aiPrompt).then(() => { setCopied('prompt'); setTimeout(() => setCopied(null), 2000) }) }}
+                        style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '8px', background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.3)', borderRadius: 9, color: copied === 'prompt' ? '#4ade80' : '#a78bfa', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                      >
+                        {copied === 'prompt' ? <><Check size={11} /> Copied</> : <><Copy size={11} /> Copy Prompt</>}
+                      </button>
+                      <button
+                        onClick={() => setAiPrompt('')}
+                        style={{ padding: '8px 12px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 9, color: TEXT3, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                      >
+                        Clear
+                      </button>
+                    </div>
+                    <p style={{ fontSize: 11, color: TEXT3, marginTop: 10, lineHeight: 1.5 }}>
+                      This prompt will be used when you click <strong style={{ color: TEXT2 }}>Generate Video</strong>. Edit it freely.
+                    </p>
+                  </motion.div>
+                </AnimatePresence>
+              )}
+
+              {!promptLoading && !aiPrompt && (
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '30px 10px', border: '1px dashed rgba(139,92,246,0.2)', borderRadius: 12 }}>
+                  <Wand2 size={28} color="rgba(139,92,246,0.4)" style={{ marginBottom: 12 }} />
+                  <p style={{ color: TEXT3, fontSize: 12, lineHeight: 1.6 }}>
+                    Click <strong style={{ color: '#a78bfa' }}>Generate AI Prompt</strong> to create a cinematic video prompt from your inputs.
+                  </p>
+                  <p style={{ color: TEXT3, fontSize: 11, marginTop: 6 }}>You can edit it before generating.</p>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* ── RIGHT: Output ── */}
-          <div>
+          <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
             <AnimatePresence mode="wait">
               {loading && (
                 <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -409,26 +649,17 @@ export default function ImageToolPage() {
                       {copied === 'url' ? <Check size={14} /> : <Copy size={14} />}
                     </button>
                   </div>
-
-                  {/* Post to Social Media CTA */}
                   <button
                     onClick={() => navigate('/post-content', {
                       state: {
-                        mediaUrl: videoUrl,
-                        mediaType: 'video',
-                        toolTitle: tool.title,
-                        toolColor: tool.color,
+                        mediaUrl: videoUrl, mediaType: 'video',
+                        toolTitle: tool.title, toolColor: tool.color,
                         productName: fields.productName || '',
+                        productContext: tool.fields.filter(f => f.key !== 'productName' && fields[f.key]).map(f => `${f.label}: ${fields[f.key]}`).join(' · '),
                         from: pathname,
                       }
                     })}
-                    style={{
-                      marginTop: 14, width: '100%', padding: '13px',
-                      background: 'linear-gradient(135deg,#d4a853,#b8803a)',
-                      border: 'none', borderRadius: 12, color: '#0e0c09',
-                      fontSize: 14, fontWeight: 800, cursor: 'pointer',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                    }}
+                    style={{ marginTop: 14, width: '100%', padding: '13px', background: 'linear-gradient(135deg,#d4a853,#b8803a)', border: 'none', borderRadius: 12, color: '#0e0c09', fontSize: 14, fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
                   >
                     <Send size={15} /> Post to Social Media
                   </button>
@@ -443,26 +674,26 @@ export default function ImageToolPage() {
                       {copied === 'all' ? <><Check size={10} /> Copied!</> : <><Copy size={10} /> Copy All</>}
                     </button>
                   </div>
-                  <div style={{ maxHeight: '70vh', overflowY: 'auto', paddingRight: 4 }}>
-                    {renderTextResult()}
-                  </div>
+                  {renderTextResult()}
                 </motion.div>
               )}
 
               {!loading && !videoUrl && !textResult && (
                 <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                  style={{ textAlign: 'center', padding: '80px 20px', border: '1px dashed rgba(255,255,255,0.07)', borderRadius: 16 }}>
+                  style={{ textAlign: 'center', padding: '60px 20px', border: '1px dashed rgba(255,255,255,0.07)', borderRadius: 16 }}>
                   {isVideo ? <Video size={32} color={TEXT3} style={{ marginBottom: 14 }} /> : <Sparkles size={32} color={TEXT3} style={{ marginBottom: 14 }} />}
                   <p style={{ color: TEXT3, fontSize: 13, marginBottom: 6 }}>
-                    {isVideo ? 'Enter your product image URL and details, then click Generate Video' : 'Fill in the details and click Generate SEO'}
+                    {isVideo ? 'Upload your product image, fill in the details, then click Generate Video' : 'Fill in the details and click Generate SEO'}
                   </p>
                   {isVideo && <p style={{ color: TEXT3, fontSize: 11 }}>Output: MP4 video · 720p · ~5 seconds</p>}
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
-        </div>
-      </div>
+
+          </div>{/* end 2-col body */}
+        </div>{/* end unified panel */}
+      </div>{/* end absolute wrapper */}
 
       <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
     </div>

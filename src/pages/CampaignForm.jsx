@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useEffect } from "react";
+﻿import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -20,6 +20,13 @@ import {
   Clock,
   Mail,
   Film,
+  Megaphone,
+  Users,
+  Target,
+  TrendingUp,
+  Code2,
+  Brain,
+  Shield,
 } from "lucide-react";
 import Navbar from "../components/Navbar.jsx";
 import { getEvokeUserProfile } from "../lib/session";
@@ -237,11 +244,6 @@ async function uploadVideoToCloudinary(file, onProgress) {
 async function generateCampaignContent(form, campaignType, campaignDays) {
   if (!form.campaignDays) form = { ...form, campaignDays: campaignDays || 7 };
   const apiKey = import.meta.env.VITE_GROQ_API_KEY || "";
-  if (!apiKey || apiKey === "your_groq_api_key_here") {
-    throw new Error(
-      "Groq API key not set. Add VITE_GROQ_API_KEY to your .env file. Get a free key at console.groq.com",
-    );
-  }
 
   const isEvent = campaignType === "event" || campaignType === "event_full";
   const isProduct = campaignType === "product";
@@ -525,6 +527,126 @@ Post Date: ${form.postDate || "ASAP"}`
   "campaignCalendar": "Week 1: Audit\\nWeek 2: Test 1\\nWeek 3: Test 2\\nWeek 4: Analyze\\nMonth 2: Scale\\nMonth 3: Optimize\\nMonth 4: Report",
   "positioningStatement": "conversion-optimized value proposition"
 }`,
+      pr_reputation: `{
+  "campaignName": "${form.name}",
+  "reputationAudit": "Current brand reputation audit covering online sentiment, review scores, and key perception gaps (3 paragraphs)",
+  "crisisPlaybook": "Step-by-step PR crisis response playbook with 5 escalation stages, response scripts, and spokesperson guidelines",
+  "pressRelease": "Full professional press release: headline, subheadline, 3-paragraph body, executive quote, and company boilerplate",
+  "mediaPitch": "150-word media pitch email to journalists with story angle and why it matters now",
+  "reviewResponseTemplates": "10 professional review response templates: 5 for positive reviews and 5 for negative/critical reviews",
+  "reputationBuildingPlan": "30-day online reputation improvement plan: Week 1 audit, Week 2 outreach, Week 3 content, Week 4 monitoring",
+  "prCalendar": "12-month PR and thought leadership calendar with quarterly themes and key media moments",
+  "linkedinPost": "Thought leadership LinkedIn post to strengthen brand authority and public trust",
+  "emailSubject": "PR and reputation briefing email subject",
+  "emailBody": "Stakeholder communication email about brand reputation strategy and actions",
+  "campaignCalendar": "${Array.from({length: form.campaignDays||7},(_,i)=>'Day '+(i+1)+': [action]').join('\\n')}",
+  "positioningStatement": "Brand reputation positioning statement"
+}`,
+      crm_lifecycle: `{
+  "campaignName": "${form.name}",
+  "customerSegments": "5 customer segments with personas, behavior patterns, LTV estimates, and tailored messaging for each",
+  "leadScoringModel": "Lead scoring framework: criteria list, point values per action, threshold for sales handoff, and scoring reset rules",
+  "onboardingSequence": "5-email new customer onboarding sequence (subject + full body for each: Welcome, Quick Win, Feature Deep-Dive, Social Proof, Check-In)",
+  "winBackCampaign": "Re-engagement campaign for dormant customers: 3 emails (We Miss You / Incentive / Final Chance) + 1 SMS with full copy",
+  "retentionPlan": "90-day customer retention plan: Month 1 engagement, Month 2 loyalty rewards, Month 3 referral activation with specific tactics per month",
+  "lifetimeValueStrategy": "5 tactics to increase customer LTV: upsell paths, cross-sell triggers, subscription nudges, loyalty tiers, and referral incentives",
+  "churnPrevention": "Early churn warning signals and 3 automated intervention sequences to recover at-risk customers before they leave",
+  "emailSubject": "CRM lifecycle campaign email subject",
+  "emailBody": "Customer lifecycle strategy briefing email to stakeholders",
+  "linkedinPost": "LinkedIn post on customer success and relationship-driven growth",
+  "campaignCalendar": "${Array.from({length: form.campaignDays||7},(_,i)=>'Day '+(i+1)+': [action]').join('\\n')}",
+  "positioningStatement": "Customer-centric value proposition statement"
+}`,
+      paid_advertising: `{
+  "campaignName": "${form.name}",
+  "adStrategy": "Full paid media strategy: platform selection rationale, total budget split, targeting philosophy, and expected ROAS per platform",
+  "metaAdsCopy": "3 Meta (Facebook/Instagram) ad variants each with: Primary Text (125 chars), Headline (40 chars), Description (25 chars), CTA button, and audience note",
+  "googleAdsCopy": "3 Google Search ad variants each with: 3 Headlines (30 chars each), 2 Descriptions (90 chars each), Display URL path, and match type recommendation",
+  "tiktokAdsCopy": "2 TikTok ad scripts: one 15-second hook-driven and one 30-second story-format with captions and trending audio suggestions",
+  "linkedinAdsCopy": "2 LinkedIn Sponsored Content ads each with: Intro text (150 chars), Headline (70 chars), CTA, and targeting persona",
+  "audienceTargeting": "Detailed audience targeting strategy per platform: demographics, interests, behaviors, lookalike seeds, and exclusions for each",
+  "budgetAllocation": "Monthly budget breakdown by platform (Meta / Google / TikTok / LinkedIn) with expected impressions, clicks, conversions, and ROAS per channel",
+  "abTestPlan": "5 A/B test ideas with control vs variant copy, creative direction, and success metric for each",
+  "emailSubject": "Paid advertising campaign launch email subject",
+  "emailBody": "Paid media campaign brief and launch announcement email to stakeholders",
+  "campaignCalendar": "${Array.from({length: form.campaignDays||7},(_,i)=>'Day '+(i+1)+': [action]').join('\\n')}",
+  "positioningStatement": "Paid advertising value proposition and campaign hook"
+}`,
+      ai_cfo: `{
+  "campaignName": "${form.name}",
+  "financialForecast": "12-month revenue and marketing expense forecast with growth assumptions broken into quarters with realistic milestones",
+  "budgetAllocation": "Marketing budget allocation across all channels with ROI expectations, payback period, and reallocation triggers per channel",
+  "unitEconomics": "Unit economics analysis: CAC by channel, LTV, LTV:CAC ratio, gross margin, and payback period with improvement targets",
+  "cashFlowProjection": "Quarterly cash flow projection showing marketing spend timing, revenue lag, and break-even milestones",
+  "investmentPriorities": "Top 5 marketing investment priorities ranked by expected ROI with rationale, risk level, and recommended spend level",
+  "costReductionOpportunities": "5 cost optimization opportunities: what to cut, consolidate, and renegotiate without sacrificing growth",
+  "kpiDashboard": "CFO-level KPI dashboard: Monthly Revenue, Burn Rate, CAC, LTV, ROAS, Gross Margin, Marketing ROI, Payback Period with targets and red flags",
+  "emailSubject": "Financial performance briefing email subject",
+  "emailBody": "CFO executive financial summary and marketing investment recommendation email",
+  "linkedinPost": "Thought leadership LinkedIn post on financial efficiency and marketing ROI",
+  "campaignCalendar": "${Array.from({length: form.campaignDays||7},(_,i)=>'Day '+(i+1)+': [action]').join('\\n')}",
+  "positioningStatement": "Financial strategy and efficiency positioning statement"
+}`,
+      ai_cto: `{
+  "campaignName": "${form.name}",
+  "techStackAudit": "Current marketing tech stack audit: what to keep, replace, and add with cost and integration complexity per tool",
+  "aiIntegrationPlan": "AI tools implementation roadmap: 30-day quick wins, 60-day integrations, 90-day full automation with specific tools and setup steps per phase",
+  "automationBlueprint": "Marketing automation architecture: triggers, workflows, branching logic, and tool connections across email, CRM, ads, and social",
+  "dataInfrastructure": "Customer data platform recommendations: data sources to connect, segmentation logic, and real-time personalization architecture",
+  "performanceOptimization": "Website and campaign performance technical audit: Core Web Vitals, load speed, tag management, tracking setup, and conversion pixel strategy",
+  "integrationMap": "Full system integration map: CRM to Email to Ads to Analytics to Social with data flow and tool recommendations",
+  "securityCompliance": "Marketing tech security checklist: data encryption, access controls, GDPR compliance, API key management, and audit log requirements",
+  "emailSubject": "Technology infrastructure briefing email subject",
+  "emailBody": "CTO technology strategy and AI integration email to stakeholders",
+  "linkedinPost": "Thought leadership LinkedIn post on AI-powered marketing infrastructure",
+  "campaignCalendar": "${Array.from({length: form.campaignDays||7},(_,i)=>'Day '+(i+1)+': [action]').join('\\n')}",
+  "positioningStatement": "Technology-driven marketing differentiation statement"
+}`,
+      ai_cro_exec: `{
+  "campaignName": "${form.name}",
+  "revenueStrategy": "12-month revenue growth strategy with quarterly targets, primary growth levers, and success metrics per initiative",
+  "partnershipPlan": "5 high-value strategic partnership opportunities: partner profile, value exchange, revenue impact estimate, and outreach approach for each",
+  "salesEnablementKit": "Complete sales enablement kit: 30-second pitch, top 7 objections with responses, 3-email outreach sequence, and 5 closing techniques",
+  "monetizationModels": "3 alternative monetization models to diversify revenue: model description, target customer, pricing structure, and 90-day launch plan",
+  "revenueLevers": "Top 7 revenue levers ranked by impact and execution speed: new sales, upsell, cross-sell, retention, pricing, channel expansion, partnerships",
+  "clientAcquisitionPlan": "90-day new client acquisition sprint: Week 1-2 setup, Week 3-4 outreach, Month 2 pipeline build, Month 3 conversion with daily actions",
+  "upsellCrossSellStrategy": "Upsell and cross-sell playbook: trigger events, offer sequences, pricing anchors, and scripts for each upgrade path",
+  "emailSubject": "Revenue strategy briefing email subject",
+  "emailBody": "CRO executive revenue growth plan and partnership opportunity email",
+  "linkedinPost": "Revenue growth and partnership thought leadership LinkedIn post",
+  "campaignCalendar": "${Array.from({length: form.campaignDays||7},(_,i)=>'Day '+(i+1)+': [action]').join('\\n')}",
+  "positioningStatement": "Revenue-driven company positioning statement"
+}`,
+      ai_ceo: `{
+  "campaignName": "${form.name}",
+  "visionStatement": "Compelling 3-year company vision and mission statement with core values and the change you are creating in the market",
+  "strategicPriorities": "Top 5 strategic priorities for the next 12 months: what, why, how, who owns it, and success metric for each",
+  "marketOpportunities": "3 high-potential untapped market opportunities with TAM estimate, time-to-capture, competitive risk, and recommended entry strategy",
+  "competitiveAdvantage": "Sustainable competitive advantages and moats to build: product, brand, data, network effects, and switching costs with a 12-month build plan",
+  "ecosystemStrategy": "Platform, partner, and ecosystem strategy to accelerate growth: which ecosystems to join or build and how to become indispensable",
+  "executiveSummary": "Board-ready executive summary: company position, key metrics, growth trajectory, risks, and strategic ask formatted for board presentation",
+  "pivotScenarios": "2 strategic pivot scenarios if current trajectory changes: triggers to watch for, decision criteria, and fast-pivot action plan",
+  "emailSubject": "CEO strategic briefing email subject",
+  "emailBody": "CEO strategic direction and growth priorities email to leadership team",
+  "linkedinPost": "CEO thought leadership LinkedIn post on vision, innovation, and market direction",
+  "campaignCalendar": "${Array.from({length: form.campaignDays||7},(_,i)=>'Day '+(i+1)+': [action]').join('\\n')}",
+  "positioningStatement": "Executive-level company positioning and category narrative"
+}`,
+      ai_compliance: `{
+  "campaignName": "${form.name}",
+  "complianceAudit": "Full marketing compliance audit across GDPR, CCPA, CAN-SPAM, CASL, and platform advertising policies with pass/fail per area and remediation steps",
+  "privacyPolicy": "Marketing privacy policy framework: data collection disclosure, consent requirements, cookie policy, opt-out mechanisms, and data retention rules",
+  "advertisingCompliance": "Platform-specific advertising compliance checklist for Meta, Google, LinkedIn, TikTok, and email with prohibited content and disclosure requirements",
+  "aiContentGuidance": "AI-generated content governance: disclosure requirements, human review checkpoints, bias mitigation, and AI usage policy for marketing",
+  "dataGovernance": "Customer data governance framework: data classification, access controls, retention schedules, breach response plan, and third-party data sharing rules",
+  "riskMatrix": "Marketing risk assessment matrix: 7 key risks with likelihood, business impact, current controls, and recommended mitigation for each",
+  "complianceCalendar": "Annual compliance review calendar: quarterly audits, renewal dates, training schedules, policy review cycles, and regulatory update monitoring",
+  "emailSubject": "Compliance briefing email subject",
+  "emailBody": "Compliance status report and risk mitigation recommendation email to stakeholders",
+  "linkedinPost": "Thought leadership LinkedIn post on marketing compliance, trust, and responsible AI",
+  "campaignCalendar": "${Array.from({length: form.campaignDays||7},(_,i)=>'Day '+(i+1)+': [action]').join('\\n')}",
+  "positioningStatement": "Compliance-first and trust-driven brand positioning statement"
+}`,
     };
     return schemas[campaignType] || baseSchema;
   };
@@ -536,26 +658,35 @@ ${context}
 Return ONLY valid JSON matching this exact schema, no markdown, no explanation:
 ${getOutputSchema()}`;
 
-  // Call via Vercel proxy (/api/generate) to avoid browser CORS restrictions
+  // Call Groq directly if key is available, otherwise use Vercel proxy
+  const requestBody = JSON.stringify({
+    model: "llama-3.1-8b-instant",
+    messages: [
+      {
+        role: "system",
+        content: "You are an expert AI CMO. Always respond with only valid JSON, no markdown, no explanation.",
+      },
+      { role: "user", content: prompt },
+    ],
+    temperature: 0.7,
+    max_tokens: isNewType ? 4000 : 2000,
+  });
+
   let res;
   try {
-    res = await fetch("/api/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "llama-3.1-8b-instant",
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are an expert AI CMO. Always respond with only valid JSON, no markdown, no explanation.",
-          },
-          { role: "user", content: prompt },
-        ],
-        temperature: 0.7,
-        max_tokens: 2000,
-      }),
-    });
+    if (apiKey && apiKey !== "your_groq_api_key_here") {
+      res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
+        body: requestBody,
+      });
+    } else {
+      res = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: requestBody,
+      });
+    }
   } catch (networkErr) {
     throw new Error(
       `Network error: ${networkErr.message}. Please check your internet connection and try again.`,
@@ -591,6 +722,12 @@ async function generateDailySchedule(form, campaignType, days) {
   const apiKey = import.meta.env.VITE_GROQ_API_KEY || "";
   if (!apiKey) return [];
 
+  // For large calendars (>14 days) use compact per-day schema to stay within token limits
+  const compact = days > 14
+  const daySchema = compact
+    ? `{ "day": 1, "theme": "one-sentence theme", "focus": "Awareness|Education|Engagement|Conversion|Retention", "linkedinPost": "60-word LinkedIn post + 3 hashtags", "instagramCaption": "50-word caption + emojis + 3 hashtags", "contentIdea": "one actionable content idea for any platform" }`
+    : `{ "day": 1, "theme": "one-sentence theme for this day", "focus": "Awareness | Education | Engagement | Conversion | Retention", "linkedinPost": "unique LinkedIn post (100-200 words with hashtags)", "instagramCaption": "unique Instagram caption (80-120 words with emojis and hashtags)", "facebookPost": "unique Facebook post (80-150 words)", "whatsappMessage": "unique WhatsApp message (40-60 words)", "emailSubject": "email subject line for this day", "emailBody": "short email body (2 paragraphs)" }`
+
   const prompt = `You are an AI CMO generating a ${days}-day social media campaign schedule.
 
 Campaign: ${form.name}
@@ -600,21 +737,12 @@ Goal: ${form.goal}
 Target Audience: ${(form.targetAudience || []).join(", ")}
 Brand: ${form.brandName || form.name}
 
-Generate a ${days}-day campaign schedule where each day has unique, platform-specific content.
-Return ONLY a valid JSON array (no markdown), with exactly ${days} objects:
+Generate a ${days}-day campaign schedule. Return ONLY a valid JSON array with exactly ${days} objects:
 [
-  {
-    "day": 1,
-    "theme": "one-sentence theme for this day",
-    "focus": "Awareness | Education | Engagement | Conversion | Retention",
-    "linkedinPost": "unique LinkedIn post (100-200 words with hashtags)",
-    "instagramCaption": "unique Instagram caption (80-120 words with emojis and hashtags)",
-    "facebookPost": "unique Facebook post (80-150 words)",
-    "whatsappMessage": "unique WhatsApp message (40-60 words)",
-    "emailSubject": "email subject line for this day",
-    "emailBody": "short email body (2 paragraphs)"
-  }
-]`;
+  ${daySchema}
+]`
+
+  const tokenBudget = compact ? Math.min(4000, days * 80 + 400) : Math.min(4000, days * 200 + 500)
 
   try {
     const res = await fetch("/api/generate", {
@@ -627,7 +755,7 @@ Return ONLY a valid JSON array (no markdown), with exactly ${days} objects:
           { role: "user", content: prompt },
         ],
         temperature: 0.8,
-        max_tokens: Math.min(4000, days * 200 + 500),
+        max_tokens: tokenBudget,
       }),
     });
     if (!res.ok) return [];
@@ -741,6 +869,72 @@ const campaignMeta = {
     color: "#ef4444",
     icon: <Zap size={22} />,
     badge: "CRO",
+  },
+  pr_reputation: {
+    title: "PR & Reputation",
+    color: "#06b6d4",
+    icon: <Megaphone size={22} />,
+    badge: "PR",
+  },
+  crm_lifecycle: {
+    title: "CRM & Lifecycle",
+    color: "#10b981",
+    icon: <Users size={22} />,
+    badge: "CRM",
+  },
+  paid_advertising: {
+    title: "Paid Advertising",
+    color: "#f59e0b",
+    icon: <Target size={22} />,
+    badge: "PAID ADS",
+  },
+  ai_cfo: {
+    title: "AI CFO",
+    color: "#22c55e",
+    icon: <TrendingUp size={22} />,
+    badge: "EXECUTIVE",
+  },
+  ai_cto: {
+    title: "AI CTO",
+    color: "#6366f1",
+    icon: <Code2 size={22} />,
+    badge: "EXECUTIVE",
+  },
+  ai_cro_exec: {
+    title: "AI CRO",
+    color: "#f97316",
+    icon: <TrendingUp size={22} />,
+    badge: "EXECUTIVE",
+  },
+  ai_ceo: {
+    title: "AI CEO",
+    color: "#c8973e",
+    icon: <Brain size={22} />,
+    badge: "EXECUTIVE",
+  },
+  ai_compliance: {
+    title: "AI Compliance",
+    color: "#64748b",
+    icon: <Shield size={22} />,
+    badge: "EXECUTIVE",
+  },
+  ads_creation: {
+    title: "Ads Creation",
+    color: "#f97316",
+    icon: <Megaphone size={22} />,
+    badge: "PACKAGE C",
+  },
+  ads_manager: {
+    title: "Ads Manager Connect",
+    color: "#3b82f6",
+    icon: <Target size={22} />,
+    badge: "PACKAGE C",
+  },
+  target_audience: {
+    title: "Target Audience Selection",
+    color: "#10b981",
+    icon: <Users size={22} />,
+    badge: "PACKAGE C",
   },
 };
 
@@ -1148,6 +1342,8 @@ export default function CampaignForm() {
     funnelStage: "",
     toneOfVoice: "",
     socialPlatforms: [],
+    contentTypes: [],
+    postingFrequency: "",
   });
   const [connectedAccounts, setConnectedAccounts] = useState({});
   const [audienceOpen, setAudienceOpen] = useState(false);
@@ -1281,6 +1477,7 @@ export default function CampaignForm() {
   // Close dropdowns when clicking outside
   const audienceRef = useRef(null);
   const locationRef = useRef(null);
+  const errorRef    = useRef(null);
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (audienceRef.current && !audienceRef.current.contains(e.target)) {
@@ -1294,9 +1491,22 @@ export default function CampaignForm() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Load connected social accounts for Package A social platform selector / connect panel
+  // Scroll error banner into view whenever an error appears
   useEffect(() => {
-    if (type !== 'growth_strategy' && !fromPackageA) return
+    if (submitError && errorRef.current) {
+      errorRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+  }, [submitError])
+
+  // 30-Day Content Calendar defaults
+  useEffect(() => {
+    if (type === 'content_calendar') {
+      setForm(f => ({ ...f, campaignDays: 30 }))
+    }
+  }, [type])
+
+  // Load connected social accounts for social platform selector
+  const loadConnectedAccounts = useCallback(() => {
     const profile = getEvokeUserProfile()
     const currentUser = profileToUser(profile)
     if (!currentUser) return
@@ -1304,28 +1514,53 @@ export default function CampaignForm() {
       if (!data?.socialAccounts) return
       const sa = data.socialAccounts
       setConnectedAccounts(sa)
-      // From Package A: auto-target whatever the user has actually connected,
-      // so "Generate" posts to exactly those platforms. (gmail → email)
       if (fromPackageA) {
         const platforms = []
         if (sa.linkedin?.connected)  platforms.push('linkedin')
         if (sa.instagram?.connected) platforms.push('instagram')
         if (sa.facebook?.connected)  platforms.push('facebook')
         if (sa.gmail?.connected)     platforms.push('email')
-        platforms.push('whatsapp') // always on
+        platforms.push('whatsapp')
         setForm(prev => ({ ...prev, platforms }))
       }
     }).catch(() => {})
-  }, [type, fromPackageA]) // eslint-disable-line
+  }, [fromPackageA]) // eslint-disable-line
+
+  useEffect(() => {
+    if (type === 'growth_strategy' || type === 'growth_agent' || type === 'content_calendar' || fromPackageA) {
+      loadConnectedAccounts()
+    }
+  }, [type, fromPackageA, loadConnectedAccounts])
+
+  // Open /connect-accounts as popup so the form isn't left
+  const openConnectPopup = useCallback((platformKey) => {
+    const popup = window.open(
+      `/connect-accounts?platform=${platformKey}&popup=1`,
+      'evoke_connect',
+      'width=620,height=720,left=200,top=100,resizable=yes,scrollbars=yes'
+    )
+    if (!popup) {
+      // Popup blocked — fall back to navigation
+      navigate('/connect-accounts', { state: { from: backPath } })
+      return
+    }
+    // Poll for popup close, then refresh accounts
+    const timer = setInterval(() => {
+      if (popup.closed) {
+        clearInterval(timer)
+        loadConnectedAccounts()
+      }
+    }, 600)
+  }, [navigate, backPath, loadConnectedAccounts])
 
   const handleSubmit = async () => {
     setSubmitError("");
     const needsBrandName = ["product", "brand", "brand_strategy"].includes(type);
     if (!form.name.trim()) return setSubmitError("Please enter a name.");
     if (!form.description.trim()) return setSubmitError("Please enter a description.");
-    if (!form.goal.trim()) return setSubmitError("Please enter a campaign goal.");
+    if (!form.goal.trim() && type !== "ads_creation" && type !== "ads_manager" && type !== "target_audience") return setSubmitError("Please enter a campaign goal.");
     if (needsBrandName && !form.brandName.trim()) return setSubmitError("Please enter a brand name.");
-    if (type !== "growth_strategy" && type !== "growth_agent" && type !== "content_calendar" && !form.contactEmail.trim()) return setSubmitError("Please enter a contact email.");
+    if (type !== "growth_strategy" && type !== "growth_agent" && type !== "content_calendar" && type !== "ads_creation" && type !== "ads_manager" && type !== "target_audience" && !EXEC_TYPES.includes(type) && !form.contactEmail.trim()) return setSubmitError("Please enter a contact email.");
     if (form.targetAudience.length === 0) return setSubmitError("Please select at least one target audience.");
 
     setLoading(true);
@@ -1506,6 +1741,7 @@ export default function CampaignForm() {
       sessionStorage.setItem("webhookPayload", JSON.stringify(payload));
       navigate("/results");
     } catch (err) {
+      console.error('[CampaignForm] Generation error:', err);
       setEventImageUploading(false);
       setTiktokVideoUploading(false);
       setSubmitError(err.message || "Failed to generate campaign. Please try again.");
@@ -1515,23 +1751,33 @@ export default function CampaignForm() {
     }
   };
 
+  const EXEC_TYPES = ['pr_reputation','crm_lifecycle','paid_advertising','ai_cfo','ai_cto','ai_cro_exec','ai_ceo','ai_compliance']
+
   const labelMap = {
-    event:            { name: "Event Name",          namePh: "Enter event name",              desc: "Event Description"         },
-    product:          { name: "Product Name",         namePh: "Enter product name",            desc: "Product Description"       },
-    brand:            { name: "Campaign Name",        namePh: "Enter campaign name",           desc: "Brand Description"         },
-    growth_strategy:  { name: "Company / Brand",      namePh: "Your company or brand name",    desc: "Business Overview & Goals"  },
-    growth_agent:     { name: "Company / Brand",      namePh: "Your company or brand name",    desc: "Business Overview & Client Goals" },
-    competitive_intel:{ name: "Your Brand",           namePh: "Your brand name",               desc: "Your Product / Service to Analyze" },
-    content_calendar: { name: "Brand / Channel",      namePh: "Brand or social channel name", desc: "What content do you want to create & what are your goals?" },
-    seo_blog:         { name: "Blog Topic",           namePh: "e.g. How to grow on LinkedIn",  desc: "Target Audience & Context" },
-    email_drip:       { name: "Campaign / Product",   namePh: "What this email series is for", desc: "Funnel Goal & Audience Segment" },
-    influencer:       { name: "Brand / Campaign",     namePh: "Brand or campaign name",        desc: "Campaign Objectives & Key Messages" },
-    analytics_report: { name: "Company / Period",     namePh: "e.g. Acme Inc - Q1 2025",       desc: "Marketing Activities to Report On" },
-    sales_enablement: { name: "Product / Service",    namePh: "What you're selling",           desc: "Target Customer & Unique Value Prop" },
-    event_full:       { name: "Event Name",           namePh: "Enter event name",              desc: "Full Event Description"    },
-    marketplace:      { name: "Marketplace / Brand",  namePh: "EVOKE Marketplace or vendor",   desc: "Products / Categories to Promote" },
-    brand_strategy:   { name: "Brand Name",           namePh: "Enter brand name",              desc: "Brand Background & Vision" },
-    funnel_cro:       { name: "Product / Landing Page", namePh: "What you want to optimize",   desc: "Current Funnel & Key Drop-off Points" },
+    event:            { name: "Event Name",           namePh: "Enter event name",                  desc: "Event Description"                        },
+    product:          { name: "Product Name",          namePh: "Enter product name",                desc: "Product Description"                      },
+    brand:            { name: "Campaign Name",         namePh: "Enter campaign name",               desc: "Brand Description"                        },
+    growth_strategy:  { name: "Company / Brand",       namePh: "Your company or brand name",        desc: "Business Overview & Goals"                },
+    growth_agent:     { name: "Company / Brand",       namePh: "Your company or brand name",        desc: "Business Overview & Client Goals"         },
+    competitive_intel:{ name: "Your Brand",            namePh: "Your brand name",                   desc: "Your Product / Service to Analyze"        },
+    content_calendar: { name: "Brand / Channel",       namePh: "Brand or social channel name",      desc: "What content do you want to create & what are your goals?" },
+    seo_blog:         { name: "Blog Topic",            namePh: "e.g. How to grow on LinkedIn",      desc: "Target Audience & Context"                },
+    email_drip:       { name: "Campaign / Product",    namePh: "What this email series is for",     desc: "Funnel Goal & Audience Segment"           },
+    influencer:       { name: "Brand / Campaign",      namePh: "Brand or campaign name",            desc: "Campaign Objectives & Key Messages"       },
+    analytics_report: { name: "Company / Period",      namePh: "e.g. Acme Inc - Q1 2025",           desc: "Marketing Activities to Report On"        },
+    sales_enablement: { name: "Product / Service",     namePh: "What you're selling",               desc: "Target Customer & Unique Value Prop"      },
+    event_full:       { name: "Event Name",            namePh: "Enter event name",                  desc: "Full Event Description"                   },
+    marketplace:      { name: "Marketplace / Brand",   namePh: "EVOKE Marketplace or vendor",       desc: "Products / Categories to Promote"         },
+    brand_strategy:   { name: "Brand Name",            namePh: "Enter brand name",                  desc: "Brand Background & Vision"                },
+    funnel_cro:       { name: "Product / Landing Page", namePh: "What you want to optimize",        desc: "Current Funnel & Key Drop-off Points"     },
+    pr_reputation:    { name: "Brand / Company Name",  namePh: "e.g. EVOKE Media",                  desc: "What is your current PR situation or goal? What do you need to communicate?" },
+    crm_lifecycle:    { name: "Business / Product",    namePh: "e.g. EVOKE SaaS Platform",          desc: "Describe your customer journey, current retention challenges, and lifecycle goals." },
+    paid_advertising: { name: "Brand / Product",       namePh: "What you want to advertise",        desc: "Describe what you're promoting, key benefits, and what makes it stand out from competitors." },
+    ai_cfo:           { name: "Company / Business",    namePh: "e.g. EVOKE Technologies",           desc: "Describe your business model, current revenue stage, and key financial goals." },
+    ai_cto:           { name: "Company / Product",     namePh: "e.g. EVOKE CMO Platform",           desc: "Describe your current tech stack, marketing tools, and what you want to automate or improve." },
+    ai_cro_exec:      { name: "Company / Business",    namePh: "e.g. EVOKE Marketplace",            desc: "Describe your current revenue model, sales process, and primary growth bottleneck." },
+    ai_ceo:           { name: "Company / Brand",       namePh: "e.g. EVOKE Group",                  desc: "Describe your company, current market position, and 3-year vision or strategic challenge." },
+    ai_compliance:    { name: "Company / Brand",       namePh: "e.g. EVOKE Media",                  desc: "Describe your marketing activities, platforms used, and any compliance concerns or requirements." },
   };
   const lm = labelMap[type] || labelMap.product;
   const nameLabel = lm.name;
@@ -1712,6 +1958,22 @@ export default function CampaignForm() {
               ? "Fill in your business details and your AI CMO will build a complete client acquisition & growth plan."
               : type === "content_calendar"
               ? "Fill in your brand details and your AI CMO will create a tailored content strategy and calendar."
+              : type === "pr_reputation"
+              ? "Fill in your brand details and your AI CMO will generate a full PR & reputation management package."
+              : type === "crm_lifecycle"
+              ? "Fill in your business details and your AI CMO will build a complete CRM and customer lifecycle strategy."
+              : type === "paid_advertising"
+              ? "Fill in your campaign details and your AI CMO will create ads for Meta, Google, TikTok, and LinkedIn."
+              : type === "ai_cfo"
+              ? "Fill in your financial context and your AI CFO will generate forecasts, budgets, and ROI dashboards."
+              : type === "ai_cto"
+              ? "Fill in your tech context and your AI CTO will build a marketing technology and automation roadmap."
+              : type === "ai_cro_exec"
+              ? "Fill in your revenue context and your AI CRO will build a complete revenue growth and partnership strategy."
+              : type === "ai_ceo"
+              ? "Fill in your company context and your AI CEO will generate vision, strategic priorities, and board materials."
+              : type === "ai_compliance"
+              ? "Fill in your marketing activities and your AI Compliance Officer will audit risks and build your compliance framework."
               : "Fill in the details below and your AI CMO will generate a complete, multi-channel marketing campaign in seconds."}
           </p>
         </motion.div>
@@ -1846,6 +2108,83 @@ export default function CampaignForm() {
           />
 
           {/* â"€â"€ Type-specific extra fields â"€â"€ */}
+          {type === "ads_creation" && (
+            <>
+              <label style={s.label}>Ad Budget <span style={s.req}>*</span></label>
+              <select value={form.budget || ""} onChange={(e) => set("budget", e.target.value)} style={{ ...s.input, cursor: "pointer", colorScheme: "dark" }}>
+                {["","Under ₹5,000 / $50","₹5,000–₹20,000 / $50–$200","₹20,000–₹50,000 / $200–$500","₹50,000–₹1.5L / $500–$1,500","₹1.5L–₹5L / $1,500–$5,000","Above ₹5L / $5,000+"].map(v => (
+                  <option key={v} value={v} style={{ background: "#1c1a13", color: v ? "#f0ebe0" : "rgba(240,235,224,0.4)" }}>{v || "Select ad budget..."}</option>
+                ))}
+              </select>
+
+              <label style={s.label}>Ad Platforms <span style={s.req}>*</span></label>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "4px" }}>
+                {[
+                  { key: "facebook_ads",   label: "Facebook Ads",   color: "#1877f2" },
+                  { key: "instagram_ads",  label: "Instagram Ads",  color: "#e1306c" },
+                  { key: "google_search",  label: "Google Search",  color: "#34a853" },
+                  { key: "google_display", label: "Google Display", color: "#fbbc04" },
+                  { key: "youtube_ads",    label: "YouTube Ads",    color: "#ff0000" },
+                  { key: "linkedin_ads",   label: "LinkedIn Ads",   color: "#0a66c2" },
+                ].map(({ key, label, color }) => {
+                  const sel = (form.socialPlatforms || []).includes(key);
+                  return (
+                    <button key={key} type="button"
+                      onClick={() => {
+                        const cur = form.socialPlatforms || [];
+                        set("socialPlatforms", sel ? cur.filter(p => p !== key) : [...cur, key]);
+                      }}
+                      style={{
+                        display: "flex", alignItems: "center", gap: "6px",
+                        padding: "8px 16px", borderRadius: "10px", cursor: "pointer",
+                        background: sel ? `${color}18` : "#f8fafc",
+                        border: `1.5px solid ${sel ? color : "rgba(245,240,232,0.15)"}`,
+                        color: sel ? color : "#0f172a", fontSize: "13px", fontWeight: 600,
+                        transition: "all 0.15s",
+                      }}
+                    >
+                      {sel && <Check size={12} />}{label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <label style={{ ...s.label, marginTop: "14px" }}>Ad Objective <span style={s.req}>*</span></label>
+              <select value={form.goal || ""} onChange={(e) => set("goal", e.target.value)} style={{ ...s.input, cursor: "pointer", colorScheme: "dark" }}>
+                {["","Traffic — Drive clicks to website","Conversions — Sales or sign-ups","Lead Generation — Capture contact info","Brand Awareness — Reach & impressions","App Installs — Download campaigns","Video Views — Engagement & watch time","Retargeting — Re-engage website visitors"].map(v => (
+                  <option key={v} value={v} style={{ background: "#1c1a13", color: v ? "#f0ebe0" : "rgba(240,235,224,0.4)" }}>{v || "Select campaign objective..."}</option>
+                ))}
+              </select>
+
+              <label style={{ ...s.label, marginTop: "14px" }}>Landing Page URL <span style={s.req}>*</span></label>
+              <div style={{ position: "relative" }}>
+                <svg style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.35)" }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+                <input value={form.website} onChange={(e) => set("website", e.target.value)} placeholder="https://yoursite.com/product" style={{ ...s.input, paddingLeft: "36px" }} />
+              </div>
+
+              <label style={{ ...s.label, marginTop: "14px" }}>Ad Format</label>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "4px" }}>
+                {["Image Ad","Video Ad","Carousel Ad","Story / Reel Ad","Collection Ad"].map(fmt => {
+                  const sel = (form.contentTypes || []).includes(fmt);
+                  return (
+                    <button key={fmt} type="button"
+                      onClick={() => {
+                        const cur = form.contentTypes || [];
+                        set("contentTypes", sel ? cur.filter(c => c !== fmt) : [...cur, fmt]);
+                      }}
+                      style={{
+                        padding: "7px 16px", borderRadius: "10px", cursor: "pointer", fontSize: "13px", fontWeight: 600,
+                        background: sel ? "rgba(249,115,22,0.12)" : "#f8fafc",
+                        border: `1.5px solid ${sel ? "#f97316" : "rgba(245,240,232,0.15)"}`,
+                        color: sel ? "#f97316" : "#0f172a", transition: "all 0.15s",
+                      }}
+                    >{fmt}</button>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
           {type === "competitive_intel" && (
             <>
               <label style={s.label}>Competitor Website URL</label>
@@ -1860,7 +2199,7 @@ export default function CampaignForm() {
             <>
               <label style={s.label}>Industry / Niche <span style={s.req}>*</span></label>
               <select value={form.industry || ""} onChange={(e) => set("industry", e.target.value)} style={{ ...s.input, cursor: "pointer", colorScheme: "dark" }}>
-                {["","Technology / SaaS","E-commerce / Retail","Healthcare / Wellness","Finance / Fintech","Education / EdTech","Real Estate","Food & Beverage","Fashion & Apparel","Travel & Hospitality","Marketing & Advertising","Media & Entertainment","Manufacturing","Professional Services","Non-profit / NGO","Other"].map((v) => (
+                {["","AI Marketing Technology / SaaS / Digital Marketing Platform","Technology / SaaS","E-commerce / Retail","Healthcare / Wellness","Finance / Fintech","Education / EdTech","Real Estate","Food & Beverage","Fashion & Apparel","Travel & Hospitality","Marketing & Advertising","Media & Entertainment","Manufacturing","Professional Services","Non-profit / NGO","Other"].map((v) => (
                   <option key={v} value={v} style={{ background: "#1c1a13", color: v ? "#f0ebe0" : "rgba(240,235,224,0.4)" }}>{v || "Select industry..."}</option>
                 ))}
               </select>
@@ -1888,8 +2227,68 @@ export default function CampaignForm() {
                   <option key={v} value={v} style={{ background: "#1c1a13", color: v ? "#f0ebe0" : "rgba(240,235,224,0.4)" }}>{v || "Select tone..."}</option>
                 ))}
               </select>
+
+              <label style={s.label}>Content Types to Include <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 12, fontWeight: 400 }}>(select all that apply)</span></label>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
+                {["Instagram Posts","Reels / Short Videos","Stories","Facebook Posts","LinkedIn Posts","X / Twitter Posts","YouTube Shorts","Blog / Articles"].map((ct) => {
+                  const selected = (form.contentTypes || []).includes(ct)
+                  return (
+                    <button
+                      key={ct}
+                      type="button"
+                      onClick={() => {
+                        const cur = form.contentTypes || []
+                        set("contentTypes", selected ? cur.filter(c => c !== ct) : [...cur, ct])
+                      }}
+                      style={{
+                        padding: "6px 14px", borderRadius: 20, fontSize: 12, cursor: "pointer",
+                        border: selected ? "1px solid #c8973e" : "1px solid rgba(255,255,255,0.12)",
+                        background: selected ? "rgba(200,151,62,0.18)" : "rgba(255,255,255,0.04)",
+                        color: selected ? "#c8973e" : "rgba(240,235,224,0.6)",
+                        fontWeight: selected ? 600 : 400,
+                        transition: "all 0.15s",
+                      }}
+                    >{ct}</button>
+                  )
+                })}
+              </div>
+
+              <label style={s.label}>Posting Frequency <span style={s.req}>*</span></label>
+              <select value={form.postingFrequency || ""} onChange={(e) => set("postingFrequency", e.target.value)} style={{ ...s.input, cursor: "pointer", colorScheme: "dark" }}>
+                {["","1x per day","2x per day","Every other day (3–4x/week)","3x per week","2x per week","1x per week"].map((v) => (
+                  <option key={v} value={v} style={{ background: "#1c1a13", color: v ? "#f0ebe0" : "rgba(240,235,224,0.4)" }}>{v || "Select posting frequency..."}</option>
+                ))}
+              </select>
             </>
           )}
+          {EXEC_TYPES.includes(type) && (
+            <>
+              <label style={s.label}>Industry / Sector <span style={s.req}>*</span></label>
+              <select value={form.industry || ""} onChange={(e) => set("industry", e.target.value)} style={{ ...s.input, cursor: "pointer", colorScheme: "dark" }}>
+                {["","Technology / SaaS","E-commerce / Retail","Healthcare / Wellness","Finance / Fintech","Education / EdTech","Real Estate","Food & Beverage","Fashion & Apparel","Travel & Hospitality","Marketing & Advertising","Media & Entertainment","Manufacturing","Professional Services","Non-profit / NGO","Other"].map((v) => (
+                  <option key={v} value={v} style={{ background: "#1c1a13", color: v ? "#f0ebe0" : "rgba(240,235,224,0.4)" }}>{v || "Select industry..."}</option>
+                ))}
+              </select>
+
+              {['paid_advertising','ai_cfo','ai_cro_exec','ai_ceo'].includes(type) && (
+                <>
+                  <label style={s.label}>Monthly Budget (optional)</label>
+                  <select value={form.budget || ""} onChange={(e) => set("budget", e.target.value)} style={{ ...s.input, cursor: "pointer", colorScheme: "dark" }}>
+                    {["","Under ₹50,000 / $500","₹50,000–₹2L / $500–$2,000","₹2L–₹5L / $2,000–$5,000","₹5L–₹15L / $5,000–$15,000","₹15L–₹50L / $15,000–$50,000","Above ₹50L / $50,000+"].map((v) => (
+                      <option key={v} value={v} style={{ background: "#1c1a13", color: v ? "#f0ebe0" : "rgba(240,235,224,0.4)" }}>{v || "Select budget range..."}</option>
+                    ))}
+                  </select>
+                </>
+              )}
+
+              <label style={s.label}>Your Website URL <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 11, fontWeight: 400 }}>(optional)</span></label>
+              <div style={{ position: "relative" }}>
+                <Link size={14} style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.35)", pointerEvents: "none" }} />
+                <input value={form.website} onChange={(e) => set("website", e.target.value)} placeholder="https://yourcompany.com" style={{ ...s.input, paddingLeft: "36px" }} />
+              </div>
+            </>
+          )}
+
           {(type === "growth_strategy" || type === "growth_agent" || type === "analytics_report") && (
             <>
               <label style={s.label}>Industry / Sector <span style={s.req}>*</span></label>
@@ -1995,7 +2394,7 @@ export default function CampaignForm() {
                       <button
                         key={p.key}
                         type="button"
-                        onClick={() => navigate('/connect-accounts', { state: { from: backPath } })}
+                        onClick={() => openConnectPopup(p.key)}
                         title={`${p.label} — not connected, click to connect`}
                         style={{
                           display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
@@ -2370,7 +2769,7 @@ export default function CampaignForm() {
             </>
           )}
 
-          {type !== "event" && type !== "growth_strategy" && type !== "growth_agent" && type !== "content_calendar" && (
+          {type !== "event" && type !== "growth_strategy" && type !== "growth_agent" && type !== "content_calendar" && type !== "ads_creation" && type !== "ads_manager" && type !== "target_audience" && !EXEC_TYPES.includes(type) && (
             <>
               <label style={s.label}>
                 Price / Pricing Info{" "}
@@ -2477,15 +2876,19 @@ export default function CampaignForm() {
             </AnimatePresence>
           </div>
 
-          <label style={s.label}>
-            Campaign Goal <span style={s.req}>*</span>
-          </label>
-          <textarea
-            value={form.goal}
-            onChange={(e) => set("goal", e.target.value)}
-            placeholder="Describe your campaign goal..."
-            style={s.textarea}
-          />
+          {type !== "ads_creation" && type !== "ads_manager" && type !== "target_audience" && (
+            <>
+              <label style={s.label}>
+                Campaign Goal <span style={s.req}>*</span>
+              </label>
+              <textarea
+                value={form.goal}
+                onChange={(e) => set("goal", e.target.value)}
+                placeholder="Describe your campaign goal..."
+                style={s.textarea}
+              />
+            </>
+          )}
 
           {type !== "event" && type !== "growth_strategy" && type !== "growth_agent" && type !== "content_calendar" && (
             <>
@@ -2695,8 +3098,8 @@ export default function CampaignForm() {
             </>
           )}
 
-          {/* Contact Info — hidden for growth_strategy / growth_agent / content_calendar */}
-          {type !== "growth_strategy" && type !== "growth_agent" && type !== "content_calendar" && (
+          {/* Contact Info — hidden for strategy/growth/calendar/executive/ads types */}
+          {type !== "growth_strategy" && type !== "growth_agent" && type !== "content_calendar" && type !== "ads_creation" && type !== "ads_manager" && type !== "target_audience" && !EXEC_TYPES.includes(type) && (
             <>
               <div style={s.divider} />
               <p style={s.sectionTitle}>Contact Info</p>
@@ -2743,8 +3146,8 @@ export default function CampaignForm() {
             </>
           )}
 
-          {/* Publishing Settings — hidden for growth_strategy / growth_agent / content_calendar */}
-          {type !== "growth_strategy" && type !== "growth_agent" && type !== "content_calendar" && (
+          {/* Publishing Settings — hidden for strategy/growth/calendar, all executive/CMO module types, and Package C ad types */}
+          {type !== "growth_strategy" && type !== "growth_agent" && type !== "content_calendar" && type !== "ads_creation" && type !== "ads_manager" && type !== "target_audience" && !EXEC_TYPES.includes(type) && (
             <>
           <div style={s.divider} />
           <p style={s.sectionTitle}>Publishing Settings</p>
@@ -2946,30 +3349,55 @@ export default function CampaignForm() {
           <AnimatePresence>
             {submitError && (
               <motion.div
+                ref={errorRef}
                 initial={{ opacity: 0, y: -6 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
                 style={{
                   marginTop: "20px",
-                  padding: "14px 16px",
-                  background: "rgba(239,68,68,0.08)",
-                  border: "1px solid rgba(239,68,68,0.25)",
+                  padding: "16px 18px",
+                  background: "rgba(239,68,68,0.12)",
+                  border: "1.5px solid rgba(239,68,68,0.5)",
                   borderRadius: "12px",
                   display: "flex",
                   alignItems: "flex-start",
                   gap: "10px",
-                  color: "#f87171",
+                  color: "#fca5a5",
                   fontSize: "14px",
+                  fontWeight: 600,
                 }}
               >
                 <AlertCircle
-                  size={16}
-                  style={{ marginTop: 1, flexShrink: 0 }}
+                  size={18}
+                  style={{ marginTop: 1, flexShrink: 0, color: "#f87171" }}
                 />
-                {submitError}
+                <div>
+                  <div style={{ color: "#f87171", fontWeight: 700, marginBottom: 3 }}>Action needed</div>
+                  {submitError}
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
+
+          {/* â"€â"€ Inline error near button â"€â"€ */}
+          {submitError && (
+            <div style={{
+              marginTop: "16px",
+              padding: "14px 16px",
+              background: "rgba(239,68,68,0.12)",
+              border: "1.5px solid rgba(239,68,68,0.5)",
+              borderRadius: "12px",
+              color: "#fca5a5",
+              fontSize: "13px",
+              fontWeight: 600,
+              display: "flex",
+              alignItems: "flex-start",
+              gap: "8px",
+            }}>
+              <AlertCircle size={16} style={{ marginTop: 1, flexShrink: 0, color: "#f87171" }} />
+              <span>{submitError}</span>
+            </div>
+          )}
 
           {/* â"€â"€ Submit â"€â"€ */}
           <button onClick={handleSubmit} style={s.submitBtn} disabled={loading}>

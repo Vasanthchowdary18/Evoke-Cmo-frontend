@@ -1,4 +1,4 @@
-{
+﻿{
   "name": "Evoke CMO – FINAL",
   "nodes": [
     {
@@ -103,7 +103,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=AIzaSyD4zsvoxcg6WrL1R3GcP66RgiXW4y2lqN0",
+        "url": "={{ 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=' + $env.GEMINI_API_KEY }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -140,7 +140,7 @@
         "contentType": "form-urlencoded",
         "bodyParameters": {
           "parameters": [
-            { "name": "key",   "value": "5bd861d246cfae2342a0b898282ab18e" },
+            { "name": "key",   "value": "={{ $env.IMGBB_API_KEY }}" },
             { "name": "image", "value": "={{ $json._base64Image }}" }
           ]
         },
@@ -177,8 +177,14 @@
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ JSON.stringify({ success: true, message: 'Campaign received — posting now', name: $json.name, campaignType: $json.campaignType }) }}",
-        "options": {}
+        "responseBody": "={{ JSON.stringify({ success: true, source: 'campaign', message: 'Campaign received — posting now', name: $json.name, campaignType: $json.campaignType, timestamp: $json.timestamp }) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin", "value": "*" }
+            ]
+          }
+        }
       },
       "id": "node-04",
       "name": "Respond to Webhook1",
@@ -539,11 +545,11 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://graph.facebook.com/v21.0/1036970086175468/messages",
+        "url": "={{ 'https://graph.facebook.com/v21.0/' + $env.WHATSAPP_PHONE_ID + '/messages' }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "Bearer EAAVDWE6ATl8BRjwHq406XFg9pwNL5rrLb67z304SZCxyCYL8wSHfNFgt9Tffr2DnBRCZBmziolBndmTJEAwtkvPxRvrj1s9XDepRYf6ZCdSUV2y1XYXf4HWpIM01KQ4qh31itZBLGRbzbbtVZCrlpO1YWZB8scaLYpYpflSGo20jZBdwwXHNX4tw9DpIeom5mdp09YAhHxFCynZAaJ3gwi1odtJezleUdYJgY3Nu30f872TNDLk8BLSluCruF8gWJqwZCnmpCAH6ScI8Dk59BxZAAi" },
+            { "name": "Authorization", "value": "={{ 'Bearer ' + $env.WHATSAPP_ACCESS_TOKEN }}" },
             { "name": "Content-Type",  "value": "application/json" }
           ]
         },
@@ -585,8 +591,8 @@
         "bodyParameters": {
           "parameters": [
             { "name": "grant_type",    "value": "refresh_token" },
-            { "name": "client_id",     "value": "53481639003-g903a5274f1bcq4jvkgpeoispls7aps9.apps.googleusercontent.com" },
-            { "name": "client_secret", "value": "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" },
+            { "name": "client_id",     "value": "={{ $env.GOOGLE_CLIENT_ID }}" },
+            { "name": "client_secret", "value": "={{ $env.GOOGLE_CLIENT_SECRET }}" },
             { "name": "refresh_token", "value": "={{ $('Flatten User Credentials').first().json._gmail.refreshToken }}" }
           ]
         },
@@ -758,8 +764,8 @@
         "sendQueryParameters": true,
         "queryParameters": {
           "parameters": [
-            { "name": "client_id",     "value": "1587533479009417" },
-            { "name": "client_secret", "value": "1b96d5c9725279d38f64140b9aeafbfd" },
+            { "name": "client_id",     "value": "={{ $env.META_APP_ID }}" },
+            { "name": "client_secret", "value": "={{ $env.META_APP_SECRET }}" },
             { "name": "redirect_uri",  "value": "={{ $json.redirectUri }}" },
             { "name": "code",          "value": "={{ $json.code }}" }
           ]
@@ -779,8 +785,8 @@
         "queryParameters": {
           "parameters": [
             { "name": "grant_type",       "value": "fb_exchange_token" },
-            { "name": "client_id",        "value": "1587533479009417" },
-            { "name": "client_secret",    "value": "1b96d5c9725279d38f64140b9aeafbfd" },
+            { "name": "client_id",        "value": "={{ $env.META_APP_ID }}" },
+            { "name": "client_secret",    "value": "={{ $env.META_APP_SECRET }}" },
             { "name": "fb_exchange_token","value": "={{ $json.access_token }}" }
           ]
         },
@@ -899,8 +905,8 @@
         "contentType": "form-urlencoded",
         "bodyParameters": {
           "parameters": [
-            { "name": "client_id",     "value": "1490643592209115" },
-            { "name": "client_secret", "value": "51c6f7c88d590e0cafee69cfc942c160" },
+            { "name": "client_id",     "value": "={{ $env.INSTAGRAM_CLIENT_ID }}" },
+            { "name": "client_secret", "value": "={{ $env.INSTAGRAM_CLIENT_SECRET }}" },
             { "name": "grant_type",    "value": "authorization_code" },
             { "name": "redirect_uri",  "value": "={{ $json.redirectUri }}" },
             { "name": "code",          "value": "={{ $json.code }}" }
@@ -921,7 +927,7 @@
         "queryParameters": {
           "parameters": [
             { "name": "grant_type",    "value": "ig_exchange_token" },
-            { "name": "client_secret", "value": "51c6f7c88d590e0cafee69cfc942c160" },
+            { "name": "client_secret", "value": "={{ $env.INSTAGRAM_CLIENT_SECRET }}" },
             { "name": "access_token",  "value": "={{ $json.access_token }}" }
           ]
         },
@@ -1021,8 +1027,8 @@
             { "name": "grant_type",    "value": "authorization_code" },
             { "name": "code",          "value": "={{ $json.code }}" },
             { "name": "redirect_uri",  "value": "={{ $json.redirectUri }}" },
-            { "name": "client_id",     "value": "86xauinshp202e" },
-            { "name": "client_secret", "value": "WPL_AP1.ary8N9T8zlc92W0R.zSWnWA==" }
+            { "name": "client_id",     "value": "={{ $env.LINKEDIN_CLIENT_ID }}" },
+            { "name": "client_secret", "value": "={{ $env.LINKEDIN_CLIENT_SECRET }}" }
           ]
         },
         "options": {}
@@ -1111,8 +1117,8 @@
         "bodyParameters": {
           "parameters": [
             { "name": "code",          "value": "={{ $json.code }}" },
-            { "name": "client_id",     "value": "53481639003-g903a5274f1bcq4jvkgpeoispls7aps9.apps.googleusercontent.com" },
-            { "name": "client_secret", "value": "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" },
+            { "name": "client_id",     "value": "={{ $env.GOOGLE_CLIENT_ID }}" },
+            { "name": "client_secret", "value": "={{ $env.GOOGLE_CLIENT_SECRET }}" },
             { "name": "redirect_uri",  "value": "={{ $json.redirectUri }}" },
             { "name": "grant_type",    "value": "authorization_code" }
           ]
@@ -1210,8 +1216,8 @@
         "bodyParameters": {
           "parameters": [
             { "name": "grant_type",    "value": "authorization_code" },
-            { "name": "client_id",     "value": "AQUWB7RTTS3CUWMCXM" },
-            { "name": "client_secret", "value": "Z376CKS6E23KBGLOXJFRKYCHVZQBE2M4XSAGDE4CYIFXCG6SIR" },
+            { "name": "client_id",     "value": "={{ $env.EVENTBRITE_CLIENT_ID }}" },
+            { "name": "client_secret", "value": "={{ $env.EVENTBRITE_CLIENT_SECRET }}" },
             { "name": "code",          "value": "={{ $json.code }}" },
             { "name": "redirect_uri",  "value": "={{ $json.redirectUri }}" }
           ]
@@ -1402,8 +1408,8 @@
         "contentType": "form-urlencoded",
         "bodyParameters": {
           "parameters": [
-            { "name": "client_key",     "value": "sbawq8ejz7li1bzsf1" },
-            { "name": "client_secret",  "value": "wOaBz6NXsCFxr5bQsZyW0CE0wPnyDrDA" },
+            { "name": "client_key",     "value": "={{ $env.TIKTOK_CLIENT_KEY }}" },
+            { "name": "client_secret",  "value": "={{ $env.TIKTOK_CLIENT_SECRET }}" },
             { "name": "code",           "value": "={{ $json.code }}" },
             { "name": "grant_type",     "value": "authorization_code" },
             { "name": "redirect_uri",   "value": "={{ $json.redirectUri }}" },
@@ -1685,11 +1691,11 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://graph.facebook.com/v21.0/1036970086175468/messages",
+        "url": "={{ 'https://graph.facebook.com/v21.0/' + $env.WHATSAPP_PHONE_ID + '/messages' }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "Bearer EAAVDWE6ATl8BRjwHq406XFg9pwNL5rrLb67z304SZCxyCYL8wSHfNFgt9Tffr2DnBRCZBmziolBndmTJEAwtkvPxRvrj1s9XDepRYf6ZCdSUV2y1XYXf4HWpIM01KQ4qh31itZBLGRbzbbtVZCrlpO1YWZB8scaLYpYpflSGo20jZBdwwXHNX4tw9DpIeom5mdp09YAhHxFCynZAaJ3gwi1odtJezleUdYJgY3Nu30f872TNDLk8BLSluCruF8gWJqwZCnmpCAH6ScI8Dk59BxZAAi" },
+            { "name": "Authorization", "value": "={{ 'Bearer ' + $env.WHATSAPP_ACCESS_TOKEN }}" },
             { "name": "Content-Type",  "value": "application/json" }
           ]
         },
@@ -1731,8 +1737,8 @@
         "bodyParameters": {
           "parameters": [
             { "name": "grant_type",    "value": "refresh_token" },
-            { "name": "client_id",     "value": "53481639003-g903a5274f1bcq4jvkgpeoispls7aps9.apps.googleusercontent.com" },
-            { "name": "client_secret", "value": "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" },
+            { "name": "client_id",     "value": "={{ $env.GOOGLE_CLIENT_ID }}" },
+            { "name": "client_secret", "value": "={{ $env.GOOGLE_CLIENT_SECRET }}" },
             { "name": "refresh_token", "value": "={{ $('Day Normalize & Flatten').first().json._gmail.refreshToken }}" }
           ]
         },
@@ -1834,7 +1840,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=AIzaSyD4zsvoxcg6WrL1R3GcP66RgiXW4y2lqN0",
+        "url": "={{ 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + $env.GEMINI_API_KEY }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -1868,8 +1874,14 @@
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ JSON.stringify($json) }}",
-        "options": {}
+        "responseBody": "={{ JSON.stringify({ success: $json.success, source: 'agent', agentType: $json.agentType, agentResult: $json.agentResult }) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin", "value": "*" }
+            ]
+          }
+        }
       },
       "id": "agent-respond",
       "name": "Respond to Agent Request",
@@ -1881,14 +1893,31 @@
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ JSON.stringify({ success: false, error: 'Gemini API call failed', agentResult: { title: 'Error', sections: [{ heading: 'Agent Error', content: 'The AI service is temporarily unavailable. Please try again in a moment.' }] } }) }}",
-        "options": {}
+        "responseBody": "={{ JSON.stringify({ success: false, source: 'agent', error: 'Gemini API call failed', agentResult: { title: 'Error', sections: [{ heading: 'Agent Error', content: 'The AI service is temporarily unavailable. Please try again in a moment.' }] } }) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin", "value": "*" }
+            ]
+          }
+        }
       },
       "id": "agent-respond-error",
       "name": "Respond Error",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
       "position": [900, 2780]
+    },
+
+    {
+      "parameters": {
+        "jsCode": "const err = $input.item.json;\nconst logEntry = {\n  source: err.source || 'evoke-cmo',\n  step: $prevNode?.name || 'unknown',\n  error: err.message || err.error || err.error_description || JSON.stringify(err).substring(0, 500),\n  timestamp: new Date().toISOString(),\n  uid: err.uid || err._uid || 'unknown',\n  campaignType: err.campaignType || err.agentType || 'unknown',\n  name: err.name || ''\n};\nconsole.error('[EVOKE CMO FAILURE]', JSON.stringify(logEntry));\nreturn { json: logEntry };"
+      },
+      "id": "node-log-failure",
+      "name": "Log Failure",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1570, 700]
     }
   ],
 
@@ -1917,7 +1946,10 @@
     "Call Gemini API": {
       "main": [
         [{ "node": "Extract Image Data", "type": "main", "index": 0 }],
-        [{ "node": "Extract Image Data", "type": "main", "index": 0 }]
+        [
+          { "node": "Extract Image Data", "type": "main", "index": 0 },
+          { "node": "Log Failure",        "type": "main", "index": 0 }
+        ]
       ]
     },
     "Extract Image Data": {
@@ -1926,8 +1958,14 @@
     "Upload to ImgBB": {
       "main": [
         [{ "node": "Set Image URL", "type": "main", "index": 0 }],
-        [{ "node": "Set Image URL", "type": "main", "index": 0 }]
+        [
+          { "node": "Set Image URL", "type": "main", "index": 0 },
+          { "node": "Log Failure",   "type": "main", "index": 0 }
+        ]
       ]
+    },
+    "Log Failure": {
+      "main": [[]]
     },
     "Set Image URL": {
       "main": [[{ "node": "Capture Image URL", "type": "main", "index": 0 }]]
@@ -2333,7 +2371,10 @@
     "Call Gemini Agent": {
       "main": [
         [{ "node": "Format Agent Response", "type": "main", "index": 0 }],
-        [{ "node": "Respond Error",         "type": "main", "index": 0 }]
+        [
+          { "node": "Respond Error",  "type": "main", "index": 0 },
+          { "node": "Log Failure",    "type": "main", "index": 0 }
+        ]
       ]
     },
     "Format Agent Response": {

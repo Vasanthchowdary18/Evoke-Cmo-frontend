@@ -8,7 +8,7 @@ import {
   Linkedin, Facebook, Mail, MessageSquare,
 } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
-import { useAuth } from '../components/AuthProvider.jsx'
+import { useAuth } from '../hooks/useAuth.js'
 import { redirectToLogin } from '../lib/authUtils.js'
 import { getOrCreateUser, disconnectSocialAccount } from '../services/userService'
 

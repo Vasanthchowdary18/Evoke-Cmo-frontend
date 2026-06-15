@@ -7,12 +7,13 @@ import {
   ArrowLeft, Zap, AlertCircle, RefreshCw, Send,
   CheckCircle2, Facebook, Loader2, RotateCcw,
   Pencil, X, Instagram, TrendingUp, BarChart2,
-  Globe, Rocket, Users,
+  Globe, Rocket, Users, Download,
 } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
 import { getEvokeUserProfile } from '../lib/session'
 import { profileToUser } from '../lib/authUtils'
 import { deductToken } from '../services/userService'
+import { saveContentItems, updateContentItem, markItemsPublished } from '../services/contentService'
 import { WEBHOOK_URL, DAY_WEBHOOK_URL } from '../config.js'
 
 const PLATFORMS = [
@@ -351,6 +352,167 @@ function flattenResult(data) {
   return data
 }
 
+// ── Parse a revenue-projection string into chartable segments ──
+// Handles lines like "Month 1-3: $100,000 - $150,000" / "Q1: $50k" / "Month 4-6 — 200000"
+function parseRevenue(text) {
+  const str = safeStr(text)
+  if (!str) return []
+  const segments = []
+  for (const rawLine of str.split('\n')) {
+    const line = rawLine.trim()
+    if (!line) continue
+    // Label = leading "Month X-Y", "Quarter N", "Qn", "Year N" or text before first ":" / "—"
+    const labelMatch = line.match(/^((?:month|quarter|q|year|week|phase)\s*[\d\-–to ]+|[^:—-]+?)(?:[:—-]|\s\$|\s\d)/i)
+    let label = labelMatch ? labelMatch[1].trim() : line.slice(0, 18).trim()
+    // Find all dollar/number values in the line
+    const nums = []
+    const re = /\$?\s*([\d][\d,\.]*)\s*([kKmM])?/g
+    let m
+    while ((m = re.exec(line)) !== null) {
+      let val = parseFloat(m[1].replace(/,/g, ''))
+      if (isNaN(val)) continue
+      const suffix = (m[2] || '').toLowerCase()
+      if (suffix === 'k') val *= 1_000
+      if (suffix === 'm') val *= 1_000_000
+      // Ignore tiny numbers that are just part of the label (e.g. "Month 1-3")
+      if (val >= 1000 || suffix) nums.push(val)
+    }
+    if (nums.length === 0) continue
+    // Use the highest figure on the line as the bar value (the upper projection)
+    const value = Math.max(...nums)
+    segments.push({ label: label.replace(/\s+/g, ' '), value })
+  }
+  return segments
+}
+
+function fmtMoney(n) {
+  if (n >= 1_000_000) return '$' + (n / 1_000_000).toFixed(n % 1_000_000 === 0 ? 0 : 1) + 'M'
+  if (n >= 1_000)     return '$' + Math.round(n / 1_000) + 'K'
+  return '$' + n
+}
+
+// ── Compact revenue bars that fit inside a fixed card ──
+function RevenueBars({ data }) {
+  const segments = parseRevenue(data)
+  if (segments.length < 2) return <ContentText value={data} />
+  const max = Math.max(...segments.map(s => s.value))
+  const total = segments.reduce((sum, s) => sum + s.value, 0)
+
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: 18, marginBottom: 12 }}>
+        <div>
+          <div style={{ fontSize: 9, color: '#94a3b8', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Projected Total</div>
+          <div style={{ fontSize: 16, fontWeight: 900, color: '#10b981' }}>{fmtMoney(total)}</div>
+        </div>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height: 110 }}>
+        {segments.map((s, i) => {
+          const h = max > 0 ? Math.max(10, (s.value / max) * 100) : 10
+          return (
+            <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
+              <div style={{ fontSize: 10, fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>{fmtMoney(s.value)}</div>
+              <motion.div
+                initial={{ height: 0 }}
+                animate={{ height: `${h}%` }}
+                transition={{ duration: 0.6, delay: i * 0.08, ease: 'easeOut' }}
+                style={{ width: '100%', maxWidth: 48, borderRadius: '6px 6px 0 0', background: 'linear-gradient(180deg, #d4a853, #c8973e)', minHeight: 10 }}
+              />
+            </div>
+          )
+        })}
+      </div>
+      <div style={{ display: 'flex', gap: 8, marginTop: 8, borderTop: '1px solid #f1f5f9', paddingTop: 8 }}>
+        {segments.map((s, i) => (
+          <div key={i} style={{ flex: 1, textAlign: 'center', fontSize: 10, fontWeight: 600, color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {s.label}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ── Parse "increase revenue by 15%" style impact lines into {label, pct} ──
+function parseImpacts(text) {
+  const str = safeStr(text)
+  if (!str) return []
+  // Split into numbered items ("1. …", "2) …") or paragraphs
+  const items = str.split(/\n(?=\s*\d+\s*[\.\):—-])/).map(s => s.trim()).filter(Boolean)
+  const out = []
+  for (const it of items) {
+    const pm = it.match(/(\d{1,3})\s*%/)
+    if (!pm) continue
+    const pct = parseInt(pm[1], 10)
+    if (isNaN(pct) || pct <= 0) continue
+    // Label = text after the leading number, before the first dash/colon
+    let label = it.replace(/^\s*\d+\s*[\.\):—-]*\s*\d*\s*[—-]?\s*/, '').split(/[—:]|\.\s|increase|drive|improve/i)[0].trim()
+    label = label.replace(/\s+/g, ' ').slice(0, 52) || `Opportunity ${out.length + 1}`
+    out.push({ label, pct })
+  }
+  return out.slice(0, 6)
+}
+
+// ── Impact bars for Growth Opportunities ──
+function ImpactBars({ data }) {
+  const items = parseImpacts(data)
+  if (items.length < 2) return null
+  const max = Math.max(...items.map(i => i.pct))
+  return (
+    <div style={{ marginBottom: 14, paddingBottom: 12, borderBottom: '1px solid #f1f5f9' }}>
+      <div style={{ fontSize: 9, color: '#94a3b8', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 8 }}>Projected Impact</div>
+      {items.map((it, i) => (
+        <div key={i} style={{ marginBottom: 9 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: 11, marginBottom: 3, gap: 8 }}>
+            <span style={{ color: '#334155', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.label}</span>
+            <span style={{ color: '#c8973e', fontWeight: 800, flexShrink: 0 }}>+{it.pct}%</span>
+          </div>
+          <div style={{ height: 6, background: '#f1f5f9', borderRadius: 100, overflow: 'hidden' }}>
+            <motion.div initial={{ width: 0 }} animate={{ width: `${(it.pct / max) * 100}%` }} transition={{ duration: 0.6, delay: i * 0.07, ease: 'easeOut' }}
+              style={{ height: '100%', background: 'linear-gradient(90deg,#d4a853,#c8973e)', borderRadius: 100 }} />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ── Parse "Phase 1 …", "Q1 …", "Week 1-2 …", "Month 1-3 …" into timeline steps ──
+function parsePhases(text) {
+  const str = safeStr(text)
+  if (!str) return []
+  const out = []
+  for (const rawLine of str.split(/\n+/)) {
+    const line = rawLine.trim()
+    if (!line) continue
+    const m = line.match(/^(Q\s*[1-4]|Quarter\s*\d|Phase\s*\d|Week\s*[\d\-–]+|Month\s*[\d\-–]+)\s*[:.—-]?\s*(.+)/i)
+    if (m) {
+      const tag = m[1].replace(/quarter\s*/i, 'Q').replace(/\s+/g, ' ').replace(/^phase\s*/i, 'P').replace(/^week\s*/i, 'W').replace(/^month\s*/i, 'M').toUpperCase()
+      out.push({ tag, text: m[2].trim() })
+    }
+  }
+  return out.slice(0, 6)
+}
+
+// ── Vertical phase/quarter timeline for GTM Plan & Expansion Roadmap ──
+function PhaseTimeline({ data, color }) {
+  const phases = parsePhases(data)
+  if (phases.length < 2) return null
+  return (
+    <div style={{ marginBottom: 14, paddingBottom: 12, borderBottom: '1px solid #f1f5f9' }}>
+      {phases.map((p, i) => (
+        <div key={i} style={{ display: 'flex', gap: 10 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <div style={{ minWidth: 30, height: 22, padding: '0 5px', borderRadius: 6, background: `${color}18`, border: `1px solid ${color}40`, color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 800, flexShrink: 0 }}>{p.tag}</div>
+            {i < phases.length - 1 && <div style={{ width: 1, flex: 1, minHeight: 12, background: `${color}25`, margin: '2px 0' }} />}
+          </div>
+          <div style={{ fontSize: 11.5, color: '#475569', lineHeight: 1.5, paddingTop: 3, paddingBottom: 8 }}>{p.text}</div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 const dayColors = ['#c8973e', '#8b5cf6', '#a855f7', '#c8973e', '#0891b2', '#0e7490', '#c8973e']
 
 function PostingStatusBanner({ postingStatus, selectedPlatforms, onRetry }) {
@@ -505,11 +667,75 @@ export default function Results() {
           }
         } catch {}
       }
+
+      // ── Persist generated content to Firestore as drafts (content library) ──
+      try {
+        const ssoUser = profileToUser(getEvokeUserProfile())
+        const sig = `${type}:${raw.length}:${raw.slice(0, 80)}`
+        if (ssoUser && sessionStorage.getItem('firestoreContentSig') !== sig) {
+          const metaRaw = sessionStorage.getItem('campaignMeta')
+          const meta = metaRaw ? JSON.parse(metaRaw) : {}
+          const img = flat.imageUrl || flat.image_url || ''
+          const vid = flat.videoUrl || ''
+          const items = []
+          const push = (key, itemType, platform, text, subject) => {
+            const str = safeStr(text)
+            if (str) items.push({ key, type: itemType, platform, text: str, subject: subject || '', imageUrl: img, videoUrl: vid })
+          }
+          push('linkedinPost',     'post', 'linkedin',  flat.linkedinPost     || flat.linkedin_post)
+          push('instagramCaption', 'post', 'instagram', flat.instagramCaption || flat.instagram_caption)
+          push('facebookPost',     'post', 'facebook',  flat.facebookPost     || flat.facebook_post)
+          push('tiktokCaption',    'post', 'tiktok',    flat.tiktokCaption    || flat.tiktok_caption)
+          push('whatsappMessage',  'post', 'whatsapp',  flat.whatsappMessage  || flat.whatsapp_message)
+          push('emailBody',        'email', 'email',    flat.emailBody        || flat.email_body, safeStr(flat.emailSubject || flat.email_subject))
+          if (flat.adHeadline || flat.adBody) {
+            push('adBody', 'ad', '', [safeStr(flat.adHeadline), safeStr(flat.adBody)].filter(Boolean).join('\n\n'))
+          }
+          if (flat.seoTitle || flat.seoDescription) {
+            push('seoTitle', 'seo', '', [safeStr(flat.seoTitle), safeStr(flat.seoDescription)].filter(Boolean).join('\n\n'))
+          }
+          if (flat.executiveSummary || flat.gtmPlan) {
+            items.push({ key: 'strategy', type: 'strategy', platform: '', text: safeStr(flat.executiveSummary), data: JSON.stringify(flat), imageUrl: '', videoUrl: '' })
+          }
+          if (items.length) {
+            const campaignId = Date.now().toString()
+            // Set the signature before the async save so StrictMode's double
+            // effect run (and quick remounts) can't create duplicate drafts.
+            sessionStorage.setItem('firestoreContentSig', sig)
+            saveContentItems(ssoUser.uid, {
+              campaignId,
+              name: flat.campaignName || meta.name || 'Campaign',
+              type: type || 'event',
+              source: 'campaign',
+            }, items)
+              .then(ids => {
+                sessionStorage.setItem('firestoreContentIds', JSON.stringify(ids))
+                sessionStorage.setItem('firestoreCampaignId', campaignId)
+              })
+              .catch(err => {
+                sessionStorage.removeItem('firestoreContentSig')
+                console.warn('Failed to save drafts to Firestore:', err)
+              })
+          }
+        }
+      } catch {}
     } catch { setError('Failed to parse campaign results.') }
   }, [])
 
   const startEdit  = (key, value) => { setEditingKey(key); setEditDraft(value || '') }
-  const saveEdit   = (key) => { setEditedContent(p => ({ ...p, [key]: editDraft })); setEditingKey(null); setEditDraft('') }
+  const saveEdit   = (key) => {
+    setEditedContent(p => ({ ...p, [key]: editDraft }))
+    // Keep the Firestore draft in sync with user edits
+    try {
+      const ids = JSON.parse(sessionStorage.getItem('firestoreContentIds') || '{}')
+      const docKey = key === 'emailSubject' ? 'emailBody' : key
+      if (ids[docKey]) {
+        const update = key === 'emailSubject' ? { subject: editDraft } : { text: editDraft }
+        updateContentItem(ids[docKey], update).catch(() => {})
+      }
+    } catch {}
+    setEditingKey(null); setEditDraft('')
+  }
   const cancelEdit = () => { setEditingKey(null); setEditDraft('') }
 
   // Schedule remaining days (2…N) using localStorage queue + setTimeout
@@ -580,6 +806,12 @@ export default function Results() {
         const ssoUser = profileToUser(getEvokeUserProfile())
         if (ssoUser) { try { await deductToken(ssoUser.uid) } catch {} }
 
+        // ── Mark Firestore drafts as published ──
+        try {
+          const ids = JSON.parse(sessionStorage.getItem('firestoreContentIds') || '{}')
+          markItemsPublished(ids, editedContent).catch(() => {})
+        } catch {}
+
         // ── Save to campaign history ──
         try {
           const metaRaw  = sessionStorage.getItem('campaignMeta')
@@ -626,7 +858,7 @@ export default function Results() {
   }
 
   const handleNewCampaign = () => {
-    ['campaignResult','campaignType','campaignMeta','webhookStatus','webhookPayload','campaignDays','dailySchedule'].forEach(k => sessionStorage.removeItem(k))
+    ['campaignResult','campaignType','campaignMeta','webhookStatus','webhookPayload','campaignDays','dailySchedule','firestoreContentSig','firestoreContentIds','firestoreCampaignId'].forEach(k => sessionStorage.removeItem(k))
     navigate('/agents-hub')
   }
 
@@ -765,6 +997,57 @@ export default function Results() {
   const expansionRoadmap   = r.expansionRoadmap   || r.expansion_roadmap   || ''
   const competitorGaps     = r.competitorGaps     || r.competitor_gaps     || ''
 
+  // ── Ordered strategy sections (used by the report download + cards) ──
+  const strategySections = [
+    { title: 'Executive Summary',          value: executiveSummary },
+    { title: 'Growth Opportunities',       value: growthOpportunities },
+    { title: 'Go-To-Market Plan',          value: gtmPlan },
+    { title: '12-Month Revenue Forecast',  value: revenueProjection },
+    { title: 'Strategic Partnerships',     value: partnershipIdeas },
+    { title: 'Expansion Roadmap',          value: expansionRoadmap },
+    { title: 'Competitor Gaps to Exploit', value: competitorGaps },
+  ].filter(s => s.value)
+
+  // ── Download the full strategy as a branded, print-ready report (Save as PDF) ──
+  const downloadReport = () => {
+    const reportTitle = r.campaignName || 'Growth Strategy Report'
+    const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+    const esc = (t) => safeStr(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    const sectionsHtml = strategySections.map(s => `
+      <section>
+        <h2>${esc(s.title)}</h2>
+        <p>${esc(s.value).replace(/\n/g, '<br/>')}</p>
+      </section>`).join('')
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>${esc(reportTitle)}</title>
+      <style>
+        * { box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; color: #1e293b; max-width: 820px; margin: 0 auto; padding: 48px 40px; line-height: 1.7; }
+        .brand { font-size: 13px; font-weight: 800; letter-spacing: 0.15em; color: #c8973e; text-transform: uppercase; }
+        h1 { font-size: 30px; font-weight: 900; margin: 6px 0 2px; letter-spacing: -0.02em; }
+        .date { color: #64748b; font-size: 13px; margin-bottom: 28px; }
+        section { margin-bottom: 26px; padding-bottom: 22px; border-bottom: 1px solid #e2e8f0; page-break-inside: avoid; }
+        h2 { font-size: 17px; font-weight: 800; color: #c8973e; margin: 0 0 8px; }
+        p { font-size: 14px; white-space: pre-wrap; margin: 0; }
+        footer { margin-top: 32px; color: #94a3b8; font-size: 11px; text-align: center; }
+        @media print { body { padding: 24px; } }
+      </style></head>
+      <body>
+        <div class="brand">EVOX AI · CMO Strategy</div>
+        <h1>${esc(reportTitle)}</h1>
+        <div class="date">Generated ${dateStr}</div>
+        ${sectionsHtml}
+        <footer>Generated by EVOX AI CMO · ${dateStr}</footer>
+      </body></html>`
+
+    const w = window.open('', '_blank')
+    if (!w) return
+    w.document.write(html)
+    w.document.close()
+    w.focus()
+    setTimeout(() => w.print(), 350)
+  }
+
   const fullText = [
     editedContent.emailSubject && `EMAIL SUBJECT:\n${editedContent.emailSubject}`,
     editedContent.emailBody    && `EMAIL BODY:\n${editedContent.emailBody}`,
@@ -784,14 +1067,35 @@ export default function Results() {
   const editProps = { editingKey, editDraft, onStartEdit: startEdit, onSaveEdit: saveEdit, onCancelEdit: cancelEdit, onDraftChange: setEditDraft, launched }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f8fafc' }}>
+    <div style={{
+      minHeight: '100vh',
+      ...(isStrategy ? { height: '100vh', overflow: 'hidden' } : {}),
+      background: '#f8fafc',
+    }}>
       <Navbar />
 
-      <div style={{ maxWidth: isStrategy ? 1200 : 860, margin: '0 auto', padding: '108px 24px 40px' }}>
+      <div style={{
+        maxWidth: isStrategy ? 1280 : 860,
+        margin: '0 auto',
+        ...(isStrategy
+          ? { height: '100vh', padding: '74px 20px 14px', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }
+          : { padding: '108px 24px 40px' }),
+      }}>
 
         {/* Header */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: 32 }}>
-          <button onClick={() => navigate('/agents-hub')} className="btn-ghost" style={{ marginBottom: 20 }}>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: isStrategy ? 14 : 32, flexShrink: 0 }}>
+          <button
+            onClick={() => navigate('/agents-hub')}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 7,
+              marginBottom: 20, padding: '9px 16px',
+              background: '#1c1a13', border: '1px solid rgba(200,151,62,0.3)',
+              borderRadius: 10, color: '#f0ebe0', fontSize: 13, fontWeight: 600,
+              cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = '#26231a'; e.currentTarget.style.borderColor = '#c8973e' }}
+            onMouseLeave={e => { e.currentTarget.style.background = '#1c1a13'; e.currentTarget.style.borderColor = 'rgba(200,151,62,0.3)' }}
+          >
             <ArrowLeft size={14} /> Back to Dashboard
           </button>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
@@ -811,6 +1115,14 @@ export default function Results() {
               </p>
             </div>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              {isStrategy && (
+                <button
+                  onClick={downloadReport}
+                  style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13, fontWeight: 800, padding: '9px 18px', background: 'linear-gradient(135deg, #d4a853, #b8803a)', border: 'none', borderRadius: 10, color: '#0e0c09', cursor: 'pointer', fontFamily: 'inherit' }}
+                >
+                  <Download size={14} /> Download Report
+                </button>
+              )}
               <button className="btn-ghost" onClick={() => copy(fullText, 'all')} style={{ fontSize: 13 }}>
                 {copied === 'all' ? <><Check size={13} style={{ color: '#10b981' }} /><span style={{ color: '#10b981' }}>Copied!</span></> : <><Copy size={13} /> Copy All</>}
               </button>
@@ -892,44 +1204,62 @@ export default function Results() {
           </motion.div>
         )}
 
-        {/* ── Strategy-specific cards (growth_strategy only) ── */}
+        {/* ── Strategy-specific cards — fixed grid, fills screen, no page scroll ── */}
         {isStrategy && (
           <div style={{
-            height: 'calc(100vh - 280px)', overflowY: 'auto',
-            paddingRight: 6, marginBottom: 14,
-            scrollbarWidth: 'thin', scrollbarColor: 'rgba(200,151,62,0.3) transparent',
+            flex: 1, minHeight: 0,
+            display: 'grid',
+            gridTemplateColumns: 'repeat(4, 1fr)',
+            gridTemplateRows: 'repeat(2, minmax(0, 1fr))',
+            gap: 12,
           }}>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(2, 1fr)',
-              gap: 14,
-            }}>
-              {[
-                { key: 'executiveSummary',    value: executiveSummary,    icon: <Zap size={16}/>,          color: '#10b981', title: 'Executive Summary'        },
-                { key: 'growthOpportunities', value: growthOpportunities, icon: <TrendingUp size={16}/>,   color: '#c8973e', title: 'Growth Opportunities'      },
-                { key: 'gtmPlan',             value: gtmPlan,             icon: <Rocket size={16}/>,       color: '#6366f1', title: 'Go-To-Market Plan'         },
-                { key: 'revenueProjection',   value: revenueProjection,   icon: <BarChart2 size={16}/>,    color: '#f59e0b', title: '12-Month Revenue Forecast' },
-                { key: 'partnershipIdeas',    value: partnershipIdeas,    icon: <Users size={16}/>,        color: '#0a66c2', title: 'Strategic Partnerships'    },
-                { key: 'expansionRoadmap',    value: expansionRoadmap,    icon: <Globe size={16}/>,        color: '#14b8a6', title: 'Expansion Roadmap'         },
-                { key: 'competitorGaps',      value: competitorGaps,      icon: <Target size={16}/>,       color: '#a855f7', title: 'Competitor Gaps to Exploit'},
-              ].filter(s => s.value).map((s, i) => (
-                <ResultCard key={s.key}
-                  icon={s.icon} title={s.title} color={s.color}
-                  copyText={safeStr(s.value)} copyId={s.key}
-                  copied={copied} copy={copy}
-                  editKey={s.key} editValue={safeStr(s.value)}
-                  delay={i * 0.06}
-                  {...editProps}
+            {[
+              { key: 'executiveSummary',    value: executiveSummary,    icon: <Zap size={15}/>,          color: '#10b981', title: 'Executive Summary'        },
+              { key: 'growthOpportunities', value: growthOpportunities, icon: <TrendingUp size={15}/>,   color: '#c8973e', title: 'Growth Opportunities'      },
+              { key: 'gtmPlan',             value: gtmPlan,             icon: <Rocket size={15}/>,       color: '#6366f1', title: 'Go-To-Market Plan'         },
+              { key: 'revenueProjection',   value: revenueProjection,   icon: <BarChart2 size={15}/>,    color: '#f59e0b', title: '12-Month Revenue Forecast' },
+              { key: 'partnershipIdeas',    value: partnershipIdeas,    icon: <Users size={15}/>,        color: '#0a66c2', title: 'Strategic Partnerships'    },
+              { key: 'expansionRoadmap',    value: expansionRoadmap,    icon: <Globe size={15}/>,        color: '#14b8a6', title: 'Expansion Roadmap'         },
+              { key: 'competitorGaps',      value: competitorGaps,      icon: <Target size={15}/>,       color: '#a855f7', title: 'Competitor Gaps to Exploit'},
+            ].filter(s => s.value).map((s, i) => {
+              const isCopied = copied === s.key
+              return (
+                <motion.div key={s.key}
+                  initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: i * 0.05 }}
+                  style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: 14, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}
                 >
-                  <ContentText value={s.value} />
-                </ResultCard>
-              ))}
-            </div>
+                  {/* Card header (fixed) */}
+                  <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', borderBottom: '1px solid #f1f5f9', background: '#fafbff' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                      <div style={{ width: 26, height: 26, borderRadius: 7, background: `${s.color}15`, border: `1px solid ${s.color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: s.color, flexShrink: 0 }}>
+                        {s.icon}
+                      </div>
+                      <span style={{ fontWeight: 700, fontSize: 12.5, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.title}</span>
+                    </div>
+                    <button onClick={() => copy(safeStr(s.value), s.key)} style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 4, padding: '4px 8px', background: isCopied ? '#f0fdf4' : '#f8fafc', border: `1px solid ${isCopied ? 'rgba(16,185,129,0.3)' : 'rgba(0,0,0,0.08)'}`, borderRadius: 6, color: isCopied ? '#10b981' : '#64748b', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+                      {isCopied ? <Check size={11} /> : <Copy size={11} />}
+                    </button>
+                  </div>
+                  {/* Card body — visual (derived from the generated text) + detail, scrolls internally */}
+                  <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 14px', scrollbarWidth: 'thin', scrollbarColor: `${s.color}40 transparent` }}>
+                    {s.key === 'revenueProjection' ? (
+                      <RevenueBars data={s.value} />
+                    ) : s.key === 'growthOpportunities' ? (
+                      <><ImpactBars data={s.value} /><ContentText value={s.value} /></>
+                    ) : (s.key === 'gtmPlan' || s.key === 'expansionRoadmap') ? (
+                      <><PhaseTimeline data={s.value} color={s.color} /><ContentText value={s.value} /></>
+                    ) : (
+                      <ContentText value={s.value} />
+                    )}
+                  </div>
+                </motion.div>
+              )
+            })}
           </div>
         )}
 
         {/* Content Cards — hidden entirely for growth_strategy (pure strategy doc, no social posts needed) */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ display: isStrategy ? 'none' : 'flex', flexDirection: 'column', gap: 14 }}>
 
           {!isStrategy && <>
             {(emailSubject || emailBody) && (
@@ -1108,38 +1438,8 @@ export default function Results() {
           )}
         </div>
 
-        {/* Bottom CTA — strategy gets "Go to Dashboard", campaigns get "Launch" */}
-        {isStrategy ? (
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
-            style={{ marginTop: 32, padding: '24px 28px', background: '#f0fdf4', border: '1px solid rgba(16,185,129,0.25)', borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}
-          >
-            <div>
-              <p style={{ fontWeight: 700, fontSize: 16, color: '#0f172a', marginBottom: 4 }}>
-                Your growth strategy is ready 🎉
-              </p>
-              <p style={{ color: '#64748b', fontSize: 13 }}>
-                Copy individual sections or use the "Copy All" button at the top. Head back to launch your next agent.
-              </p>
-            </div>
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              <motion.button
-                onClick={() => navigate('/agents-hub')}
-                whileTap={{ scale: 0.97 }} whileHover={{ scale: 1.02 }}
-                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '13px 24px', background: 'linear-gradient(135deg, #d4a853, #b8803a)', border: 'none', borderRadius: 12, color: 'white', fontSize: 14, fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap' }}
-              >
-                <Zap size={15} /> Go to Dashboard
-              </motion.button>
-              <motion.button
-                onClick={handleNewCampaign}
-                whileTap={{ scale: 0.97 }}
-                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '13px 20px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, color: '#64748b', fontSize: 14, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
-              >
-                <RefreshCw size={14} /> New Strategy
-              </motion.button>
-            </div>
-          </motion.div>
-        ) : (
+        {/* Bottom CTA — strategy fills the screen (no bottom CTA); campaigns get "Launch" */}
+        {isStrategy ? null : (
           <>
             {/* Bottom Launch CTA */}
             {!launched && (

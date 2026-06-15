@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useAuth } from "./AuthProvider.jsx";
+import { useAuth } from "../hooks/useAuth.js";
 import { fetchRewardPoolEgtBalance } from "../lib/egtRewardPoolBalance";
 import { formatEgtBalanceDisplay } from "../lib/formatEgtBalance";
 import { readEvokeUserWalletAddressFromDocument } from "../lib/evokeUserCookie";

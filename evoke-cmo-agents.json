@@ -30,7 +30,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=AIzaSyD4zsvoxcg6WrL1R3GcP66RgiXW4y2lqN0",
+        "url": "={{ 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + $env.GEMINI_API_KEY }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -64,8 +64,14 @@
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ JSON.stringify($json) }}",
-        "options": {}
+        "responseBody": "={{ JSON.stringify({ success: $json.success, source: 'agent', agentType: $json.agentType, agentResult: $json.agentResult }) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin", "value": "*" }
+            ]
+          }
+        }
       },
       "id": "agent-respond",
       "name": "Respond to Agent Request",
@@ -77,8 +83,14 @@
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ JSON.stringify({ success: false, error: 'Gemini API call failed', agentResult: { title: 'Error', sections: [{ heading: 'Agent Error', content: 'The AI service is temporarily unavailable. Please try again in a moment.' }] } }) }}",
-        "options": {}
+        "responseBody": "={{ JSON.stringify({ success: false, source: 'agent', error: 'Gemini API call failed', agentResult: { title: 'Error', sections: [{ heading: 'Agent Error', content: 'The AI service is temporarily unavailable. Please try again in a moment.' }] } }) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin", "value": "*" }
+            ]
+          }
+        }
       },
       "id": "agent-respond-error",
       "name": "Respond Error",

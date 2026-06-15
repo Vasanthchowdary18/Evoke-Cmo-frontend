@@ -1,9 +1,9 @@
-import React, { createContext, useContext, useMemo } from "react";
+import React, { createContext, useMemo } from "react";
 import { useEvokeSession } from "../hooks/useEvokeSession";
 import { profileToUser } from "../lib/authUtils";
 import OAuthCallbackHandler from "./OAuthCallbackHandler";
 
-const AuthContext = createContext(null);
+export const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const { profile, status } = useEvokeSession();
@@ -24,10 +24,3 @@ export function AuthProvider({ children }) {
   );
 }
 
-export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) {
-    throw new Error("useAuth must be used within AuthProvider");
-  }
-  return ctx;
-}

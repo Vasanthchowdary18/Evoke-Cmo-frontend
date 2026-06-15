@@ -8,7 +8,7 @@ import {
   Linkedin, Facebook, Mail, MessageSquare,
 } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
-import { useAuth } from '../components/AuthProvider.jsx'
+import { useAuth } from '../hooks/useAuth.js'
 import { redirectToLogin } from '../lib/authUtils.js'
 import { getOrCreateUser, disconnectSocialAccount } from '../services/userService'
 
@@ -191,23 +191,27 @@ export default function PackageAPage() {
   const tagColor = (tag) => tag === 'FREE' ? '#c8973e' : '#a855f7'
 
   return (
-    <div style={{ minHeight: '100vh', background: BG, color: TEXT, fontFamily: "'Inter',sans-serif" }}>
+    <div style={{ height: '100vh', background: BG, color: TEXT, fontFamily: "'Inter',sans-serif", overflow: 'hidden' }}>
       <Navbar />
 
-      <div style={{ maxWidth: 1280, margin: '0 auto', padding: '96px 48px 80px', display: 'flex', gap: 20, alignItems: 'flex-start' }}>
+      {/* ── Single unified panel ── */}
+      <div style={{
+        position: 'absolute', top: 64, left: 0, right: 0, bottom: 0,
+        display: 'flex', padding: '12px 16px', overflow: 'hidden',
+      }}>
+        <div style={{
+          width: '100%', display: 'flex', overflow: 'hidden',
+          background: CARD, border: `1px solid ${BORDER}`, borderRadius: 18,
+        }}>
 
         {/* ══════════ LEFT SIDEBAR ══════════ */}
         <div style={{
           width: sidebarOpen ? 248 : 62,
           flexShrink: 0,
-          position: 'sticky',
-          top: 88,
-          background: CARD,
-          border: `1px solid ${BORDER}`,
-          borderRadius: 18,
           padding: sidebarOpen ? '16px 14px 20px' : '16px 10px',
           transition: 'width 0.25s ease, padding 0.25s ease',
-          overflow: 'hidden',
+          overflow: 'hidden auto',
+          borderRight: `1px solid ${BORDER}`,
         }}>
 
           {/* Toggle button — always at top, gold-accented */}
@@ -317,7 +321,7 @@ export default function PackageAPage() {
         </div>
 
         {/* ══════════ MAIN CENTER ══════════ */}
-        <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ flex: 1, minWidth: 0, overflowY: 'auto', padding: '20px 24px' }}>
           <AnimatePresence mode="wait">
             <motion.div
               key={selectedAgent?.id}
@@ -335,11 +339,10 @@ export default function PackageAPage() {
 
         {/* ══════════ RIGHT — Social Accounts ══════════ */}
         <div style={{
-          width: 288, flexShrink: 0, position: 'sticky', top: 88,
-          background: CARD,
-          border: `1px solid ${BORDER}`,
-          borderRadius: 18,
+          width: 288, flexShrink: 0,
+          borderLeft: `1px solid ${BORDER}`,
           padding: '20px 16px',
+          overflowY: 'auto',
         }}>
 
           {/* Header */}
@@ -475,6 +478,7 @@ export default function PackageAPage() {
           )}
         </div>
 
+        </div>
       </div>
 
       <style>{`@keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }`}</style>
@@ -546,11 +550,11 @@ function AgentDetail({ agent, onLaunch }) {
   const info = DESCRIPTIONS[agent.id] || { full: agent.sub, steps: [] }
 
   return (
-    <div style={{ padding: '8px 0' }}>
+    <div style={{ padding: '0' }}>
       {/* Header */}
       <div style={{
-        display: 'flex', alignItems: 'flex-start', gap: 16, marginBottom: 28,
-        padding: '24px', background: CARD,
+        display: 'flex', alignItems: 'flex-start', gap: 16, marginBottom: 24,
+        padding: '20px', background: 'rgba(255,255,255,0.03)',
         border: `1px solid ${agent.color}25`, borderRadius: 18,
       }}>
         <div style={{

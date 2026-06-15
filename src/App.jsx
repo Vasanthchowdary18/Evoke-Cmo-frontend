@@ -22,11 +22,17 @@ import AgentsHub from './pages/AgentsHub.jsx'
 import PlansPage from './pages/PlansPage.jsx'
 import FreePlanPage from './pages/FreePlanPage.jsx'
 import PackageAPage from './pages/PackageAPage.jsx'
+import PackageBPage from './pages/PackageBPage.jsx'
+import PackageCPage from './pages/PackageCPage.jsx'
+import CaptionSuitePage from './pages/CaptionSuitePage.jsx'
+import ReelScriptsPage from './pages/ReelScriptsPage.jsx'
 import ProductsPage from './pages/ProductsPage.jsx'
 import ProductDescription from './pages/ProductDescription.jsx'
 import ImageToolPage from './pages/ImageToolPage.jsx'
 import EvoxServices from './pages/EvoxServices.jsx'
 import ApprovalQueue from './pages/ApprovalQueue.jsx'
+import KpiRecommendationsPage from './pages/KpiRecommendationsPage.jsx'
+import CmoAgentOverviewPage from './pages/CmoAgentOverviewPage.jsx'
 import Chatbot from './components/Chatbot.jsx'
 
 // Handles token returned from accounts.evokemarketplace.com after login
@@ -82,13 +88,20 @@ export default function App() {
         <Route path="/image-seo"         element={<ImageToolPage />} />
         <Route path="/image-video"       element={<ImageToolPage />} />
         <Route path="/image-lifestyle"   element={<ImageToolPage />} />
+        <Route path="/image-3d"          element={<ImageToolPage />} />
         <Route path="/meta-ads-boost"    element={<MetaAdsBoost />} />
         <Route path="/agents-hub"         element={<AgentsHub />} />
         <Route path="/plans"              element={<PlansPage />} />
         <Route path="/free-plan"          element={<FreePlanPage />} />
         <Route path="/package-a"          element={<PackageAPage />} />
+        <Route path="/package-b"          element={<PackageBPage />} />
+        <Route path="/package-c"          element={<PackageCPage />} />
+        <Route path="/caption-suite"      element={<CaptionSuitePage />} />
+        <Route path="/reel-scripts"       element={<ReelScriptsPage />} />
         <Route path="/evox-services"      element={<EvoxServices />} />
         <Route path="/queue"              element={<ApprovalQueue />} />
+        <Route path="/kpi-recommendations" element={<KpiRecommendationsPage />} />
+        <Route path="/overview/:type"      element={<CmoAgentOverviewPage />} />
         <Route path="/privacy"            element={<Privacy />} />
         <Route path="/terms"              element={<Terms />} />
         <Route path="*"                  element={<Navigate to="/" replace />} />

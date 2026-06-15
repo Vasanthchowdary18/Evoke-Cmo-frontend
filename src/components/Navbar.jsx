@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Zap, Menu, X, LayoutDashboard, Image, LogOut, ChevronDown, Inbox } from 'lucide-react'
-import { useAuth } from './AuthProvider.jsx'
+import { useAuth } from '../hooks/useAuth.js'
 import { buildAccountsLoginUrl, signOut as ssoSignOut } from '../lib/session'
 import EgtWalletHeader from './EgtWalletHeader.jsx'
 

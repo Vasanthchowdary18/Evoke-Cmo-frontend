@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   ArrowLeft, Send, Check, Loader2, AlertCircle,
-  Linkedin, Facebook, Instagram, CheckCircle2, X, Sparkles, RefreshCw, Image,
+  Linkedin, Facebook, Instagram, CheckCircle2, X, Sparkles, RefreshCw, Image, Mail,
 } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
-import { useAuth } from '../components/AuthProvider.jsx'
+import { useAuth } from '../hooks/useAuth.js'
 import { getOrCreateUser } from '../services/userService'
+import { saveContentItems } from '../services/contentService'
 import { WEBHOOK_URL, AGENT_WEBHOOK_URL } from '../config.js'
 
 const BG = '#0e0c09'
@@ -38,6 +39,7 @@ const PLATFORM_META = {
       <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.75a4.85 4.85 0 01-1.01-.06z"/>
     </svg>
   )},
+  gmail: { label: 'Gmail Invitation', color: '#ea4335', icon: <Mail size={18} /> },
 }
 
 export default function PostContent() {
@@ -50,23 +52,34 @@ export default function PostContent() {
   const toolTitle  = navState?.toolTitle  || 'Generated Content'
   const toolColor  = navState?.toolColor  || '#c8973e'
   const productName = navState?.productName || ''
+  const productContext = navState?.productContext || ''
   const fromPath   = navState?.from || '/package-a'
+  const captionPrefill = navState?.captionPrefill || ''
+  const platformPrefill = navState?.platform || ''
 
   const [accounts, setAccounts]         = useState({})
   const [caption, setCaption]           = useState(
-    productName ? `Check out our latest ${productName}! 🚀\n\n#marketing #product #evokecmo` : ''
+    captionPrefill || (productName ? `Check out our latest ${productName}! 🚀\n\n#marketing #product #evokecmo` : '')
   )
-  const [selectedPlatforms, setSelected] = useState([])
+  const [selectedPlatforms, setSelected] = useState(platformPrefill ? [platformPrefill] : [])
   const [posting, setPosting]           = useState(false)
   const [posted, setPosted]             = useState(false)
   const [error, setError]               = useState('')
   const [loadingAccounts, setLoadingAccounts] = useState(true)
-  const [topic, setTopic]               = useState('')
+  const [topic, setTopic]               = useState(
+    productName
+      ? `Announcing our ${productName} with a new product showcase video.${productContext ? ' ' + productContext + '.' : ''} Highlight the key benefits and include a CTA.`
+      : ''
+  )
   const [generating, setGenerating]     = useState(false)
   const [genError, setGenError]         = useState('')
-  const [generatedImage, setGeneratedImage] = useState(mediaUrl || '')
+  const [generatedImage, setGeneratedImage] = useState(mediaType === 'image' ? (mediaUrl || '') : '')
   const [generatingImage, setGeneratingImage] = useState(false)
   const [imageError, setImageError]     = useState('')
+  const [emailRecipients, setEmailRecipients] = useState('')
+  const [emailSubject, setEmailSubject] = useState(
+    productName ? `You're invited: ${productName}` : ''
+  )
 
   useEffect(() => {
     if (!evokeUser) return
@@ -109,7 +122,7 @@ export default function PostContent() {
           messages: [
             {
               role: 'system',
-              content: `You are a professional social media content writer specialising in ${platformLabel}. Write engaging, concise posts that drive likes and comments. Use relevant emojis and hashtags. Return only the post text — no explanations, no preamble.`,
+              content: `You are a professional social media content writer specialising in ${platformLabel}. Write engaging, concise posts that drive likes and comments. Use relevant emojis and hashtags. The post will be published with the product image or video already attached — never include [link] placeholders, URLs, or phrases like "watch the video here". Return only the post text — no explanations, no preamble.`,
             },
             {
               role: 'user',
@@ -134,6 +147,17 @@ export default function PostContent() {
       setGenerating(false)
     }
   }
+
+  // Auto-generate post copy about the product when arriving from a media tool
+  const autoGenRan = useRef(false)
+  useEffect(() => {
+    if (autoGenRan.current) return
+    if (mediaUrl && topic.trim() && import.meta.env.VITE_GROQ_API_KEY) {
+      autoGenRan.current = true
+      generateContent()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const generateImage = () => {
     if (!topic.trim()) { setImageError('Enter a topic first so we know what to illustrate.'); return }
@@ -164,6 +188,9 @@ export default function PostContent() {
   const handlePost = async () => {
     if (!caption.trim()) { setError('Please write a caption before posting.'); return }
     if (selectedPlatforms.length === 0) { setError('Select at least one platform to post to.'); return }
+    if (selectedPlatforms.includes('gmail') && !emailRecipients.trim()) {
+      setError('Enter at least one recipient email for the Gmail invitation.'); return
+    }
     setError('')
     setPosting(true)
 
@@ -171,20 +198,25 @@ export default function PostContent() {
       const creds = {}
       selectedPlatforms.forEach(p => { creds[p] = accounts[p] })
 
-      const finalImageUrl = generatedImage || mediaUrl
+      const isVideo = mediaType === 'video' && mediaUrl
+      const finalMediaUrl = isVideo ? mediaUrl : (generatedImage || mediaUrl)
+      const finalMediaType = isVideo ? 'video' : (finalMediaUrl ? 'image' : mediaType)
       const payload = {
-        mediaUrl: finalImageUrl,
-        mediaType: finalImageUrl ? 'image' : mediaType,
+        mediaUrl: finalMediaUrl,
+        mediaType: finalMediaType,
         caption,
         platforms: selectedPlatforms.join(','),
         userCredentials: creds,
         linkedinPost: caption,
         instagramCaption: caption,
         facebookPost: caption,
-        imageUrl: finalImageUrl,
-        videoUrl: '',
+        imageUrl: finalMediaType === 'image' ? finalMediaUrl : '',
+        videoUrl: finalMediaType === 'video' ? finalMediaUrl : '',
         name: productName || toolTitle,
         source: 'post-content',
+        emailRecipients: selectedPlatforms.includes('gmail') ? emailRecipients.trim() : '',
+        emailSubject: emailSubject.trim(),
+        emailBody: caption,
       }
 
       const res = await fetch(WEBHOOK_URL, {
@@ -195,6 +227,25 @@ export default function PostContent() {
 
       if (!res.ok) throw new Error('Post failed: ' + res.status)
       setPosted(true)
+
+      // ── Record published items in the Firestore content library ──
+      if (evokeUser) {
+        const items = selectedPlatforms.map(p => ({
+          key: p,
+          type: p === 'gmail' ? 'email' : 'post',
+          platform: p,
+          text: caption,
+          subject: p === 'gmail' ? emailSubject.trim() : '',
+          imageUrl: finalMediaType === 'image' ? finalMediaUrl : '',
+          videoUrl: finalMediaType === 'video' ? finalMediaUrl : '',
+        }))
+        saveContentItems(evokeUser.uid, {
+          campaignId: Date.now().toString(),
+          name: productName || toolTitle,
+          type: 'post-content',
+          source: 'post-content',
+        }, items, 'published').catch(err => console.warn('Failed to save to content library:', err))
+      }
     } catch (e) {
       setError('Failed to post: ' + e.message)
     } finally {
@@ -338,6 +389,24 @@ export default function PostContent() {
                 </button>
               </div>
             </div>
+
+            {/* Incoming video preview */}
+            {mediaType === 'video' && mediaUrl && (
+              <div style={{ marginBottom: 20 }}>
+                <p style={{ fontSize: 10, fontWeight: 700, color: TEXT3, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>
+                  Video Preview
+                </p>
+                <video
+                  src={mediaUrl}
+                  controls
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  style={{ width: '100%', borderRadius: 14, border: '1px solid rgba(200,151,62,0.3)', background: '#000' }}
+                />
+              </div>
+            )}
 
             {/* Generated image preview */}
             {generatedImage && (
@@ -487,6 +556,38 @@ export default function PostContent() {
                 </div>
               )}
             </div>
+
+            {/* Gmail invitation details */}
+            {selectedPlatforms.includes('gmail') && (
+              <div style={{ background: '#1c1a13', border: '1px solid rgba(234,67,53,0.25)', borderRadius: 16, padding: 20, marginBottom: 16 }}>
+                <p style={{ fontSize: 10, fontWeight: 700, color: '#ea4335', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Mail size={12} /> Email Invitation Details
+                </p>
+                <label style={{ display: 'block', fontSize: 10, color: TEXT3, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>
+                  Recipients <span style={{ color: '#f87171' }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  value={emailRecipients}
+                  onChange={e => setEmailRecipients(e.target.value)}
+                  placeholder="friend@gmail.com, client@company.com"
+                  style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, color: TEXT, fontSize: 13, outline: 'none', fontFamily: "'Inter',sans-serif", marginBottom: 12 }}
+                />
+                <label style={{ display: 'block', fontSize: 10, color: TEXT3, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>
+                  Subject
+                </label>
+                <input
+                  type="text"
+                  value={emailSubject}
+                  onChange={e => setEmailSubject(e.target.value)}
+                  placeholder="You're invited to check out our new product"
+                  style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, color: TEXT, fontSize: 13, outline: 'none', fontFamily: "'Inter',sans-serif" }}
+                />
+                <p style={{ fontSize: 11, color: TEXT3, marginTop: 8, lineHeight: 1.5 }}>
+                  Your caption becomes the email body, with the video link included automatically.
+                </p>
+              </div>
+            )}
 
             {/* Error */}
             <AnimatePresence>

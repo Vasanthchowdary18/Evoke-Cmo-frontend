@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { useAuth } from "../components/AuthProvider.jsx";
+import { useAuth } from "../hooks/useAuth.js";
 import { redirectToLogin } from "../lib/authUtils.js";
 import {
   Linkedin,
@@ -1580,8 +1580,10 @@ export default function ConnectAccounts() {
               sessionStorage.removeItem('connectReturnTo');
               if (fromPackageA && connectedCount > 0) {
                 navigate('/post-content', { state: { from: returnTo, toolTitle: 'Post to Social', toolColor: '#c8973e' } });
+              } else if (returnTo === '/post-content') {
+                navigate('/post-content', { state: { toolTitle: 'Post to Social', toolColor: '#c8973e' } });
               } else {
-                navigate(fromPackageA ? returnTo : '/agents-hub');
+                navigate(fromPackageA ? returnTo : '/');
               }
             }}
             style={{

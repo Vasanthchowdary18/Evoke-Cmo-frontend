@@ -4,7 +4,7 @@ import { motion, useInView } from 'framer-motion'
 import { ArrowRight, Check, Star, Zap, TrendingUp, Target, Calendar, Search, Mail, Users, BarChart2, Briefcase, Megaphone, ShoppingCart, Sparkles, Activity, Lightbulb, DollarSign, Rocket, Image, Film, Monitor, Share2, Layers, Play } from 'lucide-react'
 // OnboardingModal moved to AgentsHub — not triggered on landing page
 import Navbar from '../components/Navbar.jsx'
-import { useAuth } from '../components/AuthProvider.jsx'
+import { useAuth } from '../hooks/useAuth.js'
 import { redirectToLogin } from '../lib/authUtils'
 
 /* ─── animation ─── */
@@ -406,7 +406,7 @@ export default function Landing() {
     if (user && !import.meta.env.DEV) navigate('/agents-hub', { replace: true })
   }, [user, navigate])
 
-  const goSignIn = () => redirectToLogin()
+  const goSignIn = () => user ? navigate('/agents-hub') : redirectToLogin()
   const goBoard = () => user ? navigate('/agents-hub') : goSignIn()
 
   // "Get Started Free" from the wizard free-detail page — always lands on agents-hub
