@@ -9,6 +9,9 @@ dist/
 .env.local
 .env.production
 
+# MCP config (contains API tokens)
+.mcp.json
+
 # Vercel
 .vercel
 
