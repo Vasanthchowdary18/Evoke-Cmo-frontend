@@ -5,17 +5,17 @@ import { isLoggedIn, buildAccountsLoginUrl } from "../lib/session";
 
 /**
  * Legacy /signin route — redirects to the Evoke accounts portal for SSO.
- * After sign-in, accounts redirects back to /agents-hub.
+ * After sign-in, accounts redirects back to the marketing home page.
  */
 export default function SignIn() {
   const navigate = useNavigate();
 
   useEffect(() => {
     if (isLoggedIn()) {
-      navigate("/agents-hub", { replace: true });
+      navigate("/", { replace: true });
       return;
     }
-    const returnUrl = `${window.location.origin}/agents-hub`;
+    const returnUrl = `${window.location.origin}/`;
     window.location.href = buildAccountsLoginUrl(returnUrl);
   }, [navigate]);
 

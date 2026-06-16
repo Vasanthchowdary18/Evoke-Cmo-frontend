@@ -284,6 +284,7 @@ ${form.budget ? `Budget: ${form.budget}` : ""}
 ${form.keywords ? `Keywords: ${form.keywords}` : ""}
 ${form.toneOfVoice ? `Brand Tone of Voice: ${form.toneOfVoice}` : ""}
 ${form.socialPlatforms?.length ? `Connected Social Platforms to target: ${form.socialPlatforms.join(", ")}` : ""}
+${form.contentTypes?.length ? `Formats Requested: ${form.contentTypes.join(", ")}` : ""}
 ${websiteContent ? `\n--- LIVE WEBSITE CONTENT (use this to deeply understand the business, products, and tone) ---\n${websiteContent}\n---` : ""}
 `.trim();
 
@@ -556,6 +557,33 @@ Post Date: ${form.postDate || "ASAP"}`
   "linkedinPost": "LinkedIn post on customer success and relationship-driven growth",
   "campaignCalendar": "${Array.from({length: form.campaignDays||7},(_,i)=>'Day '+(i+1)+': [action]').join('\\n')}",
   "positioningStatement": "Customer-centric value proposition statement"
+}`,
+      ads_creation: `{
+  "campaignName": "${form.name}",
+  "adStrategy": "2-3 sentence creative strategy: the core hook/angle, why it fits this audience and objective, and how budget and landing page should shape the creative",
+  "staticAdVariants": [
+    { "headline": "punchy headline, 40 chars max", "primaryText": "direct-response primary text with a strong hook, 125 chars max", "description": "supporting line, 25 chars max", "cta": "Shop Now | Learn More | Sign Up | Get Offer (pick the best fit)" },
+    { "headline": "second distinct angle headline, 40 chars max", "primaryText": "direct-response primary text, different angle than variant 1, 125 chars max", "description": "supporting line, 25 chars max", "cta": "best-fit CTA" },
+    { "headline": "third distinct angle headline, 40 chars max", "primaryText": "direct-response primary text, different angle than variants 1 and 2, 125 chars max", "description": "supporting line, 25 chars max", "cta": "best-fit CTA" }
+  ],
+  "carouselAdVariant": {
+    "headline": "overall carousel ad headline",
+    "slides": [
+      { "title": "slide 1 title", "text": "slide 1 supporting text" },
+      { "title": "slide 2 title", "text": "slide 2 supporting text" },
+      { "title": "slide 3 title", "text": "slide 3 supporting text" },
+      { "title": "slide 4 title", "text": "slide 4 supporting text" }
+    ],
+    "cta": "best-fit CTA"
+  },
+  "videoStillAdVariant": {
+    "hook": "first 3-second hook line for the video/reel",
+    "script": "15-30 second script broken into short beats/lines",
+    "caption": "social caption to pair with the video ad",
+    "cta": "best-fit CTA"
+  },
+  "adHeadlineVariants": ["alt headline 1", "alt headline 2", "alt headline 3", "alt headline 4", "alt headline 5"],
+  "landingPageTips": "3 short, specific conversion-rate tips for the landing page given the objective and budget"
 }`,
       paid_advertising: `{
   "campaignName": "${form.name}",
@@ -1605,8 +1633,11 @@ export default function CampaignForm() {
       const campaignData = await generateCampaignContent(form, type, form.campaignDays);
 
       // â"€â"€ Generate daily schedule for multi-day campaigns â"€â"€
+      // Skipped for Package C ad tools — they have no campaign-duration UI and
+      // produce ad creative, not a day-by-day social posting calendar.
+      const isAdTool = type === "ads_creation" || type === "ads_manager" || type === "target_audience";
       let dailySchedule = [];
-      if ((form.campaignDays || 7) > 1) {
+      if (!isAdTool && (form.campaignDays || 7) > 1) {
         setLoadingPhase("generating-schedule");
         dailySchedule = await generateDailySchedule(form, type, form.campaignDays || 7);
       }
@@ -1657,6 +1688,16 @@ export default function CampaignForm() {
         whatsappMessage:  campaignData.whatsappMessage  || "",
         adHeadline:       campaignData.adHeadline       || "",
         adBody:           campaignData.adBody           || "",
+        ...(type === "ads_creation" && {
+          adStrategy:          campaignData.adStrategy          || "",
+          staticAdVariants:    campaignData.staticAdVariants    || [],
+          carouselAdVariant:   campaignData.carouselAdVariant   || null,
+          videoStillAdVariant: campaignData.videoStillAdVariant || null,
+          adHeadlineVariants:  campaignData.adHeadlineVariants  || [],
+          landingPageTips:     campaignData.landingPageTips     || "",
+          adPlatforms:         form.socialPlatforms || [],
+          adFormats:           form.contentTypes || [],
+        }),
       };
 
       // ── Attach inline-generated product assets (from converter cards) ──
@@ -1735,7 +1776,7 @@ export default function CampaignForm() {
       }));
       sessionStorage.setItem("campaignType", type);
       sessionStorage.setItem("campaignMeta", JSON.stringify({ name: form.name, brandName: form.brandName }));
-      sessionStorage.setItem("campaignDays", String(form.campaignDays || 7));
+      sessionStorage.setItem("campaignDays", String(isAdTool ? 1 : (form.campaignDays || 7)));
       sessionStorage.setItem("dailySchedule", JSON.stringify(dailySchedule));
       sessionStorage.setItem("webhookStatus", "idle");
       sessionStorage.setItem("webhookPayload", JSON.stringify(payload));
@@ -2904,15 +2945,20 @@ export default function CampaignForm() {
             </>
           )}
 
-          {(type === "product" || type === "brand") && (
+          {(type === "product" || type === "brand" || (type === "ads_creation" && (form.contentTypes || []).some(f => f === "Video Ad" || f === "Story / Reel Ad"))) && (
             <>
               <div style={s.divider} />
-              <p style={s.sectionTitle}>{type === "brand" ? "Brand Image" : "Product Image"}</p>
+              <p style={s.sectionTitle}>{type === "brand" ? "Brand Image" : type === "ads_creation" ? "Ad Video Source Image" : "Product Image"}</p>
+              {type === "ads_creation" && (
+                <p style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginTop: -4, marginBottom: 8 }}>
+                  Upload a product/creative image to generate an actual ad video below — text alone can't produce video.
+                </p>
+              )}
               <label
                 style={{ ...s.label, marginTop: "12px" }}
                 id="product-image-field"
               >
-                {type === "brand" ? "Brand / Campaign Image" : "Product Image"}{" "}
+                {type === "brand" ? "Brand / Campaign Image" : type === "ads_creation" ? "Creative Image" : "Product Image"}{" "}
                 <span
                   style={{
                     color: "rgba(255,255,255,0.35)",
@@ -3034,7 +3080,7 @@ export default function CampaignForm() {
                     Generate Visual Assets
                   </p>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
-                    {CONVERTERS.map((conv) => {
+                    {CONVERTERS.filter((conv) => type !== "ads_creation" || conv.type === "video").map((conv) => {
                       const res = assetResults[conv.key];
                       const isRunning = generatingAsset === conv.key;
                       const isDone = !!res && !res.error;
@@ -3090,7 +3136,9 @@ export default function CampaignForm() {
                   {/* Show any generated video prominently */}
                   {Object.values(assetResults).some(r => r?.type === "video" && r.url) && (
                     <div style={{ marginTop: 12, padding: "10px 12px", background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.2)", borderRadius: 10, fontSize: 11, color: "rgba(255,255,255,0.5)" }}>
-                      ✓ Generated videos will be posted as <strong style={{ color: "#4ade80" }}>video</strong> to Instagram, Facebook & LinkedIn. Photos post as <strong style={{ color: "#c8973e" }}>image</strong>.
+                      {type === "ads_creation"
+                        ? <>✓ Generated video will be attached as your <strong style={{ color: "#4ade80" }}>video ad creative</strong> on the results page.</>
+                        : <>✓ Generated videos will be posted as <strong style={{ color: "#4ade80" }}>video</strong> to Instagram, Facebook & LinkedIn. Photos post as <strong style={{ color: "#c8973e" }}>image</strong>.</>}
                     </div>
                   )}
                 </div>

@@ -401,11 +401,6 @@ export default function Landing() {
     setWizardOpen(true)
   }
 
-  // Logged-in users should go straight to the dashboard (skip in dev so landing page is previewable locally)
-  useEffect(() => {
-    if (user && !import.meta.env.DEV) navigate('/agents-hub', { replace: true })
-  }, [user, navigate])
-
   const goSignIn = () => user ? navigate('/agents-hub') : redirectToLogin()
   const goBoard = () => user ? navigate('/agents-hub') : goSignIn()
 
