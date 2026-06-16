@@ -51,12 +51,12 @@ function EvokeAuthHandler() {
     signInWithCustomToken(auth, token)
       .then(async (cred) => {
         await getOrCreateUser(cred.user.uid, cred.user.displayName, cred.user.email)
-        navigate('/agents-hub')
+        navigate('/')
       })
       .catch(() => {
         // Token format not recognised — user may already be signed in via shared session
-        // Just navigate to agents-hub and let Firebase auth state decide
-        navigate('/agents-hub')
+        // Just navigate home and let Firebase auth state decide
+        navigate('/')
       })
   }, [navigate])
 

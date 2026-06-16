@@ -401,17 +401,6 @@ export default function Landing() {
     setWizardOpen(true)
   }
 
-  // Logged-in users who already completed the assessment go straight to the
-  // dashboard. New users (no saved assessment yet) stay on the landing page
-  // so they actually see the assessment wizard instead of being bounced past it.
-  // Skipped in dev so the landing page is previewable locally.
-  useEffect(() => {
-    if (!user || import.meta.env.DEV) return
-    let hasAssessment = false
-    try { hasAssessment = !!JSON.parse(localStorage.getItem('evoke_assessment') || 'null')?.answers } catch {}
-    if (hasAssessment) navigate('/agents-hub', { replace: true })
-  }, [user, navigate])
-
   const goSignIn = () => user ? navigate('/agents-hub') : redirectToLogin()
   const goBoard = () => user ? navigate('/agents-hub') : goSignIn()
 

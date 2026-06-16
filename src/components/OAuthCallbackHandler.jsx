@@ -40,8 +40,8 @@ export default function OAuthCallbackHandler() {
 
         for (const key of OAUTH_QUERY_PARAMS) params.delete(key);
         const qs = params.toString();
-        // After login always land on the dashboard, not back on the marketing page
-        const destination = '/agents-hub';
+        // After login, land on the marketing home page
+        const destination = '/';
         navigate(qs ? `${destination}?${qs}` : destination, {
           replace: true,
         });
