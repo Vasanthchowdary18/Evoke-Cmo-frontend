@@ -622,7 +622,8 @@ export default function Results() {
       const flat = flattenResult(JSON.parse(raw))
       const hasContent = flat.emailSubject || flat.emailBody || flat.linkedinPost ||
         flat.instagramCaption || flat.facebookPost || flat.whatsappMessage || flat.tiktokCaption || flat.adHeadline ||
-        flat.executiveSummary || flat.growthOpportunities || flat.gtmPlan
+        flat.executiveSummary || flat.growthOpportunities || flat.gtmPlan ||
+        flat.adStrategy || flat.staticAdVariants?.length || flat.carouselAdVariant || flat.videoStillAdVariant
       if (!hasContent && flat.error) { setError(flat.error); return }
       setResult(flat)
       setEditedContent({
@@ -690,6 +691,19 @@ export default function Results() {
           push('emailBody',        'email', 'email',    flat.emailBody        || flat.email_body, safeStr(flat.emailSubject || flat.email_subject))
           if (flat.adHeadline || flat.adBody) {
             push('adBody', 'ad', '', [safeStr(flat.adHeadline), safeStr(flat.adBody)].filter(Boolean).join('\n\n'))
+          }
+          if (Array.isArray(flat.staticAdVariants) && flat.staticAdVariants.length) {
+            push('staticAdVariants', 'ad', '', flat.staticAdVariants.map((v, i) =>
+              `Variant ${i + 1}\nHeadline: ${v.headline || ''}\n${v.primaryText || ''}\n${v.description || ''}\nCTA: ${v.cta || ''}`
+            ).join('\n\n'))
+          }
+          if (flat.carouselAdVariant) {
+            const c = flat.carouselAdVariant
+            push('carouselAdVariant', 'ad', '', `${c.headline || ''}\n\n${(c.slides || []).map((s, i) => `Slide ${i + 1}: ${s.title || ''} — ${s.text || ''}`).join('\n')}\n\nCTA: ${c.cta || ''}`)
+          }
+          if (flat.videoStillAdVariant) {
+            const v = flat.videoStillAdVariant
+            push('videoStillAdVariant', 'ad', '', `Hook: ${v.hook || ''}\n\nScript:\n${v.script || ''}\n\nCaption: ${v.caption || ''}\nCTA: ${v.cta || ''}`)
           }
           if (flat.seoTitle || flat.seoDescription) {
             push('seoTitle', 'seo', '', [safeStr(flat.seoTitle), safeStr(flat.seoDescription)].filter(Boolean).join('\n\n'))
@@ -980,6 +994,15 @@ export default function Results() {
   const videoUrl             = r.videoUrl             || ''
   const hasVideo             = r.hasVideo             || !!videoUrl
 
+  // Ads Creation (Package C) — multi-variant ad creative output
+  const isAdsCreation        = campaignType === 'ads_creation'
+  const adStrategy           = r.adStrategy           || ''
+  const staticAdVariants     = Array.isArray(r.staticAdVariants) ? r.staticAdVariants : []
+  const carouselAdVariant    = r.carouselAdVariant    || null
+  const videoStillAdVariant  = r.videoStillAdVariant  || null
+  const adHeadlineVariants   = Array.isArray(r.adHeadlineVariants) ? r.adHeadlineVariants : []
+  const landingPageTips      = r.landingPageTips      || ''
+
   const calendarDays = parseCalendar(campaignCalendar)
   const launched = postingStatus !== 'idle'
 
@@ -1062,6 +1085,14 @@ export default function Results() {
     adHeadline && `AD HEADLINE:\n${adHeadline}`,
     adBody && `AD BODY:\n${adBody}`,
     campaignCalendar && `${campaignDays}-DAY CALENDAR:\n${campaignCalendar}`,
+    adStrategy && `AD STRATEGY:\n${adStrategy}`,
+    staticAdVariants.length > 0 && `STATIC AD VARIANTS:\n${staticAdVariants.map((v, i) =>
+      `Variant ${i + 1}\nHeadline: ${v.headline || ''}\n${v.primaryText || ''}\n${v.description || ''}\nCTA: ${v.cta || ''}`
+    ).join('\n\n')}`,
+    carouselAdVariant && `CAROUSEL AD:\n${carouselAdVariant.headline || ''}\n${(carouselAdVariant.slides || []).map((s, i) => `Slide ${i + 1}: ${s.title || ''} — ${s.text || ''}`).join('\n')}\nCTA: ${carouselAdVariant.cta || ''}`,
+    videoStillAdVariant && `VIDEO/REEL AD:\nHook: ${videoStillAdVariant.hook || ''}\nScript:\n${videoStillAdVariant.script || ''}\nCaption: ${videoStillAdVariant.caption || ''}\nCTA: ${videoStillAdVariant.cta || ''}`,
+    adHeadlineVariants.length > 0 && `HEADLINE VARIANTS:\n${adHeadlineVariants.map(h => `• ${h}`).join('\n')}`,
+    landingPageTips && `LANDING PAGE TIPS:\n${landingPageTips}`,
   ].filter(Boolean).join('\n\n---\n\n')
 
   const editProps = { editingKey, editDraft, onStartEdit: startEdit, onSaveEdit: saveEdit, onCancelEdit: cancelEdit, onDraftChange: setEditDraft, launched }
@@ -1258,10 +1289,116 @@ export default function Results() {
           </div>
         )}
 
+        {/* ── Ads Creation — multi-variant ad creative cards ── */}
+        {isAdsCreation && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 14 }}>
+            {adStrategy && (
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
+                style={{ background: '#fff', border: '1px solid rgba(245,240,232,0.15)', borderRadius: 16, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid #f5f0e8', background: '#fafbff' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ width: 32, height: 32, borderRadius: 9, background: 'rgba(249,115,22,0.12)', border: '1px solid rgba(249,115,22,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f97316' }}><Megaphone size={16} /></div>
+                    <span style={{ fontWeight: 700, fontSize: 14, color: '#0f172a' }}>Creative Strategy</span>
+                  </div>
+                  <button onClick={() => copy(adStrategy, 'adStrategy')} style={copyBtnSmall(copied === 'adStrategy')}>{copied === 'adStrategy' ? <Check size={11} /> : <Copy size={11} />}</button>
+                </div>
+                <div style={{ padding: '16px 18px' }}><ContentText value={adStrategy} /></div>
+              </motion.div>
+            )}
+
+            {staticAdVariants.length > 0 && (
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+                style={{ background: '#fff', border: '1px solid rgba(245,240,232,0.15)', borderRadius: 16, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+                <div style={{ padding: '14px 18px', borderBottom: '1px solid #f5f0e8', background: '#fafbff' }}>
+                  <span style={{ fontWeight: 700, fontSize: 14, color: '#0f172a' }}>Static Ad Variants ({staticAdVariants.length})</span>
+                </div>
+                <div style={{ padding: '16px 18px', display: 'grid', gridTemplateColumns: `repeat(${Math.min(staticAdVariants.length, 3)}, 1fr)`, gap: 12 }}>
+                  {staticAdVariants.map((v, i) => (
+                    <div key={i} style={{ border: '1px solid rgba(245,240,232,0.2)', borderRadius: 12, padding: 14, background: '#fafbff' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                        <span style={{ fontSize: 11, fontWeight: 800, color: '#f97316', letterSpacing: '0.05em' }}>VARIANT {i + 1}</span>
+                        <button onClick={() => copy(`${v.headline || ''}\n${v.primaryText || ''}\n${v.description || ''}\nCTA: ${v.cta || ''}`, `static${i}`)} style={copyBtnSmall(copied === `static${i}`)}>{copied === `static${i}` ? <Check size={11} /> : <Copy size={11} />}</button>
+                      </div>
+                      <FieldRow label="Headline" value={v.headline} />
+                      <FieldRow label="Primary Text" value={v.primaryText} />
+                      <FieldRow label="Description" value={v.description} />
+                      <FieldRow label="CTA" value={v.cta} />
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+
+            {carouselAdVariant && (
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
+                style={{ background: '#fff', border: '1px solid rgba(245,240,232,0.15)', borderRadius: 16, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid #f5f0e8', background: '#fafbff' }}>
+                  <span style={{ fontWeight: 700, fontSize: 14, color: '#0f172a' }}>Carousel Ad</span>
+                  <button onClick={() => copy(`${carouselAdVariant.headline || ''}\n${(carouselAdVariant.slides || []).map((s, i) => `Slide ${i + 1}: ${s.title || ''} — ${s.text || ''}`).join('\n')}\nCTA: ${carouselAdVariant.cta || ''}`, 'carousel')} style={copyBtnSmall(copied === 'carousel')}>{copied === 'carousel' ? <Check size={11} /> : <Copy size={11} />}</button>
+                </div>
+                <div style={{ padding: '16px 18px' }}>
+                  <FieldRow label="Headline" value={carouselAdVariant.headline} />
+                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 8 }}>
+                    {(carouselAdVariant.slides || []).map((s, i) => (
+                      <div key={i} style={{ width: 160, border: '1px solid rgba(245,240,232,0.2)', borderRadius: 10, padding: 10, background: '#fafbff' }}>
+                        <p style={{ fontSize: 10, fontWeight: 800, color: '#94a3b8', marginBottom: 4 }}>SLIDE {i + 1}</p>
+                        <p style={{ fontSize: 12, fontWeight: 700, color: '#0f172a', marginBottom: 4 }}>{s.title}</p>
+                        <p style={{ fontSize: 11, color: '#64748b' }}>{s.text}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <FieldRow label="CTA" value={carouselAdVariant.cta} />
+                </div>
+              </motion.div>
+            )}
+
+            {videoStillAdVariant && (
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+                style={{ background: '#fff', border: '1px solid rgba(245,240,232,0.15)', borderRadius: 16, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid #f5f0e8', background: '#fafbff' }}>
+                  <span style={{ fontWeight: 700, fontSize: 14, color: '#0f172a' }}>Video / Reel Ad</span>
+                  <button onClick={() => copy(`Hook: ${videoStillAdVariant.hook || ''}\n\nScript:\n${videoStillAdVariant.script || ''}\n\nCaption: ${videoStillAdVariant.caption || ''}\nCTA: ${videoStillAdVariant.cta || ''}`, 'videoAd')} style={copyBtnSmall(copied === 'videoAd')}>{copied === 'videoAd' ? <Check size={11} /> : <Copy size={11} />}</button>
+                </div>
+                <div style={{ padding: '16px 18px' }}>
+                  <FieldRow label="Hook (first 3 seconds)" value={videoStillAdVariant.hook} />
+                  <FieldRow label="Script" value={videoStillAdVariant.script} />
+                  <FieldRow label="Caption" value={videoStillAdVariant.caption} />
+                  <FieldRow label="CTA" value={videoStillAdVariant.cta} />
+                </div>
+              </motion.div>
+            )}
+
+            {adHeadlineVariants.length > 0 && (
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}
+                style={{ background: '#fff', border: '1px solid rgba(245,240,232,0.15)', borderRadius: 16, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid #f5f0e8', background: '#fafbff' }}>
+                  <span style={{ fontWeight: 700, fontSize: 14, color: '#0f172a' }}>Headline Variants</span>
+                  <button onClick={() => copy(adHeadlineVariants.join('\n'), 'headlineVariants')} style={copyBtnSmall(copied === 'headlineVariants')}>{copied === 'headlineVariants' ? <Check size={11} /> : <Copy size={11} />}</button>
+                </div>
+                <div style={{ padding: '16px 18px', display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {adHeadlineVariants.map((h, i) => (
+                    <span key={i} style={{ padding: '6px 12px', borderRadius: 100, fontSize: 12, fontWeight: 600, background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.2)', color: '#f97316' }}>{h}</span>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+
+            {landingPageTips && (
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+                style={{ background: '#fff', border: '1px solid rgba(245,240,232,0.15)', borderRadius: 16, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+                <div style={{ padding: '14px 18px', borderBottom: '1px solid #f5f0e8', background: '#fafbff' }}>
+                  <span style={{ fontWeight: 700, fontSize: 14, color: '#0f172a' }}>Landing Page Tips</span>
+                </div>
+                <div style={{ padding: '16px 18px' }}><ContentText value={landingPageTips} /></div>
+              </motion.div>
+            )}
+          </div>
+        )}
+
         {/* Content Cards — hidden entirely for growth_strategy (pure strategy doc, no social posts needed) */}
         <div style={{ display: isStrategy ? 'none' : 'flex', flexDirection: 'column', gap: 14 }}>
 
-          {!isStrategy && <>
+          {!isStrategy && !isAdsCreation && <>
             {(emailSubject || emailBody) && (
               <EmailCard emailSubject={emailSubject} emailBody={emailBody} editedContent={editedContent} setEditedContent={setEditedContent} copied={copied} copy={copy} delay={0.05} {...editProps} />
             )}
@@ -1427,7 +1564,7 @@ export default function Results() {
             </motion.div>
           )}
 
-          {!emailSubject && !emailBody && !linkedinPost && !facebookPost && !tiktokCaption && !whatsappMessage && !smsMessage && !positioningStatement && !seoTitle && !adHeadline && calendarDays.length === 0 && !executiveSummary && !growthOpportunities && !gtmPlan && !revenueProjection && !partnershipIdeas && !expansionRoadmap && !competitorGaps && (
+          {!emailSubject && !emailBody && !linkedinPost && !facebookPost && !tiktokCaption && !whatsappMessage && !smsMessage && !positioningStatement && !seoTitle && !adHeadline && calendarDays.length === 0 && !executiveSummary && !growthOpportunities && !gtmPlan && !revenueProjection && !partnershipIdeas && !expansionRoadmap && !competitorGaps && !adStrategy && staticAdVariants.length === 0 && !carouselAdVariant && !videoStillAdVariant && adHeadlineVariants.length === 0 && !landingPageTips && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ padding: '48px 24px', textAlign: 'center', background: '#fff', border: '1px dashed #cbd5e1', borderRadius: 16 }}>
               <AlertCircle size={32} style={{ color: '#cbd5e1', marginBottom: 14 }} />
               <p style={{ color: '#94a3b8', fontSize: 15, marginBottom: 20 }}>No campaign content was generated. Please try again.</p>
