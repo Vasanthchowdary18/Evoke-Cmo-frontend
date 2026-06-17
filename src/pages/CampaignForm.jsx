@@ -2890,148 +2890,88 @@ export default function CampaignForm() {
                 </div>
               )}
 
-              {/* ── Event URL — enter own or let system create one ── */}
-              <label style={s.label}>
-                Event URL{" "}
-                <span style={{ color: "rgba(255,255,255,0.35)", fontSize: "12px", fontWeight: 400 }}>(optional)</span>
+              {/* ── Event URL ── */}
+              <label style={{ ...s.label, marginTop: 24 }}>
+                Event URL <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 12, fontWeight: 400 }}>(optional)</span>
               </label>
-              <div style={{ display: "flex", gap: "8px", marginBottom: "10px" }}>
-                {[
-                  { val: "manual", label: "I have a URL" },
-                  { val: "create", label: "Create one for me" },
-                ].map(({ val, label }) => {
+              <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+                {[{ val: "manual", label: "I have a URL" }, { val: "create", label: "Create one for me" }].map(({ val, label }) => {
                   const active = form.eventUrlMode === val;
                   return (
-                    <button
-                      key={val}
-                      type="button"
-                      onClick={() => set("eventUrlMode", val)}
-                      style={{
-                        flex: 1, padding: "10px 14px", borderRadius: "10px", cursor: "pointer",
-                        background: active ? `${meta.color}15` : "rgba(255,255,255,0.03)",
-                        border: `1.5px solid ${active ? meta.color : "rgba(255,255,255,0.1)"}`,
-                        color: active ? meta.color : "rgba(255,255,255,0.5)",
-                        fontSize: "13px", fontWeight: 700, transition: "all 0.15s",
-                      }}
-                    >
-                      {active && <Check size={12} style={{ display: "inline", marginRight: 5 }} />}
-                      {label}
+                    <button key={val} type="button" onClick={() => set("eventUrlMode", val)} style={{
+                      flex: 1, padding: "10px 14px", borderRadius: 10, cursor: "pointer",
+                      background: active ? `${meta.color}15` : "rgba(255,255,255,0.03)",
+                      border: `1.5px solid ${active ? meta.color : "rgba(255,255,255,0.1)"}`,
+                      color: active ? meta.color : "rgba(255,255,255,0.5)",
+                      fontSize: 13, fontWeight: 700, transition: "all 0.15s",
+                    }}>
+                      {active && <Check size={12} style={{ display: "inline", marginRight: 5 }} />}{label}
                     </button>
                   );
                 })}
               </div>
               {form.eventUrlMode === "manual" ? (
                 <div style={{ position: "relative" }}>
-                  <Link
-                    size={14}
-                    style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.35)" }}
-                  />
-                  <input
-                    value={form.eventUrl}
-                    onChange={(e) => set("eventUrl", e.target.value)}
-                    placeholder="https://eventbrite.com/your-event"
-                    style={{ ...s.input, paddingLeft: "36px" }}
-                  />
+                  <Link size={14} style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.35)" }} />
+                  <input value={form.eventUrl} onChange={(e) => set("eventUrl", e.target.value)} placeholder="https://eventbrite.com/your-event" style={{ ...s.input, paddingLeft: 36 }} />
                 </div>
               ) : (
                 <div>
-                  {/* Generated URL display */}
-                  {(form.eventUrl || generatedEventUrl) ? (
-                    <div style={{ marginBottom: 10 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", background: `${meta.color}10`, border: `1px solid ${meta.color}35`, borderRadius: "10px" }}>
-                        <Link size={13} style={{ color: meta.color, flexShrink: 0 }} />
-                        <span style={{ fontSize: 13, color: "#f0ebe0", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {form.eventUrl || generatedEventUrl}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => navigator.clipboard?.writeText(form.eventUrl || generatedEventUrl)}
-                          style={{ background: "none", border: "none", cursor: "pointer", color: meta.color, fontSize: 12, fontWeight: 700, whiteSpace: "nowrap", flexShrink: 0 }}
-                        >
-                          Copy
-                        </button>
-                        <a href={form.eventUrl || generatedEventUrl} target="_blank" rel="noopener noreferrer" style={{ color: meta.color, display: "flex", alignItems: "center" }}>
-                          <ExternalLink size={13} />
-                        </a>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          if (!form.name) return;
-                          setGeneratingEventUrl(true);
-                          setEventUrlError("");
-                          const slug = buildEventSlug(form.name, form.date);
-                          try {
-                            const url = await saveEventPage(slug, {
-                              name: form.name, description: form.description,
-                              date: form.date, endDate: form.endDate, time: form.time,
-                              locations: form.eventLocations,
-                              location: form.eventLocations?.join(", ") || form.location,
-                              imageUrl: eventImagePreview || "",
-                              targetAudience: form.targetAudience, brandName: form.brandName,
-                            });
-                            set("eventUrl", url); setGeneratedEventUrl(url);
-                          } catch {
-                            const fallback = `${window.location.origin}/event/${slug}`;
-                            set("eventUrl", fallback); setGeneratedEventUrl(fallback);
-                          }
-                          setGeneratingEventUrl(false);
-                        }}
-                        style={{ marginTop: 8, fontSize: 12, color: "rgba(255,255,255,0.4)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}
-                      >
-                        Regenerate URL
-                      </button>
-                    </div>
-                  ) : (
-                    <>
-                    {eventUrlError && (
-                      <div style={{ marginBottom: 8, fontSize: 12, color: "#f87171", display: "flex", alignItems: "center", gap: 6 }}>
-                        <AlertCircle size={12} /> {eventUrlError}
-                      </div>
-                    )}
+
+              {(form.eventUrl || generatedEventUrl) ? (
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 16px", background: `${meta.color}10`, border: `1px solid ${meta.color}40`, borderRadius: 12 }}>
+                    <Link size={14} style={{ color: meta.color, flexShrink: 0 }} />
+                    <span style={{ fontSize: 13, color: "#f0ebe0", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {form.eventUrl || generatedEventUrl}
+                    </span>
                     <button
                       type="button"
-                      disabled={!form.name || generatingEventUrl}
-                      onClick={async () => {
-                        if (!form.name) return;
-                        setGeneratingEventUrl(true);
-                        setEventUrlError("");
-                        const slug = buildEventSlug(form.name, form.date);
-                        try {
-                          const url = await saveEventPage(slug, {
-                            name: form.name, description: form.description,
-                            date: form.date, endDate: form.endDate, time: form.time,
-                            locations: form.eventLocations,
-                            location: form.eventLocations?.join(", ") || form.location,
-                            imageUrl: eventImagePreview || "",
-                            targetAudience: form.targetAudience, brandName: form.brandName,
-                          });
-                          set("eventUrl", url); setGeneratedEventUrl(url);
-                        } catch (err) {
-                          // Firestore unavailable (e.g. rules/auth) — use slug URL directly.
-                          // The page data will be saved when the campaign is generated.
-                          const fallback = `${window.location.origin}/event/${slug}`;
-                          set("eventUrl", fallback); setGeneratedEventUrl(fallback);
-                          console.warn("Event page save failed, using slug URL:", err?.message);
-                        }
-                        setGeneratingEventUrl(false);
-                      }}
-                      style={{
-                        width: "100%", padding: "12px 16px", borderRadius: "12px", cursor: form.name ? "pointer" : "not-allowed",
-                        background: form.name ? `${meta.color}15` : "rgba(255,255,255,0.03)",
-                        border: `1.5px solid ${form.name ? meta.color + "50" : "rgba(255,255,255,0.1)"}`,
-                        color: form.name ? meta.color : "rgba(255,255,255,0.3)",
-                        fontSize: "13px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                        opacity: generatingEventUrl ? 0.7 : 1,
-                      }}
+                      onClick={() => navigator.clipboard?.writeText(form.eventUrl || generatedEventUrl)}
+                      style={{ background: "none", border: "none", cursor: "pointer", color: meta.color, fontSize: 12, fontWeight: 700, whiteSpace: "nowrap", flexShrink: 0 }}
                     >
-                      {generatingEventUrl
-                        ? <><Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> Creating your event page…</>
-                        : <><Link size={14} /> Generate Event URL{!form.name && " (enter event name first)"}</>
-                      }
+                      Copy
                     </button>
-                    </>
-                  )}
+                    <a href={form.eventUrl || generatedEventUrl} target="_blank" rel="noopener noreferrer" style={{ color: meta.color, display: "flex", alignItems: "center", flexShrink: 0 }}>
+                      <ExternalLink size={13} />
+                    </a>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const data = { name: form.name, description: form.description, date: form.date, endDate: form.endDate, time: form.time, locations: form.eventLocations, location: form.eventLocations?.join(", ") || form.location, imageUrl: eventImagePreview || "", targetAudience: form.targetAudience, brandName: form.brandName, price: form.price, contactEmail: form.contactEmail, registrationUrl: form.eventUrl };
+                      const hash = btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+                      const url = `https://agents.evokemarketplace.com/e#${hash}`;
+                      set("eventUrl", url); setGeneratedEventUrl(url);
+                    }}
+                    style={{ marginTop: 8, fontSize: 12, color: "rgba(255,255,255,0.4)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0 }}
+                  >
+                    Regenerate URL
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  disabled={!form.name}
+                  onClick={() => {
+                    if (!form.name) return;
+                    const data = { name: form.name, description: form.description, date: form.date, endDate: form.endDate, time: form.time, locations: form.eventLocations, location: form.eventLocations?.join(", ") || form.location, imageUrl: eventImagePreview || "", targetAudience: form.targetAudience, brandName: form.brandName, price: form.price, contactEmail: form.contactEmail, registrationUrl: form.eventUrl };
+                    const hash = btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+                    const url = `https://agents.evokemarketplace.com/e#${hash}`;
+                    set("eventUrl", url); setGeneratedEventUrl(url);
+                  }}
+                  style={{
+                    width: "100%", padding: "13px 16px", borderRadius: 12,
+                    background: form.name ? `linear-gradient(135deg, ${meta.color}20, ${meta.color}10)` : "rgba(255,255,255,0.03)",
+                    border: `1.5px solid ${form.name ? meta.color + "60" : "rgba(255,255,255,0.1)"}`,
+                    color: form.name ? meta.color : "rgba(255,255,255,0.3)",
+                    fontSize: 13, fontWeight: 700, cursor: form.name ? "pointer" : "not-allowed",
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 8, transition: "all 0.2s",
+                  }}
+                >
+                  <Link size={14} /> {form.name ? "Generate Event Page URL" : "Enter event name first"}
+                </button>
+              )}
                 </div>
               )}
 
