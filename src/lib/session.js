@@ -310,6 +310,13 @@ export async function establishAuthSessionFromOAuthPayload(oauthPayload) {
 export async function fetchSessionFromBackend() {
   if (isRecentlySignedOutInTab()) return null;
 
+  // Skip session recovery on localhost — auth cookies are domain-locked to
+  // .evokemarketplace.com and will never be present on localhost, causing
+  // expected 401s that pollute the console without any benefit.
+  const isLocalhost = typeof window !== "undefined" &&
+    (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+  if (isLocalhost) return null;
+
   const apiBaseUrl = String(import.meta?.env?.VITE_API_BASE_URL || "").trim();
   if (!apiBaseUrl) return null;
   const url = `${apiBaseUrl.replace(/\/$/, "")}/auth/session`;

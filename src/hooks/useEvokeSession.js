@@ -27,33 +27,7 @@ export function useEvokeSession() {
     (async () => {
       const hasCookie = Boolean(getEvokeUser()?.data?.email);
       if (hasCookie || !profile) {
-        let payload = null;
-
-        // In dev, skip the backend call entirely — it always fails with a CORS
-        // error from localhost and the red console noise is misleading.
-        // Go straight to the hardcoded dev session.
-        if (import.meta.env.DEV) {
-          payload = {
-            status: "success",
-            message: "Dev session",
-            data: {
-              email: "vasanthchowdary35@gmail.com",
-              custID: 260417001,
-              firstName: "Vasanth",
-              lastName: "chowdary",
-              role: 4,
-              memberShipTypeID: null,
-              walletAddress: "0x5114eAaC97602E33921A9d474ea70Ec181e8F4b6",
-              referralCode: "Vasanth_h5u0r",
-              referralID: "260417001_h5u0r",
-              // No token field — cookie uses 7-day fallback max-age
-            },
-          };
-        } else {
-          // Production: refresh session from backend (SSO cross-domain)
-          payload = await fetchSessionFromBackend();
-        }
-
+        const payload = await fetchSessionFromBackend();
         if (!cancelled && payload) {
           setLoggedInData(payload);
         }

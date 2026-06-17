@@ -27,11 +27,13 @@ import {
   Code2,
   Brain,
   Shield,
+  ExternalLink,
 } from "lucide-react";
 import Navbar from "../components/Navbar.jsx";
 import { getEvokeUserProfile } from "../lib/session";
 import { profileToUser } from "../lib/authUtils";
 import { getUserData } from "../services/userService";
+import { buildEventSlug, saveEventPage, downloadEventHtml } from "../services/eventService";
 
 const CLOUDINARY_CLOUD = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "dxbn3vyig";
 const CLOUDINARY_PRESET = "tiktok_videos"; // Unsigned preset in Cloudinary
@@ -113,70 +115,141 @@ const CONVERTERS = [
 
 // â"€â"€â"€ Gemini Imagen 3 - full poster generator (text + design) â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 async function generateEventPoster(form) {
-  const name     = (form.name        || "").trim();
-  const desc     = (form.description || "").substring(0, 200).trim();
-  const location = (form.location    || "").trim();
-  const time     = (form.time        || "").trim();
-  const email    = (form.contactEmail|| "").trim();
-  const type     = (form.campaignType|| "event");
-
-  // Format date nicely
-  let dateStr = "";
+  const name     = (form.name     || 'Event').trim();
+  const desc     = (form.description || '').substring(0, 100).trim();
+  const location = (Array.isArray(form.eventLocations) && form.eventLocations.length ? form.eventLocations.join(', ') : form.location || '').trim();
+  const time     = (form.time     || '').trim();
+  let dateStr = '';
   if (form.date) {
-    try {
-      dateStr = new Date(form.date + "T00:00:00").toLocaleDateString("en-US", {
-        weekday: "long", year: "numeric", month: "long", day: "numeric",
-      });
-    } catch (_) { dateStr = form.date; }
+    try { dateStr = new Date(form.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }); }
+    catch (_) { dateStr = form.date; }
   }
 
-  // Build the full Gemini poster prompt with ALL event details
-  const prompt = `Create a stunning, professional ${type} marketing poster image.
+  return new Promise((resolve) => {
+    const SIZE = 1080;
+    const canvas = document.createElement('canvas');
+    canvas.width  = SIZE;
+    canvas.height = SIZE;
+    const ctx = canvas.getContext('2d');
 
-POSTER CONTENT TO DISPLAY:
-- Title: "${name}"
-- ${desc  ? `Description: ${desc}` : ""}
-- ${dateStr  ? `Date: ${dateStr}`   : ""}
-- ${time     ? `Time: ${time}`      : ""}
-- ${location ? `Venue: ${location}` : ""}
-- ${email    ? `Contact: ${email}`  : ""}
-- Branding: "EVOKE CMO" at bottom
+    // Background gradient
+    const bg = ctx.createLinearGradient(0, 0, SIZE, SIZE);
+    bg.addColorStop(0,   '#0d0b08');
+    bg.addColorStop(0.5, '#1a1208');
+    bg.addColorStop(1,   '#0d0b08');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, SIZE, SIZE);
 
-DESIGN STYLE:
-- Dark premium background with deep purple (#7c3aed) and electric blue (#06b6d4) gradient accents
-- Event title "${name}" displayed at top in very large, bold white modern typography
-- All event details (date, time, venue, contact) listed clearly in clean white text with colored labels
-- Modern tech/corporate conference poster layout
-- Elegant geometric decorative shapes and light effects
-- Vibrant, high-contrast professional design
-- 1:1 square format suitable for Instagram, Facebook, LinkedIn
-- Ultra high quality, photorealistic marketing material`;
+    // Gold accent top bar
+    const topBar = ctx.createLinearGradient(0, 0, SIZE, 0);
+    topBar.addColorStop(0, 'rgba(200,151,62,0)');
+    topBar.addColorStop(0.5, 'rgba(200,151,62,0.9)');
+    topBar.addColorStop(1, 'rgba(200,151,62,0)');
+    ctx.fillStyle = topBar;
+    ctx.fillRect(0, 0, SIZE, 4);
 
-  const res = await fetch("/api/gemini-image", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ prompt }),
+    // Decorative circle glow top-right
+    const glow = ctx.createRadialGradient(SIZE * 0.85, SIZE * 0.15, 0, SIZE * 0.85, SIZE * 0.15, 300);
+    glow.addColorStop(0, 'rgba(200,151,62,0.12)');
+    glow.addColorStop(1, 'rgba(200,151,62,0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, SIZE, SIZE);
+
+    // Bottom glow
+    const glow2 = ctx.createRadialGradient(SIZE * 0.2, SIZE * 0.85, 0, SIZE * 0.2, SIZE * 0.85, 280);
+    glow2.addColorStop(0, 'rgba(124,58,237,0.15)');
+    glow2.addColorStop(1, 'rgba(124,58,237,0)');
+    ctx.fillStyle = glow2;
+    ctx.fillRect(0, 0, SIZE, SIZE);
+
+    // Geometric lines
+    ctx.strokeStyle = 'rgba(200,151,62,0.15)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 5; i++) {
+      ctx.beginPath();
+      ctx.moveTo(SIZE * 0.6 + i * 30, 0);
+      ctx.lineTo(SIZE, SIZE * 0.4 - i * 30);
+      ctx.stroke();
+    }
+
+
+    // Main title
+    const titleY = 280;
+    ctx.fillStyle = '#f0ebe0';
+    ctx.textAlign = 'left';
+    const maxTitleWidth = SIZE - 120;
+    let titleSize = 86;
+    ctx.font = 'bold ' + titleSize + 'px Arial, sans-serif';
+    while (ctx.measureText(name).width > maxTitleWidth && titleSize > 36) {
+      titleSize -= 4;
+      ctx.font = 'bold ' + titleSize + 'px Arial, sans-serif';
+    }
+    // Word wrap title
+    const words = name.split(' ');
+    let line = '';
+    let ty = titleY;
+    for (const word of words) {
+      const test = line ? line + ' ' + word : word;
+      if (ctx.measureText(test).width > maxTitleWidth && line) {
+        ctx.fillText(line, 60, ty);
+        line = word;
+        ty += titleSize * 1.15;
+      } else { line = test; }
+    }
+    ctx.fillText(line, 60, ty);
+
+    // Gold divider
+    const divY = ty + 40;
+    const divGrad = ctx.createLinearGradient(60, 0, 500, 0);
+    divGrad.addColorStop(0, '#c8973e');
+    divGrad.addColorStop(1, 'rgba(200,151,62,0)');
+    ctx.fillStyle = divGrad;
+    ctx.fillRect(60, divY, 440, 3);
+
+    // Details
+    let detailY = divY + 50;
+    const detailItems = [
+      dateStr  ? { icon: '📅', label: 'DATE',  val: dateStr  } : null,
+      time     ? { icon: '🕐', label: 'TIME',  val: time     } : null,
+      location ? { icon: '📍', label: 'VENUE', val: location } : null,
+      desc     ? { icon: '✦',  label: 'ABOUT', val: desc     } : null,
+    ].filter(Boolean);
+
+    for (const item of detailItems) {
+      // Label
+      ctx.fillStyle = '#c8973e';
+      ctx.font = 'bold 13px Arial, sans-serif';
+      ctx.fillText(item.label, 60, detailY);
+      // Value
+      ctx.fillStyle = 'rgba(240,235,224,0.85)';
+      ctx.font = '22px Arial, sans-serif';
+      const valText = item.val.length > 55 ? item.val.slice(0, 52) + '...' : item.val;
+      ctx.fillText(valText, 60, detailY + 28);
+      detailY += 72;
+      if (detailY > SIZE - 120) break;
+    }
+
+    // Bottom gold bar
+    const botBar = ctx.createLinearGradient(0, 0, SIZE, 0);
+    botBar.addColorStop(0, 'rgba(200,151,62,0)');
+    botBar.addColorStop(0.5, 'rgba(200,151,62,0.9)');
+    botBar.addColorStop(1, 'rgba(200,151,62,0)');
+    ctx.fillStyle = botBar;
+    ctx.fillRect(0, SIZE - 4, SIZE, 4);
+
+    // Footer text
+    ctx.fillStyle = 'rgba(240,235,224,0.25)';
+    ctx.font = '14px Arial, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText('Powered by EVOX AI', SIZE - 60, SIZE - 28);
+
+    canvas.toBlob(blob => {
+      const file    = new File([blob], 'evoke-cmo-poster.png', { type: 'image/png' });
+      const preview = URL.createObjectURL(blob);
+      resolve({ file, preview });
+    }, 'image/png');
   });
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || "Gemini image generation failed. Check your GEMINI_API_KEY in .env");
-  }
-
-  const { base64Image, mimeType } = await res.json();
-  if (!base64Image) throw new Error("Gemini returned no image data. Please try again.");
-
-  // Convert base64 â†' File + preview URL
-  const byteStr = atob(base64Image);
-  const ab = new ArrayBuffer(byteStr.length);
-  const ia = new Uint8Array(ab);
-  for (let i = 0; i < byteStr.length; i++) ia[i] = byteStr.charCodeAt(i);
-  const blob    = new Blob([ab], { type: mimeType || "image/png" });
-  const file    = new File([blob], "evoke-cmo-poster.png", { type: mimeType || "image/png" });
-  const preview = URL.createObjectURL(blob);
-  return { file, preview };
 }
-
 async function convertToJpeg(file) {
   return new Promise((resolve) => {
     const img = new Image();
@@ -292,7 +365,7 @@ ${websiteContent ? `\n--- LIVE WEBSITE CONTENT (use this to deeply understand th
     ? `Event Name: ${form.name}
 Description: ${form.description}
 Date: ${form.date || "TBD"}  Time: ${form.time || "TBD"}
-Location: ${form.location || "TBD"}
+Location: ${form.eventLocations?.length ? form.eventLocations.join(", ") : "TBD"}
 Event URL: ${form.eventUrl || ""}
 Goal: ${form.goal}
 Target Audience: ${form.targetAudience.join(", ")}
@@ -679,10 +752,14 @@ Post Date: ${form.postDate || "ASAP"}`
     return schemas[campaignType] || baseSchema;
   };
 
+  const eventUrlInstruction = (isEvent && form.eventUrl)
+    ? `\nIMPORTANT: The event page URL is: ${form.eventUrl}\nYou MUST include this URL in every social media post, email body, and WhatsApp message so readers can register or learn more. Add it naturally at the end of each post (e.g. "Register here: ${form.eventUrl}" or "Learn more: ${form.eventUrl}").\n`
+    : '';
+
   const prompt = `You are an expert AI CMO (Chief Marketing Officer) with 20+ years of experience. Generate a complete, professional ${campaignType.replace(/_/g, " ")} package.
 
 ${context}
-
+${eventUrlInstruction}
 Return ONLY valid JSON matching this exact schema, no markdown, no explanation:
 ${getOutputSchema()}`;
 
@@ -700,6 +777,9 @@ ${getOutputSchema()}`;
     max_tokens: isNewType ? 4000 : 2000,
   });
 
+  const controller = new AbortController();
+  const timeoutId  = setTimeout(() => controller.abort(), 45000);
+
   let res;
   try {
     if (apiKey && apiKey !== "your_groq_api_key_here") {
@@ -707,23 +787,29 @@ ${getOutputSchema()}`;
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
         body: requestBody,
+        signal: controller.signal,
       });
     } else {
       res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: requestBody,
+        signal: controller.signal,
       });
     }
   } catch (networkErr) {
-    throw new Error(
-      `Network error: ${networkErr.message}. Please check your internet connection and try again.`,
-    );
+    if (networkErr.name === "AbortError") throw new Error("AI generation timed out. Please try again.");
+    throw new Error("Network error — check your connection and try again.");
+  } finally {
+    clearTimeout(timeoutId);
   }
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err?.error?.message || `AI generation error ${res.status}`);
+    const msg = err?.error?.message || "";
+    if (res.status === 401) throw new Error("AI service key is invalid. Please contact support.");
+    if (res.status === 429) throw new Error("AI rate limit reached. Please wait 30 seconds and try again.");
+    throw new Error(msg || `AI generation failed (${res.status}). Please try again.`);
   }
 
   const data = await res.json();
@@ -971,7 +1057,7 @@ export default function CampaignForm() {
   const { type } = useParams();
   const navigate  = useNavigate();
   const location  = useLocation();
-  const backPath  = location.state?.from || "/agents-hub";
+  const backPath  = location.state?.from || "/cmo";
   // Free-trial users have no membership type ID. Show the social-connect panel
   // only for paid Package A members — leave the free-trial flow untouched.
   const isFreeUser = !getEvokeUserProfile()?.data?.memberShipTypeID;
@@ -1346,11 +1432,15 @@ export default function CampaignForm() {
     date: "",
     time: "",
     location: "",
+    eventLocations: [],
     eventUrl: "",
     website: "",
     price: "",
     targetAudience: [],
     goal: "",
+    goalType: "",
+    endDate: "",
+    eventUrlMode: "manual",
     brandName: "",
     contactName: "",
     contactEmail: "",
@@ -1381,6 +1471,9 @@ export default function CampaignForm() {
   const [loadingPhase, setLoadingPhase] = useState(""); // 'uploading-image' | 'uploading-video' | 'generating' | 'posting'
   const [submitError, setSubmitError] = useState("");
   const [posterGenerating, setPosterGenerating] = useState(false);
+  const [generatingEventUrl, setGeneratingEventUrl] = useState(false);
+  const [generatedEventUrl, setGeneratedEventUrl] = useState("");
+  const [eventUrlError, setEventUrlError] = useState("");
 
   // Event image upload (for LinkedIn / Instagram / Facebook)
   const [eventImageFile, setEventImageFile] = useState(null);
@@ -1526,6 +1619,19 @@ export default function CampaignForm() {
     }
   }, [submitError])
 
+  // Auto-populate contact info from logged-in user profile
+  useEffect(() => {
+    const profile = getEvokeUserProfile();
+    const currentUser = profileToUser(profile);
+    if (currentUser) {
+      setForm(f => ({
+        ...f,
+        contactEmail: currentUser.email || f.contactEmail,
+        contactName: currentUser.displayName || f.contactName,
+      }));
+    }
+  }, []);
+
   // 30-Day Content Calendar defaults
   useEffect(() => {
     if (type === 'content_calendar') {
@@ -1555,9 +1661,7 @@ export default function CampaignForm() {
   }, [fromPackageA]) // eslint-disable-line
 
   useEffect(() => {
-    if (type === 'growth_strategy' || type === 'growth_agent' || type === 'content_calendar' || fromPackageA) {
-      loadConnectedAccounts()
-    }
+    loadConnectedAccounts()
   }, [type, fromPackageA, loadConnectedAccounts])
 
   // Open /connect-accounts as popup so the form isn't left
@@ -1586,9 +1690,8 @@ export default function CampaignForm() {
     const needsBrandName = ["product", "brand", "brand_strategy"].includes(type);
     if (!form.name.trim()) return setSubmitError("Please enter a name.");
     if (!form.description.trim()) return setSubmitError("Please enter a description.");
-    if (!form.goal.trim() && type !== "ads_creation" && type !== "ads_manager" && type !== "target_audience") return setSubmitError("Please enter a campaign goal.");
+    if (!form.goal.trim() && !form.goalType && type !== "ads_creation" && type !== "ads_manager" && type !== "target_audience") return setSubmitError("Please select or describe a campaign goal.");
     if (needsBrandName && !form.brandName.trim()) return setSubmitError("Please enter a brand name.");
-    if (type !== "growth_strategy" && type !== "growth_agent" && type !== "content_calendar" && type !== "ads_creation" && type !== "ads_manager" && type !== "target_audience" && !EXEC_TYPES.includes(type) && !form.contactEmail.trim()) return setSubmitError("Please enter a contact email.");
     if (form.targetAudience.length === 0) return setSubmitError("Please select at least one target audience.");
 
     setLoading(true);
@@ -1630,7 +1733,19 @@ export default function CampaignForm() {
       } else {
         setLoadingPhase("generating");
       }
-      const campaignData = await generateCampaignContent(form, type, form.campaignDays);
+      const combinedGoal = [form.goalType, form.goal].filter(Boolean).join(' — ');
+      const campaignData = await generateCampaignContent({ ...form, goal: combinedGoal || form.goal }, type, form.campaignDays);
+
+      // Append event URL to every post if the AI didn't include it
+      const isEventType = type === "event" || type === "event_full";
+      if (isEventType && form.eventUrl) {
+        const urlTag = `\n\n🔗 ${form.eventUrl}`;
+        ['linkedinPost','instagramCaption','facebookPost','whatsappMessage','emailBody'].forEach(field => {
+          if (campaignData[field] && !campaignData[field].includes(form.eventUrl)) {
+            campaignData[field] += urlTag;
+          }
+        });
+      }
 
       // â"€â"€ Generate daily schedule for multi-day campaigns â"€â"€
       // Skipped for Package C ad tools — they have no campaign-duration UI and
@@ -1650,7 +1765,7 @@ export default function CampaignForm() {
         description: form.description,
         price: form.price || "",
         targetAudience: form.targetAudience.join(", "),
-        goal: form.goal,
+        goal: [form.goalType, form.goal].filter(Boolean).join(' — ') || form.goal,
         brandName: form.brandName || form.name,
         contactName: form.contactName,
         contactEmail: form.contactEmail,
@@ -1669,8 +1784,9 @@ export default function CampaignForm() {
         campaignBrief: `${type} campaign for ${form.brandName || form.name}. Goal: ${form.goal}. Audience: ${form.targetAudience.join(", ")}. Description: ${form.description}`,
         ...((type === "event" || type === "event_full") && {
           date: form.date,
+          endDate: form.endDate,
           time: form.time,
-          location: form.location,
+          location: form.eventLocations?.length ? form.eventLocations.join(", ") : form.location,
           eventUrl: form.eventUrl,
         }),
         ...(form.competitorUrl && { competitorUrl: form.competitorUrl }),
@@ -2044,11 +2160,15 @@ export default function CampaignForm() {
             gmail: (
               <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#4caf50" d="M45 16.2l-5 2.75-5 4.75L35 40h7c1.657 0 3-1.343 3-3V16.2z"/><path fill="#1e88e5" d="M3 16.2l3.614 1.71L13 23.7V40H6c-1.657 0-3-1.343-3-3V16.2z"/><polygon fill="#e53935" points="35,11.2 24,19.45 13,11.2 12,17 13,23.7 24,31.95 35,23.7 36,17"/><path fill="#c62828" d="M3 12.298V16.2l10 7.5V11.2L9.876 8.859C9.132 8.301 8.228 8 7.298 8 4.924 8 3 9.924 3 12.298z"/><path fill="#fbc02d" d="M45 12.298V16.2l-10 7.5V11.2l3.124-2.341C38.868 8.301 39.772 8 40.702 8 43.076 8 45 9.924 45 12.298z"/></svg>
             ),
+            tiktok: (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="#ffffff"><path d="M16.6 5.82c-1.01-.66-1.74-1.7-1.97-2.91-.05-.26-.08-.53-.08-.81h-3.45v13.36c0 1.63-1.32 2.96-2.96 2.96-.49 0-.95-.12-1.36-.33-.93-.48-1.57-1.45-1.57-2.58 0-1.6 1.3-2.9 2.9-2.9.31 0 .6.05.88.14V9.4a6.4 6.4 0 0 0-.88-.06A6.36 6.36 0 0 0 1.75 15.7a6.36 6.36 0 0 0 6.36 6.36 6.36 6.36 0 0 0 6.36-6.36V8.58a8.18 8.18 0 0 0 4.77 1.52V6.65c-.94 0-1.86-.3-2.64-.83z"/></svg>
+            ),
           }
           const SOCIALS = [
             { key: 'instagram', label: 'Instagram', color: '#dd2a7b' },
             { key: 'facebook',  label: 'Facebook',  color: '#1877f2' },
             { key: 'linkedin',  label: 'LinkedIn',  color: '#0a66c2' },
+            { key: 'tiktok',    label: 'TikTok',    color: '#69c9d0' },
             { key: 'whatsapp',  label: 'WhatsApp',  color: '#25d366', alwaysOn: true },
             { key: 'gmail',     label: 'Gmail',     color: '#ea4335' },
           ]
@@ -2388,11 +2508,13 @@ export default function CampaignForm() {
                   facebook: <svg width="18" height="18" viewBox="0 0 24 24" fill="#1877f2"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>,
                   whatsapp: <svg width="18" height="18" viewBox="0 0 24 24" fill="#25d366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884"/></svg>,
                   gmail: <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#4caf50" d="M45 16.2l-5 2.75-5 4.75L35 40h7c1.657 0 3-1.343 3-3V16.2z"/><path fill="#1e88e5" d="M3 16.2l3.614 1.71L13 23.7V40H6c-1.657 0-3-1.343-3-3V16.2z"/><polygon fill="#e53935" points="35,11.2 24,19.45 13,11.2 12,17 13,23.7 24,31.95 35,23.7 36,17"/><path fill="#c62828" d="M3 12.298V16.2l10 7.5V11.2L9.876 8.859C9.132 8.301 8.228 8 7.298 8 4.924 8 3 9.924 3 12.298z"/><path fill="#fbc02d" d="M45 12.298V16.2l-10 7.5V11.2l3.124-2.341C38.868 8.301 39.772 8 40.702 8 43.076 8 45 9.924 45 12.298z"/></svg>,
+                  tiktok: <svg width="18" height="18" viewBox="0 0 24 24" fill="#ffffff"><path d="M16.6 5.82c-1.01-.66-1.74-1.7-1.97-2.91-.05-.26-.08-.53-.08-.81h-3.45v13.36c0 1.63-1.32 2.96-2.96 2.96-.49 0-.95-.12-1.36-.33-.93-.48-1.57-1.45-1.57-2.58 0-1.6 1.3-2.9 2.9-2.9.31 0 .6.05.88.14V9.4a6.4 6.4 0 0 0-.88-.06A6.36 6.36 0 0 0 1.75 15.7a6.36 6.36 0 0 0 6.36 6.36 6.36 6.36 0 0 0 6.36-6.36V8.58a8.18 8.18 0 0 0 4.77 1.52V6.65c-.94 0-1.86-.3-2.64-.83z"/></svg>,
                 }
                 const PLAT = [
                   { key: 'linkedin',  label: 'LinkedIn',  color: '#0a66c2' },
                   { key: 'instagram', label: 'Instagram', color: '#dd2a7b' },
                   { key: 'facebook',  label: 'Facebook',  color: '#1877f2' },
+                  { key: 'tiktok',    label: 'TikTok',    color: '#000000' },
                   { key: 'whatsapp',  label: 'WhatsApp',  color: '#25d366' },
                   { key: 'gmail',     label: 'Gmail',     color: '#ea4335' },
                 ]
@@ -2491,71 +2613,116 @@ export default function CampaignForm() {
 
           {(type === "event" || type === "event_full") && (
             <>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
-                  gap: "16px",
-                }}
-              >
-                <div>
-                  <label style={s.label}>
-                    Event Date <span style={s.req}>*</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={form.date}
-                    onChange={(e) => set("date", e.target.value)}
-                    style={s.input}
-                  />
-                </div>
-                <div>
-                  <label style={s.label}>
-                    Event Time <span style={s.req}>*</span>
-                  </label>
-                  <input
-                    type="time"
-                    value={form.time}
-                    onChange={(e) => set("time", e.target.value)}
-                    style={s.input}
-                  />
+              {/* ── Unified Date & Time box ── */}
+              <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.10)", borderRadius: 14, padding: "16px 20px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 24, flexWrap: "wrap" }}>
+
+                  {/* DATE — native calendar picker */}
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(240,235,224,0.45)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>
+                      Event Start Date <span style={{ color: meta.color }}>*</span>
+                    </div>
+                    <input
+                      type="date"
+                      value={form.date}
+                      onChange={e => set("date", e.target.value)}
+                      style={{ ...s.input, margin: 0, colorScheme: "dark", minWidth: 160, accentColor: meta.color }}
+                    />
+                  </div>
+
+                  {/* Divider */}
+                  <div style={{ width: 1, height: 48, background: "rgba(255,255,255,0.08)", flexShrink: 0 }} />
+
+                  {/* TIME — custom AM/PM picker */}
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(240,235,224,0.45)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>
+                      Event Time <span style={{ color: meta.color }}>*</span>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <input
+                        type="time"
+                        value={form.time}
+                        onChange={e => set("time", e.target.value)}
+                        style={{ ...s.input, margin: 0, colorScheme: "dark", accentColor: meta.color, minWidth: 160, padding: "10px 12px" }}
+                      />
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                        {["AM","PM"].map(val => {
+                          const h = parseInt((form.time||"12:00").split(":")[0]||"12",10)
+                          const active = val==="AM" ? h<12 : h>=12
+                          return (
+                            <button key={val} type="button" onClick={() => {
+                              const [hh, mm] = (form.time||"12:00").split(":")
+                              let h24 = parseInt(hh||"12",10)
+                              if(val==="PM" && h24<12) h24+=12
+                              if(val==="AM" && h24>=12) h24-=12
+                              set("time", `${String(h24).padStart(2,"0")}:${mm||"00"}`)
+                            }} style={{ padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 700, border: "1px solid", cursor: "pointer", fontFamily: "inherit", background: active ? meta.color : "rgba(255,255,255,0.05)", color: active ? "#0e0c09" : "rgba(255,255,255,0.4)", borderColor: active ? meta.color : "rgba(255,255,255,0.12)" }}>{val}</button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
+
+              <label style={s.label}>
+                Event End Date{" "}
+                <span style={{ color: "rgba(255,255,255,0.35)", fontSize: "12px", fontWeight: 400 }}>(optional)</span>
+              </label>
+              <input
+                type="date"
+                value={form.endDate}
+                onChange={(e) => set("endDate", e.target.value)}
+                style={{ ...s.input, colorScheme: "dark", accentColor: meta.color }}
+              />
 
               <label style={s.label}>
                 Location <span style={s.req}>*</span>
               </label>
               <div ref={locationRef} style={{ position: "relative" }}>
-                <button
-                  onClick={() => setLocationOpen((v) => !v)}
-                  style={{
-                    ...s.input,
-                    textAlign: "left",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    cursor: "pointer",
-                  }}
-                >
-                  <span
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                      color: form.location ? "#0f172a" : "#94a3b8",
+                {/* Selected location chips */}
+                {form.eventLocations.length > 0 && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
+                    {form.eventLocations.map((loc) => (
+                      <span key={loc} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 10px", background: `${meta.color}18`, border: `1px solid ${meta.color}40`, borderRadius: 20, fontSize: 12, color: "#f0ebe0" }}>
+                        <MapPin size={10} style={{ color: meta.color, flexShrink: 0 }} />
+                        {loc}
+                        <button
+                          type="button"
+                          onClick={() => set("eventLocations", form.eventLocations.filter(l => l !== loc))}
+                          style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex", alignItems: "center", color: "rgba(255,255,255,0.4)", marginLeft: 2 }}
+                        >
+                          <X size={11} />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {/* Search input */}
+                <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                  <MapPin size={14} style={{ position: "absolute", left: 14, color: "rgba(255,255,255,0.35)", pointerEvents: "none", zIndex: 1 }} />
+                  <input
+                    value={locationSearch}
+                    onChange={(e) => {
+                      setLocationSearch(e.target.value);
+                      setLocationOpen(e.target.value.length > 0);
                     }}
-                  >
-                    <MapPin
-                      size={14}
-                      style={{ color: "rgba(255,255,255,0.35)", flexShrink: 0 }}
-                    />
-                    {form.location || "Search city or venue..."}
-                  </span>
-                  <ChevronDown
-                    size={14}
-                    style={{ color: "rgba(255,255,255,0.5)", flexShrink: 0 }}
+                    onFocus={() => setLocationOpen(true)}
+                    onBlur={() => setTimeout(() => setLocationOpen(false), 150)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && locationSearch.trim()) {
+                        e.preventDefault();
+                        const val = locationSearch.trim();
+                        if (!form.eventLocations.includes(val)) set("eventLocations", [...form.eventLocations, val]);
+                        setLocationSearch("");
+                        setLocationOpen(false);
+                      }
+                      if (e.key === "Escape") setLocationOpen(false);
+                    }}
+                    placeholder={form.eventLocations.length ? "Add another location..." : "Type city, venue or full address..."}
+                    style={{ ...s.input, margin: 0, paddingLeft: 36 }}
                   />
-                </button>
+                </div>
                 <AnimatePresence>
                   {locationOpen && (
                     <motion.div
@@ -2572,73 +2739,29 @@ export default function CampaignForm() {
                         border: `1px solid ${meta.color}30`,
                         borderRadius: "12px",
                         overflow: "hidden",
-                        boxShadow: "0 8px 24px rgba(0,0,0,0.1)",
+                        boxShadow: "0 8px 24px rgba(0,0,0,0.25)",
                       }}
                     >
-                      <div style={{ padding: "10px" }}>
-                        <input
-                          autoFocus
-                          value={locationSearch}
-                          onChange={(e) => setLocationSearch(e.target.value)}
-                          placeholder="Search city or type custom venue..."
-                          style={{ ...s.input, margin: 0, fontSize: "13px" }}
-                        />
-                      </div>
                       <div style={{ maxHeight: "220px", overflowY: "auto" }}>
-                        {locationSearch.trim() &&
-                          !INDIAN_CITIES.some(
-                            (c) =>
-                              c.toLowerCase() ===
-                              locationSearch.trim().toLowerCase(),
-                          ) && (
-                            <button
-                              onClick={() => {
-                                set("location", locationSearch.trim());
-                                setLocationOpen(false);
-                                setLocationSearch("");
-                              }}
-                              style={{
-                                width: "100%",
-                                padding: "10px 16px",
-                                background: `${meta.color}12`,
-                                border: "none",
-                                cursor: "pointer",
-                                color: meta.color,
-                                fontSize: "13px",
-                                textAlign: "left",
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "8px",
-                              }}
-                            >
-                              <MapPin size={12} /> Use "{locationSearch.trim()}"
-                            </button>
-                          )}
                         {INDIAN_CITIES.filter((c) =>
-                          c
-                            .toLowerCase()
-                            .includes(locationSearch.toLowerCase()),
-                        ).map((city) => (
+                          c.toLowerCase().includes(locationSearch.toLowerCase()) &&
+                          !form.eventLocations.includes(c)
+                        ).slice(0, 10).map((city) => (
                           <button
                             key={city}
-                            onClick={() => {
-                              set("location", city);
-                              setLocationOpen(false);
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              set("eventLocations", [...form.eventLocations, city]);
                               setLocationSearch("");
+                              setLocationOpen(false);
                             }}
                             style={{
                               width: "100%",
                               padding: "10px 16px",
-                              background:
-                                form.location === city
-                                  ? `${meta.color}12`
-                                  : "none",
+                              background: "none",
                               border: "none",
                               cursor: "pointer",
-                              color:
-                                form.location === city
-                                  ? meta.color
-                                  : "#334155",
+                              color: "rgba(255,255,255,0.7)",
                               fontSize: "13px",
                               textAlign: "left",
                               display: "flex",
@@ -2646,62 +2769,52 @@ export default function CampaignForm() {
                               gap: "8px",
                             }}
                           >
-                            {form.location === city && <Check size={12} />}
-                            <MapPin
-                              size={11}
-                              style={{
-                                color: "rgba(255,255,255,0.35)",
-                                flexShrink: 0,
-                              }}
-                            />
+                            <MapPin size={11} style={{ color: "rgba(255,255,255,0.35)", flexShrink: 0 }} />
                             {city}
                           </button>
                         ))}
+                        {/* Custom entry option */}
+                        {!INDIAN_CITIES.some(c => c.toLowerCase() === locationSearch.toLowerCase()) && (
+                          <button
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              const val = locationSearch.trim();
+                              if (val && !form.eventLocations.includes(val)) set("eventLocations", [...form.eventLocations, val]);
+                              setLocationSearch("");
+                              setLocationOpen(false);
+                            }}
+                            style={{
+                              width: "100%",
+                              padding: "10px 16px",
+                              background: `${meta.color}10`,
+                              border: "none",
+                              borderTop: "1px solid rgba(255,255,255,0.06)",
+                              cursor: "pointer",
+                              color: meta.color,
+                              fontSize: "13px",
+                              textAlign: "left",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "8px",
+                            }}
+                          >
+                            <MapPin size={11} style={{ flexShrink: 0 }} />
+                            Add "{locationSearch.trim()}"
+                          </button>
+                        )}
                       </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
               </div>
 
-              <label style={s.label}>
-                Event URL{" "}
-                <span
-                  style={{
-                    color: "rgba(255,255,255,0.35)",
-                    fontSize: "12px",
-                    fontWeight: 400,
-                  }}
-                >
-                  (optional)
-                </span>
-              </label>
-              <div style={{ position: "relative" }}>
-                <Link
-                  size={14}
-                  style={{
-                    position: "absolute",
-                    left: 14,
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    color: "rgba(255,255,255,0.35)",
-                  }}
-                />
-                <input
-                  value={form.eventUrl}
-                  onChange={(e) => set("eventUrl", e.target.value)}
-                  placeholder="https://eventbrite.com/your-event"
-                  style={{ ...s.input, paddingLeft: "36px" }}
-                />
-              </div>
-
-              {/* â"€â"€ Event Image (LinkedIn / Instagram / Facebook) â"€â"€ */}
+              {/* ── Event Image (above URL) ── */}
               <label style={s.label}>
                 Event Image{" "}
                 <span style={{ color: "rgba(255,255,255,0.35)", fontSize: "12px", fontWeight: 400 }}>
-                  (optional - AI auto-generates a poster if you skip this)
+                  (optional — AI auto-generates a poster if you skip this)
                 </span>
               </label>
-              {/* â"€â"€ Auto-Generate Poster button â"€â"€ */}
               <motion.button
                 whileHover={{ scale: 1.01 }}
                 whileTap={{ scale: 0.98 }}
@@ -2714,7 +2827,7 @@ export default function CampaignForm() {
                     setEventImageFile(file);
                     setEventImagePreview(preview);
                   } catch (e) {
-                    setSubmitError("Poster generation failed: " + e.message);
+                    setSubmitError("Poster generation failed. Please try again.");
                   } finally {
                     setPosterGenerating(false);
                   }
@@ -2722,9 +2835,9 @@ export default function CampaignForm() {
                 disabled={posterGenerating}
                 style={{
                   width: "100%", marginBottom: "12px", padding: "14px 20px",
-                  background: posterGenerating ? "#f8fafc" : "linear-gradient(135deg, rgba(200,151,62,0.13), rgba(200,151,62,0.12))",
+                  background: posterGenerating ? "rgba(255,255,255,0.05)" : "linear-gradient(135deg, rgba(200,151,62,0.13), rgba(200,151,62,0.12))",
                   border: "1px solid rgba(200,151,62,0.4)", borderRadius: "14px",
-                  color: posterGenerating ? "#94a3b8" : "#f0d080",
+                  color: posterGenerating ? "rgba(255,255,255,0.4)" : "#f0d080",
                   fontSize: "15px", fontWeight: 700, cursor: posterGenerating ? "not-allowed" : "pointer",
                   display: "flex", alignItems: "center", justifyContent: "center", gap: "10px",
                   transition: "all 0.2s",
@@ -2737,7 +2850,7 @@ export default function CampaignForm() {
               </motion.button>
               <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "rgba(124,58,237,0.07)", border: "1px solid rgba(124,58,237,0.2)", borderRadius: "10px", padding: "9px 14px", marginBottom: "10px", fontSize: "12px", color: "rgba(255,255,255,0.5)", lineHeight: 1.5 }}>
                 <span style={{ fontSize: "15px" }}>✨</span>
-                <span>Click above to auto-generate a poster with your event name, date, time &amp; location - or upload your own image below.</span>
+                <span>Click above to auto-generate a poster with your event name, date, time &amp; location — or upload your own image below.</span>
               </div>
               <div
                 style={{
@@ -2755,10 +2868,15 @@ export default function CampaignForm() {
                     <img src={eventImagePreview} alt="preview" style={{ width: 72, height: 72, objectFit: "cover", borderRadius: "10px", border: "1px solid rgba(200,151,62,0.4)" }} />
                     <div style={{ textAlign: "left", flex: 1 }}>
                       <div style={{ color: meta.color, fontWeight: 600, fontSize: "13px" }}>{eventImageFile.name}</div>
-                      <div style={{ color: "rgba(255,255,255,0.35)", fontSize: "12px", marginTop: "2px" }}>{(eventImageFile.size / 1024).toFixed(0)} KB  ·  Click to change</div>
-                      <button onClick={(e) => { e.stopPropagation(); setEventImageFile(null); setEventImagePreview(null); }} style={{ marginTop: "6px", display: "flex", alignItems: "center", gap: "4px", background: "none", border: "none", color: "#f87171", cursor: "pointer", fontSize: "12px", padding: 0 }}>
-                        <X size={12} /> Remove
-                      </button>
+                      <div style={{ color: "rgba(255,255,255,0.35)", fontSize: "12px", marginTop: "2px" }}>{(eventImageFile.size / 1024).toFixed(0)} KB · Click to change</div>
+                      <div style={{ marginTop: "6px", display: "flex", alignItems: "center", gap: "12px" }}>
+                        <a href={eventImagePreview} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{ display: "flex", alignItems: "center", gap: "4px", background: "none", border: "none", color: "rgba(255,255,255,0.5)", cursor: "pointer", fontSize: "12px", padding: 0, textDecoration: "none" }}>
+                          <ExternalLink size={12} /> View
+                        </a>
+                        <button onClick={(e) => { e.stopPropagation(); setEventImageFile(null); setEventImagePreview(null); }} style={{ display: "flex", alignItems: "center", gap: "4px", background: "none", border: "none", color: "#f87171", cursor: "pointer", fontSize: "12px", padding: 0 }}>
+                          <X size={12} /> Remove
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ) : (
@@ -2769,6 +2887,151 @@ export default function CampaignForm() {
               {eventImageUploading && (
                 <div style={{ marginTop: "8px", fontSize: "12px", color: "rgba(255,255,255,0.5)", display: "flex", alignItems: "center", gap: "8px" }}>
                   <Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} /> Uploading image...
+                </div>
+              )}
+
+              {/* ── Event URL — enter own or let system create one ── */}
+              <label style={s.label}>
+                Event URL{" "}
+                <span style={{ color: "rgba(255,255,255,0.35)", fontSize: "12px", fontWeight: 400 }}>(optional)</span>
+              </label>
+              <div style={{ display: "flex", gap: "8px", marginBottom: "10px" }}>
+                {[
+                  { val: "manual", label: "I have a URL" },
+                  { val: "create", label: "Create one for me" },
+                ].map(({ val, label }) => {
+                  const active = form.eventUrlMode === val;
+                  return (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => set("eventUrlMode", val)}
+                      style={{
+                        flex: 1, padding: "10px 14px", borderRadius: "10px", cursor: "pointer",
+                        background: active ? `${meta.color}15` : "rgba(255,255,255,0.03)",
+                        border: `1.5px solid ${active ? meta.color : "rgba(255,255,255,0.1)"}`,
+                        color: active ? meta.color : "rgba(255,255,255,0.5)",
+                        fontSize: "13px", fontWeight: 700, transition: "all 0.15s",
+                      }}
+                    >
+                      {active && <Check size={12} style={{ display: "inline", marginRight: 5 }} />}
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+              {form.eventUrlMode === "manual" ? (
+                <div style={{ position: "relative" }}>
+                  <Link
+                    size={14}
+                    style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.35)" }}
+                  />
+                  <input
+                    value={form.eventUrl}
+                    onChange={(e) => set("eventUrl", e.target.value)}
+                    placeholder="https://eventbrite.com/your-event"
+                    style={{ ...s.input, paddingLeft: "36px" }}
+                  />
+                </div>
+              ) : (
+                <div>
+                  {/* Generated URL display */}
+                  {(form.eventUrl || generatedEventUrl) ? (
+                    <div style={{ marginBottom: 10 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", background: `${meta.color}10`, border: `1px solid ${meta.color}35`, borderRadius: "10px" }}>
+                        <Link size={13} style={{ color: meta.color, flexShrink: 0 }} />
+                        <span style={{ fontSize: 13, color: "#f0ebe0", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {form.eventUrl || generatedEventUrl}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => navigator.clipboard?.writeText(form.eventUrl || generatedEventUrl)}
+                          style={{ background: "none", border: "none", cursor: "pointer", color: meta.color, fontSize: 12, fontWeight: 700, whiteSpace: "nowrap", flexShrink: 0 }}
+                        >
+                          Copy
+                        </button>
+                        <a href={form.eventUrl || generatedEventUrl} target="_blank" rel="noopener noreferrer" style={{ color: meta.color, display: "flex", alignItems: "center" }}>
+                          <ExternalLink size={13} />
+                        </a>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (!form.name) return;
+                          setGeneratingEventUrl(true);
+                          setEventUrlError("");
+                          const slug = buildEventSlug(form.name, form.date);
+                          try {
+                            const url = await saveEventPage(slug, {
+                              name: form.name, description: form.description,
+                              date: form.date, endDate: form.endDate, time: form.time,
+                              locations: form.eventLocations,
+                              location: form.eventLocations?.join(", ") || form.location,
+                              imageUrl: eventImagePreview || "",
+                              targetAudience: form.targetAudience, brandName: form.brandName,
+                            });
+                            set("eventUrl", url); setGeneratedEventUrl(url);
+                          } catch {
+                            const fallback = `${window.location.origin}/event/${slug}`;
+                            set("eventUrl", fallback); setGeneratedEventUrl(fallback);
+                          }
+                          setGeneratingEventUrl(false);
+                        }}
+                        style={{ marginTop: 8, fontSize: 12, color: "rgba(255,255,255,0.4)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}
+                      >
+                        Regenerate URL
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                    {eventUrlError && (
+                      <div style={{ marginBottom: 8, fontSize: 12, color: "#f87171", display: "flex", alignItems: "center", gap: 6 }}>
+                        <AlertCircle size={12} /> {eventUrlError}
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      disabled={!form.name || generatingEventUrl}
+                      onClick={async () => {
+                        if (!form.name) return;
+                        setGeneratingEventUrl(true);
+                        setEventUrlError("");
+                        const slug = buildEventSlug(form.name, form.date);
+                        try {
+                          const url = await saveEventPage(slug, {
+                            name: form.name, description: form.description,
+                            date: form.date, endDate: form.endDate, time: form.time,
+                            locations: form.eventLocations,
+                            location: form.eventLocations?.join(", ") || form.location,
+                            imageUrl: eventImagePreview || "",
+                            targetAudience: form.targetAudience, brandName: form.brandName,
+                          });
+                          set("eventUrl", url); setGeneratedEventUrl(url);
+                        } catch (err) {
+                          // Firestore unavailable (e.g. rules/auth) — use slug URL directly.
+                          // The page data will be saved when the campaign is generated.
+                          const fallback = `${window.location.origin}/event/${slug}`;
+                          set("eventUrl", fallback); setGeneratedEventUrl(fallback);
+                          console.warn("Event page save failed, using slug URL:", err?.message);
+                        }
+                        setGeneratingEventUrl(false);
+                      }}
+                      style={{
+                        width: "100%", padding: "12px 16px", borderRadius: "12px", cursor: form.name ? "pointer" : "not-allowed",
+                        background: form.name ? `${meta.color}15` : "rgba(255,255,255,0.03)",
+                        border: `1.5px solid ${form.name ? meta.color + "50" : "rgba(255,255,255,0.1)"}`,
+                        color: form.name ? meta.color : "rgba(255,255,255,0.3)",
+                        fontSize: "13px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                        opacity: generatingEventUrl ? 0.7 : 1,
+                      }}
+                    >
+                      {generatingEventUrl
+                        ? <><Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> Creating your event page…</>
+                        : <><Link size={14} /> Generate Event URL{!form.name && " (enter event name first)"}</>
+                      }
+                    </button>
+                    </>
+                  )}
                 </div>
               )}
 
@@ -2922,11 +3185,34 @@ export default function CampaignForm() {
               <label style={s.label}>
                 Campaign Goal <span style={s.req}>*</span>
               </label>
+              <select
+                value={form.goalType}
+                onChange={(e) => set("goalType", e.target.value)}
+                style={{ ...s.input, cursor: "pointer", colorScheme: "dark", marginBottom: "8px" }}
+              >
+                {[
+                  "",
+                  type === "event" || type === "event_full" ? "Drive Event Registrations / Attendance" : null,
+                  "Increase Brand Awareness",
+                  "Generate Leads",
+                  "Drive Sales / Conversions",
+                  "Grow Community / Following",
+                  "Build Brand Authority",
+                  "Launch New Product / Event",
+                  "Re-engage Existing Customers",
+                  "Boost Website Traffic",
+                  "Other",
+                ].filter(v => v !== null).map((v) => (
+                  <option key={v} value={v} style={{ background: "#1c1a13", color: v ? "#f0ebe0" : "rgba(240,235,224,0.4)" }}>
+                    {v || "Select campaign goal..."}
+                  </option>
+                ))}
+              </select>
               <textarea
                 value={form.goal}
                 onChange={(e) => set("goal", e.target.value)}
-                placeholder="Describe your campaign goal..."
-                style={s.textarea}
+                placeholder="Describe your goal in more detail... (optional)"
+                style={{ ...s.textarea, minHeight: "80px" }}
               />
             </>
           )}
@@ -3146,53 +3432,6 @@ export default function CampaignForm() {
             </>
           )}
 
-          {/* Contact Info — hidden for strategy/growth/calendar/executive/ads types */}
-          {type !== "growth_strategy" && type !== "growth_agent" && type !== "content_calendar" && type !== "ads_creation" && type !== "ads_manager" && type !== "target_audience" && !EXEC_TYPES.includes(type) && (
-            <>
-              <div style={s.divider} />
-              <p style={s.sectionTitle}>Contact Info</p>
-
-              <label style={{ ...s.label, marginTop: "12px" }}>
-                Contact Name <span style={s.req}>*</span>
-              </label>
-              <input
-                value={form.contactName}
-                onChange={(e) => set("contactName", e.target.value)}
-                placeholder="Your full name"
-                style={s.input}
-              />
-
-              <label style={s.label}>
-                Contact Email <span style={s.req}>*</span>
-              </label>
-              <input
-                type="email"
-                value={form.contactEmail}
-                onChange={(e) => set("contactEmail", e.target.value)}
-                placeholder="Your email address"
-                style={s.input}
-              />
-
-              <label style={s.label}>
-                Contact Phone{" "}
-                <span
-                  style={{
-                    color: "rgba(255,255,255,0.35)",
-                    fontSize: "12px",
-                    fontWeight: 400,
-                  }}
-                >
-                  (optional)
-                </span>
-              </label>
-              <input
-                value={form.contactPhone}
-                onChange={(e) => set("contactPhone", e.target.value)}
-                placeholder="Your phone number"
-                style={s.input}
-              />
-            </>
-          )}
 
           {/* Publishing Settings — hidden for strategy/growth/calendar, all executive/CMO module types, and Package C ad types */}
           {type !== "growth_strategy" && type !== "growth_agent" && type !== "content_calendar" && type !== "ads_creation" && type !== "ads_manager" && type !== "target_audience" && !EXEC_TYPES.includes(type) && (
@@ -3252,7 +3491,7 @@ export default function CampaignForm() {
           {form.campaignDays > 1 && (
             <div style={{ marginTop: "8px", padding: "10px 14px", background: `${meta.color}08`, border: `1px solid ${meta.color}25`, borderRadius: "10px", display: "flex", alignItems: "center", gap: "8px", fontSize: "12px", color: "rgba(255,255,255,0.5)" }}>
               <span style={{ color: meta.color, fontWeight: 700 }}>🗓 {form.campaignDays}-day campaign</span>
-              · AI will generate unique content for every day · Auto-posts daily at your chosen time via n8n
+              · AI will generate unique content for every day · Auto-posts daily at your chosen time
             </div>
           )}
 
@@ -3298,45 +3537,54 @@ export default function CampaignForm() {
           </div>
 
           <label style={s.label}>Platforms to Post</label>
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: "10px",
-              marginTop: "4px",
-            }}
-          >
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", marginTop: "4px" }}>
             {PLATFORM_OPTIONS.map((p) => {
               const active = form.platforms.includes(p.key);
+              // Map platform key to connected accounts key
+              const accountKey = p.key === "email" ? "gmail" : p.key;
+              const isAlwaysOn = p.key === "whatsapp";
+              const isConnected = isAlwaysOn || connectedAccounts[accountKey]?.connected;
               return (
                 <button
                   key={p.key}
-                  onClick={() => togglePlatform(p.key)}
+                  onClick={() => {
+                    if (!isConnected && !isAlwaysOn) {
+                      openConnectPopup(p.key === "email" ? "gmail" : p.key);
+                    } else {
+                      togglePlatform(p.key);
+                    }
+                  }}
+                  title={isConnected ? (active ? `Remove ${p.label}` : `Add ${p.label}`) : `Connect ${p.label} to enable`}
                   style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "7px",
-                    padding: "9px 16px",
-                    background: active
-                      ? `${p.color}18`
-                      : "#f8fafc",
-                    border: `1px solid ${active ? p.color + "55" : "rgba(245,240,232,0.15)"}`,
-                    borderRadius: "10px",
-                    cursor: "pointer",
-                    color: active ? p.color : "#64748b",
-                    fontSize: "13px",
-                    fontWeight: 600,
-                    transition: "all 0.15s",
+                    display: "flex", flexDirection: "column", alignItems: "center",
+                    gap: "4px", padding: "10px 14px", minWidth: "80px",
+                    background: active && isConnected ? `${p.color}18` : "rgba(255,255,255,0.03)",
+                    border: `1px solid ${active && isConnected ? p.color + "55" : "rgba(255,255,255,0.1)"}`,
+                    borderRadius: "12px", cursor: "pointer",
+                    opacity: !isConnected ? 0.55 : 1,
+                    transition: "all 0.15s", position: "relative",
                   }}
                 >
-                  {active && <Check size={12} />}
-                  {p.label}
+                  {/* connected dot */}
+                  {isConnected && (
+                    <span style={{ position: "absolute", top: 5, right: 5, width: 7, height: 7, borderRadius: "50%", background: "#10b981", boxShadow: "0 0 4px #10b981" }} />
+                  )}
+                  <span style={{ fontSize: "13px", fontWeight: 700, color: active && isConnected ? p.color : "rgba(255,255,255,0.7)" }}>
+                    {active && isConnected && <Check size={10} style={{ display: "inline", marginRight: 3 }} />}
+                    {p.label}
+                  </span>
+                  <span style={{ fontSize: "9px", fontWeight: 600, color: isConnected ? (isAlwaysOn ? "#10b981" : "#10b981") : "#f59e0b", letterSpacing: "0.03em" }}>
+                    {isAlwaysOn ? "Always on" : isConnected ? "Connected" : "Tap to connect"}
+                  </span>
                 </button>
               );
             })}
           </div>
+          <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.3)", marginTop: "6px" }}>
+            Green dot = connected. Tap an unconnected platform to link your account.
+          </p>
 
-          {/* â"€â"€ WhatsApp Recipients â"€â"€ */}
+          {/* ── WhatsApp Recipients ── */}
           {form.platforms.includes("whatsapp") && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
@@ -3344,12 +3592,32 @@ export default function CampaignForm() {
               exit={{ opacity: 0, height: 0 }}
               style={{ marginTop: "16px", padding: "18px", background: "rgba(37,211,102,0.06)", border: "1px solid rgba(37,211,102,0.2)", borderRadius: "14px" }}
             >
-              <div style={{ fontWeight: 700, fontSize: "14px", color: "#25d366", marginBottom: "6px" }}>
-                WhatsApp Recipients
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
+                <div style={{ fontWeight: 700, fontSize: "14px", color: "#25d366" }}>WhatsApp Recipients</div>
+                <label style={{
+                  display: "flex", alignItems: "center", gap: "6px", cursor: "pointer",
+                  fontSize: "12px", fontWeight: 700, color: "#25d366",
+                  background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.3)",
+                  borderRadius: "8px", padding: "5px 12px",
+                }}>
+                  <Upload size={12} /> Upload CSV
+                  <input type="file" accept=".csv,.txt" style={{ display: "none" }} onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                      const text = ev.target.result;
+                      const phones = text.split(/[\n,;]+/).map(s => s.trim()).filter(s => s.match(/^\+?\d[\d\s\-]{6,}/));
+                      if (phones.length) set("whatsappRecipients", (form.whatsappRecipients ? form.whatsappRecipients + ", " : "") + phones.join(", "));
+                    };
+                    reader.readAsText(file);
+                    e.target.value = "";
+                  }} />
+                </label>
               </div>
               <div style={{ fontSize: "12px", color: "rgba(255,255,255,0.5)", marginBottom: "10px" }}>
-                Paste phone numbers with country code, separated by commas.<br />
-                Example: +919876543210, +918123456789
+                Paste numbers with country code or upload a CSV — separated by commas.<br />
+                <span style={{ color: "rgba(255,255,255,0.35)" }}>Example: +919876543210, +918123456789</span>
               </div>
               <textarea
                 value={form.whatsappRecipients}
@@ -3363,7 +3631,7 @@ export default function CampaignForm() {
             </motion.div>
           )}
 
-          {/* â"€â"€ Gmail Recipients â"€â"€ */}
+          {/* ── Email Recipients ── */}
           {form.platforms.includes("email") && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
@@ -3371,12 +3639,32 @@ export default function CampaignForm() {
               exit={{ opacity: 0, height: 0 }}
               style={{ marginTop: "16px", padding: "18px", background: "rgba(212,168,83,0.05)", border: "1px solid rgba(124,58,237,0.2)", borderRadius: "14px" }}
             >
-              <div style={{ fontWeight: 700, fontSize: "14px", color: "#c8973e", marginBottom: "6px" }}>
-                Email Recipients
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
+                <div style={{ fontWeight: 700, fontSize: "14px", color: "#c8973e" }}>Email Recipients</div>
+                <label style={{
+                  display: "flex", alignItems: "center", gap: "6px", cursor: "pointer",
+                  fontSize: "12px", fontWeight: 700, color: "#c8973e",
+                  background: "rgba(200,151,62,0.1)", border: "1px solid rgba(200,151,62,0.3)",
+                  borderRadius: "8px", padding: "5px 12px",
+                }}>
+                  <Upload size={12} /> Upload CSV
+                  <input type="file" accept=".csv,.txt" style={{ display: "none" }} onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                      const text = ev.target.result;
+                      const emails = text.split(/[\n,;]+/).map(s => s.trim()).filter(s => s.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/));
+                      if (emails.length) set("emailRecipients", (form.emailRecipients ? form.emailRecipients + ", " : "") + emails.join(", "));
+                    };
+                    reader.readAsText(file);
+                    e.target.value = "";
+                  }} />
+                </label>
               </div>
               <div style={{ fontSize: "12px", color: "rgba(255,255,255,0.5)", marginBottom: "10px" }}>
-                Enter email addresses to send this campaign to, separated by commas.<br />
-                Example: john@example.com, team@company.com
+                Paste addresses or upload a CSV — separated by commas.<br />
+                <span style={{ color: "rgba(255,255,255,0.35)" }}>Example: john@example.com, team@company.com</span>
               </div>
               <textarea
                 value={form.emailRecipients}
@@ -3427,25 +3715,6 @@ export default function CampaignForm() {
             )}
           </AnimatePresence>
 
-          {/* â"€â"€ Inline error near button â"€â"€ */}
-          {submitError && (
-            <div style={{
-              marginTop: "16px",
-              padding: "14px 16px",
-              background: "rgba(239,68,68,0.12)",
-              border: "1.5px solid rgba(239,68,68,0.5)",
-              borderRadius: "12px",
-              color: "#fca5a5",
-              fontSize: "13px",
-              fontWeight: 600,
-              display: "flex",
-              alignItems: "flex-start",
-              gap: "8px",
-            }}>
-              <AlertCircle size={16} style={{ marginTop: 1, flexShrink: 0, color: "#f87171" }} />
-              <span>{submitError}</span>
-            </div>
-          )}
 
           {/* â"€â"€ Submit â"€â"€ */}
           <button onClick={handleSubmit} style={s.submitBtn} disabled={loading}>
@@ -3471,7 +3740,7 @@ export default function CampaignForm() {
           <p style={{ textAlign: "center", color: "rgba(255,255,255,0.35)", fontSize: "13px", marginTop: "12px" }}>
             {type === "growth_strategy"
               ? "Powered by AI · Full strategy document generated in seconds"
-              : "Content generated by AI  ·  Posted instantly to all platforms via n8n"}
+              : "Content generated by AI  ·  Posted instantly to all platforms"}
           </p>
           <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
         </motion.div>

@@ -5,6 +5,7 @@ import { Zap, Check, ArrowRight, Coins, Shield, Star, AlertCircle, Loader2, X } 
 import Navbar from '../components/Navbar.jsx'
 import { useRequireAuth } from '../hooks/useRequireAuth'
 import { getOrCreateUser, addTokens, TOKEN_PACKAGES } from '../services/userService'
+import { trackPurchase } from '../lib/gtag'
 
 // Load Razorpay script dynamically
 function loadRazorpay() {
@@ -76,6 +77,7 @@ export default function Purchase() {
           await addTokens(user.uid, pkg.tokens)
           setBalance(b => b + pkg.tokens)
           setSuccess(pkg)
+          trackPurchase({ value: pkg.price, currency: 'INR', transactionId: response.razorpay_payment_id })
         } catch (e) {
           setError('Payment captured but token update failed. Please contact support with payment ID: ' + response.razorpay_payment_id)
         } finally {

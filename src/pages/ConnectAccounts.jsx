@@ -53,6 +53,10 @@ const GOOGLE_SCOPE =
   "https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile";
 const GMAIL_N8N = "https://vasanth18.app.n8n.cloud/webhook/gmail-oauth";
 
+const GOOGLE_ADS_SCOPE =
+  "https://www.googleapis.com/auth/adwords https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile";
+const GOOGLE_ADS_N8N = "https://vasanth18.app.n8n.cloud/webhook/google-ads-oauth";
+
 const TIKTOK_CLIENT_KEY = "sbawq8ejz7li1bzsf1";
 const TIKTOK_REDIRECT = window.location.origin + "/connect-accounts";
 const TIKTOK_SCOPE = "user.info.basic,video.upload";
@@ -165,6 +169,19 @@ const PLATFORMS = [
     btnLabel: "Connect with LinkedIn",
   },
   {
+    key: "tiktok",
+    label: "TikTok",
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="#000000">
+        <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.75a4.85 4.85 0 01-1.01-.06z" />
+      </svg>
+    ),
+    color: "#ff0050",
+    description: "Post videos to your TikTok account directly from your campaigns.",
+    oauthType: "tiktok",
+    btnLabel: "Connect with TikTok",
+  },
+  {
     key: "whatsapp",
     label: "WhatsApp",
     icon: (
@@ -176,6 +193,21 @@ const PLATFORMS = [
     description: "Platform WhatsApp Business API is active. Add recipient numbers in your campaign form to send invitation messages.",
     oauthType: "platform_whatsapp",
     note: "No setup needed. When creating a campaign, select WhatsApp and paste the phone numbers you want to invite.",
+  },
+  {
+    key: "google-ads",
+    label: "Google Ads",
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 48 48">
+        <path fill="#fbbc05" d="M5.6 30.3 15 14a4.5 4.5 0 0 1 7.8 4.5L13.4 34.8A4.5 4.5 0 0 1 5.6 30.3z"/>
+        <path fill="#34a853" d="M24 38.5h-9a4.5 4.5 0 0 1 0-9h18a4.5 4.5 0 0 1 0 9H24z"/>
+        <path fill="#ea4335" d="M33 14a4.5 4.5 0 0 0-7.8 4.5l9.4 16.3a4.5 4.5 0 1 0 7.8-4.5L33 14z"/>
+      </svg>
+    ),
+    color: "#4285f4",
+    description: "Connect your Google Ads account to build and push Search campaigns directly from EVOX.",
+    oauthType: "google-ads",
+    btnLabel: "Connect Google Ads",
   },
   {
     key: "gmail",
@@ -269,6 +301,7 @@ export default function ConnectAccounts() {
     if (state === "gmail_connect") handleGmailCallback(code, user.uid);
     if (state === "tiktok_connect") handleTikTokCallback(code, user.uid);
     if (state === "eventbrite_connect") handleEventbriteCallback(code, user.uid);
+    if (state === "google_ads_connect") handleGoogleAdsCallback(code, user.uid);
   }, [user]); // eslint-disable-line
 
   useEffect(() => {
@@ -617,6 +650,46 @@ export default function ConnectAccounts() {
 
     window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${url}`;
   };
+
+  const connectGoogleAds = () => {
+    const url = new URLSearchParams({
+      client_id: GOOGLE_CLIENT_ID,
+      redirect_uri: GOOGLE_REDIRECT,
+      scope: GOOGLE_ADS_SCOPE,
+      response_type: "code",
+      state: "google_ads_connect",
+      access_type: "offline",
+      prompt: "consent",
+    });
+    window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${url}`;
+  };
+
+  const handleGoogleAdsCallback = useCallback(async (code, uid) => {
+    const resolvedUid = uid || userRef.current?.uid;
+    if (!resolvedUid) return;
+    setLoad("google-ads", true);
+    clrErr("google-ads");
+    try {
+      const res = await fetch(GOOGLE_ADS_N8N, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code, redirectUri: GOOGLE_REDIRECT, uid: resolvedUid }),
+      });
+      if (!res.ok) throw new Error("Token exchange failed: " + (await res.text()));
+      const { accessToken, refreshToken, email, customerId } = await res.json();
+      await saveSocialAccount(resolvedUid, "google-ads", {
+        accessToken, refreshToken, email,
+        customerId: customerId || "",
+        connected: true,
+      });
+      setAccounts((a) => ({ ...a, "google-ads": { connected: true, email } }));
+      setOk("google-ads", true);
+    } catch (e) {
+      setErr("google-ads", "Google Ads connection failed: " + e.message);
+    } finally {
+      setLoad("google-ads", false);
+    }
+  }, []);
 
   const handleGmailCallback = useCallback(async (code, uid) => {
     const resolvedUid = uid || auth.currentUser?.uid || userRef.current?.uid;
@@ -1132,6 +1205,40 @@ export default function ConnectAccounts() {
                           <>{p.btnLabel}</>
                         )}
                       </button>
+                    ) : p.oauthType === "google-ads" ? (
+                      connected ? (
+                        <button
+                          onClick={() => disconnect(p.key)}
+                          disabled={isLoading}
+                          style={{
+                            display: "flex", alignItems: "center", gap: 6,
+                            padding: "8px 14px", background: "rgba(239,68,68,0.1)",
+                            border: "1px solid rgba(239,68,68,0.25)", borderRadius: 10,
+                            color: "#ef4444", fontSize: 13, fontWeight: 600,
+                            cursor: isLoading ? "not-allowed" : "pointer",
+                          }}
+                        >
+                          {isLoading
+                            ? <Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} />
+                            : <><Unlink size={13} /> Disconnect</>}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={connectGoogleAds}
+                          disabled={isLoading}
+                          style={{
+                            display: "flex", alignItems: "center", gap: 8,
+                            padding: "10px 18px", background: "#4285f4",
+                            border: "none", borderRadius: 10, color: "white",
+                            fontSize: 14, fontWeight: 700,
+                            cursor: isLoading ? "not-allowed" : "pointer",
+                          }}
+                        >
+                          {isLoading
+                            ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} />
+                            : <>{p.btnLabel}</>}
+                        </button>
+                      )
                     ) : p.oauthType === "platform_whatsapp" ? (
                       <span
                         style={{

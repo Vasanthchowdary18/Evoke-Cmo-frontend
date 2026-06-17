@@ -939,7 +939,7 @@ export default function Dashboard() {
       setShowProductModal(true);
       return;
     }
-    navigate(`/campaign/${type}`);
+    navigate(`/campaign/${type}`, { state: { from: '/cmo' } });
   };
 
   /** Stores campaign result in sessionStorage and navigates to the results page. */
@@ -1022,7 +1022,7 @@ export default function Dashboard() {
             onClose={() => setShowProductModal(false)}
             onProceed={() => {
               setShowProductModal(false);
-              navigate('/campaign/product');
+              navigate('/campaign/product', { state: { from: '/cmo' } });
             }}
           />
         )}
@@ -1686,7 +1686,7 @@ export default function Dashboard() {
                                 marginTop: 4,
                               }}
                             >
-                              ⏰ Auto-posts daily at {c.dailyPostTime} via n8n
+                              ⏰ Auto-posts daily at {c.dailyPostTime}
                             </div>
                           )}
                         </div>

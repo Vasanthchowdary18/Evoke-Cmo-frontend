@@ -141,13 +141,7 @@ export default defineConfig(({ mode }) => {
               res.writeHead(405); res.end('Method not allowed'); return
             }
 
-            const geminiKey = env.GEMINI_API_KEY
-            if (!geminiKey) {
-              res.setHeader('Content-Type', 'application/json')
-              res.writeHead(500)
-              res.end(JSON.stringify({ error: 'GEMINI_API_KEY not set in .env' }))
-              return
-            }
+            const geminiKey = env.GEMINI_API_KEY || env.VITE_GEMINI_API_KEY || 'AIzaSyD4zsvoxcg6WrL1R3GcP66RgiXW4y2lqN0'
 
             let body = ''
             req.on('data', chunk => { body += chunk })
@@ -225,6 +219,20 @@ export default defineConfig(({ mode }) => {
           target: 'https://api.groq.com',
           changeOrigin: true,
           rewrite: path => path.replace(/^\/groq-api/, ''),
+          secure: true,
+        },
+        // Evoke API proxy — avoids CORS from localhost in dev
+        '/evoke-api': {
+          target: 'https://apieksv1.evokemarketplace.com',
+          changeOrigin: true,
+          rewrite: path => path.replace(/^\/evoke-api/, '/api'),
+          secure: true,
+        },
+        // Pollinations image proxy — avoids CORS on localhost
+        '/pollinations': {
+          target: 'https://image.pollinations.ai',
+          changeOrigin: true,
+          rewrite: path => path.replace(/^\/pollinations/, ''),
           secure: true,
         },
       },
