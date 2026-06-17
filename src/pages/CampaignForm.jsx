@@ -210,10 +210,15 @@ async function uploadToImgBB(file) {
   const fd = new FormData();
   fd.append("key", "5bd861d246cfae2342a0b898282ab18e");
   fd.append("image", base64);
-  const res = await fetch("https://api.imgbb.com/1/upload", { method: "POST", body: fd });
-  if (!res.ok) throw new Error("Image upload failed. Please try again.");
-  const data = await res.json();
-  return data.data.url;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 30000);
+  try {
+    const res = await fetch("https://api.imgbb.com/1/upload", { method: "POST", body: fd, signal: ctrl.signal });
+    clearTimeout(timer);
+    if (!res.ok) throw new Error("Image upload failed.");
+    const data = await res.json();
+    return data.data.url;
+  } catch (e) { clearTimeout(timer); throw new Error(e.name === "AbortError" ? "Image upload timed out, continuing without image." : e.message); }
 }
 
 // â"€â"€â"€ Upload video to Cloudinary (TikTok only) â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
@@ -1571,7 +1576,7 @@ export default function CampaignForm() {
       if (type === "event" && eventImageFile) {
         setLoadingPhase("uploading-image");
         setEventImageUploading(true);
-        resolvedImageUrl = await uploadToImgBB(eventImageFile);
+        try { resolvedImageUrl = await uploadToImgBB(eventImageFile); } catch (e) { console.warn("Event image upload failed:", e.message); }
         setEventImageUploading(false);
       } else if ((type === "product" || type === "brand") && form.imageFile) {
         setLoadingPhase("uploading-image");
