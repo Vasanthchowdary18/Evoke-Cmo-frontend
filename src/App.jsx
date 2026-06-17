@@ -33,9 +33,7 @@ import EvoxServices from './pages/EvoxServices.jsx'
 import ApprovalQueue from './pages/ApprovalQueue.jsx'
 import KpiRecommendationsPage from './pages/KpiRecommendationsPage.jsx'
 import CmoAgentOverviewPage from './pages/CmoAgentOverviewPage.jsx'
-import EventPage from './pages/EventPage.jsx'
-import GoogleAdsPage from './pages/GoogleAdsPage.jsx'
-import StartPage from './pages/StartPage.jsx'
+import EventViewPage from './pages/EventViewPage.jsx'
 import Chatbot from './components/Chatbot.jsx'
 
 // Handles token returned from accounts.evokemarketplace.com after login
@@ -54,12 +52,12 @@ function EvokeAuthHandler() {
     signInWithCustomToken(auth, token)
       .then(async (cred) => {
         await getOrCreateUser(cred.user.uid, cred.user.displayName, cred.user.email)
-        navigate('/')
+        navigate('/agents-hub')
       })
       .catch(() => {
         // Token format not recognised — user may already be signed in via shared session
-        // Just navigate home and let Firebase auth state decide
-        navigate('/')
+        // Just navigate to agents-hub and let Firebase auth state decide
+        navigate('/agents-hub')
       })
   }, [navigate])
 
@@ -105,9 +103,7 @@ export default function App() {
         <Route path="/queue"              element={<ApprovalQueue />} />
         <Route path="/kpi-recommendations" element={<KpiRecommendationsPage />} />
         <Route path="/overview/:type"      element={<CmoAgentOverviewPage />} />
-        <Route path="/event/:slug"         element={<EventPage />} />
-        <Route path="/google-ads-manager"  element={<GoogleAdsPage />} />
-        <Route path="/start"               element={<StartPage />} />
+        <Route path="/e"                  element={<EventViewPage />} />
         <Route path="/privacy"            element={<Privacy />} />
         <Route path="/terms"              element={<Terms />} />
         <Route path="*"                  element={<Navigate to="/" replace />} />
