@@ -199,6 +199,50 @@ export default defineConfig(({ mode }) => {
             })
           })
 
+          // ── /auth/facebook/callback → Facebook OAuth ────────────────────────
+          server.middlewares.use('/auth/facebook/callback', (req, res) => {
+            if (req.method !== 'GET') {
+              res.writeHead(405); res.end('Method not allowed'); return
+            }
+
+            const url = new URL(req.url, `http://${req.headers.host}`)
+            const code = url.searchParams.get('code')
+            const state = url.searchParams.get('state')
+            const error = url.searchParams.get('error')
+            const errorDescription = url.searchParams.get('error_description')
+
+            // Handle OAuth errors
+            if (error) {
+              const errorMsg = `${error}: ${errorDescription || 'Unknown error'}`
+              return res.end(`
+                <html>
+                  <body style="font-family: sans-serif; text-align: center; margin-top: 50px;">
+                    <h1>❌ Facebook Login Failed</h1>
+                    <p>${errorMsg}</p>
+                    <a href="/connected-accounts">← Back to Connected Accounts</a>
+                  </body>
+                </html>
+              `)
+            }
+
+            if (!code) {
+              return res.end(`
+                <html>
+                  <body style="font-family: sans-serif; text-align: center; margin-top: 50px;">
+                    <h1>❌ Invalid OAuth Response</h1>
+                    <p>No authorization code received from Facebook</p>
+                    <a href="/connected-accounts">← Back to Connected Accounts</a>
+                  </body>
+                </html>
+              `)
+            }
+
+            // Success — redirect to connected accounts with code in hash
+            res.setHeader('Location', `/connected-accounts#facebook_code=${code}&state=${state || ''}`)
+            res.writeHead(302)
+            res.end()
+          })
+
         }
       }
     ],
