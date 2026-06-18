@@ -87,7 +87,10 @@ export function decodeJwtPayload(token) {
     const parts = token.split(".");
     if (parts.length < 2) return null;
     const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-    const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), "=");
+    const padded = base64.padEnd(
+      base64.length + ((4 - (base64.length % 4)) % 4),
+      "=",
+    );
     const json = window.atob(padded);
     return JSON.parse(json);
   } catch {
@@ -95,7 +98,11 @@ export function decodeJwtPayload(token) {
   }
 }
 
+// ✅ FIX 1: On localhost, always return 7 days instead of reading JWT expiry
 function computeEvokeUserCookieMaxAgeSeconds(payload) {
+  // DEV: bypass token expiry on localhost — always use 7 days
+  if (isLocalBrowserHost()) return SEVEN_DAYS_SEC;
+
   const token = payload?.data?.token;
   if (!token || typeof token !== "string") return ACCESS_TOKEN_FALLBACK_SEC;
   const jwtPayload = decodeJwtPayload(token);
@@ -135,6 +142,7 @@ export function getEvokeUser() {
   }
 }
 
+// ✅ FIX 2: On localhost, skip JWT expiry check so profile stays valid
 export function getEvokeUserProfile() {
   const payload = getEvokeUser();
   const data = payload?.data;
@@ -144,11 +152,12 @@ export function getEvokeUserProfile() {
   const fullName = `${firstName} ${lastName}`.trim() || data.email;
   const walletRaw = data.walletAddress ?? data.WalletAddress;
   const walletAddress =
-    typeof walletRaw === "string" && /^0x[a-fA-F0-9]{40}$/.test(walletRaw.trim())
+    typeof walletRaw === "string" &&
+    /^0x[a-fA-F0-9]{40}$/.test(walletRaw.trim())
       ? walletRaw.trim()
       : null;
 
-  return {
+  const profile = {
     email: data.email,
     firstName,
     lastName,
@@ -158,6 +167,14 @@ export function getEvokeUserProfile() {
     token: data.token || null,
     walletAddress,
   };
+
+  // DEV: on localhost skip token expiry check — cookie lasts 7 days
+  if (isLocalBrowserHost()) return profile;
+
+  // On production, return null if token is expired so UI shows logged-out
+  if (isProfileExpired(profile)) return null;
+
+  return profile;
 }
 
 let cachedCookieValue = null;
@@ -183,8 +200,6 @@ export function getEvokeUserProfileSnapshot() {
   const raw = readEvokeUserCookieRaw();
   if (raw === cachedCookieValue) return cachedProfileSnapshot;
   cachedCookieValue = raw;
-  // Keep profile for UI while token refresh runs — stale `auth_token` must not
-  // hide a valid `evoke_user` cookie (same fix as evoke-events).
   cachedProfileSnapshot = getEvokeUserProfile();
   return cachedProfileSnapshot;
 }
@@ -237,7 +252,10 @@ export function setLoggedInData(payload) {
     localStorage.setItem(SESSION_ACTIVE_KEY, "1");
     const jwtPayload = decodeJwtPayload(payload?.data?.token);
     if (jwtPayload?.exp) {
-      localStorage.setItem(SESSION_EXPIRY_KEY, String(Number(jwtPayload.exp) * 1000));
+      localStorage.setItem(
+        SESSION_EXPIRY_KEY,
+        String(Number(jwtPayload.exp) * 1000),
+      );
     }
   } catch {
     // ignore
@@ -253,8 +271,7 @@ export function setLoggedInData(payload) {
 export function clearLoggedInData() {
   if (typeof document === "undefined") return;
   const domainPart = resolveCookieDomainAttribute();
-  document.cookie =
-    `${COOKIE_NAME}=; path=/; ${domainPart}expires=Thu, 01 Jan 1970 00:00:00 GMT; samesite=lax`;
+  document.cookie = `${COOKIE_NAME}=; path=/; ${domainPart}expires=Thu, 01 Jan 1970 00:00:00 GMT; samesite=lax`;
   try {
     localStorage.removeItem(SESSION_ACTIVE_KEY);
     localStorage.removeItem(SESSION_EXPIRY_KEY);
@@ -313,8 +330,10 @@ export async function fetchSessionFromBackend() {
   // Skip session recovery on localhost — auth cookies are domain-locked to
   // .evokemarketplace.com and will never be present on localhost, causing
   // expected 401s that pollute the console without any benefit.
-  const isLocalhost = typeof window !== "undefined" &&
-    (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+  const isLocalhost =
+    typeof window !== "undefined" &&
+    (window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1");
   if (isLocalhost) return null;
 
   const apiBaseUrl = String(import.meta?.env?.VITE_API_BASE_URL || "").trim();

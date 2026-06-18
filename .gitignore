@@ -7,6 +7,7 @@ dist/
 # Environment variables (secrets!)
 .env
 .env.local
+.env.development
 .env.production
 
 # MCP config (contains API tokens)

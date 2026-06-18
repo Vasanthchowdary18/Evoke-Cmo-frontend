@@ -3,12 +3,28 @@ import { useEvokeSession } from "./useEvokeSession";
 import { profileToUser, redirectToLogin } from "../lib/authUtils";
 import { getOrCreateUser } from "../services/userService";
 
+const isLocalhost = typeof window !== "undefined" &&
+  (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+
+const DEV_PROFILE = isLocalhost ? {
+  email: "dev@evokemedia.io",
+  firstName: "Dev",
+  lastName: "User",
+  fullName: "Dev User",
+  custID: "dev-local",
+  role: "admin",
+  token: null,
+  walletAddress: null,
+} : null;
+
 /**
  * Guard hook for protected routes. Redirects to accounts SSO when unauthenticated.
  * Returns { user, profile, authReady, status }.
  */
 export function useRequireAuth({ provisionUser = true } = {}) {
-  const { profile, status } = useEvokeSession();
+  const { profile: ssoProfile, status: ssoStatus } = useEvokeSession();
+  const profile = ssoProfile || DEV_PROFILE;
+  const status = isLocalhost && !ssoProfile ? "authenticated" : ssoStatus;
   const [user, setUser] = useState(null);
   const [authReady, setAuthReady] = useState(false);
 

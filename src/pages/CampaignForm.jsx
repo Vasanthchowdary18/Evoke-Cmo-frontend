@@ -30,6 +30,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import Navbar from "../components/Navbar.jsx";
+import EventBannerGenerator from "../components/EventBannerGenerator.jsx";
 import { getEvokeUserProfile } from "../lib/session";
 import { profileToUser } from "../lib/authUtils";
 import { getUserData } from "../services/userService";
@@ -2817,45 +2818,39 @@ export default function CampaignForm() {
               <label style={s.label}>
                 Event Image{" "}
                 <span style={{ color: "rgba(255,255,255,0.35)", fontSize: "12px", fontWeight: 400 }}>
-                  (optional — AI auto-generates a poster if you skip this)
+                  (optional — AI auto-generates a banner if you skip this)
                 </span>
               </label>
-              <motion.button
-                whileHover={{ scale: 1.01 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={async () => {
-                  if (!form.name.trim()) { setSubmitError("Enter an event name first to generate the poster."); return; }
-                  setSubmitError("");
-                  setPosterGenerating(true);
-                  try {
-                    const { file, preview } = await generateEventPoster({ ...form, campaignType: type });
-                    setEventImageFile(file);
-                    setEventImagePreview(preview);
-                  } catch (e) {
-                    setSubmitError("Poster generation failed. Please try again.");
-                  } finally {
-                    setPosterGenerating(false);
+              <EventBannerGenerator
+                eventData={{
+                  name: form.name,
+                  date: form.date,
+                  endDate: form.endDate,
+                  time: form.time,
+                  location: form.eventLocations?.length ? form.eventLocations.join(", ") : form.location,
+                  tagline: form.description?.substring(0, 80),
+                  brandName: form.brandName,
+                  eventUrl: form.eventUrl || generatedEventUrl,
+                }}
+                onBannerGenerated={(banner) => {
+                  if (banner?.imageUrl) {
+                    // Convert data URL to file
+                    fetch(banner.imageUrl)
+                      .then(res => res.blob())
+                      .then(blob => {
+                        const file = new File([blob], "event-banner.png", { type: "image/png" });
+                        setEventImageFile(file);
+                        setEventImagePreview(banner.imageUrl);
+                      })
+                      .catch(err => console.warn("Could not convert banner to file:", err.message));
                   }
                 }}
-                disabled={posterGenerating}
-                style={{
-                  width: "100%", marginBottom: "12px", padding: "14px 20px",
-                  background: posterGenerating ? "rgba(255,255,255,0.05)" : "linear-gradient(135deg, rgba(200,151,62,0.13), rgba(200,151,62,0.12))",
-                  border: "1px solid rgba(200,151,62,0.4)", borderRadius: "14px",
-                  color: posterGenerating ? "rgba(255,255,255,0.4)" : "#f0d080",
-                  fontSize: "15px", fontWeight: 700, cursor: posterGenerating ? "not-allowed" : "pointer",
-                  display: "flex", alignItems: "center", justifyContent: "center", gap: "10px",
-                  transition: "all 0.2s",
-                }}
-              >
-                {posterGenerating
-                  ? <><Loader2 size={17} style={{ animation: "spin 1s linear infinite" }} /> Generating Poster...</>
-                  : <><span style={{ fontSize: "18px" }}>🎨</span> Auto-Generate Event Poster from Details</>
-                }
-              </motion.button>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "rgba(124,58,237,0.07)", border: "1px solid rgba(124,58,237,0.2)", borderRadius: "10px", padding: "9px 14px", marginBottom: "10px", fontSize: "12px", color: "rgba(255,255,255,0.5)", lineHeight: 1.5 }}>
+                loading={posterGenerating}
+                disabled={!form.name.trim()}
+              />
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "rgba(200,151,62,0.08)", border: "1px solid rgba(200,151,62,0.2)", borderRadius: "10px", padding: "9px 14px", marginBottom: "10px", fontSize: "12px", color: "rgba(255,255,255,0.5)", lineHeight: 1.5 }}>
                 <span style={{ fontSize: "15px" }}>✨</span>
-                <span>Click above to auto-generate a poster with your event name, date, time &amp; location — or upload your own image below.</span>
+                <span>Premium DALL-E 3 quality banners. QR code auto-adds if you have an event URL for easy registration.</span>
               </div>
               <div
                 style={{
