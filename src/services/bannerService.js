@@ -4,9 +4,9 @@ import axios from 'axios'
 export async function generateEventPosterWithCanvas(eventData, options = {}) {
   const { qrBase64 = null } = options
 
-  // Try Gemini first (better quality), fall back to Pollinations
+  // Try Pollinations first (free, no API key), fall back to Gemini if available
   let bgImageUrl = null
-  for (const provider of ['gemini', 'pollinations']) {
+  for (const provider of ['pollinations', 'gemini']) {
     try {
       const res = await axios.post('/api/generate-banner', {
         prompt: buildBackgroundPrompt(eventData),
@@ -22,7 +22,7 @@ export async function generateEventPosterWithCanvas(eventData, options = {}) {
   return renderPosterCanvas(eventData, bgImageUrl, qrBase64)
 }
 
-// ── Canvas renderer — landscape 1200×675, adaptive layout ─────────────────
+// ── Canvas renderer — landscape 1200×675, single unified layout ───────────
 function renderPosterCanvas(eventData, bgImageUrl, qrBase64) {
   return new Promise((resolve) => {
     const W = 1200, H = 675
@@ -34,12 +34,9 @@ function renderPosterCanvas(eventData, bgImageUrl, qrBase64) {
     const GOLD_LIGHT = '#f5d060'
     const GOLD_DIM   = 'rgba(200,151,62,0.45)'
 
-    // Layout: if QR exists use split (title left | QR+details right), else full width
-    const hasQR     = !!qrBase64
-    const PANEL_W   = 320                        // right panel width
-    const CONTENT_W = hasQR ? W - PANEL_W : W   // title area width
-    const PAD       = 50
-    const maxW      = CONTENT_W - PAD * 2
+    const hasQR = !!qrBase64
+    const PAD   = 50
+    const maxW  = W - PAD * 2
 
     const draw = () => {
       // ── Dark overlay ──
@@ -55,15 +52,20 @@ function renderPosterCanvas(eventData, bgImageUrl, qrBase64) {
       ctx.fillRect(0, 0, W, 3)
       ctx.fillRect(0, H - 3, W, 3)
 
-      // ── Corner brackets (left side only) ──
+      // ── All four corner brackets ──
       ctx.strokeStyle = GOLD; ctx.lineWidth = 2
       const m = 24, l = 52
+      // top-left
       ctx.beginPath(); ctx.moveTo(m, m+l); ctx.lineTo(m, m); ctx.lineTo(m+l, m); ctx.stroke()
+      // bottom-left
       ctx.beginPath(); ctx.moveTo(m, H-m-l); ctx.lineTo(m, H-m); ctx.lineTo(m+l, H-m); ctx.stroke()
+      // top-right
+      ctx.beginPath(); ctx.moveTo(W-m, m+l); ctx.lineTo(W-m, m); ctx.lineTo(W-m-l, m); ctx.stroke()
+      // bottom-right
+      ctx.beginPath(); ctx.moveTo(W-m, H-m-l); ctx.lineTo(W-m, H-m); ctx.lineTo(W-m-l, H-m); ctx.stroke()
 
-      // ── LEFT: brand + tagline + big title ──
+      // ── Brand / tagline ──
       let y = 52
-
       const brand = (eventData.brandName || eventData.organizer || '').toUpperCase()
       if (brand) {
         ctx.fillStyle = 'rgba(200,151,62,0.85)'
@@ -75,9 +77,8 @@ function renderPosterCanvas(eventData, bgImageUrl, qrBase64) {
         ctx.fillRect(PAD, y, 200, 1)
         y += 16
       }
-
       if (eventData.tagline) {
-        const tl = eventData.tagline.length > 55 ? eventData.tagline.slice(0, 55) + '…' : eventData.tagline
+        const tl = eventData.tagline.length > 70 ? eventData.tagline.slice(0, 70) + '…' : eventData.tagline
         ctx.fillStyle = 'rgba(240,220,170,0.78)'
         ctx.font = 'italic 17px Georgia, serif'
         ctx.textAlign = 'left'
@@ -85,7 +86,7 @@ function renderPosterCanvas(eventData, bgImageUrl, qrBase64) {
         y += 36
       }
 
-      // Big event name
+      // ── Big event title ──
       const name = (eventData.name || 'EVENT').toUpperCase()
       let titleSize = 130
       ctx.font = `900 ${titleSize}px Arial Black, Arial, sans-serif`
@@ -119,11 +120,11 @@ function renderPosterCanvas(eventData, bgImageUrl, qrBase64) {
         ctx.strokeText(ln, PAD, ty)
       })
 
-      // ── LEFT DETAILS: date / location / venue / time below the title ────────
+      // ── Details row: date / location / time ──
       const divY = titleStartY + (titleLines.length - 1) * lineH + 28
-      const hdg = ctx.createLinearGradient(PAD, 0, CONTENT_W - PAD, 0)
-      hdg.addColorStop(0, GOLD); hdg.addColorStop(0.6, GOLD); hdg.addColorStop(1, 'rgba(200,151,62,0)')
-      ctx.fillStyle = hdg; ctx.fillRect(PAD, divY, CONTENT_W - PAD * 2, 2)
+      const hdg = ctx.createLinearGradient(PAD, 0, W - PAD, 0)
+      hdg.addColorStop(0, GOLD); hdg.addColorStop(0.5, GOLD); hdg.addColorStop(1, 'rgba(200,151,62,0)')
+      ctx.fillStyle = hdg; ctx.fillRect(PAD, divY, W - PAD * 2, 2)
 
       const iconR   = 20
       const txtSize = Math.min(24, Math.max(18, titleSize * 0.22))
@@ -152,59 +153,35 @@ function renderPosterCanvas(eventData, bgImageUrl, qrBase64) {
         drawDetailText(ctx, eventData.time, PAD + iconR * 2 + 14, detY + 8, txtSize)
       }
 
-      // ── RIGHT PANEL: phone-frame with QR + "SCAN TO REQUEST" only ───────────
+      // ── QR code: bottom-right corner, inside the poster ──────────────────────
       const finalize = () => resolve({ success: true, imageUrl: canvas.toDataURL('image/png') })
 
       if (hasQR) {
-        // Vertical gold divider
-        const vdg = ctx.createLinearGradient(0, 30, 0, H - 30)
-        vdg.addColorStop(0, 'rgba(200,151,62,0)'); vdg.addColorStop(0.2, GOLD)
-        vdg.addColorStop(0.8, GOLD); vdg.addColorStop(1, 'rgba(200,151,62,0)')
-        ctx.strokeStyle = vdg; ctx.lineWidth = 1
-        ctx.beginPath(); ctx.moveTo(CONTENT_W, 30); ctx.lineTo(CONTENT_W, H - 30); ctx.stroke()
+        const qrSize  = 160
+        const qrPad   = 8
+        const qrBoxW  = qrSize + qrPad * 2
+        const qrBoxH  = qrSize + qrPad * 2 + 36   // room for label
+        const qrBoxX  = W - PAD - qrBoxW
+        const qrBoxY  = H - PAD - qrBoxH
 
-        // Panel box
-        const fX  = CONTENT_W + 14
-        const fY  = 28
-        const fW  = PANEL_W - 24
-        const fH  = H - 56
-        const fCX = fX + fW / 2
-
-        ctx.fillStyle = 'rgba(0,0,0,0.82)'
-        roundRect(ctx, fX, fY, fW, fH, 14)
+        // Frosted dark background for QR area
+        ctx.fillStyle = 'rgba(0,0,0,0.72)'
+        roundRect(ctx, qrBoxX, qrBoxY, qrBoxW, qrBoxH, 10)
         ctx.fill()
-        ctx.strokeStyle = GOLD; ctx.lineWidth = 1.5; ctx.stroke()
-
-        // Top notch lines
-        ctx.strokeStyle = GOLD_LIGHT; ctx.lineWidth = 2
-        ;[fX + 10, fX + fW - 34].forEach(nx => {
-          ctx.beginPath(); ctx.moveTo(nx, fY + 10); ctx.lineTo(nx + 24, fY + 10); ctx.stroke()
-        })
-        // Bottom notch lines
-        ;[fX + 10, fX + fW - 34].forEach(nx => {
-          ctx.beginPath(); ctx.moveTo(nx, fY + fH - 10); ctx.lineTo(nx + 24, fY + fH - 10); ctx.stroke()
-        })
-
-        // QR fills most of the box
-        const qrPad  = 16
-        const qrSize = fW - qrPad * 2
-        const qrX    = fX + qrPad
-        // Centre QR vertically leaving room for label at bottom
-        const labelH = 52
-        const qrY    = fY + (fH - qrSize - labelH) / 2
+        ctx.strokeStyle = GOLD; ctx.lineWidth = 1.2; ctx.stroke()
 
         const qrImg = new Image()
         qrImg.onload = () => {
+          // White background behind QR
           ctx.fillStyle = '#ffffff'
-          ctx.fillRect(qrX - 4, qrY - 4, qrSize + 8, qrSize + 8)
-          ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize)
+          ctx.fillRect(qrBoxX + qrPad, qrBoxY + qrPad, qrSize, qrSize)
+          ctx.drawImage(qrImg, qrBoxX + qrPad, qrBoxY + qrPad, qrSize, qrSize)
 
           // Label below QR
           ctx.fillStyle = GOLD_LIGHT
-          ctx.font = 'bold 13px Arial, sans-serif'
+          ctx.font = 'bold 11px Arial, sans-serif'
           ctx.textAlign = 'center'
-          ctx.fillText('SCAN TO REQUEST', fCX, qrY + qrSize + 26)
-          ctx.fillText('AN INVITATION',   fCX, qrY + qrSize + 44)
+          ctx.fillText('SCAN TO REQUEST AN INVITATION', qrBoxX + qrBoxW / 2, qrBoxY + qrPad * 2 + qrSize + 20)
 
           finalize()
         }

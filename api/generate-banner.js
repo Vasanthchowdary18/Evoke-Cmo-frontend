@@ -1,4 +1,4 @@
-// Vercel Edge Function — generates marketing banners using DALL-E 3 or Gemini
+// Vercel Edge Function — generates marketing banners using GPT Image 2 or Gemini
 export const config = { runtime: 'edge' }
 
 export default async function handler(req) {
@@ -45,7 +45,7 @@ export default async function handler(req) {
   }
 }
 
-// ── DALL-E 3 Implementation ──
+// ── GPT Image 2 Implementation ──
 async function generateWithDalle(prompt) {
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) {
@@ -59,11 +59,11 @@ async function generateWithDalle(prompt) {
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: 'dall-e-3',
+      model: 'gpt-image-1',
       prompt: prompt,
       n: 1,
-      size: '1024x1024',
-      quality: 'hd',
+      size: '1536x1024',
+      quality: 'high',
     }),
   })
 
@@ -73,21 +73,15 @@ async function generateWithDalle(prompt) {
   }
 
   const data = await res.json()
-  const imageUrl = data.data?.[0]?.url
-  if (!imageUrl) {
-    throw new Error('DALL-E returned no image URL')
+  const base64Image = data.data?.[0]?.b64_json
+  if (!base64Image) {
+    throw new Error('GPT Image 2 returned no image data')
   }
-
-  // Download image and convert to base64
-  const imgRes = await fetch(imageUrl)
-  const buffer = await imgRes.arrayBuffer()
-  const base64Image = btoa(String.fromCharCode(...new Uint8Array(buffer)))
 
   return {
     base64Image,
     mimeType: 'image/png',
-    provider: 'dalle-3',
-    revised_prompt: data.data?.[0]?.revised_prompt || prompt,
+    provider: 'gpt-image-2',
   }
 }
 

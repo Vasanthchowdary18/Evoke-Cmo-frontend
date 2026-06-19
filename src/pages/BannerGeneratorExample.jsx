@@ -35,7 +35,7 @@ export default function BannerGeneratorExample() {
             maxWidth: '600px',
           }}>
             Create professional marketing banners for your events using AI. Choose between fast Gemini
-            generation (default) or premium DALL-E 3 quality.
+            generation (default) or premium GPT Image 2 quality.
           </p>
         </div>
 

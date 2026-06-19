@@ -306,7 +306,7 @@ export default function BannerGenerator({ eventData = {} }) {
               onClick={() => setProvider('dalle')}
               title="Requires OPENAI_API_KEY"
             >
-              DALL-E 3 (Premium)
+              GPT Image 2 (Premium)
             </button>
           </div>
 

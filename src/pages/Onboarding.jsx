@@ -359,7 +359,7 @@ export default function Onboarding() {
               <motion.button
                 whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.97 }}
-                onClick={() => navigate('/dashboard')}
+                onClick={() => navigate('/connect-accounts?setup=cmo')}
                 disabled={saving}
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: 10,
@@ -377,7 +377,7 @@ export default function Onboarding() {
               >
                 {saving
                   ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Saving...</>
-                  : <>Go to Dashboard <ArrowRight size={17} /></>
+                  : <>Connect Social Accounts <ArrowRight size={17} /></>
                 }
               </motion.button>
             </motion.div>

@@ -34,6 +34,7 @@ import EventBannerGenerator from "../components/EventBannerGenerator.jsx";
 import { getEvokeUserProfile } from "../lib/session";
 import { profileToUser } from "../lib/authUtils";
 import { getUserData } from "../services/userService";
+import { useAuth } from "../hooks/useAuth.js";
 import { buildEventSlug, saveEventPage, downloadEventHtml } from "../services/eventService";
 
 const CLOUDINARY_CLOUD = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "dxbn3vyig";
@@ -339,7 +340,7 @@ async function generateCampaignContent(form, campaignType, campaignDays) {
       });
       if (jinaRes.ok) {
         const raw = await jinaRes.text();
-        websiteContent = raw.slice(0, 4000); // cap at 4k chars to stay within token limits
+        websiteContent = raw.slice(0, 1000); // cap at 1k chars to stay within Groq 6000 TPM
       }
     } catch (e) {
       console.warn('Jina AI website read failed, generating without site content:', e.message);
@@ -390,369 +391,368 @@ Post Date: ${form.postDate || "ASAP"}`
   const getOutputSchema = () => {
     const baseSchema = `{
   "campaignName": "${form.name}",
-  "emailSubject": "compelling email subject line",
-  "emailBody": "full professional email body (3-4 paragraphs)",
-  "linkedinPost": "professional LinkedIn post with relevant hashtags (150-300 words)",
-  "instagramCaption": "engaging Instagram caption with emojis and hashtags (100-150 words)",
-  "facebookPost": "friendly Facebook post with call to action (100-200 words)",
-  "whatsappMessage": "short WhatsApp message (50-80 words, conversational tone)",
-  "smsMessage": "short SMS under 160 characters",
-  "seoTitle": "SEO page title (50-60 chars)",
-  "seoDescription": "meta description (150-160 chars)",
-  "adHeadline": "Google/social ad headline (30 chars max)",
-  "adBody": "ad body copy (90 chars max)",
-  "tiktokCaption": "short punchy TikTok caption with trending hashtags and a hook",
-  "campaignCalendar": "${Array.from({length: form.campaignDays||7},(_,i)=>'Day '+(i+1)+': [action]').join('\\n')}",
-  "positioningStatement": "one strong brand/event positioning statement"
+  "emailSubject": "email subject line",
+  "emailBody": "1-paragraph email body",
+  "linkedinPost": "60-word LinkedIn post with 3 hashtags",
+  "instagramCaption": "40-word caption with emojis and 3 hashtags",
+  "facebookPost": "50-word Facebook post with CTA",
+  "whatsappMessage": "30-word WhatsApp message",
+  "smsMessage": "SMS under 160 chars",
+  "seoTitle": "SEO title (60 chars max)",
+  "seoDescription": "meta description (160 chars max)",
+  "adHeadline": "ad headline (30 chars max)",
+  "adBody": "ad copy (90 chars max)",
+  "tiktokCaption": "TikTok caption with hook and 3 hashtags",
+  "campaignCalendar": "${form.campaignDays||7}-day action schedule",
+  "positioningStatement": "1-sentence positioning statement"
 }`;
 
     const schemas = {
       growth_strategy: `{
   "campaignName": "${form.name}",
-  "executiveSummary": "3-paragraph executive growth strategy summary covering current position, core opportunity, and recommended strategic direction",
-  "growthOpportunities": "5 specific revenue and market opportunities with estimated impact — numbered list, each with a short rationale",
-  "gtmPlan": "Full go-to-market plan as plain text: describe each phase (Phase 1, Phase 2, Phase 3) with timelines and specific tactics on separate lines",
-  "revenueProjection": "12-month revenue forecast as plain text: describe Month 1-3, Month 4-6, Month 7-9, Month 10-12 milestones on separate lines with realistic figures",
-  "partnershipIdeas": "5 strategic partnership recommendations with partner type, value exchange, and how to approach them",
-  "expansionRoadmap": "Quarter-by-quarter expansion roadmap as plain text: Q1, Q2, Q3, Q4 goals and key actions on separate lines",
-  "competitorGaps": "Key competitor gaps to exploit — 4-5 specific weaknesses in the market with a recommended counter-move for each"
+  "executiveSummary": "2-sentence strategy overview: current position and core opportunity",
+  "growthOpportunities": "3 revenue opportunities (numbered, one line each)",
+  "gtmPlan": "3-phase GTM plan: Phase 1, 2, 3 with key tactic per phase",
+  "revenueProjection": "Q1-Q4 revenue targets (one line each)",
+  "partnershipIdeas": "3 partnership ideas with value exchange",
+  "expansionRoadmap": "Q1-Q4 expansion goals (one line each)",
+  "competitorGaps": "3 competitor weaknesses and counter-moves"
 }`,
       growth_agent: `{
   "campaignName": "${form.name}",
-  "executiveSummary": "3-paragraph client acquisition summary: ideal client profile, biggest pain point you solve, and why they choose you over competitors",
-  "growthOpportunities": "5 specific client acquisition channels with estimated monthly lead volume and cost — numbered list with short rationale for each",
-  "gtmPlan": "Lead generation plan as plain text: Phase 1 (outreach setup & quick wins in 30 days), Phase 2 (scale what works in 60-90 days), Phase 3 (retention & referral system). Each phase on separate lines with specific daily/weekly actions",
-  "revenueProjection": "12-month new client revenue forecast as plain text: Month 1-3 (initial pipeline), Month 4-6 (conversion ramp), Month 7-9 (recurring revenue), Month 10-12 (scale target). Include realistic client numbers and deal sizes",
-  "partnershipIdeas": "5 referral or partnership channels to generate clients — partner type, how many leads per month expected, and exact outreach script or approach",
-  "expansionRoadmap": "Quarter-by-quarter new client roadmap as plain text: Q1 (foundation), Q2 (momentum), Q3 (scale), Q4 (optimise). Each quarter on separate lines with client targets and key actions",
-  "competitorGaps": "4-5 reasons why clients leave your competitors and come to you — specific pain points, your counter-positioning for each, and the one-liner pitch to use"
+  "executiveSummary": "2-sentence client acquisition overview: ideal client and key differentiator",
+  "growthOpportunities": "3 acquisition channels (numbered, one line each with lead estimate)",
+  "gtmPlan": "3-phase lead gen plan: Phase 1 quick wins, Phase 2 scale, Phase 3 retention",
+  "revenueProjection": "Q1-Q4 new client targets with deal sizes",
+  "partnershipIdeas": "3 referral/partnership ideas with expected leads per month",
+  "expansionRoadmap": "Q1-Q4 client growth targets and key actions",
+  "competitorGaps": "3 reasons clients choose you over competitors"
 }`,
       competitive_intel: `{
   "campaignName": "${form.name}",
-  "competitorAnalysis": "In-depth competitor analysis (3-4 paragraphs)",
-  "swotAnalysis": "Full SWOT analysis with bullet points for each quadrant",
-  "marketPositioning": "How to position against competitors",
-  "differentiators": "5 unique differentiators to exploit",
-  "counterStrategies": "5 counter-strategies against key competitors",
-  "marketTrends": "Top 5 market trends to capitalize on",
-  "pricingIntel": "Pricing strategy recommendations",
-  "emailSubject": "competitive briefing email subject",
-  "emailBody": "competitive intelligence report email",
-  "linkedinPost": "industry insights LinkedIn post (thought leadership)",
-  "positioningStatement": "differentiated positioning statement",
-  "campaignCalendar": "${Array.from({length:form.campaignDays||7},(_,i)=>'Day '+(i+1)+': [action]').join('\\n')}"
+  "competitorAnalysis": "2-sentence competitor landscape overview",
+  "swotAnalysis": "SWOT: 2 bullets per quadrant (Strengths, Weaknesses, Opportunities, Threats)",
+  "marketPositioning": "1-sentence positioning vs competitors",
+  "differentiators": "3 unique differentiators",
+  "counterStrategies": "3 counter-strategies",
+  "marketTrends": "3 trends to capitalize on",
+  "pricingIntel": "1-sentence pricing recommendation",
+  "emailSubject": "email subject line",
+  "emailBody": "1-paragraph competitive briefing email",
+  "linkedinPost": "50-word LinkedIn thought leadership post with hashtags",
+  "positioningStatement": "1-sentence positioning statement",
+  "campaignCalendar": "${form.campaignDays||7}-day action schedule"
 }`,
       content_calendar: `{
   "campaignName": "${form.name}",
-  "executiveSummary": "3-paragraph content strategy overview: brand position, content opportunity, and core message framework${form.toneOfVoice ? ` — use a ${form.toneOfVoice} tone throughout` : ""}",
-  "growthOpportunities": "5 specific content channels and formats that will drive the most growth — numbered list with rationale and estimated reach for each",
-  "gtmPlan": "30-day content launch plan as plain text: Week 1 (foundation & first posts), Week 2 (build momentum), Week 3 (engage & amplify), Week 4 (review & optimise). Each week on separate lines with specific content actions",
-  "revenueProjection": "Content ROI forecast as plain text: Month 1 (awareness metrics), Month 2-3 (engagement growth), Month 4-6 (lead gen from content), Month 7-12 (content driving revenue). Realistic numbers per phase on separate lines",
-  "partnershipIdeas": "5 content collaboration and cross-promotion ideas — collaborator type, what content to create together, and expected audience reach",
-  "expansionRoadmap": "Quarter-by-quarter content expansion plan as plain text: Q1 (establish core channels), Q2 (add video/short-form), Q3 (community & UGC), Q4 (paid amplification). Each quarter with specific content milestones",
-  "competitorGaps": "4-5 content gaps in your competitors — what topics they miss, what formats they ignore, and exactly what content you should create to own that space"
+  "executiveSummary": "2-sentence content strategy: brand position and core message${form.toneOfVoice ? ` (${form.toneOfVoice} tone)` : ""}",
+  "growthOpportunities": "3 content channels with estimated reach (one line each)",
+  "gtmPlan": "4-week content plan: Week 1-4 key actions (one line per week)",
+  "revenueProjection": "Q1-Q4 content ROI milestones",
+  "partnershipIdeas": "3 content collaboration ideas",
+  "expansionRoadmap": "Q1-Q4 content expansion goals",
+  "competitorGaps": "3 content gaps competitors miss"
 }`,
       seo_blog: `{
   "campaignName": "${form.name}",
-  "blogTitle": "SEO-optimized blog post title",
-  "blogOutline": "Complete blog post outline (H2, H3 structure)",
-  "blogIntro": "Compelling 150-word blog introduction",
-  "blogContent": "Full 800-word blog post body",
-  "blogConclusion": "Compelling 100-word conclusion with CTA",
-  "primaryKeyword": "main target keyword",
-  "secondaryKeywords": "5 secondary keywords (comma-separated)",
-  "seoTitle": "SEO meta title (50-60 chars)",
-  "seoDescription": "SEO meta description (150-160 chars)",
-  "internalLinks": "5 suggested internal linking topics",
-  "emailSubject": "blog promotion email subject",
-  "emailBody": "blog promotion email with summary",
-  "linkedinPost": "LinkedIn post promoting the blog with insights",
-  "tiktokCaption": "TikTok hook from blog key insight",
-  "campaignCalendar": "${Array.from({length:form.campaignDays||7},(_,i)=>'Day '+(i+1)+': [action]').join('\\n')}",
-  "positioningStatement": "blog/content brand positioning"
+  "blogTitle": "SEO blog post title",
+  "blogOutline": "H2/H3 outline (4-5 sections)",
+  "blogIntro": "60-word blog introduction",
+  "blogContent": "200-word blog body",
+  "blogConclusion": "40-word conclusion with CTA",
+  "primaryKeyword": "main keyword",
+  "secondaryKeywords": "3 secondary keywords comma-separated",
+  "seoTitle": "SEO title (60 chars max)",
+  "seoDescription": "meta description (160 chars max)",
+  "internalLinks": "3 internal linking topics",
+  "emailSubject": "email subject line",
+  "emailBody": "1-paragraph blog promo email",
+  "linkedinPost": "50-word LinkedIn post with hashtags",
+  "tiktokCaption": "TikTok hook with hashtags",
+  "campaignCalendar": "${form.campaignDays||7}-day action schedule",
+  "positioningStatement": "1-sentence positioning"
 }`,
       email_drip: `{
   "campaignName": "${form.name}",
-  "email1Subject": "Email 1 subject line (Welcome/Awareness)",
-  "email1Body": "Email 1 full body - Welcome & introduce value (200-250 words)",
-  "email2Subject": "Email 2 subject line (Education)",
-  "email2Body": "Email 2 full body - Educate & build trust (200-250 words)",
-  "email3Subject": "Email 3 subject line (Social Proof)",
-  "email3Body": "Email 3 full body - Social proof & case studies (200-250 words)",
-  "email4Subject": "Email 4 subject line (Offer/Urgency)",
-  "email4Body": "Email 4 full body - Make the offer with urgency (200-250 words)",
-  "email5Subject": "Email 5 subject line (Final CTA)",
-  "email5Body": "Email 5 full body - Final call to action (200-250 words)",
-  "segmentStrategy": "Audience segmentation strategy for this drip",
-  "linkedinPost": "LinkedIn post about the value this email series delivers",
-  "campaignCalendar": "${Array.from({length:form.campaignDays||7},(_,i)=>'Day '+(i+1)+': [action]').join('\\n')}",
-  "positioningStatement": "email funnel value proposition"
+  "email1Subject": "Email 1 subject (Welcome)",
+  "email1Body": "Email 1 body - welcome and value (60 words)",
+  "email2Subject": "Email 2 subject (Education)",
+  "email2Body": "Email 2 body - educate and build trust (60 words)",
+  "email3Subject": "Email 3 subject (Social Proof)",
+  "email3Body": "Email 3 body - social proof (60 words)",
+  "email4Subject": "Email 4 subject (Offer)",
+  "email4Body": "Email 4 body - offer with urgency (60 words)",
+  "email5Subject": "Email 5 subject (Final CTA)",
+  "email5Body": "Email 5 body - final call to action (60 words)",
+  "segmentStrategy": "1-sentence segmentation strategy",
+  "linkedinPost": "50-word LinkedIn post with hashtags",
+  "campaignCalendar": "${form.campaignDays||7}-day action schedule",
+  "positioningStatement": "1-sentence value proposition"
 }`,
       influencer: `{
   "campaignName": "${form.name}",
-  "influencerBrief": "Complete influencer campaign brief (objectives, tone, key messages)",
-  "contentGuidelines": "Detailed content guidelines and do's/don'ts",
-  "outreachTemplate": "Professional influencer outreach email template",
-  "hashtags": "15 campaign hashtags (mix of branded, niche, trending)",
-  "campaignGoals": "5 measurable influencer campaign KPIs",
-  "pressRelease": "Full press release (headline, subheadline, body, quote, boilerplate)",
-  "prPitch": "Media pitch email to journalists (150 words)",
-  "influencerTiers": "Recommended influencer tiers (Nano/Micro/Macro) with rationale",
-  "emailSubject": "influencer/PR campaign announcement email subject",
-  "emailBody": "influencer campaign launch email",
-  "linkedinPost": "PR announcement LinkedIn post",
-  "instagramCaption": "Sample influencer Instagram caption template",
-  "campaignCalendar": "${Array.from({length:form.campaignDays||7},(_,i)=>'Day '+(i+1)+': [action]').join('\\n')}",
-  "positioningStatement": "influencer campaign positioning statement"
+  "influencerBrief": "2-sentence campaign brief: objectives and tone",
+  "contentGuidelines": "3 dos and 3 don'ts",
+  "outreachTemplate": "50-word influencer outreach email",
+  "hashtags": "8 campaign hashtags",
+  "campaignGoals": "3 measurable KPIs",
+  "pressRelease": "Press release: headline + 2-paragraph body + quote",
+  "prPitch": "40-word media pitch",
+  "influencerTiers": "Nano/Micro/Macro recommendation with 1-line rationale each",
+  "emailSubject": "email subject line",
+  "emailBody": "1-paragraph campaign launch email",
+  "linkedinPost": "50-word LinkedIn post with hashtags",
+  "instagramCaption": "40-word Instagram caption with hashtags",
+  "campaignCalendar": "${form.campaignDays||7}-day action schedule",
+  "positioningStatement": "1-sentence positioning statement"
 }`,
       analytics_report: `{
   "campaignName": "${form.name}",
-  "executiveSummary": "Executive marketing performance summary (3 paragraphs)",
-  "kpiDashboard": "Full KPI dashboard with metrics: ROAS, CAC, LTV, Conversion Rate, CTR, Engagement Rate, Revenue, ROI",
-  "channelPerformance": "Channel-by-channel performance breakdown",
-  "topInsights": "5 key marketing insights from the analysis",
-  "growthOpportunities": "5 actionable growth opportunities identified",
-  "recommendations": "5 strategic recommendations with priority levels",
-  "nextSteps": "30-day action plan based on data",
-  "emailSubject": "marketing report email subject",
-  "emailBody": "marketing performance report email to stakeholders",
-  "linkedinPost": "LinkedIn post sharing marketing insights",
-  "campaignCalendar": "${Array.from({length:form.campaignDays||7},(_,i)=>'Day '+(i+1)+': [action]').join('\\n')}",
-  "positioningStatement": "data-driven marketing positioning statement"
+  "executiveSummary": "2-sentence performance summary",
+  "kpiDashboard": "Key KPIs: ROAS, CAC, LTV, CTR, ROI (one line each)",
+  "channelPerformance": "Top 3 channels with performance note",
+  "topInsights": "3 key marketing insights",
+  "growthOpportunities": "3 growth opportunities",
+  "recommendations": "3 strategic recommendations",
+  "nextSteps": "5 action items for next 30 days",
+  "emailSubject": "email subject line",
+  "emailBody": "1-paragraph stakeholder report email",
+  "linkedinPost": "50-word LinkedIn insights post with hashtags",
+  "campaignCalendar": "${form.campaignDays||7}-day action schedule",
+  "positioningStatement": "1-sentence data-driven positioning"
 }`,
       sales_enablement: `{
   "campaignName": "${form.name}",
-  "elevatorPitch": "30-second elevator pitch (75 words)",
-  "salesDeckOutline": "Complete sales deck structure (10-12 slides with content for each)",
-  "coldCallScript": "Full cold call script with opener, discovery questions, and close",
-  "emailSequence": "3-email cold outreach sequence (subject + body for each)",
-  "objectionGuide": "Top 7 objections with word-for-word responses",
-  "closingStrategies": "5 proven closing techniques tailored to this offer",
-  "valueProposition": "One-line value proposition + 3 proof points",
-  "emailSubject": "sales outreach email subject line",
-  "emailBody": "sales enablement announcement email to team",
-  "linkedinPost": "LinkedIn outreach message template",
-  "campaignCalendar": "${Array.from({length:form.campaignDays||7},(_,i)=>'Day '+(i+1)+': [action]').join('\\n')}",
-  "positioningStatement": "sales positioning statement"
+  "elevatorPitch": "30-word elevator pitch",
+  "salesDeckOutline": "5-slide deck outline (title + 1-line content each)",
+  "coldCallScript": "Cold call: opener + 2 discovery questions + close",
+  "emailSequence": "3-email outreach: subject + 30-word body each",
+  "objectionGuide": "Top 3 objections with 1-sentence responses",
+  "closingStrategies": "3 closing techniques",
+  "valueProposition": "1-line value prop + 2 proof points",
+  "emailSubject": "email subject line",
+  "emailBody": "1-paragraph sales team email",
+  "linkedinPost": "50-word LinkedIn outreach with hashtags",
+  "campaignCalendar": "${form.campaignDays||7}-day action schedule",
+  "positioningStatement": "1-sentence sales positioning"
 }`,
       event_full: `{
   "campaignName": "${form.name}",
-  "emailSubject": "event announcement email subject",
-  "emailBody": "full event announcement email (3-4 paragraphs)",
-  "countdownEmail7": "7-days-to-go countdown email",
-  "countdownEmail3": "3-days-to-go urgency email",
-  "countdownEmail1": "Day-before final reminder email",
-  "speakerBio": "Professional speaker/host bio template",
-  "speakerLinkedin": "Speaker promotional LinkedIn post",
-  "attendeeWelcome": "Welcome email for registered attendees",
-  "postEventRecap": "Post-event recap email with highlights",
-  "linkedinPost": "professional LinkedIn event announcement",
-  "instagramCaption": "Instagram event promo caption with emojis",
-  "facebookPost": "Facebook event promotion post",
-  "whatsappMessage": "WhatsApp event reminder message",
-  "tiktokCaption": "TikTok event hype caption",
-  "adHeadline": "event ad headline",
-  "adBody": "event ad body copy",
-  "seoTitle": "event SEO page title",
-  "seoDescription": "event SEO meta description",
-  "campaignCalendar": "${Array.from({length:form.campaignDays||7},(_,i)=>'Day '+(i+1)+': [action]').join('\\n')}",
-  "positioningStatement": "event positioning statement"
+  "emailSubject": "email subject line",
+  "emailBody": "1-paragraph event announcement email",
+  "countdownEmail7": "7-day countdown email (40 words)",
+  "countdownEmail3": "3-day urgency email (40 words)",
+  "countdownEmail1": "Day-before reminder (30 words)",
+  "speakerBio": "2-sentence speaker bio",
+  "speakerLinkedin": "40-word speaker promo LinkedIn post",
+  "attendeeWelcome": "40-word welcome email",
+  "postEventRecap": "40-word post-event recap email",
+  "linkedinPost": "50-word LinkedIn event announcement with hashtags",
+  "instagramCaption": "40-word Instagram caption with emojis and hashtags",
+  "facebookPost": "40-word Facebook post with CTA",
+  "whatsappMessage": "25-word WhatsApp reminder",
+  "tiktokCaption": "TikTok caption with hook and hashtags",
+  "adHeadline": "ad headline (30 chars max)",
+  "adBody": "ad copy (90 chars max)",
+  "seoTitle": "SEO title (60 chars max)",
+  "seoDescription": "meta description (160 chars max)",
+  "campaignCalendar": "${form.campaignDays||7}-day action schedule",
+  "positioningStatement": "1-sentence event positioning"
 }`,
       marketplace: `{
   "campaignName": "${form.name}",
-  "vendorOnboardingEmail": "Vendor welcome & onboarding email",
-  "productListingCopy": "Optimized product listing title, description, and bullets",
-  "seasonalCampaign": "Seasonal/holiday promotion campaign plan",
-  "buyerEmailSubject": "buyer retention email subject",
-  "buyerEmailBody": "buyer retention/re-engagement email",
-  "vendorGrowthPlan": "5-step vendor growth strategy",
-  "marketplaceSEO": "Marketplace SEO keywords and listing optimization tips",
-  "linkedinPost": "LinkedIn post about marketplace value for vendors",
-  "instagramCaption": "Instagram post promoting marketplace products",
-  "facebookPost": "Facebook marketplace promotion post",
-  "adHeadline": "marketplace ad headline",
-  "adBody": "marketplace ad body copy",
-  "campaignCalendar": "${Array.from({length:form.campaignDays||7},(_,i)=>'Day '+(i+1)+': [action]').join('\\n')}",
-  "positioningStatement": "marketplace positioning statement"
+  "vendorOnboardingEmail": "1-paragraph vendor welcome email",
+  "productListingCopy": "Listing title + 2-sentence description + 3 bullets",
+  "seasonalCampaign": "2-sentence seasonal promotion plan",
+  "buyerEmailSubject": "email subject line",
+  "buyerEmailBody": "1-paragraph buyer retention email",
+  "vendorGrowthPlan": "3-step vendor growth strategy",
+  "marketplaceSEO": "3 SEO keywords + 2 listing tips",
+  "linkedinPost": "50-word LinkedIn post with hashtags",
+  "instagramCaption": "40-word Instagram caption with hashtags",
+  "facebookPost": "40-word Facebook post with CTA",
+  "adHeadline": "ad headline (30 chars max)",
+  "adBody": "ad copy (90 chars max)",
+  "campaignCalendar": "${form.campaignDays||7}-day action schedule",
+  "positioningStatement": "1-sentence marketplace positioning"
 }`,
       brand_strategy: `{
   "campaignName": "${form.name}",
-  "brandIdentity": "Complete brand identity definition (mission, vision, values)",
-  "toneOfVoice": "Detailed tone of voice guide with examples",
-  "messagingFramework": "Brand messaging framework (core message + 5 pillars)",
-  "storytellingStrategy": "Brand storytelling approach and narrative arc",
-  "brandGuidelines": "Key brand guidelines (visual, verbal, behavioral)",
-  "tagline": "3 brand tagline options with rationale",
-  "emailSubject": "brand launch announcement email subject",
-  "emailBody": "brand strategy launch email to stakeholders",
-  "linkedinPost": "brand identity LinkedIn announcement",
-  "instagramCaption": "brand launch Instagram post",
-  "adHeadline": "brand awareness ad headline",
-  "adBody": "brand awareness ad body",
-  "campaignCalendar": "${Array.from({length:form.campaignDays||7},(_,i)=>'Day '+(i+1)+': [action]').join('\\n')}",
-  "positioningStatement": "core brand positioning statement"
+  "brandIdentity": "Mission + vision + 3 core values (one line each)",
+  "toneOfVoice": "Tone: 3 adjectives + 1 example sentence",
+  "messagingFramework": "Core message + 3 pillars (one line each)",
+  "storytellingStrategy": "2-sentence brand narrative arc",
+  "brandGuidelines": "3 brand guidelines: visual, verbal, behavioral",
+  "tagline": "2 tagline options with 1-word rationale each",
+  "emailSubject": "email subject line",
+  "emailBody": "1-paragraph brand launch email",
+  "linkedinPost": "50-word LinkedIn brand announcement with hashtags",
+  "instagramCaption": "40-word Instagram post with hashtags",
+  "adHeadline": "ad headline (30 chars max)",
+  "adBody": "ad copy (90 chars max)",
+  "campaignCalendar": "${form.campaignDays||7}-day action schedule",
+  "positioningStatement": "1-sentence brand positioning"
 }`,
       funnel_cro: `{
   "campaignName": "${form.name}",
-  "funnelAudit": "Complete funnel audit with drop-off points identified",
-  "funnelStages": "Optimized funnel stages (Awareness â†' Interest â†' Desire â†' Action)",
-  "abTestVariants": "5 A/B test ideas with control vs variant for each",
-  "ctaOptimizations": "10 high-converting CTA copy variants",
-  "landingPageCopy": "High-converting landing page headline, subheadline, bullets, and CTA",
-  "conversionTips": "7 conversion rate optimization quick wins",
-  "heatmapInsights": "Where to add CTAs and reduce friction (UX recommendations)",
-  "emailSubject": "CRO insights email subject",
-  "emailBody": "conversion optimization recommendations email",
-  "linkedinPost": "LinkedIn post about conversion optimization insights",
-  "campaignCalendar": "Week 1: Audit\\nWeek 2: Test 1\\nWeek 3: Test 2\\nWeek 4: Analyze\\nMonth 2: Scale\\nMonth 3: Optimize\\nMonth 4: Report",
-  "positioningStatement": "conversion-optimized value proposition"
+  "funnelAudit": "Top 2 funnel drop-off points with fix",
+  "funnelStages": "Awareness→Interest→Desire→Action: 1-line tactic each",
+  "abTestVariants": "2 A/B test ideas: control vs variant",
+  "ctaOptimizations": "3 high-converting CTA copy variants",
+  "landingPageCopy": "Headline + subheadline + 2 bullets + CTA",
+  "conversionTips": "3 CRO quick wins",
+  "heatmapInsights": "2 UX friction points and fix",
+  "emailSubject": "email subject line",
+  "emailBody": "1-paragraph CRO recommendations email",
+  "linkedinPost": "50-word LinkedIn post with hashtags",
+  "campaignCalendar": "Week 1: Audit | Week 2-3: Test | Week 4: Analyze | Month 2+: Scale",
+  "positioningStatement": "1-sentence conversion-optimized value prop"
 }`,
       pr_reputation: `{
   "campaignName": "${form.name}",
-  "reputationAudit": "Current brand reputation audit covering online sentiment, review scores, and key perception gaps (3 paragraphs)",
-  "crisisPlaybook": "Step-by-step PR crisis response playbook with 5 escalation stages, response scripts, and spokesperson guidelines",
-  "pressRelease": "Full professional press release: headline, subheadline, 3-paragraph body, executive quote, and company boilerplate",
-  "mediaPitch": "150-word media pitch email to journalists with story angle and why it matters now",
-  "reviewResponseTemplates": "10 professional review response templates: 5 for positive reviews and 5 for negative/critical reviews",
-  "reputationBuildingPlan": "30-day online reputation improvement plan: Week 1 audit, Week 2 outreach, Week 3 content, Week 4 monitoring",
-  "prCalendar": "12-month PR and thought leadership calendar with quarterly themes and key media moments",
-  "linkedinPost": "Thought leadership LinkedIn post to strengthen brand authority and public trust",
-  "emailSubject": "PR and reputation briefing email subject",
-  "emailBody": "Stakeholder communication email about brand reputation strategy and actions",
-  "campaignCalendar": "${Array.from({length: form.campaignDays||7},(_,i)=>'Day '+(i+1)+': [action]').join('\\n')}",
-  "positioningStatement": "Brand reputation positioning statement"
+  "reputationAudit": "2-sentence reputation audit: sentiment and key gaps",
+  "crisisPlaybook": "3-step crisis response plan with response script",
+  "pressRelease": "Press release: headline + 2-paragraph body + quote",
+  "mediaPitch": "40-word media pitch with story angle",
+  "reviewResponseTemplates": "2 positive + 2 negative review response templates",
+  "reputationBuildingPlan": "4-week plan: Week 1-4 key action each",
+  "prCalendar": "Q1-Q4 PR themes and key media moments",
+  "linkedinPost": "50-word thought leadership post with hashtags",
+  "emailSubject": "email subject line",
+  "emailBody": "1-paragraph stakeholder email",
+  "campaignCalendar": "${form.campaignDays||7}-day action schedule",
+  "positioningStatement": "1-sentence reputation positioning"
 }`,
       crm_lifecycle: `{
   "campaignName": "${form.name}",
-  "customerSegments": "5 customer segments with personas, behavior patterns, LTV estimates, and tailored messaging for each",
-  "leadScoringModel": "Lead scoring framework: criteria list, point values per action, threshold for sales handoff, and scoring reset rules",
-  "onboardingSequence": "5-email new customer onboarding sequence (subject + full body for each: Welcome, Quick Win, Feature Deep-Dive, Social Proof, Check-In)",
-  "winBackCampaign": "Re-engagement campaign for dormant customers: 3 emails (We Miss You / Incentive / Final Chance) + 1 SMS with full copy",
-  "retentionPlan": "90-day customer retention plan: Month 1 engagement, Month 2 loyalty rewards, Month 3 referral activation with specific tactics per month",
-  "lifetimeValueStrategy": "5 tactics to increase customer LTV: upsell paths, cross-sell triggers, subscription nudges, loyalty tiers, and referral incentives",
-  "churnPrevention": "Early churn warning signals and 3 automated intervention sequences to recover at-risk customers before they leave",
-  "emailSubject": "CRM lifecycle campaign email subject",
-  "emailBody": "Customer lifecycle strategy briefing email to stakeholders",
-  "linkedinPost": "LinkedIn post on customer success and relationship-driven growth",
-  "campaignCalendar": "${Array.from({length: form.campaignDays||7},(_,i)=>'Day '+(i+1)+': [action]').join('\\n')}",
-  "positioningStatement": "Customer-centric value proposition statement"
+  "customerSegments": "3 segments: persona name + key behavior + message (one line each)",
+  "leadScoringModel": "3 scoring criteria with point values and handoff threshold",
+  "onboardingSequence": "3-email onboarding: subject + 30-word body each",
+  "winBackCampaign": "2-email win-back: We Miss You + Final Chance (30-word body each)",
+  "retentionPlan": "Month 1-3 retention tactics (one line each)",
+  "lifetimeValueStrategy": "3 LTV tactics: upsell, cross-sell, loyalty",
+  "churnPrevention": "2 churn signals + 1 intervention sequence",
+  "emailSubject": "email subject line",
+  "emailBody": "1-paragraph lifecycle briefing email",
+  "linkedinPost": "50-word LinkedIn post with hashtags",
+  "campaignCalendar": "${form.campaignDays||7}-day action schedule",
+  "positioningStatement": "1-sentence customer-centric positioning"
 }`,
       ads_creation: `{
   "campaignName": "${form.name}",
-  "adStrategy": "2-3 sentence creative strategy: the core hook/angle, why it fits this audience and objective, and how budget and landing page should shape the creative",
+  "adStrategy": "1-sentence creative strategy and hook",
   "staticAdVariants": [
-    { "headline": "punchy headline, 40 chars max", "primaryText": "direct-response primary text with a strong hook, 125 chars max", "description": "supporting line, 25 chars max", "cta": "Shop Now | Learn More | Sign Up | Get Offer (pick the best fit)" },
-    { "headline": "second distinct angle headline, 40 chars max", "primaryText": "direct-response primary text, different angle than variant 1, 125 chars max", "description": "supporting line, 25 chars max", "cta": "best-fit CTA" },
-    { "headline": "third distinct angle headline, 40 chars max", "primaryText": "direct-response primary text, different angle than variants 1 and 2, 125 chars max", "description": "supporting line, 25 chars max", "cta": "best-fit CTA" }
+    { "headline": "headline (40 chars)", "primaryText": "primary text (125 chars)", "description": "description (25 chars)", "cta": "CTA button" },
+    { "headline": "headline variant 2", "primaryText": "primary text variant 2", "description": "description 2", "cta": "CTA" },
+    { "headline": "headline variant 3", "primaryText": "primary text variant 3", "description": "description 3", "cta": "CTA" }
   ],
   "carouselAdVariant": {
-    "headline": "overall carousel ad headline",
+    "headline": "carousel headline",
     "slides": [
-      { "title": "slide 1 title", "text": "slide 1 supporting text" },
-      { "title": "slide 2 title", "text": "slide 2 supporting text" },
-      { "title": "slide 3 title", "text": "slide 3 supporting text" },
-      { "title": "slide 4 title", "text": "slide 4 supporting text" }
+      { "title": "slide 1", "text": "slide 1 text" },
+      { "title": "slide 2", "text": "slide 2 text" },
+      { "title": "slide 3", "text": "slide 3 text" }
     ],
-    "cta": "best-fit CTA"
+    "cta": "CTA"
   },
   "videoStillAdVariant": {
-    "hook": "first 3-second hook line for the video/reel",
-    "script": "15-30 second script broken into short beats/lines",
-    "caption": "social caption to pair with the video ad",
-    "cta": "best-fit CTA"
+    "hook": "3-second hook line",
+    "script": "15-second script (3 beats)",
+    "caption": "social caption",
+    "cta": "CTA"
   },
-  "adHeadlineVariants": ["alt headline 1", "alt headline 2", "alt headline 3", "alt headline 4", "alt headline 5"],
-  "landingPageTips": "3 short, specific conversion-rate tips for the landing page given the objective and budget"
+  "adHeadlineVariants": ["headline 1", "headline 2", "headline 3"],
+  "landingPageTips": "2 conversion tips"
 }`,
       paid_advertising: `{
   "campaignName": "${form.name}",
-  "adStrategy": "Full paid media strategy: platform selection rationale, total budget split, targeting philosophy, and expected ROAS per platform",
-  "metaAdsCopy": "3 Meta (Facebook/Instagram) ad variants each with: Primary Text (125 chars), Headline (40 chars), Description (25 chars), CTA button, and audience note",
-  "googleAdsCopy": "3 Google Search ad variants each with: 3 Headlines (30 chars each), 2 Descriptions (90 chars each), Display URL path, and match type recommendation",
-  "tiktokAdsCopy": "2 TikTok ad scripts: one 15-second hook-driven and one 30-second story-format with captions and trending audio suggestions",
-  "linkedinAdsCopy": "2 LinkedIn Sponsored Content ads each with: Intro text (150 chars), Headline (70 chars), CTA, and targeting persona",
-  "audienceTargeting": "Detailed audience targeting strategy per platform: demographics, interests, behaviors, lookalike seeds, and exclusions for each",
-  "budgetAllocation": "Monthly budget breakdown by platform (Meta / Google / TikTok / LinkedIn) with expected impressions, clicks, conversions, and ROAS per channel",
-  "abTestPlan": "5 A/B test ideas with control vs variant copy, creative direction, and success metric for each",
-  "emailSubject": "Paid advertising campaign launch email subject",
-  "emailBody": "Paid media campaign brief and launch announcement email to stakeholders",
-  "campaignCalendar": "${Array.from({length: form.campaignDays||7},(_,i)=>'Day '+(i+1)+': [action]').join('\\n')}",
-  "positioningStatement": "Paid advertising value proposition and campaign hook"
+  "adStrategy": "1-sentence paid media strategy and budget split",
+  "metaAdsCopy": "2 Meta ad variants: Primary Text + Headline + CTA each",
+  "googleAdsCopy": "2 Google Search ads: 2 headlines + 1 description each",
+  "tiktokAdsCopy": "1 TikTok 15-second script with caption",
+  "linkedinAdsCopy": "1 LinkedIn Sponsored Content: intro + headline + CTA",
+  "audienceTargeting": "Target audience per platform (1 line each): Meta, Google, TikTok, LinkedIn",
+  "budgetAllocation": "Budget % by platform with expected ROAS",
+  "abTestPlan": "2 A/B test ideas with control vs variant",
+  "emailSubject": "email subject line",
+  "emailBody": "1-paragraph campaign launch email",
+  "campaignCalendar": "${form.campaignDays||7}-day action schedule",
+  "positioningStatement": "1-sentence campaign hook"
 }`,
       ai_cfo: `{
   "campaignName": "${form.name}",
-  "financialForecast": "12-month revenue and marketing expense forecast with growth assumptions broken into quarters with realistic milestones",
-  "budgetAllocation": "Marketing budget allocation across all channels with ROI expectations, payback period, and reallocation triggers per channel",
-  "unitEconomics": "Unit economics analysis: CAC by channel, LTV, LTV:CAC ratio, gross margin, and payback period with improvement targets",
-  "cashFlowProjection": "Quarterly cash flow projection showing marketing spend timing, revenue lag, and break-even milestones",
-  "investmentPriorities": "Top 5 marketing investment priorities ranked by expected ROI with rationale, risk level, and recommended spend level",
-  "costReductionOpportunities": "5 cost optimization opportunities: what to cut, consolidate, and renegotiate without sacrificing growth",
-  "kpiDashboard": "CFO-level KPI dashboard: Monthly Revenue, Burn Rate, CAC, LTV, ROAS, Gross Margin, Marketing ROI, Payback Period with targets and red flags",
-  "emailSubject": "Financial performance briefing email subject",
-  "emailBody": "CFO executive financial summary and marketing investment recommendation email",
-  "linkedinPost": "Thought leadership LinkedIn post on financial efficiency and marketing ROI",
-  "campaignCalendar": "${Array.from({length: form.campaignDays||7},(_,i)=>'Day '+(i+1)+': [action]').join('\\n')}",
-  "positioningStatement": "Financial strategy and efficiency positioning statement"
+  "financialForecast": "Q1-Q4 revenue targets with growth assumption",
+  "budgetAllocation": "Top 3 channels with % budget and expected ROI",
+  "unitEconomics": "CAC, LTV, LTV:CAC ratio, payback period",
+  "cashFlowProjection": "Q1-Q4 cash flow milestones",
+  "investmentPriorities": "Top 3 marketing investments with ROI rationale",
+  "costReductionOpportunities": "3 cost optimization opportunities",
+  "kpiDashboard": "Key KPIs: Revenue, CAC, LTV, ROAS, Gross Margin with targets",
+  "emailSubject": "email subject line",
+  "emailBody": "1-paragraph CFO summary email",
+  "linkedinPost": "50-word LinkedIn post on marketing ROI with hashtags",
+  "campaignCalendar": "${form.campaignDays||7}-day action schedule",
+  "positioningStatement": "1-sentence financial positioning"
 }`,
       ai_cto: `{
   "campaignName": "${form.name}",
-  "techStackAudit": "Current marketing tech stack audit: what to keep, replace, and add with cost and integration complexity per tool",
-  "aiIntegrationPlan": "AI tools implementation roadmap: 30-day quick wins, 60-day integrations, 90-day full automation with specific tools and setup steps per phase",
-  "automationBlueprint": "Marketing automation architecture: triggers, workflows, branching logic, and tool connections across email, CRM, ads, and social",
-  "dataInfrastructure": "Customer data platform recommendations: data sources to connect, segmentation logic, and real-time personalization architecture",
-  "performanceOptimization": "Website and campaign performance technical audit: Core Web Vitals, load speed, tag management, tracking setup, and conversion pixel strategy",
-  "integrationMap": "Full system integration map: CRM to Email to Ads to Analytics to Social with data flow and tool recommendations",
-  "securityCompliance": "Marketing tech security checklist: data encryption, access controls, GDPR compliance, API key management, and audit log requirements",
-  "emailSubject": "Technology infrastructure briefing email subject",
-  "emailBody": "CTO technology strategy and AI integration email to stakeholders",
-  "linkedinPost": "Thought leadership LinkedIn post on AI-powered marketing infrastructure",
-  "campaignCalendar": "${Array.from({length: form.campaignDays||7},(_,i)=>'Day '+(i+1)+': [action]').join('\\n')}",
-  "positioningStatement": "Technology-driven marketing differentiation statement"
+  "techStackAudit": "Keep/Replace/Add: 2 tools each with reason",
+  "aiIntegrationPlan": "30/60/90-day AI tool roadmap (one action each)",
+  "automationBlueprint": "3 key automation workflows: trigger + action + outcome",
+  "dataInfrastructure": "3 data sources to connect + segmentation approach",
+  "performanceOptimization": "Top 3 technical optimizations with impact",
+  "integrationMap": "CRM → Email → Ads → Analytics flow (1 tool each)",
+  "securityCompliance": "3 security/compliance checkpoints",
+  "emailSubject": "email subject line",
+  "emailBody": "1-paragraph tech strategy email",
+  "linkedinPost": "50-word LinkedIn post on AI marketing with hashtags",
+  "campaignCalendar": "${form.campaignDays||7}-day action schedule",
+  "positioningStatement": "1-sentence tech differentiation"
 }`,
       ai_cro_exec: `{
   "campaignName": "${form.name}",
-  "revenueStrategy": "12-month revenue growth strategy with quarterly targets, primary growth levers, and success metrics per initiative",
-  "partnershipPlan": "5 high-value strategic partnership opportunities: partner profile, value exchange, revenue impact estimate, and outreach approach for each",
-  "salesEnablementKit": "Complete sales enablement kit: 30-second pitch, top 7 objections with responses, 3-email outreach sequence, and 5 closing techniques",
-  "monetizationModels": "3 alternative monetization models to diversify revenue: model description, target customer, pricing structure, and 90-day launch plan",
-  "revenueLevers": "Top 7 revenue levers ranked by impact and execution speed: new sales, upsell, cross-sell, retention, pricing, channel expansion, partnerships",
-  "clientAcquisitionPlan": "90-day new client acquisition sprint: Week 1-2 setup, Week 3-4 outreach, Month 2 pipeline build, Month 3 conversion with daily actions",
-  "upsellCrossSellStrategy": "Upsell and cross-sell playbook: trigger events, offer sequences, pricing anchors, and scripts for each upgrade path",
-  "emailSubject": "Revenue strategy briefing email subject",
-  "emailBody": "CRO executive revenue growth plan and partnership opportunity email",
-  "linkedinPost": "Revenue growth and partnership thought leadership LinkedIn post",
-  "campaignCalendar": "${Array.from({length: form.campaignDays||7},(_,i)=>'Day '+(i+1)+': [action]').join('\\n')}",
-  "positioningStatement": "Revenue-driven company positioning statement"
+  "revenueStrategy": "Q1-Q4 revenue targets with primary growth lever each",
+  "partnershipPlan": "3 partnership opportunities with revenue impact",
+  "salesEnablementKit": "30-word pitch + top 3 objections + 1 closing technique",
+  "monetizationModels": "2 monetization models with pricing and target customer",
+  "revenueLevers": "Top 3 revenue levers: new sales, upsell, retention",
+  "clientAcquisitionPlan": "Month 1-3 acquisition sprint (key action per month)",
+  "upsellCrossSellStrategy": "3 upsell/cross-sell triggers with offer",
+  "emailSubject": "email subject line",
+  "emailBody": "1-paragraph revenue strategy email",
+  "linkedinPost": "50-word LinkedIn post with hashtags",
+  "campaignCalendar": "${form.campaignDays||7}-day action schedule",
+  "positioningStatement": "1-sentence revenue positioning"
 }`,
       ai_ceo: `{
   "campaignName": "${form.name}",
-  "visionStatement": "Compelling 3-year company vision and mission statement with core values and the change you are creating in the market",
-  "strategicPriorities": "Top 5 strategic priorities for the next 12 months: what, why, how, who owns it, and success metric for each",
-  "marketOpportunities": "3 high-potential untapped market opportunities with TAM estimate, time-to-capture, competitive risk, and recommended entry strategy",
-  "competitiveAdvantage": "Sustainable competitive advantages and moats to build: product, brand, data, network effects, and switching costs with a 12-month build plan",
-  "ecosystemStrategy": "Platform, partner, and ecosystem strategy to accelerate growth: which ecosystems to join or build and how to become indispensable",
-  "executiveSummary": "Board-ready executive summary: company position, key metrics, growth trajectory, risks, and strategic ask formatted for board presentation",
-  "pivotScenarios": "2 strategic pivot scenarios if current trajectory changes: triggers to watch for, decision criteria, and fast-pivot action plan",
-  "emailSubject": "CEO strategic briefing email subject",
-  "emailBody": "CEO strategic direction and growth priorities email to leadership team",
-  "linkedinPost": "CEO thought leadership LinkedIn post on vision, innovation, and market direction",
-  "campaignCalendar": "${Array.from({length: form.campaignDays||7},(_,i)=>'Day '+(i+1)+': [action]').join('\\n')}",
-  "positioningStatement": "Executive-level company positioning and category narrative"
+  "visionStatement": "3-year vision + mission in 2 sentences",
+  "strategicPriorities": "Top 3 priorities: what, why, success metric each",
+  "marketOpportunities": "2 market opportunities with TAM and entry approach",
+  "competitiveAdvantage": "3 competitive moats to build in 12 months",
+  "ecosystemStrategy": "2 ecosystems to join/build and why",
+  "executiveSummary": "2-sentence board-ready summary: position and strategic ask",
+  "pivotScenarios": "2 pivot triggers with fast-pivot action",
+  "emailSubject": "email subject line",
+  "emailBody": "1-paragraph leadership team email",
+  "linkedinPost": "50-word CEO thought leadership post with hashtags",
+  "campaignCalendar": "${form.campaignDays||7}-day action schedule",
+  "positioningStatement": "1-sentence company positioning"
 }`,
       ai_compliance: `{
   "campaignName": "${form.name}",
-  "complianceAudit": "Full marketing compliance audit across GDPR, CCPA, CAN-SPAM, CASL, and platform advertising policies with pass/fail per area and remediation steps",
-  "privacyPolicy": "Marketing privacy policy framework: data collection disclosure, consent requirements, cookie policy, opt-out mechanisms, and data retention rules",
-  "advertisingCompliance": "Platform-specific advertising compliance checklist for Meta, Google, LinkedIn, TikTok, and email with prohibited content and disclosure requirements",
-  "aiContentGuidance": "AI-generated content governance: disclosure requirements, human review checkpoints, bias mitigation, and AI usage policy for marketing",
-  "dataGovernance": "Customer data governance framework: data classification, access controls, retention schedules, breach response plan, and third-party data sharing rules",
-  "riskMatrix": "Marketing risk assessment matrix: 7 key risks with likelihood, business impact, current controls, and recommended mitigation for each",
-  "complianceCalendar": "Annual compliance review calendar: quarterly audits, renewal dates, training schedules, policy review cycles, and regulatory update monitoring",
-  "emailSubject": "Compliance briefing email subject",
-  "emailBody": "Compliance status report and risk mitigation recommendation email to stakeholders",
-  "linkedinPost": "Thought leadership LinkedIn post on marketing compliance, trust, and responsible AI",
-  "campaignCalendar": "${Array.from({length: form.campaignDays||7},(_,i)=>'Day '+(i+1)+': [action]').join('\\n')}",
-  "positioningStatement": "Compliance-first and trust-driven brand positioning statement"
+  "complianceAudit": "GDPR/CCPA/CAN-SPAM: pass/fail + top 2 remediation steps",
+  "privacyPolicy": "3 privacy policy must-haves: consent, opt-out, retention",
+  "advertisingCompliance": "Top 3 platform compliance rules (Meta, Google, LinkedIn)",
+  "aiContentGuidance": "2 AI content disclosure requirements",
+  "dataGovernance": "3 data governance rules: access, retention, breach",
+  "riskMatrix": "Top 3 marketing risks with likelihood and mitigation",
+  "complianceCalendar": "Q1-Q4 compliance checkpoints",
+  "emailSubject": "email subject line",
+  "emailBody": "1-paragraph compliance briefing email",
+  "linkedinPost": "50-word LinkedIn post on compliance with hashtags",
+  "campaignCalendar": "${form.campaignDays||7}-day action schedule",
+  "positioningStatement": "1-sentence trust-driven positioning"
 }`,
     };
     return schemas[campaignType] || baseSchema;
@@ -769,18 +769,17 @@ ${eventUrlInstruction}
 Return ONLY valid JSON matching this exact schema, no markdown, no explanation:
 ${getOutputSchema()}`;
 
-  // Call Groq directly if key is available, otherwise use Vercel proxy
+  // llama-3.1-8b-instant free tier: 6000 TPM = input + max_tokens.
+  // Schema trimming cut input from ~4181 → ~1612 tokens.
+  // 1612 input + 3500 max_tokens = 5112 — safely under 6000 TPM limit.
   const requestBody = JSON.stringify({
     model: "llama-3.1-8b-instant",
     messages: [
-      {
-        role: "system",
-        content: "You are an expert AI CMO. Always respond with only valid JSON, no markdown, no explanation.",
-      },
+      { role: "system", content: "You are an expert AI CMO. Respond ONLY with valid JSON — no markdown, no explanation, no extra text." },
       { role: "user", content: prompt },
     ],
     temperature: 0.7,
-    max_tokens: isNewType ? 4000 : 2000,
+    max_tokens: 3500,
   });
 
   const controller = new AbortController();
@@ -820,20 +819,37 @@ ${getOutputSchema()}`;
 
   const data = await res.json();
   const text = data.choices?.[0]?.message?.content || "";
-  const match =
-    text.match(/```json\s*([\s\S]*?)```/) || text.match(/(\{[\s\S]*\})/);
-  if (!match) throw new Error("Could not parse AI response. Please try again.");
-  // Try parsing directly; if AI returned literal newlines/tabs inside string values,
-  // fix them by escaping only within JSON strings, then retry.
-  let raw = match[1];
-  try {
-    return JSON.parse(raw);
-  } catch (_) {}
-  // Escape literal \n \r \t that appear inside JSON string literals
-  const fixed = raw.replace(/"(?:[^"\\]|\\.)*"/g, (str) =>
-    str.replace(/\n/g, "\\n").replace(/\r/g, "\\r").replace(/\t/g, "\\t"),
+  const finishReason = data.choices?.[0]?.finish_reason || "unknown";
+  console.log(`[Groq] finish_reason=${finishReason} tokens=${data.usage?.total_tokens||"?"}`);
+  console.log(`[Groq] response preview: ${text.substring(0, 300)}`);
+
+  // 1 — markdown code block
+  let raw = text.match(/```json\s*([\s\S]*?)```/)?.[1]
+           ?? text.match(/```\s*([\s\S]*?)```/)?.[1];
+
+  // 2 — bare JSON object anywhere in the text
+  if (!raw) {
+    const m = text.match(/\{[\s\S]*\}/);
+    if (m) raw = m[0];
+  }
+
+  // 3 — salvage truncated JSON (finish_reason === "length" = hit max_tokens)
+  if (!raw) {
+    const start = text.indexOf("{");
+    if (start !== -1) {
+      raw = text.slice(start) + "}"; // close it and hope for the best
+    }
+  }
+
+  if (!raw) throw new Error("AI returned no JSON. Please try again.");
+
+  try { return JSON.parse(raw); } catch (_) {}
+  // fix unescaped newlines inside string values
+  const fixed = raw.replace(/"(?:[^"\\]|\\.)*"/g, (s) =>
+    s.replace(/\n/g, "\\n").replace(/\r/g, "\\r").replace(/\t/g, "\\t"),
   );
-  return JSON.parse(fixed);
+  try { return JSON.parse(fixed); } catch (_) {}
+  throw new Error("Could not parse AI response. Please try again.");
 }
 
 // â"€â"€â"€ Generate N-day daily schedule (unique content per day) â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
@@ -1064,6 +1080,7 @@ export default function CampaignForm() {
   const navigate  = useNavigate();
   const location  = useLocation();
   const backPath  = location.state?.from || "/cmo";
+  const { user: authUser } = useAuth();
   // Free-trial users have no membership type ID. Show the social-connect panel
   // only for paid Package A members — leave the free-trial flow untouched.
   const isFreeUser = !getEvokeUserProfile()?.data?.memberShipTypeID;
@@ -1628,7 +1645,7 @@ export default function CampaignForm() {
   // Auto-populate contact info from logged-in user profile
   useEffect(() => {
     const profile = getEvokeUserProfile();
-    const currentUser = profileToUser(profile);
+    const currentUser = profileToUser(profile) || authUser;
     if (currentUser) {
       setForm(f => ({
         ...f,
@@ -1636,7 +1653,7 @@ export default function CampaignForm() {
         contactName: currentUser.displayName || f.contactName,
       }));
     }
-  }, []);
+  }, [authUser]);
 
   // 30-Day Content Calendar defaults
   useEffect(() => {
@@ -1648,27 +1665,27 @@ export default function CampaignForm() {
   // Load connected social accounts for social platform selector
   const loadConnectedAccounts = useCallback(() => {
     const profile = getEvokeUserProfile()
-    const currentUser = profileToUser(profile)
+    const currentUser = profileToUser(profile) || authUser
     if (!currentUser) return
     getUserData(currentUser.uid).then(data => {
       if (!data?.socialAccounts) return
       const sa = data.socialAccounts
       setConnectedAccounts(sa)
-      if (fromPackageA) {
-        const platforms = []
-        if (sa.linkedin?.connected)  platforms.push('linkedin')
-        if (sa.instagram?.connected) platforms.push('instagram')
-        if (sa.facebook?.connected)  platforms.push('facebook')
-        if (sa.gmail?.connected)     platforms.push('email')
-        platforms.push('whatsapp')
-        setForm(prev => ({ ...prev, platforms }))
-      }
+      // Auto-select all connected platforms for every package
+      const platforms = ['whatsapp']
+      if (sa.linkedin?.connected)   platforms.push('linkedin')
+      if (sa.instagram?.connected)  platforms.push('instagram')
+      if (sa.facebook?.connected)   platforms.push('facebook')
+      if (sa.gmail?.connected)      platforms.push('email')
+      if (sa.tiktok?.connected)     platforms.push('tiktok')
+      if (sa.eventbrite?.connected) platforms.push('eventbrite')
+      setForm(prev => ({ ...prev, platforms }))
     }).catch(() => {})
-  }, [fromPackageA]) // eslint-disable-line
+  }, [fromPackageA, authUser]) // eslint-disable-line
 
   useEffect(() => {
-    loadConnectedAccounts()
-  }, [type, fromPackageA, loadConnectedAccounts])
+    if (authUser) loadConnectedAccounts()
+  }, [type, fromPackageA, authUser, loadConnectedAccounts])
 
   // Open /connect-accounts as popup so the form isn't left
   const openConnectPopup = useCallback((platformKey) => {
@@ -1740,7 +1757,21 @@ export default function CampaignForm() {
         setLoadingPhase("generating");
       }
       const combinedGoal = [form.goalType, form.goal].filter(Boolean).join(' — ');
-      const campaignData = await generateCampaignContent({ ...form, goal: combinedGoal || form.goal }, type, form.campaignDays);
+      let campaignData;
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        try {
+          campaignData = await generateCampaignContent({ ...form, goal: combinedGoal || form.goal }, type, form.campaignDays);
+          break;
+        } catch (err) {
+          if (attempt < 2 && (err.message?.includes("parse") || err.message?.includes("JSON") || err.message?.includes("returned no JSON"))) {
+            console.warn(`[CampaignForm] Attempt ${attempt} failed, retrying in 2s…`, err.message);
+            setLoadingPhase("generating");
+            await new Promise(r => setTimeout(r, 2000));
+          } else {
+            throw err;
+          }
+        }
+      }
 
       // Append event URL to every post if the AI didn't include it
       const isEventType = type === "event" || type === "event_full";
@@ -1857,7 +1888,7 @@ export default function CampaignForm() {
       } catch (_) {}
 
       // ── Attach user social credentials + CMO profile from Firestore ──
-      const currentUser = profileToUser(getEvokeUserProfile());
+      const currentUser = profileToUser(getEvokeUserProfile()) || authUser;
       if (currentUser) {
         const userData = await getUserData(currentUser.uid);
 
@@ -1906,7 +1937,6 @@ export default function CampaignForm() {
     } catch (err) {
       console.error('[CampaignForm] Generation error:', err);
       setEventImageUploading(false);
-      setTiktokVideoUploading(false);
       setSubmitError(err.message || "Failed to generate campaign. Please try again.");
     } finally {
       setLoading(false);
@@ -2814,84 +2844,8 @@ export default function CampaignForm() {
                 </AnimatePresence>
               </div>
 
-              {/* ── Event Image (above URL) ── */}
-              <label style={s.label}>
-                Event Image{" "}
-                <span style={{ color: "rgba(255,255,255,0.35)", fontSize: "12px", fontWeight: 400 }}>
-                  (optional — AI auto-generates a banner if you skip this)
-                </span>
-              </label>
-              <EventBannerGenerator
-                eventData={{
-                  name: form.name,
-                  date: form.date,
-                  endDate: form.endDate,
-                  time: form.time,
-                  location: form.eventLocations?.length ? form.eventLocations.join(", ") : form.location,
-                  tagline: form.description?.substring(0, 80),
-                  brandName: form.brandName,
-                  eventUrl: form.eventUrl || generatedEventUrl,
-                }}
-                onBannerGenerated={(banner) => {
-                  if (banner?.imageUrl) {
-                    // Convert data URL to file
-                    fetch(banner.imageUrl)
-                      .then(res => res.blob())
-                      .then(blob => {
-                        const file = new File([blob], "event-banner.png", { type: "image/png" });
-                        setEventImageFile(file);
-                        setEventImagePreview(banner.imageUrl);
-                      })
-                      .catch(err => console.warn("Could not convert banner to file:", err.message));
-                  }
-                }}
-                loading={posterGenerating}
-                disabled={!form.name.trim()}
-              />
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "rgba(200,151,62,0.08)", border: "1px solid rgba(200,151,62,0.2)", borderRadius: "10px", padding: "9px 14px", marginBottom: "10px", fontSize: "12px", color: "rgba(255,255,255,0.5)", lineHeight: 1.5 }}>
-                <span style={{ fontSize: "15px" }}>✨</span>
-                <span>AI-generated poster with your event details. QR code auto-adds if you have an event URL for easy registration.</span>
-              </div>
-              <div
-                style={{
-                  border: `2px dashed ${eventImageFile ? "rgba(124,58,237,0.5)" : "rgba(245,240,232,0.15)"}`,
-                  borderRadius: "14px", padding: "28px 20px", textAlign: "center",
-                  cursor: "pointer", color: "rgba(255,255,255,0.5)", fontSize: "14px",
-                  background: eventImageFile ? "rgba(124,58,237,0.04)" : "transparent", transition: "all 0.2s",
-                }}
-                onClick={() => document.getElementById("event-image-input").click()}
-                onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f && f.type.startsWith("image/")) { setEventImageFile(f); setEventImagePreview(URL.createObjectURL(f)); } }}
-                onDragOver={(e) => e.preventDefault()}
-              >
-                {eventImagePreview ? (
-                  <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-                    <img src={eventImagePreview} alt="preview" style={{ width: 72, height: 72, objectFit: "cover", borderRadius: "10px", border: "1px solid rgba(200,151,62,0.4)" }} />
-                    <div style={{ textAlign: "left", flex: 1 }}>
-                      <div style={{ color: meta.color, fontWeight: 600, fontSize: "13px" }}>{eventImageFile.name}</div>
-                      <div style={{ color: "rgba(255,255,255,0.35)", fontSize: "12px", marginTop: "2px" }}>{(eventImageFile.size / 1024).toFixed(0)} KB · Click to change</div>
-                      <div style={{ marginTop: "6px", display: "flex", alignItems: "center", gap: "12px" }}>
-                        <a href={eventImagePreview} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{ display: "flex", alignItems: "center", gap: "4px", background: "none", border: "none", color: "rgba(255,255,255,0.5)", cursor: "pointer", fontSize: "12px", padding: 0, textDecoration: "none" }}>
-                          <ExternalLink size={12} /> View
-                        </a>
-                        <button onClick={(e) => { e.stopPropagation(); setEventImageFile(null); setEventImagePreview(null); }} style={{ display: "flex", alignItems: "center", gap: "4px", background: "none", border: "none", color: "#f87171", cursor: "pointer", fontSize: "12px", padding: 0 }}>
-                          <X size={12} /> Remove
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <><Upload size={26} style={{ color: "rgba(255,255,255,0.25)", marginBottom: "8px" }} /><div>Drag &amp; drop or <span style={{ color: meta.color }}>click to upload</span></div><div style={{ fontSize: "12px", marginTop: "4px" }}>PNG, JPG, WEBP - max 10MB</div></>
-                )}
-                <input id="event-image-input" type="file" accept="image/png,image/jpeg,image/webp" style={{ display: "none" }} onChange={(e) => { const f = e.target.files[0]; if (f) { setEventImageFile(f); setEventImagePreview(URL.createObjectURL(f)); } }} />
-              </div>
-              {eventImageUploading && (
-                <div style={{ marginTop: "8px", fontSize: "12px", color: "rgba(255,255,255,0.5)", display: "flex", alignItems: "center", gap: "8px" }}>
-                  <Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} /> Uploading image...
-                </div>
-              )}
-
               {/* ── Event URL ── */}
-              <label style={{ ...s.label, marginTop: 24 }}>
+              <label style={{ ...s.label, marginTop: 0 }}>
                 Event URL <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 12, fontWeight: 400 }}>(optional)</span>
               </label>
               <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
@@ -2917,7 +2871,6 @@ export default function CampaignForm() {
                 </div>
               ) : (
                 <div>
-
               {(form.eventUrl || generatedEventUrl) ? (
                 <div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 16px", background: `${meta.color}10`, border: `1px solid ${meta.color}40`, borderRadius: 12 }}>
@@ -2972,6 +2925,78 @@ export default function CampaignForm() {
                   <Link size={14} /> {form.name ? "Generate Event Page URL" : "Enter event name first"}
                 </button>
               )}
+                </div>
+              )}
+
+              {/* ── Event Image ── */}
+              <label style={{ ...s.label, marginTop: 24 }}>
+                Event Image <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 12, fontWeight: 400 }}>(optional)</span>
+              </label>
+              <EventBannerGenerator
+                eventData={{
+                  name: form.name,
+                  date: form.date,
+                  endDate: form.endDate,
+                  time: form.time,
+                  location: form.eventLocations?.length ? form.eventLocations.join(", ") : form.location,
+                  tagline: form.description?.substring(0, 80),
+                  brandName: form.brandName,
+                  eventUrl: form.eventUrl || generatedEventUrl,
+                }}
+                onBannerGenerated={(banner) => {
+                  if (banner?.imageUrl) {
+                    fetch(banner.imageUrl)
+                      .then(res => res.blob())
+                      .then(blob => {
+                        const file = new File([blob], "event-banner.png", { type: "image/png" });
+                        setEventImageFile(file);
+                        setEventImagePreview(banner.imageUrl);
+                      })
+                      .catch(err => console.warn("Could not convert banner to file:", err.message));
+                  }
+                }}
+                loading={posterGenerating}
+                disabled={!form.name.trim()}
+              />
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "rgba(200,151,62,0.08)", border: "1px solid rgba(200,151,62,0.2)", borderRadius: "10px", padding: "9px 14px", marginBottom: "10px", fontSize: "12px", color: "rgba(255,255,255,0.5)", lineHeight: 1.5 }}>
+                <span style={{ fontSize: "15px" }}>✨</span>
+                <span>AI-generated poster with your event details. QR code auto-adds if you have an event URL for easy registration.</span>
+              </div>
+              <div
+                style={{
+                  border: `2px dashed ${eventImageFile ? "rgba(124,58,237,0.5)" : "rgba(245,240,232,0.15)"}`,
+                  borderRadius: "14px", padding: "28px 20px", textAlign: "center",
+                  cursor: "pointer", color: "rgba(255,255,255,0.5)", fontSize: "14px",
+                  background: eventImageFile ? "rgba(124,58,237,0.04)" : "transparent", transition: "all 0.2s",
+                }}
+                onClick={() => document.getElementById("event-image-input").click()}
+                onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f && f.type.startsWith("image/")) { setEventImageFile(f); setEventImagePreview(URL.createObjectURL(f)); } }}
+                onDragOver={(e) => e.preventDefault()}
+              >
+                {eventImagePreview ? (
+                  <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+                    <img src={eventImagePreview} alt="preview" style={{ width: 72, height: 72, objectFit: "cover", borderRadius: "10px", border: "1px solid rgba(200,151,62,0.4)" }} />
+                    <div style={{ textAlign: "left", flex: 1 }}>
+                      <div style={{ color: meta.color, fontWeight: 600, fontSize: "13px" }}>{eventImageFile.name}</div>
+                      <div style={{ color: "rgba(255,255,255,0.35)", fontSize: "12px", marginTop: "2px" }}>{(eventImageFile.size / 1024).toFixed(0)} KB · Click to change</div>
+                      <div style={{ marginTop: "6px", display: "flex", alignItems: "center", gap: "12px" }}>
+                        <a href={eventImagePreview} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{ display: "flex", alignItems: "center", gap: "4px", background: "none", border: "none", color: "rgba(255,255,255,0.5)", cursor: "pointer", fontSize: "12px", padding: 0, textDecoration: "none" }}>
+                          <ExternalLink size={12} /> View
+                        </a>
+                        <button onClick={(e) => { e.stopPropagation(); setEventImageFile(null); setEventImagePreview(null); }} style={{ display: "flex", alignItems: "center", gap: "4px", background: "none", border: "none", color: "#f87171", cursor: "pointer", fontSize: "12px", padding: 0 }}>
+                          <X size={12} /> Remove
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <><Upload size={26} style={{ color: "rgba(255,255,255,0.25)", marginBottom: "8px" }} /><div>Drag &amp; drop or <span style={{ color: meta.color }}>click to upload</span></div><div style={{ fontSize: "12px", marginTop: "4px" }}>PNG, JPG, WEBP - max 10MB</div></>
+                )}
+                <input id="event-image-input" type="file" accept="image/png,image/jpeg,image/webp" style={{ display: "none" }} onChange={(e) => { const f = e.target.files[0]; if (f) { setEventImageFile(f); setEventImagePreview(URL.createObjectURL(f)); } }} />
+              </div>
+              {eventImageUploading && (
+                <div style={{ marginTop: "8px", fontSize: "12px", color: "rgba(255,255,255,0.5)", display: "flex", alignItems: "center", gap: "8px" }}>
+                  <Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} /> Uploading image...
                 </div>
               )}
 
