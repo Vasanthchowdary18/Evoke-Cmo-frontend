@@ -119,7 +119,40 @@ function renderPosterCanvas(eventData, bgImageUrl, qrBase64) {
         ctx.strokeText(ln, PAD, ty)
       })
 
-      // ── RIGHT PANEL: single box with QR on top + details below ────────────
+      // ── LEFT DETAILS: date / location / venue / time below the title ────────
+      const divY = titleStartY + (titleLines.length - 1) * lineH + 28
+      const hdg = ctx.createLinearGradient(PAD, 0, CONTENT_W - PAD, 0)
+      hdg.addColorStop(0, GOLD); hdg.addColorStop(0.6, GOLD); hdg.addColorStop(1, 'rgba(200,151,62,0)')
+      ctx.fillStyle = hdg; ctx.fillRect(PAD, divY, CONTENT_W - PAD * 2, 2)
+
+      const iconR   = 20
+      const txtSize = Math.min(24, Math.max(18, titleSize * 0.22))
+      const rowGap  = iconR * 2 + 18
+      let detY = divY + 48
+
+      if (eventData.date) {
+        let ds = eventData.date
+        try { ds = new Date(ds + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) } catch (_) {}
+        drawCircleIcon(ctx, 'calendar', PAD + iconR, detY, iconR, GOLD)
+        drawDetailText(ctx, ds, PAD + iconR * 2 + 14, detY + 8, txtSize)
+        detY += rowGap
+      }
+      if (eventData.location) {
+        drawCircleIcon(ctx, 'pin', PAD + iconR, detY, iconR, GOLD)
+        drawDetailText(ctx, eventData.location, PAD + iconR * 2 + 14, detY + 8, txtSize)
+        detY += rowGap
+      }
+      if (eventData.venue && eventData.venue !== eventData.location) {
+        drawCircleIcon(ctx, 'building', PAD + iconR, detY, iconR, GOLD)
+        drawDetailText(ctx, eventData.venue, PAD + iconR * 2 + 14, detY + 8, txtSize)
+        detY += rowGap
+      }
+      if (eventData.time) {
+        drawCircleIcon(ctx, 'clock', PAD + iconR, detY, iconR, GOLD)
+        drawDetailText(ctx, eventData.time, PAD + iconR * 2 + 14, detY + 8, txtSize)
+      }
+
+      // ── RIGHT PANEL: phone-frame with QR + "SCAN TO REQUEST" only ───────────
       const finalize = () => resolve({ success: true, imageUrl: canvas.toDataURL('image/png') })
 
       if (hasQR) {
@@ -137,112 +170,47 @@ function renderPosterCanvas(eventData, bgImageUrl, qrBase64) {
         const fH  = H - 56
         const fCX = fX + fW / 2
 
-        ctx.fillStyle = 'rgba(0,0,0,0.80)'
+        ctx.fillStyle = 'rgba(0,0,0,0.82)'
         roundRect(ctx, fX, fY, fW, fH, 14)
         ctx.fill()
         ctx.strokeStyle = GOLD; ctx.lineWidth = 1.5; ctx.stroke()
 
-        // Top notch lines on box
+        // Top notch lines
         ctx.strokeStyle = GOLD_LIGHT; ctx.lineWidth = 2
         ;[fX + 10, fX + fW - 34].forEach(nx => {
           ctx.beginPath(); ctx.moveTo(nx, fY + 10); ctx.lineTo(nx + 24, fY + 10); ctx.stroke()
         })
+        // Bottom notch lines
+        ;[fX + 10, fX + fW - 34].forEach(nx => {
+          ctx.beginPath(); ctx.moveTo(nx, fY + fH - 10); ctx.lineTo(nx + 24, fY + fH - 10); ctx.stroke()
+        })
 
-        // QR code — sized to fit, positioned at top of box
-        const qrSize = fW - 30
-        const qrX    = fX + 15
-        const qrY    = fY + 22
+        // QR fills most of the box
+        const qrPad  = 16
+        const qrSize = fW - qrPad * 2
+        const qrX    = fX + qrPad
+        // Centre QR vertically leaving room for label at bottom
+        const labelH = 52
+        const qrY    = fY + (fH - qrSize - labelH) / 2
 
         const qrImg = new Image()
         qrImg.onload = () => {
-          // White bg for QR
           ctx.fillStyle = '#ffffff'
           ctx.fillRect(qrX - 4, qrY - 4, qrSize + 8, qrSize + 8)
           ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize)
 
-          // "SCAN TO REQUEST AN INVITATION" label
-          const labelY = qrY + qrSize + 20
+          // Label below QR
           ctx.fillStyle = GOLD_LIGHT
-          ctx.font = 'bold 12px Arial, sans-serif'
+          ctx.font = 'bold 13px Arial, sans-serif'
           ctx.textAlign = 'center'
-          ctx.fillText('SCAN TO REQUEST', fCX, labelY)
-          ctx.fillText('AN INVITATION', fCX, labelY + 16)
-
-          // Gold divider inside box
-          const innerDivY = labelY + 30
-          ctx.fillStyle = GOLD_DIM
-          ctx.fillRect(fX + 16, innerDivY, fW - 32, 1)
-
-          // Event details inside the same box
-          const iconR   = 14
-          const txtSize = 13
-          const rowGap  = 36
-          let detY = innerDivY + 22
-
-          if (eventData.date) {
-            let ds = eventData.date
-            try { ds = new Date(ds + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', weekday: 'short' }) } catch (_) {}
-            drawCircleIcon(ctx, 'calendar', fX + 18 + iconR, detY, iconR, GOLD)
-            ctx.fillStyle = 'rgba(255,255,255,0.90)'; ctx.font = `${txtSize}px Arial, sans-serif`; ctx.textAlign = 'left'
-            ctx.fillText(ds, fX + 18 + iconR * 2 + 8, detY + 5)
-            detY += rowGap
-          }
-          if (eventData.location) {
-            drawCircleIcon(ctx, 'pin', fX + 18 + iconR, detY, iconR, GOLD)
-            ctx.fillStyle = 'rgba(255,255,255,0.90)'; ctx.font = `${txtSize}px Arial, sans-serif`; ctx.textAlign = 'left'
-            ctx.fillText(eventData.location, fX + 18 + iconR * 2 + 8, detY + 5)
-            detY += rowGap
-          }
-          if (eventData.venue && eventData.venue !== eventData.location) {
-            drawCircleIcon(ctx, 'building', fX + 18 + iconR, detY, iconR, GOLD)
-            ctx.fillStyle = 'rgba(255,255,255,0.90)'; ctx.font = `${txtSize}px Arial, sans-serif`; ctx.textAlign = 'left'
-            ctx.fillText(eventData.venue, fX + 18 + iconR * 2 + 8, detY + 5)
-            detY += rowGap
-          }
-          if (eventData.time) {
-            drawCircleIcon(ctx, 'clock', fX + 18 + iconR, detY, iconR, GOLD)
-            ctx.fillStyle = 'rgba(255,255,255,0.90)'; ctx.font = `${txtSize}px Arial, sans-serif`; ctx.textAlign = 'left'
-            ctx.fillText(eventData.time, fX + 18 + iconR * 2 + 8, detY + 5)
-          }
+          ctx.fillText('SCAN TO REQUEST', fCX, qrY + qrSize + 26)
+          ctx.fillText('AN INVITATION',   fCX, qrY + qrSize + 44)
 
           finalize()
         }
         qrImg.onerror = finalize
         qrImg.src = 'data:image/png;base64,' + qrBase64
-
       } else {
-        // No QR — show details on the left below the title
-        const divY = titleStartY + (titleLines.length - 1) * lineH + 28
-        const hdg = ctx.createLinearGradient(PAD, 0, CONTENT_W - PAD, 0)
-        hdg.addColorStop(0, GOLD); hdg.addColorStop(0.6, GOLD); hdg.addColorStop(1, 'rgba(200,151,62,0)')
-        ctx.fillStyle = hdg; ctx.fillRect(PAD, divY, CONTENT_W - PAD * 2, 2)
-
-        let detY = divY + 44
-        const iconR   = 18
-        const txtSize = Math.min(23, Math.max(17, titleSize * 0.22))
-        const rowGap  = iconR * 2 + 16
-
-        if (eventData.date) {
-          let ds = eventData.date
-          try { ds = new Date(ds + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) } catch (_) {}
-          drawCircleIcon(ctx, 'calendar', PAD + iconR, detY, iconR, GOLD)
-          drawDetailText(ctx, ds, PAD + iconR * 2 + 14, detY + 8, txtSize)
-          detY += rowGap
-        }
-        if (eventData.location) {
-          drawCircleIcon(ctx, 'pin', PAD + iconR, detY, iconR, GOLD)
-          drawDetailText(ctx, eventData.location, PAD + iconR * 2 + 14, detY + 8, txtSize)
-          detY += rowGap
-        }
-        if (eventData.venue && eventData.venue !== eventData.location) {
-          drawCircleIcon(ctx, 'building', PAD + iconR, detY, iconR, GOLD)
-          drawDetailText(ctx, eventData.venue, PAD + iconR * 2 + 14, detY + 8, txtSize)
-          detY += rowGap
-        }
-        if (eventData.time) {
-          drawCircleIcon(ctx, 'clock', PAD + iconR, detY, iconR, GOLD)
-          drawDetailText(ctx, eventData.time, PAD + iconR * 2 + 14, detY + 8, txtSize)
-        }
         finalize()
       }
     }
