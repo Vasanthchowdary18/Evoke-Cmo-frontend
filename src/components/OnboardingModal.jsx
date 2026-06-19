@@ -5,7 +5,7 @@ import { Zap, ArrowRight, Loader2, Send, Sparkles, Check } from 'lucide-react'
 import { saveOnboardingData } from '../services/userService'
 
 /* ─── Gemini ─── */
-const GEMINI_KEY = 'AIzaSyD4zsvoxcg6WrL1R3GcP66RgiXW4y2lqN0'
+const GEMINI_KEY = import.meta.env.VITE_GEMINI_API_KEY
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`
 
 const LS_STEP    = 'evoke_onboarding_step'      // 'needs_social'
