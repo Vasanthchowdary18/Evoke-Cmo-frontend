@@ -89,7 +89,13 @@ export default defineConfig(({ mode }) => {
                 }
 
                 const prompt = PROMPTS[agentType] || PROMPTS.seo
-                const geminiKey = 'AIzaSyD4zsvoxcg6WrL1R3GcP66RgiXW4y2lqN0'
+                const geminiKey = env.GEMINI_API_KEY || env.VITE_GEMINI_API_KEY
+                if (!geminiKey) {
+                  res.setHeader('Content-Type', 'application/json')
+                  res.writeHead(500)
+                  res.end(JSON.stringify({ success: false, error: 'GEMINI_API_KEY not set in .env' }))
+                  return
+                }
 
                 const geminiRes = await fetch(
                   `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
@@ -291,12 +297,18 @@ export default defineConfig(({ mode }) => {
               res.writeHead(405); res.end('Method not allowed'); return
             }
 
-            const geminiKey = env.GEMINI_API_KEY || env.VITE_GEMINI_API_KEY || 'AIzaSyD4zsvoxcg6WrL1R3GcP66RgiXW4y2lqN0'
+            const geminiKey = env.GEMINI_API_KEY || env.VITE_GEMINI_API_KEY
 
             let body = ''
             req.on('data', chunk => { body += chunk })
             req.on('end', async () => {
               try {
+                if (!geminiKey) {
+                  res.setHeader('Content-Type', 'application/json')
+                  res.writeHead(500)
+                  res.end(JSON.stringify({ error: 'GEMINI_API_KEY not set in .env' }))
+                  return
+                }
                 const { prompt } = JSON.parse(body)
                 if (!prompt) {
                   res.writeHead(400)
