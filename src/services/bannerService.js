@@ -34,12 +34,12 @@ function renderPosterCanvas(eventData, bgImageUrl, qrBase64) {
     const GOLD_LIGHT = '#f5d060'
     const GOLD_DIM   = 'rgba(200,151,62,0.45)'
 
-    // Layout: if QR exists use split (content | QR), else use full width
-    const hasQR   = !!qrBase64
-    const QR_W    = 300                         // right panel width when QR present
-    const CONTENT_W = hasQR ? W - QR_W : W     // content area width
-    const PAD     = 50                          // left padding
-    const maxW    = CONTENT_W - PAD * 2        // max text width
+    // Layout: if QR exists use split (title left | QR+details right), else full width
+    const hasQR     = !!qrBase64
+    const PANEL_W   = 320                        // right panel width
+    const CONTENT_W = hasQR ? W - PANEL_W : W   // title area width
+    const PAD       = 50
+    const maxW      = CONTENT_W - PAD * 2
 
     const draw = () => {
       // ── Dark overlay ──
@@ -55,19 +55,15 @@ function renderPosterCanvas(eventData, bgImageUrl, qrBase64) {
       ctx.fillRect(0, 0, W, 3)
       ctx.fillRect(0, H - 3, W, 3)
 
-      // ── Corner brackets ──
+      // ── Corner brackets (left side only) ──
       ctx.strokeStyle = GOLD; ctx.lineWidth = 2
       const m = 24, l = 52
       ctx.beginPath(); ctx.moveTo(m, m+l); ctx.lineTo(m, m); ctx.lineTo(m+l, m); ctx.stroke()
       ctx.beginPath(); ctx.moveTo(m, H-m-l); ctx.lineTo(m, H-m); ctx.lineTo(m+l, H-m); ctx.stroke()
-      // right corner brackets on content area edge
-      const RE = CONTENT_W - m
-      ctx.beginPath(); ctx.moveTo(RE-l, m); ctx.lineTo(RE, m); ctx.lineTo(RE, m+l); ctx.stroke()
-      ctx.beginPath(); ctx.moveTo(RE-l, H-m); ctx.lineTo(RE, H-m); ctx.lineTo(RE, H-m-l); ctx.stroke()
 
+      // ── LEFT: brand + tagline + big title ──
       let y = 52
 
-      // ── Brand / organizer ──
       const brand = (eventData.brandName || eventData.organizer || '').toUpperCase()
       if (brand) {
         ctx.fillStyle = 'rgba(200,151,62,0.85)'
@@ -80,9 +76,8 @@ function renderPosterCanvas(eventData, bgImageUrl, qrBase64) {
         y += 16
       }
 
-      // ── Tagline (above title, italic, truncated to 60 chars) ──
       if (eventData.tagline) {
-        const tl = eventData.tagline.length > 60 ? eventData.tagline.slice(0, 60) + '…' : eventData.tagline
+        const tl = eventData.tagline.length > 55 ? eventData.tagline.slice(0, 55) + '…' : eventData.tagline
         ctx.fillStyle = 'rgba(240,220,170,0.78)'
         ctx.font = 'italic 17px Georgia, serif'
         ctx.textAlign = 'left'
@@ -90,7 +85,7 @@ function renderPosterCanvas(eventData, bgImageUrl, qrBase64) {
         y += 36
       }
 
-      // ── BIG EVENT NAME — metallic 3D ──
+      // Big event name
       const name = (eventData.name || 'EVENT').toUpperCase()
       let titleSize = 130
       ctx.font = `900 ${titleSize}px Arial Black, Arial, sans-serif`
@@ -98,7 +93,6 @@ function renderPosterCanvas(eventData, bgImageUrl, qrBase64) {
         titleSize -= 4
         ctx.font = `900 ${titleSize}px Arial Black, Arial, sans-serif`
       }
-
       const words = name.split(' ')
       const titleLines = []
       let cur = ''
@@ -111,111 +105,144 @@ function renderPosterCanvas(eventData, bgImageUrl, qrBase64) {
 
       const lineH = titleSize * 1.12
       const titleStartY = Math.max(y + titleSize + 8, H * 0.30)
-
       ctx.textAlign = 'left'
       titleLines.forEach((ln, i) => {
         const ty = titleStartY + i * lineH
-        // shadow
         ctx.fillStyle = 'rgba(0,0,0,0.85)'; ctx.font = `900 ${titleSize}px Arial Black, Arial, sans-serif`
         ctx.fillText(ln, PAD + 4, ty + 5)
-        // brown base
         ctx.fillStyle = '#7a5010'; ctx.fillText(ln, PAD + 2, ty + 2)
-        // gold gradient
         const tg = ctx.createLinearGradient(0, ty - titleSize, 0, ty + 10)
         tg.addColorStop(0, '#fff0a0'); tg.addColorStop(0.25, '#f5d060')
         tg.addColorStop(0.5, '#c8973e'); tg.addColorStop(0.75, '#f0c040'); tg.addColorStop(1, '#9a6810')
         ctx.fillStyle = tg; ctx.fillText(ln, PAD, ty)
-        // highlight stroke
         ctx.strokeStyle = 'rgba(255,245,180,0.45)'; ctx.lineWidth = titleSize * 0.012
         ctx.strokeText(ln, PAD, ty)
       })
 
-      // ── Horizontal gold divider ──
-      const divY = titleStartY + (titleLines.length - 1) * lineH + 24
-      const hdg = ctx.createLinearGradient(PAD, 0, CONTENT_W - PAD, 0)
-      hdg.addColorStop(0, GOLD); hdg.addColorStop(0.7, GOLD); hdg.addColorStop(1, 'rgba(200,151,62,0)')
-      ctx.fillStyle = hdg; ctx.fillRect(PAD, divY, CONTENT_W - PAD * 2, 2)
-
-      // ── Detail rows ──
-      let detY = divY + 46
-      const iconR   = 18
-      const txtSize = Math.min(24, Math.max(17, titleSize * 0.22))
-      const rowGap  = iconR * 2 + 16
-
-      if (eventData.date) {
-        let ds = eventData.date
-        try { ds = new Date(ds + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) } catch (_) {}
-        drawCircleIcon(ctx, 'calendar', PAD + iconR, detY, iconR, GOLD)
-        drawDetailText(ctx, ds, PAD + iconR * 2 + 14, detY + 8, txtSize)
-        detY += rowGap
-      }
-      if (eventData.location) {
-        drawCircleIcon(ctx, 'pin', PAD + iconR, detY, iconR, GOLD)
-        drawDetailText(ctx, eventData.location, PAD + iconR * 2 + 14, detY + 8, txtSize)
-        detY += rowGap
-      }
-      if (eventData.venue && eventData.venue !== eventData.location) {
-        drawCircleIcon(ctx, 'building', PAD + iconR, detY, iconR, GOLD)
-        drawDetailText(ctx, eventData.venue, PAD + iconR * 2 + 14, detY + 8, txtSize)
-        detY += rowGap
-      }
-      if (eventData.time) {
-        drawCircleIcon(ctx, 'clock', PAD + iconR, detY, iconR, GOLD)
-        drawDetailText(ctx, eventData.time, PAD + iconR * 2 + 14, detY + 8, txtSize)
-      }
-
-      // ── QR RIGHT PANEL ────────────────────────────────────────────────────
+      // ── RIGHT PANEL: single box with QR on top + details below ────────────
       const finalize = () => resolve({ success: true, imageUrl: canvas.toDataURL('image/png') })
 
       if (hasQR) {
-        // Vertical divider
-        const vdx = CONTENT_W
-        const vdg = ctx.createLinearGradient(0, 50, 0, H - 50)
-        vdg.addColorStop(0, 'rgba(200,151,62,0)'); vdg.addColorStop(0.3, GOLD)
-        vdg.addColorStop(0.7, GOLD); vdg.addColorStop(1, 'rgba(200,151,62,0)')
+        // Vertical gold divider
+        const vdg = ctx.createLinearGradient(0, 30, 0, H - 30)
+        vdg.addColorStop(0, 'rgba(200,151,62,0)'); vdg.addColorStop(0.2, GOLD)
+        vdg.addColorStop(0.8, GOLD); vdg.addColorStop(1, 'rgba(200,151,62,0)')
         ctx.strokeStyle = vdg; ctx.lineWidth = 1
-        ctx.beginPath(); ctx.moveTo(vdx, 40); ctx.lineTo(vdx, H - 40); ctx.stroke()
+        ctx.beginPath(); ctx.moveTo(CONTENT_W, 30); ctx.lineTo(CONTENT_W, H - 30); ctx.stroke()
 
-        // Panel dims
-        const panelCX = CONTENT_W + QR_W / 2
-        const frameW  = QR_W - 40
-        const frameH  = H - 80
-        const frameX  = panelCX - frameW / 2
-        const frameY  = 40
+        // Panel box
+        const fX  = CONTENT_W + 14
+        const fY  = 28
+        const fW  = PANEL_W - 24
+        const fH  = H - 56
+        const fCX = fX + fW / 2
 
-        ctx.fillStyle = 'rgba(0,0,0,0.78)'
-        roundRect(ctx, frameX, frameY, frameW, frameH, 16)
+        ctx.fillStyle = 'rgba(0,0,0,0.80)'
+        roundRect(ctx, fX, fY, fW, fH, 14)
         ctx.fill()
         ctx.strokeStyle = GOLD; ctx.lineWidth = 1.5; ctx.stroke()
 
-        // Frame top notch lines
+        // Top notch lines on box
         ctx.strokeStyle = GOLD_LIGHT; ctx.lineWidth = 2
-        const nw = 22
-        ;[frameX + 10, frameX + frameW - 10 - nw].forEach(nx => {
-          ctx.beginPath(); ctx.moveTo(nx, frameY + 10); ctx.lineTo(nx + nw, frameY + 10); ctx.stroke()
+        ;[fX + 10, fX + fW - 34].forEach(nx => {
+          ctx.beginPath(); ctx.moveTo(nx, fY + 10); ctx.lineTo(nx + 24, fY + 10); ctx.stroke()
         })
 
-        const qrSize = frameW - 28
-        const qrX    = frameX + 14
-        const qrY    = frameY + 30
+        // QR code — sized to fit, positioned at top of box
+        const qrSize = fW - 30
+        const qrX    = fX + 15
+        const qrY    = fY + 22
 
         const qrImg = new Image()
         qrImg.onload = () => {
+          // White bg for QR
           ctx.fillStyle = '#ffffff'
           ctx.fillRect(qrX - 4, qrY - 4, qrSize + 8, qrSize + 8)
           ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize)
 
+          // "SCAN TO REQUEST AN INVITATION" label
+          const labelY = qrY + qrSize + 20
           ctx.fillStyle = GOLD_LIGHT
-          ctx.font = 'bold 13px Arial, sans-serif'
+          ctx.font = 'bold 12px Arial, sans-serif'
           ctx.textAlign = 'center'
-          ctx.fillText('SCAN TO REQUEST', panelCX, qrY + qrSize + 26)
-          ctx.fillText('AN INVITATION', panelCX, qrY + qrSize + 44)
+          ctx.fillText('SCAN TO REQUEST', fCX, labelY)
+          ctx.fillText('AN INVITATION', fCX, labelY + 16)
+
+          // Gold divider inside box
+          const innerDivY = labelY + 30
+          ctx.fillStyle = GOLD_DIM
+          ctx.fillRect(fX + 16, innerDivY, fW - 32, 1)
+
+          // Event details inside the same box
+          const iconR   = 14
+          const txtSize = 13
+          const rowGap  = 36
+          let detY = innerDivY + 22
+
+          if (eventData.date) {
+            let ds = eventData.date
+            try { ds = new Date(ds + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', weekday: 'short' }) } catch (_) {}
+            drawCircleIcon(ctx, 'calendar', fX + 18 + iconR, detY, iconR, GOLD)
+            ctx.fillStyle = 'rgba(255,255,255,0.90)'; ctx.font = `${txtSize}px Arial, sans-serif`; ctx.textAlign = 'left'
+            ctx.fillText(ds, fX + 18 + iconR * 2 + 8, detY + 5)
+            detY += rowGap
+          }
+          if (eventData.location) {
+            drawCircleIcon(ctx, 'pin', fX + 18 + iconR, detY, iconR, GOLD)
+            ctx.fillStyle = 'rgba(255,255,255,0.90)'; ctx.font = `${txtSize}px Arial, sans-serif`; ctx.textAlign = 'left'
+            ctx.fillText(eventData.location, fX + 18 + iconR * 2 + 8, detY + 5)
+            detY += rowGap
+          }
+          if (eventData.venue && eventData.venue !== eventData.location) {
+            drawCircleIcon(ctx, 'building', fX + 18 + iconR, detY, iconR, GOLD)
+            ctx.fillStyle = 'rgba(255,255,255,0.90)'; ctx.font = `${txtSize}px Arial, sans-serif`; ctx.textAlign = 'left'
+            ctx.fillText(eventData.venue, fX + 18 + iconR * 2 + 8, detY + 5)
+            detY += rowGap
+          }
+          if (eventData.time) {
+            drawCircleIcon(ctx, 'clock', fX + 18 + iconR, detY, iconR, GOLD)
+            ctx.fillStyle = 'rgba(255,255,255,0.90)'; ctx.font = `${txtSize}px Arial, sans-serif`; ctx.textAlign = 'left'
+            ctx.fillText(eventData.time, fX + 18 + iconR * 2 + 8, detY + 5)
+          }
 
           finalize()
         }
         qrImg.onerror = finalize
         qrImg.src = 'data:image/png;base64,' + qrBase64
+
       } else {
+        // No QR — show details on the left below the title
+        const divY = titleStartY + (titleLines.length - 1) * lineH + 28
+        const hdg = ctx.createLinearGradient(PAD, 0, CONTENT_W - PAD, 0)
+        hdg.addColorStop(0, GOLD); hdg.addColorStop(0.6, GOLD); hdg.addColorStop(1, 'rgba(200,151,62,0)')
+        ctx.fillStyle = hdg; ctx.fillRect(PAD, divY, CONTENT_W - PAD * 2, 2)
+
+        let detY = divY + 44
+        const iconR   = 18
+        const txtSize = Math.min(23, Math.max(17, titleSize * 0.22))
+        const rowGap  = iconR * 2 + 16
+
+        if (eventData.date) {
+          let ds = eventData.date
+          try { ds = new Date(ds + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) } catch (_) {}
+          drawCircleIcon(ctx, 'calendar', PAD + iconR, detY, iconR, GOLD)
+          drawDetailText(ctx, ds, PAD + iconR * 2 + 14, detY + 8, txtSize)
+          detY += rowGap
+        }
+        if (eventData.location) {
+          drawCircleIcon(ctx, 'pin', PAD + iconR, detY, iconR, GOLD)
+          drawDetailText(ctx, eventData.location, PAD + iconR * 2 + 14, detY + 8, txtSize)
+          detY += rowGap
+        }
+        if (eventData.venue && eventData.venue !== eventData.location) {
+          drawCircleIcon(ctx, 'building', PAD + iconR, detY, iconR, GOLD)
+          drawDetailText(ctx, eventData.venue, PAD + iconR * 2 + 14, detY + 8, txtSize)
+          detY += rowGap
+        }
+        if (eventData.time) {
+          drawCircleIcon(ctx, 'clock', PAD + iconR, detY, iconR, GOLD)
+          drawDetailText(ctx, eventData.time, PAD + iconR * 2 + 14, detY + 8, txtSize)
+        }
         finalize()
       }
     }
