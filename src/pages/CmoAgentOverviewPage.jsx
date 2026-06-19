@@ -340,7 +340,7 @@ export default function CmoAgentOverviewPage() {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15 }}
-            onClick={() => navigate(`/campaign/${type}`)}
+            onClick={() => navigate(`/campaign/${type}`, { state: { from: window.location.pathname } })}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.97 }}
             style={{
@@ -499,7 +499,7 @@ export default function CmoAgentOverviewPage() {
             </p>
           </div>
           <motion.button
-            onClick={() => navigate(`/campaign/${type}`)}
+            onClick={() => navigate(`/campaign/${type}`, { state: { from: window.location.pathname } })}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.97 }}
             style={{

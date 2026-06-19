@@ -44,7 +44,7 @@ const ALL_AGENTS = [
     name: 'Ads Manager Connect',
     sub: 'FB & Google campaigns',
     icon: <BarChart2 size={17} />,
-    path: '/campaign/ads_manager',
+    path: '/google-ads-manager',
     tag: 'PACKAGE C',
     color: '#3b82f6',
   },
@@ -101,6 +101,14 @@ const PLATFORMS = [
     ),
   },
   {
+    key: 'tiktok', label: 'TikTok', color: '#ff0050',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="#000000">
+        <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.75a4.85 4.85 0 01-1.01-.06z" />
+      </svg>
+    ),
+  },
+  {
     key: 'whatsapp', label: 'WhatsApp', color: '#25d366',
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="#25d366">
@@ -118,6 +126,16 @@ const PLATFORMS = [
         <polygon fill="#e53935" points="35,11.2 24,19.45 13,11.2 12,17 13,23.7 24,31.95 35,23.7 36,17"/>
         <path fill="#c62828" d="M3 12.298V16.2l10 7.5V11.2L9.876 8.859C9.132 8.301 8.228 8 7.298 8 4.924 8 3 9.924 3 12.298z"/>
         <path fill="#fbc02d" d="M45 12.298V16.2l-10 7.5V11.2l3.124-2.341C38.868 8.301 39.772 8 40.702 8 43.076 8 45 9.924 45 12.298z"/>
+      </svg>
+    ),
+  },
+  {
+    key: 'google-ads', label: 'Google Ads', color: '#4285f4',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 48 48">
+        <path fill="#fbbc05" d="M5.6 30.3 15 14a4.5 4.5 0 0 1 7.8 4.5L13.4 34.8A4.5 4.5 0 0 1 5.6 30.3z"/>
+        <path fill="#34a853" d="M24 38.5h-9a4.5 4.5 0 0 1 0-9h18a4.5 4.5 0 0 1 0 9H24z"/>
+        <path fill="#ea4335" d="M33 14a4.5 4.5 0 0 0-7.8 4.5l9.4 16.3a4.5 4.5 0 1 0 7.8-4.5L33 14z"/>
       </svg>
     ),
   },

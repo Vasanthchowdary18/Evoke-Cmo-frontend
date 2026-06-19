@@ -37,33 +37,37 @@ const LINKEDIN_CLIENT_ID =
 const LINKEDIN_REDIRECT = window.location.origin + "/connect-accounts";
 const LINKEDIN_SCOPE = "openid profile email w_member_social";
 const LINKEDIN_N8N =
-  "https://vasanth18.app.n8n.cloud/webhook/linkedin-oauth";
+  "https://vasanthchowdary373.app.n8n.cloud/webhook/linkedin-oauth";
 
 const TWITTER_CLIENT_ID =
   import.meta.env.VITE_TWITTER_CLIENT_ID || "YOUR_TWITTER_CLIENT_ID";
 const TWITTER_REDIRECT = window.location.origin + "/connect-accounts";
 const TWITTER_SCOPE = "tweet.read tweet.write users.read offline.access";
 const TWITTER_N8N =
-  "https://vasanth18.app.n8n.cloud/webhook/twitter-oauth";
+  "https://vasanthchowdary373.app.n8n.cloud/webhook/twitter-oauth";
 
 const GOOGLE_CLIENT_ID =
   "53481639003-g903a5274f1bcq4jvkgpeoispls7aps9.apps.googleusercontent.com";
 const GOOGLE_REDIRECT = window.location.origin + "/connect-accounts";
 const GOOGLE_SCOPE =
   "https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile";
-const GMAIL_N8N = "https://vasanth18.app.n8n.cloud/webhook/gmail-oauth";
+const GMAIL_N8N = "https://vasanthchowdary373.app.n8n.cloud/webhook/gmail-oauth";
+
+const GOOGLE_ADS_SCOPE =
+  "https://www.googleapis.com/auth/adwords https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile";
+const GOOGLE_ADS_N8N = "https://vasanthchowdary373.app.n8n.cloud/webhook/google-ads-oauth";
 
 const TIKTOK_CLIENT_KEY = "sbawq8ejz7li1bzsf1";
 const TIKTOK_REDIRECT = window.location.origin + "/connect-accounts";
 const TIKTOK_SCOPE = "user.info.basic,video.upload";
 const TIKTOK_N8N =
-  "https://vasanth18.app.n8n.cloud/webhook/tiktok-oauth";
+  "https://vasanthchowdary373.app.n8n.cloud/webhook/tiktok-oauth";
 
 const EVENTBRITE_CLIENT_ID =
   import.meta.env.VITE_EVENTBRITE_CLIENT_ID || "AQUWB7RTTS3CUWMCXM";
 const EVENTBRITE_REDIRECT = window.location.origin + "/connect-accounts";
 const EVENTBRITE_N8N =
-  "https://vasanth18.app.n8n.cloud/webhook/eventbrite-oauth";
+  "https://vasanthchowdary373.app.n8n.cloud/webhook/eventbrite-oauth";
 
 function genVerifier() {
   const arr = new Uint8Array(32);
@@ -165,6 +169,19 @@ const PLATFORMS = [
     btnLabel: "Connect with LinkedIn",
   },
   {
+    key: "tiktok",
+    label: "TikTok",
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="#000000">
+        <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.75a4.85 4.85 0 01-1.01-.06z" />
+      </svg>
+    ),
+    color: "#ff0050",
+    description: "Post videos to your TikTok account directly from your campaigns.",
+    oauthType: "tiktok",
+    btnLabel: "Connect with TikTok",
+  },
+  {
     key: "whatsapp",
     label: "WhatsApp",
     icon: (
@@ -176,6 +193,21 @@ const PLATFORMS = [
     description: "Platform WhatsApp Business API is active. Add recipient numbers in your campaign form to send invitation messages.",
     oauthType: "platform_whatsapp",
     note: "No setup needed. When creating a campaign, select WhatsApp and paste the phone numbers you want to invite.",
+  },
+  {
+    key: "google-ads",
+    label: "Google Ads",
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 48 48">
+        <path fill="#fbbc05" d="M5.6 30.3 15 14a4.5 4.5 0 0 1 7.8 4.5L13.4 34.8A4.5 4.5 0 0 1 5.6 30.3z"/>
+        <path fill="#34a853" d="M24 38.5h-9a4.5 4.5 0 0 1 0-9h18a4.5 4.5 0 0 1 0 9H24z"/>
+        <path fill="#ea4335" d="M33 14a4.5 4.5 0 0 0-7.8 4.5l9.4 16.3a4.5 4.5 0 1 0 7.8-4.5L33 14z"/>
+      </svg>
+    ),
+    color: "#4285f4",
+    description: "Connect your Google Ads account to build and push Search campaigns directly from EVOX.",
+    oauthType: "google-ads",
+    btnLabel: "Connect Google Ads",
   },
   {
     key: "gmail",
@@ -194,14 +226,81 @@ const PLATFORMS = [
     oauthType: "gmail",
     btnLabel: "Connect with Gmail",
   },
+  {
+    key: "eventbrite",
+    label: "Eventbrite",
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="#F05537">
+        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.5 14H7.5v-2h9v2zm0-4H7.5v-2h9v2zm0-4H7.5V6h9v2z"/>
+      </svg>
+    ),
+    color: "#F05537",
+    description: "Publish events and sell tickets directly from your campaigns via Eventbrite.",
+    oauthType: "eventbrite",
+    btnLabel: "Connect Eventbrite",
+  },
+  {
+    key: "luma",
+    label: "Luma",
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+        <circle cx="12" cy="12" r="10" fill="#6c47ff" opacity="0.15"/>
+        <circle cx="12" cy="12" r="10" stroke="#6c47ff" strokeWidth="1.5" fill="none"/>
+        <path d="M8 12a4 4 0 1 0 8 0 4 4 0 0 0-8 0z" fill="#6c47ff"/>
+        <path d="M12 6v2M12 16v2M6 12h2M16 12h2" stroke="#6c47ff" strokeWidth="1.5" strokeLinecap="round"/>
+      </svg>
+    ),
+    color: "#6c47ff",
+    description: "Create and promote events on Luma. Enter your API key to sync campaigns.",
+    fields: [
+      { name: "apiKey", label: "Luma API Key", placeholder: "luma_..." },
+      { name: "calendarId", label: "Calendar ID (optional)", placeholder: "cal_..." },
+    ],
+    btnLabel: "Connect Luma",
+  },
+  {
+    key: "meetup",
+    label: "Meetup",
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="#ED1C40">
+        <path d="M19.24 12.59c.14-.45.21-.92.21-1.39 0-2.69-2.09-4.91-4.76-5.1a4.93 4.93 0 0 0-3.47-2.02 3.6 3.6 0 0 0-5.13 2.27 3.56 3.56 0 0 0-2.88 3.49c0 .28.03.56.09.83A3.55 3.55 0 0 0 4.7 17.4a3.56 3.56 0 0 0 3.44 2.6h8.43a3.56 3.56 0 0 0 2.67-5.41zM12 16.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm1-5.5a1 1 0 1 1-2 0V7a1 1 0 0 1 2 0v4z"/>
+      </svg>
+    ),
+    color: "#ED1C40",
+    description: "Promote your events to Meetup groups and reach your local community.",
+    fields: [
+      { name: "accessToken", label: "Meetup Access Token", placeholder: "Paste your Meetup OAuth token" },
+      { name: "groupUrlName", label: "Group URL Name", placeholder: "your-meetup-group" },
+    ],
+    btnLabel: "Connect Meetup",
+  },
 ];
 
 export default function ConnectAccounts() {
   const navigate = useNavigate();
-  const { state: navState } = useLocation();
+  const location = useLocation();
+  const { state: navState } = location;
   // navState.from is set on direct navigate; sessionStorage survives OAuth full-page redirects
   const returnTo = navState?.from || sessionStorage.getItem('connectReturnTo');
   const fromPackageA = returnTo === '/package-a' || returnTo === '/products';
+  // CMO setup flow — navigate to selected plan page after connecting
+  const isCmoSetup = new URLSearchParams(location.search).get('setup') === 'cmo' ||
+    sessionStorage.getItem('cmoSetup') === '1';
+  const selectedPackage = (() => {
+    try { return localStorage.getItem('evoke_selected_package') || 'free' } catch { return 'free' }
+  })()
+  const packageRoute = {
+    'free':      '/agents-hub',
+    'package-a': '/package-a',
+    'package-b': '/package-b',
+    'package-c': '/package-c',
+  }[selectedPackage] || '/agents-hub'
+  const packageLabel = {
+    'free':      'Go to CMO Dashboard',
+    'package-a': 'Go to Package A',
+    'package-b': 'Go to Package B',
+    'package-c': 'Go to Package C',
+  }[selectedPackage] || 'Go to CMO Dashboard'
   const { user: evokeUser, status: authStatus } = useAuth();
   const [user, setUser] = useState(null);
   const [accounts, setAccounts] = useState({});
@@ -214,10 +313,24 @@ export default function ConnectAccounts() {
   const userRef = useRef(null);
   const callbackProcessed = useRef(false);
 
+  // Persist CMO setup flag so it survives OAuth full-page redirects
+  useEffect(() => {
+    if (new URLSearchParams(location.search).get('setup') === 'cmo') {
+      sessionStorage.setItem('cmoSetup', '1');
+    }
+  }, []); // eslint-disable-line
+
   // Auto-redirect back after successful connection when returnTo is set
   useEffect(() => {
     const anySuccess = Object.values(success).some(Boolean);
     if (!anySuccess) return;
+    if (isCmoSetup) {
+      const t = setTimeout(() => {
+        sessionStorage.removeItem('cmoSetup');
+        navigate(packageRoute);
+      }, 1500);
+      return () => clearTimeout(t);
+    }
     const dest = sessionStorage.getItem('connectReturnTo');
     if (!dest) return;
     // Auto-advance to post-content after connecting (not back to the source page)
@@ -269,6 +382,7 @@ export default function ConnectAccounts() {
     if (state === "gmail_connect") handleGmailCallback(code, user.uid);
     if (state === "tiktok_connect") handleTikTokCallback(code, user.uid);
     if (state === "eventbrite_connect") handleEventbriteCallback(code, user.uid);
+    if (state === "google_ads_connect") handleGoogleAdsCallback(code, user.uid);
   }, [user]); // eslint-disable-line
 
   useEffect(() => {
@@ -618,6 +732,46 @@ export default function ConnectAccounts() {
     window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${url}`;
   };
 
+  const connectGoogleAds = () => {
+    const url = new URLSearchParams({
+      client_id: GOOGLE_CLIENT_ID,
+      redirect_uri: GOOGLE_REDIRECT,
+      scope: GOOGLE_ADS_SCOPE,
+      response_type: "code",
+      state: "google_ads_connect",
+      access_type: "offline",
+      prompt: "consent",
+    });
+    window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${url}`;
+  };
+
+  const handleGoogleAdsCallback = useCallback(async (code, uid) => {
+    const resolvedUid = uid || userRef.current?.uid;
+    if (!resolvedUid) return;
+    setLoad("google-ads", true);
+    clrErr("google-ads");
+    try {
+      const res = await fetch(GOOGLE_ADS_N8N, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code, redirectUri: GOOGLE_REDIRECT, uid: resolvedUid }),
+      });
+      if (!res.ok) throw new Error("Token exchange failed: " + (await res.text()));
+      const { accessToken, refreshToken, email, customerId } = await res.json();
+      await saveSocialAccount(resolvedUid, "google-ads", {
+        accessToken, refreshToken, email,
+        customerId: customerId || "",
+        connected: true,
+      });
+      setAccounts((a) => ({ ...a, "google-ads": { connected: true, email } }));
+      setOk("google-ads", true);
+    } catch (e) {
+      setErr("google-ads", "Google Ads connection failed: " + e.message);
+    } finally {
+      setLoad("google-ads", false);
+    }
+  }, []);
+
   const handleGmailCallback = useCallback(async (code, uid) => {
     const resolvedUid = uid || auth.currentUser?.uid || userRef.current?.uid;
     if (!resolvedUid) return;
@@ -890,7 +1044,7 @@ export default function ConnectAccounts() {
             className="badge"
             style={{ marginBottom: 16, display: "inline-flex", gap: 6 }}
           >
-            <Link2 size={13} /> {fromPackageA ? 'Social Posting Setup' : 'Connect Your Accounts'}
+            <Link2 size={13} /> {isCmoSetup ? 'CMO Setup — Connect Social Accounts' : fromPackageA ? 'Social Posting Setup' : 'Connect Your Accounts'}
           </div>
 
           <h1
@@ -1132,6 +1286,40 @@ export default function ConnectAccounts() {
                           <>{p.btnLabel}</>
                         )}
                       </button>
+                    ) : p.oauthType === "google-ads" ? (
+                      connected ? (
+                        <button
+                          onClick={() => disconnect(p.key)}
+                          disabled={isLoading}
+                          style={{
+                            display: "flex", alignItems: "center", gap: 6,
+                            padding: "8px 14px", background: "rgba(239,68,68,0.1)",
+                            border: "1px solid rgba(239,68,68,0.25)", borderRadius: 10,
+                            color: "#ef4444", fontSize: 13, fontWeight: 600,
+                            cursor: isLoading ? "not-allowed" : "pointer",
+                          }}
+                        >
+                          {isLoading
+                            ? <Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} />
+                            : <><Unlink size={13} /> Disconnect</>}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={connectGoogleAds}
+                          disabled={isLoading}
+                          style={{
+                            display: "flex", alignItems: "center", gap: 8,
+                            padding: "10px 18px", background: "#4285f4",
+                            border: "none", borderRadius: 10, color: "white",
+                            fontSize: 14, fontWeight: 700,
+                            cursor: isLoading ? "not-allowed" : "pointer",
+                          }}
+                        >
+                          {isLoading
+                            ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} />
+                            : <>{p.btnLabel}</>}
+                        </button>
+                      )
                     ) : p.oauthType === "platform_whatsapp" ? (
                       <span
                         style={{
@@ -1577,6 +1765,11 @@ export default function ConnectAccounts() {
         >
           <button
             onClick={() => {
+              if (isCmoSetup) {
+                sessionStorage.removeItem('cmoSetup');
+                navigate(packageRoute);
+                return;
+              }
               sessionStorage.removeItem('connectReturnTo');
               if (fromPackageA && connectedCount > 0) {
                 navigate('/post-content', { state: { from: returnTo, toolTitle: 'Post to Social', toolColor: '#c8973e' } });
@@ -1601,11 +1794,13 @@ export default function ConnectAccounts() {
             }}
           >
             <Zap size={16} />
-            {fromPackageA
-              ? (connectedCount > 0
-                  ? 'Next: Create & Post Content'
-                  : `Skip — Back to ${returnTo === '/products' ? 'Products' : 'Package A'}`)
-              : (connectedCount > 0 ? 'Start Creating Campaigns' : 'Skip for now')
+            {isCmoSetup
+              ? (connectedCount > 0 ? packageLabel : `Skip — ${packageLabel}`)
+              : fromPackageA
+                ? (connectedCount > 0
+                    ? 'Next: Create & Post Content'
+                    : `Skip — Back to ${returnTo === '/products' ? 'Products' : 'Package A'}`)
+                : (connectedCount > 0 ? 'Start Creating Campaigns' : 'Skip for now')
             }
             <ArrowRight size={16} />
           </button>

@@ -189,7 +189,7 @@ When the user asks about campaigns:
 Keep responses under 200 words unless the user asks for detail. Use bullet points for clarity.`
 
       const res = await fetch(
-        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=AIzaSyD4zsvoxcg6WrL1R3GcP66RgiXW4y2lqN0',
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${import.meta.env.VITE_GEMINI_API_KEY}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

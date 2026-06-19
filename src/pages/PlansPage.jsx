@@ -91,14 +91,9 @@ export default function PlansPage() {
   }, [user])
 
   const handlePlan = (key) => {
-    // Remember the chosen plan so logged-in users aren't re-asked (cleared on logout)
-    if (key === 'free' || key === 'package-a') {
-      try { localStorage.setItem('evoke_selected_package', key) } catch {}
-    }
-    if (key === 'free') navigate('/free-plan')
-    else if (key === 'package-a') navigate('/package-a')
-    else if (key === 'package-b') navigate('/package-b')
-    else if (key === 'package-c') navigate('/package-c')
+    try { localStorage.setItem('evoke_selected_package', key) } catch {}
+    // Bypass token purchase — go straight to connect social accounts
+    navigate('/connect-accounts?setup=cmo')
   }
 
   return (

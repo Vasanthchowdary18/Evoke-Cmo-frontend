@@ -89,7 +89,13 @@ export default defineConfig(({ mode }) => {
                 }
 
                 const prompt = PROMPTS[agentType] || PROMPTS.seo
-                const geminiKey = 'AIzaSyD4zsvoxcg6WrL1R3GcP66RgiXW4y2lqN0'
+                const geminiKey = env.GEMINI_API_KEY || env.VITE_GEMINI_API_KEY
+                if (!geminiKey) {
+                  res.setHeader('Content-Type', 'application/json')
+                  res.writeHead(500)
+                  res.end(JSON.stringify({ success: false, error: 'GEMINI_API_KEY not set in .env' }))
+                  return
+                }
 
                 const geminiRes = await fetch(
                   `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
@@ -129,6 +135,156 @@ export default defineConfig(({ mode }) => {
             })
           })
 
+          // ── /api/generate-banner → DALL-E 3 or Gemini ──────────────────────
+          server.middlewares.use('/api/generate-banner', (req, res) => {
+            if (req.method === 'OPTIONS') {
+              res.setHeader('Access-Control-Allow-Origin', '*')
+              res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
+              res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+              res.writeHead(204); res.end(); return
+            }
+            if (req.method !== 'POST') {
+              res.writeHead(405); res.end('Method not allowed'); return
+            }
+
+            let body = ''
+            req.on('data', chunk => { body += chunk })
+            req.on('end', async () => {
+              try {
+                const { prompt, provider = 'gemini' } = JSON.parse(body)
+                if (!prompt) {
+                  res.writeHead(400)
+                  res.end(JSON.stringify({ error: 'Prompt is required' }))
+                  return
+                }
+
+                let imageData
+                if (provider === 'pollinations') {
+                  // Free image generation — no API key needed
+                  const encodedPrompt = encodeURIComponent(prompt)
+                  const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&model=flux&nologo=true&seed=${Date.now()}`
+                  const imgRes = await fetch(pollinationsUrl)
+                  if (!imgRes.ok) throw new Error(`Pollinations error ${imgRes.status}`)
+                  const buffer = await imgRes.arrayBuffer()
+                  const bytes = new Uint8Array(buffer)
+                  let binary = ''
+                  for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i])
+                  const base64Image = btoa(binary)
+                  imageData = { base64Image, mimeType: 'image/png', provider: 'pollinations' }
+
+                } else if (provider === 'dalle') {
+                  const openaiKey = env.OPENAI_API_KEY
+                  if (!openaiKey) {
+                    res.setHeader('Content-Type', 'application/json')
+                    res.writeHead(500)
+                    res.end(JSON.stringify({ error: 'OPENAI_API_KEY not configured' }))
+                    return
+                  }
+
+                  const dalleRes = await fetch('https://api.openai.com/v1/images/generations', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${openaiKey}`,
+                    },
+                    body: JSON.stringify({
+                      model: 'dall-e-3',
+                      prompt: prompt,
+                      n: 1,
+                      size: '1024x1024',
+                      quality: 'hd',
+                    }),
+                  })
+
+                  if (!dalleRes.ok) {
+                    const err = await dalleRes.json().catch(() => ({}))
+                    res.setHeader('Content-Type', 'application/json')
+                    res.writeHead(dalleRes.status)
+                    res.end(JSON.stringify({ error: err?.error?.message || `OpenAI error ${dalleRes.status}` }))
+                    return
+                  }
+
+                  const data = await dalleRes.json()
+                  const imageUrl = data.data?.[0]?.url
+                  if (!imageUrl) {
+                    res.writeHead(500)
+                    res.end(JSON.stringify({ error: 'DALL-E returned no image URL' }))
+                    return
+                  }
+
+                  const imgRes = await fetch(imageUrl)
+                  const buffer = await imgRes.arrayBuffer()
+                  const bytes = new Uint8Array(buffer)
+                  let binary = ''
+                  for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i])
+                  const base64Image = btoa(binary)
+
+                  imageData = {
+                    base64Image,
+                    mimeType: 'image/png',
+                    provider: 'dalle-3',
+                    revised_prompt: data.data?.[0]?.revised_prompt || prompt,
+                  }
+                } else {
+                  const geminiKey = env.GEMINI_API_KEY || env.VITE_GEMINI_API_KEY
+                  if (!geminiKey) {
+                    res.setHeader('Content-Type', 'application/json')
+                    res.writeHead(500)
+                    res.end(JSON.stringify({ error: 'GEMINI_API_KEY not configured' }))
+                    return
+                  }
+
+                  const geminiRes = await fetch(
+                    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${geminiKey}`,
+                    {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }],
+                        generationConfig: { responseModalities: ['IMAGE', 'TEXT'] },
+                      }),
+                    }
+                  )
+
+                  if (!geminiRes.ok) {
+                    const errData = await geminiRes.json().catch(() => ({}))
+                    res.setHeader('Content-Type', 'application/json')
+                    res.writeHead(geminiRes.status)
+                    res.end(JSON.stringify({ error: errData?.error?.message || `Gemini error ${geminiRes.status}` }))
+                    return
+                  }
+
+                  const data = await geminiRes.json()
+                  const parts = data.candidates?.[0]?.content?.parts || []
+                  const imagePart = parts.find(p => p.inlineData?.data)
+                  const base64Image = imagePart?.inlineData?.data || null
+                  const mimeType = imagePart?.inlineData?.mimeType || 'image/png'
+
+                  if (!base64Image) {
+                    res.writeHead(500)
+                    res.end(JSON.stringify({ error: 'Gemini returned no image' }))
+                    return
+                  }
+
+                  imageData = {
+                    base64Image,
+                    mimeType,
+                    provider: 'gemini',
+                  }
+                }
+
+                res.setHeader('Content-Type', 'application/json')
+                res.setHeader('Access-Control-Allow-Origin', '*')
+                res.writeHead(200)
+                res.end(JSON.stringify(imageData))
+              } catch (err) {
+                res.setHeader('Content-Type', 'application/json')
+                res.writeHead(500)
+                res.end(JSON.stringify({ error: err.message }))
+              }
+            })
+          })
+
           // ── /api/gemini-image → Google Gemini ───────────────────────────────
           server.middlewares.use('/api/gemini-image', (req, res) => {
             if (req.method === 'OPTIONS') {
@@ -141,18 +297,18 @@ export default defineConfig(({ mode }) => {
               res.writeHead(405); res.end('Method not allowed'); return
             }
 
-            const geminiKey = env.GEMINI_API_KEY
-            if (!geminiKey) {
-              res.setHeader('Content-Type', 'application/json')
-              res.writeHead(500)
-              res.end(JSON.stringify({ error: 'GEMINI_API_KEY not set in .env' }))
-              return
-            }
+            const geminiKey = env.GEMINI_API_KEY || env.VITE_GEMINI_API_KEY
 
             let body = ''
             req.on('data', chunk => { body += chunk })
             req.on('end', async () => {
               try {
+                if (!geminiKey) {
+                  res.setHeader('Content-Type', 'application/json')
+                  res.writeHead(500)
+                  res.end(JSON.stringify({ error: 'GEMINI_API_KEY not set in .env' }))
+                  return
+                }
                 const { prompt } = JSON.parse(body)
                 if (!prompt) {
                   res.writeHead(400)
@@ -205,6 +361,50 @@ export default defineConfig(({ mode }) => {
             })
           })
 
+          // ── /auth/facebook/callback → Facebook OAuth ────────────────────────
+          server.middlewares.use('/auth/facebook/callback', (req, res) => {
+            if (req.method !== 'GET') {
+              res.writeHead(405); res.end('Method not allowed'); return
+            }
+
+            const url = new URL(req.url, `http://${req.headers.host}`)
+            const code = url.searchParams.get('code')
+            const state = url.searchParams.get('state')
+            const error = url.searchParams.get('error')
+            const errorDescription = url.searchParams.get('error_description')
+
+            // Handle OAuth errors
+            if (error) {
+              const errorMsg = `${error}: ${errorDescription || 'Unknown error'}`
+              return res.end(`
+                <html>
+                  <body style="font-family: sans-serif; text-align: center; margin-top: 50px;">
+                    <h1>❌ Facebook Login Failed</h1>
+                    <p>${errorMsg}</p>
+                    <a href="/connected-accounts">← Back to Connected Accounts</a>
+                  </body>
+                </html>
+              `)
+            }
+
+            if (!code) {
+              return res.end(`
+                <html>
+                  <body style="font-family: sans-serif; text-align: center; margin-top: 50px;">
+                    <h1>❌ Invalid OAuth Response</h1>
+                    <p>No authorization code received from Facebook</p>
+                    <a href="/connected-accounts">← Back to Connected Accounts</a>
+                  </body>
+                </html>
+              `)
+            }
+
+            // Success — redirect to connected accounts with code in hash
+            res.setHeader('Location', `/connected-accounts#facebook_code=${code}&state=${state || ''}`)
+            res.writeHead(302)
+            res.end()
+          })
+
         }
       }
     ],
@@ -225,6 +425,20 @@ export default defineConfig(({ mode }) => {
           target: 'https://api.groq.com',
           changeOrigin: true,
           rewrite: path => path.replace(/^\/groq-api/, ''),
+          secure: true,
+        },
+        // Evoke API proxy — avoids CORS from localhost in dev
+        '/evoke-api': {
+          target: 'https://apieksv1.evokemarketplace.com',
+          changeOrigin: true,
+          rewrite: path => path.replace(/^\/evoke-api/, '/api'),
+          secure: true,
+        },
+        // Pollinations image proxy — avoids CORS on localhost
+        '/pollinations': {
+          target: 'https://image.pollinations.ai',
+          changeOrigin: true,
+          rewrite: path => path.replace(/^\/pollinations/, ''),
           secure: true,
         },
       },

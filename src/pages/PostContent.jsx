@@ -622,7 +622,7 @@ export default function PostContent() {
             </button>
 
             <p style={{ fontSize: 11, color: TEXT3, textAlign: 'center', marginTop: 10, lineHeight: 1.5 }}>
-              Content will be published immediately to your connected accounts via n8n automation.
+              Content will be published immediately to your connected accounts.
             </p>
           </div>
         </div>

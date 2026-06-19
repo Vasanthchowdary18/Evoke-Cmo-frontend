@@ -12,7 +12,7 @@ import {
 import Navbar from '../components/Navbar.jsx'
 import { getEvokeUserProfile } from '../lib/session'
 import { profileToUser } from '../lib/authUtils'
-import { deductToken } from '../services/userService'
+import { deductToken, getUserData } from '../services/userService'
 import { saveContentItems, updateContentItem, markItemsPublished } from '../services/contentService'
 import { WEBHOOK_URL, DAY_WEBHOOK_URL } from '../config.js'
 
@@ -515,17 +515,43 @@ function PhaseTimeline({ data, color }) {
 
 const dayColors = ['#c8973e', '#8b5cf6', '#a855f7', '#c8973e', '#0891b2', '#0e7490', '#c8973e']
 
-function PostingStatusBanner({ postingStatus, selectedPlatforms, onRetry }) {
+function PostingStatusBanner({ postingStatus, selectedPlatforms, connectedAccounts, onRetry }) {
+  const navigate  = useNavigate()
   const isPosting = postingStatus === 'posting'
   const isSuccess = postingStatus === 'success'
   const isFailed  = postingStatus === 'failed'
 
-  const bannerBg     = isSuccess ? '#f0fdf4' : isFailed ? '#fef2f2' : '#fffbeb'
-  const bannerBorder = isSuccess ? 'rgba(16,185,129,0.3)' : isFailed ? 'rgba(239,68,68,0.3)' : 'rgba(245,158,11,0.3)'
-  const statusColor  = isSuccess ? '#10b981' : isFailed ? '#ef4444' : '#f59e0b'
+  // Determine which selected platforms are actually connected
+  const ALWAYS_ON = ['whatsapp', 'sheets'] // no OAuth required
+  const isPlatformConnected = (key) => {
+    if (ALWAYS_ON.includes(key)) return true
+    if (!connectedAccounts) return true // unknown — show optimistically while loading
+    const acctKey = key === 'email' ? 'gmail' : key
+    return !!connectedAccounts[acctKey]?.connected
+  }
 
-  const title = isSuccess ? 'Campaign sent to your platforms!' : isFailed ? 'Could not send — check your accounts and try again' : 'Sending your campaign…'
-  const sub   = isSuccess ? 'Your content is now posting to all selected platforms.' : isFailed ? 'Make sure your connected accounts are active and retry.' : 'Connecting to your accounts…'
+  const selectedList = selectedPlatforms
+    ? PLATFORMS.filter(p => selectedPlatforms.includes(p.key))
+    : PLATFORMS
+
+  const connectedSelected   = selectedList.filter(p => isPlatformConnected(p.key))
+  const unconnectedSelected = selectedList.filter(p => !isPlatformConnected(p.key))
+
+  const allFailed = connectedSelected.length === 0 && unconnectedSelected.length > 0
+  const someUnconnected = unconnectedSelected.length > 0
+
+  const bannerBg     = isSuccess ? '#f0fdf4' : isFailed || allFailed ? '#fef2f2' : '#fffbeb'
+  const bannerBorder = isSuccess ? 'rgba(16,185,129,0.3)' : isFailed || allFailed ? 'rgba(239,68,68,0.3)' : 'rgba(245,158,11,0.3)'
+  const statusColor  = isSuccess ? '#10b981' : isFailed || allFailed ? '#ef4444' : '#f59e0b'
+
+  const title = isSuccess
+    ? connectedSelected.length > 0 ? 'Campaign sent to your platforms!' : 'No connected platforms to post to'
+    : isFailed ? 'Could not send — check your accounts and try again'
+    : 'Sending your campaign…'
+  const sub = isSuccess
+    ? someUnconnected ? `Sent to ${connectedSelected.length} platform(s). ${unconnectedSelected.length} not connected.` : 'Your content is now posting to all selected platforms.'
+    : isFailed ? 'Make sure your connected accounts are active and retry.'
+    : 'Connecting to your accounts…'
 
   return (
     <motion.div
@@ -544,34 +570,56 @@ function PostingStatusBanner({ postingStatus, selectedPlatforms, onRetry }) {
             <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>{sub}</div>
           </div>
         </div>
-        {isFailed && (
-          <button onClick={onRetry} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: '#fef2f2', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10, color: '#ef4444', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-            <RotateCcw size={13} /> Retry
-          </button>
-        )}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {isFailed && (
+            <button onClick={onRetry} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: '#fef2f2', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10, color: '#ef4444', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+              <RotateCcw size={13} /> Retry
+            </button>
+          )}
+          {(isFailed || someUnconnected) && (
+            <button onClick={() => navigate('/connect-accounts')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: '#eff6ff', border: '1px solid rgba(59,130,246,0.3)', borderRadius: 10, color: '#3b82f6', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+              Connect Accounts
+            </button>
+          )}
+        </div>
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-        {PLATFORMS
-          .filter(p => !selectedPlatforms || selectedPlatforms.includes(p.key) || p.key === 'sheets')
-          .map((p, i) => (
-            <motion.div
-              key={p.key + i}
-              initial={{ opacity: 0, scale: 0.85 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: i * 0.06 }}
-              style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '7px 13px', background: `${p.color}10`, border: `1px solid ${isSuccess ? p.color + '55' : p.color + '28'}`, borderRadius: 9 }}
-            >
-              <div style={{ width: 26, height: 26, borderRadius: 7, background: `${p.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: p.color }}>
-                {p.icon}
+        {connectedSelected.map((p, i) => (
+          <motion.div
+            key={p.key + i}
+            initial={{ opacity: 0, scale: 0.85 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: i * 0.06 }}
+            style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '7px 13px', background: `${p.color}10`, border: `1px solid ${isSuccess ? p.color + '55' : p.color + '28'}`, borderRadius: 9 }}
+          >
+            <div style={{ width: 26, height: 26, borderRadius: 7, background: `${p.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: p.color }}>
+              {p.icon}
+            </div>
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: '#0f172a' }}>{p.label}</div>
+              <div style={{ fontSize: 10, color: isSuccess ? '#10b981' : isFailed ? '#ef4444' : '#f59e0b' }}>
+                {isSuccess ? 'Sent ✓' : isFailed ? 'Failed' : 'Sending…'}
               </div>
-              <div>
-                <div style={{ fontSize: 12, fontWeight: 600, color: '#0f172a' }}>{p.label}</div>
-                <div style={{ fontSize: 10, color: isSuccess ? '#10b981' : isFailed ? '#ef4444' : '#f59e0b' }}>
-                  {isSuccess ? 'Sent ✓' : isFailed ? 'Failed' : 'Sending…'}
-                </div>
-              </div>
-            </motion.div>
-          ))}
+            </div>
+          </motion.div>
+        ))}
+        {unconnectedSelected.map((p, i) => (
+          <motion.div
+            key={p.key + 'nc' + i}
+            initial={{ opacity: 0, scale: 0.85 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: (connectedSelected.length + i) * 0.06 }}
+            style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '7px 13px', background: 'rgba(100,116,139,0.08)', border: '1px solid rgba(100,116,139,0.2)', borderRadius: 9, opacity: 0.65 }}
+          >
+            <div style={{ width: 26, height: 26, borderRadius: 7, background: 'rgba(100,116,139,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>
+              {p.icon}
+            </div>
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: '#64748b' }}>{p.label}</div>
+              <div style={{ fontSize: 10, color: '#94a3b8' }}>Not connected</div>
+            </div>
+          </motion.div>
+        ))}
       </div>
     </motion.div>
   )
@@ -589,7 +637,17 @@ export default function Results() {
   const [editDraft, setEditDraft]         = useState('')
   const [postingStatus, setPostingStatus] = useState('idle')
   const [selectedPlatforms, setSelectedPlatforms] = useState(null)
+  const [connectedAccounts, setConnectedAccounts] = useState(null)
   const [campaignDays, setCampaignDays]   = useState(7)
+
+  useEffect(() => {
+    const profile = getEvokeUserProfile()
+    const user = profileToUser(profile)
+    if (!user) return
+    getUserData(user.uid).then(data => {
+      if (data?.socialAccounts) setConnectedAccounts(data.socialAccounts)
+    }).catch(() => {})
+  }, [])
   const [dailySchedule, setDailySchedule] = useState([])
   const [calExpanded, setCalExpanded]     = useState(false)
 
@@ -1167,7 +1225,7 @@ export default function Results() {
         {/* Posting status — hidden for strategy (no social posting) */}
         <AnimatePresence>
           {!isStrategy && launched && (
-            <PostingStatusBanner postingStatus={postingStatus} selectedPlatforms={selectedPlatforms} onRetry={handleLaunch} />
+            <PostingStatusBanner postingStatus={postingStatus} selectedPlatforms={selectedPlatforms} connectedAccounts={connectedAccounts} onRetry={handleLaunch} />
           )}
         </AnimatePresence>
 
@@ -1512,7 +1570,7 @@ export default function Results() {
                   <span style={{ color: '#cbd5e1' }}>·</span>
                   <span style={{ fontSize: 12, color: '#64748b' }}>Unique AI content generated for every day</span>
                   <span style={{ color: '#cbd5e1' }}>·</span>
-                  <span style={{ fontSize: 12, color: '#64748b' }}>Posts automatically at your chosen time via n8n</span>
+                  <span style={{ fontSize: 12, color: '#64748b' }}>Posts automatically at your chosen time</span>
                 </div>
               )}
 

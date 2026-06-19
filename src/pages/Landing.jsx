@@ -845,12 +845,16 @@ export default function Landing() {
                   Your plan is set — jump straight into your campaign ↓
                 </p>
                 <div style={{display:'flex',gap:12,justifyContent:'center',flexWrap:'wrap'}}>
-                  <button onClick={()=>navigate(selectedPackage === 'free' ? '/free-plan' : '/package-a')} style={{...goldPill,padding:'13px 32px'}}
+                  <button onClick={()=>{
+                    if (!user) { goSignIn(); return }
+                    try { localStorage.setItem('evoke_selected_package', selectedPackage || 'free') } catch {}
+                    navigate('/connect-accounts?setup=cmo')
+                  }} style={{...goldPill,padding:'13px 32px'}}
                     onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 10px 28px rgba(200,151,62,0.4)'}}
                     onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none'}}>
                     Start Your Campaign <ArrowRight size={16}/>
                   </button>
-                  <button onClick={()=>navigate('/plans')} style={{...outlinePill,padding:'13px 24px',fontSize:13}}
+                  <button onClick={()=>document.getElementById('pricing')?.scrollIntoView({behavior:'smooth'})} style={{...outlinePill,padding:'13px 24px',fontSize:13}}
                     onMouseEnter={e=>{e.currentTarget.style.borderColor='rgba(200,151,62,0.6)'}}
                     onMouseLeave={e=>{e.currentTarget.style.borderColor=''}}>
                     Choose Plan <ArrowRight size={14}/>
@@ -1247,7 +1251,11 @@ export default function Landing() {
                   <p style={{fontSize:12,color:TEXT2,marginBottom:16,paddingBottom:16,borderBottom:`1px solid ${BORDER}`,lineHeight:1.55}}>{plan.tagline}</p>
 
                   <button
-                    onClick={()=> plan.key === 'free' ? openAssessment() : window.open('mailto:hello@evokecmo.com','_blank')}
+                    onClick={()=>{
+                      try { localStorage.setItem('evoke_selected_package', plan.key) } catch {}
+                      if (!user) { goSignIn(); return }
+                      navigate('/connect-accounts?setup=cmo')
+                    }}
                     style={{
                       width:'100%',padding:'12px',marginBottom:20,
                       background:plan.key==='free'?'linear-gradient(135deg,#d4a853,#b8803a)':plan.ctaDark?'linear-gradient(135deg,#d4a853,#b8803a)':'rgba(255,255,255,0.06)',
