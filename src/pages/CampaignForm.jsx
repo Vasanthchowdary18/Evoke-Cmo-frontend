@@ -2850,7 +2850,7 @@ export default function CampaignForm() {
               />
               <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "rgba(200,151,62,0.08)", border: "1px solid rgba(200,151,62,0.2)", borderRadius: "10px", padding: "9px 14px", marginBottom: "10px", fontSize: "12px", color: "rgba(255,255,255,0.5)", lineHeight: 1.5 }}>
                 <span style={{ fontSize: "15px" }}>✨</span>
-                <span>Premium DALL-E 3 quality banners. QR code auto-adds if you have an event URL for easy registration.</span>
+                <span>AI-generated poster with your event details. QR code auto-adds if you have an event URL for easy registration.</span>
               </div>
               <div
                 style={{

@@ -152,8 +152,8 @@ export default function EventBannerGenerator({
           <div
             style={{
               width: '100%',
-              aspectRatio: '1',
-              background: 'rgba(255,255,255,0.03)',
+              aspectRatio: '16/9',
+              background: '#000',
               border: '1px solid rgba(200,151,62,0.3)',
               borderRadius: '12px',
               overflow: 'hidden',
