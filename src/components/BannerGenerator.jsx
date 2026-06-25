@@ -6,7 +6,7 @@ export default function BannerGenerator({ eventData = {} }) {
   const [loading, setLoading] = useState(false)
   const [banner, setBanner] = useState(null)
   const [error, setError] = useState(null)
-  const [provider, setProvider] = useState('gemini')
+  const [provider, setProvider] = useState('pollinations')
   const [formData, setFormData] = useState({
     name: eventData.name || '',
     tagline: eventData.tagline || '',
@@ -296,10 +296,10 @@ export default function BannerGenerator({ eventData = {} }) {
         <div className="form-section">
           <div className="provider-selector">
             <button
-              className={`provider-btn ${provider === 'gemini' ? 'active' : ''}`}
-              onClick={() => setProvider('gemini')}
+              className={`provider-btn ${provider === 'pollinations' ? 'active' : ''}`}
+              onClick={() => setProvider('pollinations')}
             >
-              Gemini (Fast)
+              EVOX AI (Free)
             </button>
             <button
               className={`provider-btn ${provider === 'dalle' ? 'active' : ''}`}

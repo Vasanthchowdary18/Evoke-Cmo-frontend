@@ -6,18 +6,15 @@ export async function generateEventPosterWithCanvas(eventData, options = {}) {
 
   // Try Pollinations first (free, no API key), fall back to Gemini if available
   let bgImageUrl = null
-  for (const provider of ['pollinations', 'gemini']) {
-    try {
-      const res = await axios.post('/api/generate-banner', {
-        prompt: buildBackgroundPrompt(eventData),
-        provider,
-      })
-      if (res.data.base64Image) {
-        bgImageUrl = `data:${res.data.mimeType || 'image/png'};base64,${res.data.base64Image}`
-        break
-      }
-    } catch (_) { /* try next provider */ }
-  }
+  try {
+    const res = await axios.post('/api/generate-banner', {
+      prompt: buildBackgroundPrompt(eventData),
+      provider: 'pollinations',
+    })
+    if (res.data.base64Image) {
+      bgImageUrl = `data:${res.data.mimeType || 'image/png'};base64,${res.data.base64Image}`
+    }
+  } catch (_) { /* use gradient fallback */ }
 
   return renderPosterCanvas(eventData, bgImageUrl, qrBase64)
 }

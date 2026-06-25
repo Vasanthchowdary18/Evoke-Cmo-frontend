@@ -7,9 +7,7 @@ import { getOrCreateUser } from './services/userService'
 import Landing from './pages/Landing.jsx'
 import SignIn from './pages/SignIn.jsx'
 import Onboarding from './pages/Onboarding.jsx'
-import Dashboard from './pages/Dashboard.jsx'
 import CampaignForm from './pages/CampaignForm.jsx'
-import AgentPage from './pages/AgentPage.jsx'
 import Tokens from './pages/Tokens.jsx'
 import Results from './pages/Results.jsx'
 import Purchase from './pages/Purchase.jsx'
@@ -29,11 +27,22 @@ import ReelScriptsPage from './pages/ReelScriptsPage.jsx'
 import ProductsPage from './pages/ProductsPage.jsx'
 import ProductDescription from './pages/ProductDescription.jsx'
 import ImageToolPage from './pages/ImageToolPage.jsx'
-import EvoxServices from './pages/EvoxServices.jsx'
 import ApprovalQueue from './pages/ApprovalQueue.jsx'
 import KpiRecommendationsPage from './pages/KpiRecommendationsPage.jsx'
-import CmoAgentOverviewPage from './pages/CmoAgentOverviewPage.jsx'
-import EventViewPage from './pages/EventViewPage.jsx'
+import AnalyticsDashboard from './pages/AnalyticsDashboard.jsx'
+import CrmPage from './pages/CrmPage.jsx'
+import BrandKnowledgeBase from './pages/BrandKnowledgeBase.jsx'
+import SocialInbox from './pages/SocialInbox.jsx'
+import TrendAnalysis from './pages/TrendAnalysis.jsx'
+import AudienceBuilder from './pages/AudienceBuilder.jsx'
+import TeamManagement from './pages/TeamManagement.jsx'
+import PartnerSharing from './pages/PartnerSharing.jsx'
+import VideoGenerationPage from './pages/VideoGenerationPage.jsx'
+import BrandGovernancePage from './pages/BrandGovernancePage.jsx'
+import MarketingStrategyPage from './pages/MarketingStrategyPage.jsx'
+import MarketingExecutionPage from './pages/MarketingExecutionPage.jsx'
+import CampaignHub from './pages/CampaignHub.jsx'
+import AgentHub from './pages/AgentHub.jsx'
 import Chatbot from './components/Chatbot.jsx'
 
 // Handles token returned from accounts.evokemarketplace.com after login
@@ -49,15 +58,16 @@ function EvokeAuthHandler() {
     // Clean token from URL immediately
     window.history.replaceState({}, '', window.location.pathname)
 
+    const postLoginRoute = sessionStorage.getItem('evoke_post_login_route') || '/agents-hub'
+    sessionStorage.removeItem('evoke_post_login_route')
+
     signInWithCustomToken(auth, token)
       .then(async (cred) => {
         await getOrCreateUser(cred.user.uid, cred.user.displayName, cred.user.email)
-        navigate('/agents-hub')
+        navigate(postLoginRoute)
       })
       .catch(() => {
-        // Token format not recognised — user may already be signed in via shared session
-        // Just navigate to agents-hub and let Firebase auth state decide
-        navigate('/agents-hub')
+        navigate(postLoginRoute)
       })
   }, [navigate])
 
@@ -73,10 +83,7 @@ export default function App() {
         <Route path="/signin"            element={<SignIn />} />
         <Route path="/onboarding"        element={<Onboarding />} />
         <Route path="/dashboard"         element={<Navigate to="/agents-hub" replace />} />
-        <Route path="/dashboard-legacy"  element={<Dashboard />} />
-        <Route path="/cmo"               element={<Dashboard />} />
         <Route path="/campaign/:type"    element={<CampaignForm />} />
-        <Route path="/agent/:agentType"  element={<AgentPage />} />
         <Route path="/results"           element={<Results />} />
         <Route path="/tokens"            element={<Tokens />} />
         <Route path="/purchase"          element={<Purchase />} />
@@ -87,7 +94,6 @@ export default function App() {
         <Route path="/image-angles"      element={<ImageToolPage />} />
         <Route path="/image-360"         element={<ImageToolPage />} />
         <Route path="/image-seo"         element={<ImageToolPage />} />
-        <Route path="/image-video"       element={<ImageToolPage />} />
         <Route path="/image-lifestyle"   element={<ImageToolPage />} />
         <Route path="/image-3d"          element={<ImageToolPage />} />
         <Route path="/meta-ads-boost"    element={<MetaAdsBoost />} />
@@ -99,11 +105,22 @@ export default function App() {
         <Route path="/package-c"          element={<PackageCPage />} />
         <Route path="/caption-suite"      element={<CaptionSuitePage />} />
         <Route path="/reel-scripts"       element={<ReelScriptsPage />} />
-        <Route path="/evox-services"      element={<EvoxServices />} />
         <Route path="/queue"              element={<ApprovalQueue />} />
         <Route path="/kpi-recommendations" element={<KpiRecommendationsPage />} />
-        <Route path="/overview/:type"      element={<CmoAgentOverviewPage />} />
-        <Route path="/e"                  element={<EventViewPage />} />
+        <Route path="/analytics"             element={<AnalyticsDashboard />} />
+        <Route path="/crm"                   element={<CrmPage />} />
+        <Route path="/brand-kb"              element={<BrandKnowledgeBase />} />
+        <Route path="/inbox"                 element={<SocialInbox />} />
+        <Route path="/trends"                element={<TrendAnalysis />} />
+        <Route path="/audience-builder"      element={<AudienceBuilder />} />
+        <Route path="/team"                  element={<TeamManagement />} />
+        <Route path="/partner-sharing"       element={<PartnerSharing />} />
+        <Route path="/video-gen"             element={<VideoGenerationPage />} />
+        <Route path="/brand-governance"      element={<BrandGovernancePage />} />
+        <Route path="/strategy"              element={<MarketingStrategyPage />} />
+        <Route path="/execution"             element={<MarketingExecutionPage />} />
+        <Route path="/campaign-hub"          element={<CampaignHub />} />
+        <Route path="/hub/:agent"            element={<AgentHub />} />
         <Route path="/privacy"            element={<Privacy />} />
         <Route path="/terms"              element={<Terms />} />
         <Route path="*"                  element={<Navigate to="/" replace />} />

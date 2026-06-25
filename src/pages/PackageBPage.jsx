@@ -13,7 +13,7 @@ import {
   BarChart2, ArrowRight, ChevronRight, Zap, Link2,
   Linkedin, Facebook, Mail, MessageSquare, Loader2,
   Unlink, Share2, Image, Film, Hash, Target, TrendingUp,
-  Instagram,
+  Instagram, BookOpen, Shield, Rocket, Layers, Camera, LayoutTemplate, Users,
 } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
 import { useAuth } from '../hooks/useAuth.js'
@@ -28,8 +28,21 @@ const TEXT2  = 'rgba(240,235,224,0.55)'
 const TEXT3  = 'rgba(240,235,224,0.28)'
 const BORDER = 'rgba(255,255,255,0.08)'
 
-/** All agents and tools available in Package B */
+/** All agents and tools available in Package B (includes Package A) */
 const ALL_AGENTS = [
+  // ── Included from Package A ──
+  { id: 'strategy',           name: 'Strategy Agent',      sub: 'Define goals & GTM',                icon: <Target size={17}/>,        path: '/campaign/growth_strategy', tag: 'PKG A', color: '#c8973e' },
+  { id: 'growth',             name: 'Growth Agent',         sub: 'Get clients & leads',               icon: <TrendingUp size={17}/>,    path: '/campaign/growth_agent',    tag: 'PKG A', color: '#c8973e', popular: true },
+  { id: 'content',            name: 'Content Agent',        sub: 'Brand & content plan',              icon: <Layers size={17}/>,        path: '/campaign/content_calendar',tag: 'PKG A', color: '#c8973e' },
+  { id: 'image-angles',       name: 'Image to Angles',      sub: 'Multi-angle product shots',         icon: <Image size={17}/>,         path: '/image-angles',             tag: 'PKG A', color: '#10b981' },
+  { id: 'lifestyle-img',      name: 'Lifestyle Images',     sub: 'On-brand scene photography',        icon: <Camera size={17}/>,        path: '/image-lifestyle',          tag: 'PKG A', color: '#ec4899' },
+  { id: 'banner',             name: 'Banner Creation',      sub: 'Ad-ready static banners',           icon: <LayoutTemplate size={17}/>,path: null,                        tag: 'PKG A', color: '#a855f7', soon: true },
+  { id: 'social',             name: 'Post to Social',       sub: 'Schedule & publish',                icon: <Share2 size={17}/>,        path: '/connect-accounts',         tag: 'PKG A', color: '#3b82f6' },
+  { id: 'mktg-strategy',      name: 'Marketing Strategy',  sub: 'Annual, quarterly & monthly plans', icon: <TrendingUp size={17}/>,    path: '/strategy',                 tag: 'PKG A', color: '#c8973e' },
+  { id: 'brand-kb',           name: 'Brand Knowledge Base', sub: 'Brand assets, voice & guidelines',  icon: <BookOpen size={17}/>,     path: '/brand-kb',                 tag: 'PKG A', color: '#f59e0b' },
+  { id: 'analytics',          name: 'Analytics Report',     sub: 'Performance metrics & insights',    icon: <BarChart2 size={17}/>,    path: '/analytics',                tag: 'PKG A', color: '#3b82f6' },
+  { id: 'email-drip',         name: 'Email Drip',           sub: 'Automated email sequences',         icon: <Mail size={17}/>,         path: '/campaign/email_drip',      tag: 'PKG A', color: '#10b981' },
+  // ── Package B (this tier) ──
   {
     id: 'lifestyle-video',
     name: 'Lifestyle Video Generator',
@@ -77,6 +90,15 @@ const ALL_AGENTS = [
     color: '#10b981',
   },
   {
+    id: 'video-gen',
+    name: 'Video Generation',
+    sub: 'AI video production package',
+    icon: <Film size={17} />,
+    path: '/video-gen',
+    tag: 'PACKAGE B',
+    color: '#ef4444',
+  },
+  {
     id: 'content-export',
     name: 'Content Export',
     sub: 'PDF, CSV & scheduling format',
@@ -103,6 +125,45 @@ const ALL_AGENTS = [
     path: '/connect-accounts',
     tag: 'PACKAGE B',
     color: '#6366f1',
+  },
+  { id: 'trend-analysis',  name: 'Trend Analysis',    sub: 'Market & content trends',        icon: <TrendingUp size={17}/>, path: '/trends',               tag: 'PACKAGE B', color: '#f97316' },
+  { id: 'influencer-pr',   name: 'Influencer & PR',   sub: 'Influencer outreach & press',    icon: <Users size={17}/>,     path: '/campaign/influencer_pr',tag: 'PACKAGE B', color: '#a855f7' },
+  { id: 'audience-bld',    name: 'Audience Builder',  sub: 'Precision audience segmentation',icon: <Target size={17}/>,    path: '/audience-builder',     tag: 'PACKAGE B', color: '#10b981' },
+  {
+    id: 'marketing-strategy',
+    name: 'Marketing Strategy',
+    sub: 'Annual, quarterly & monthly plans',
+    icon: <TrendingUp size={17} />,
+    path: '/strategy',
+    tag: 'CMO',
+    color: '#c8973e',
+  },
+  {
+    id: 'video-gen',
+    name: 'Video Generation',
+    sub: 'AI video production package',
+    icon: <Film size={17} />,
+    path: '/video-gen',
+    tag: 'CMO',
+    color: '#ef4444',
+  },
+  {
+    id: 'brand-governance',
+    name: 'Brand Governance',
+    sub: 'Conformance review & audit log',
+    icon: <Shield size={17} />,
+    path: '/brand-governance',
+    tag: 'CMO',
+    color: '#6366f1',
+  },
+  {
+    id: 'execution',
+    name: 'Marketing Execution',
+    sub: 'Channel router & campaign launch',
+    icon: <Rocket size={17} />,
+    path: '/execution',
+    tag: 'CMO',
+    color: '#10b981',
   },
 ]
 
@@ -256,6 +317,11 @@ export default function PackageBPage() {
   const [loadingAccts, setLoadingAccts]   = useState(true)
   const [disconnecting, setDisconnecting] = useState({})
   const [sidebarOpen, setSidebarOpen]     = useState(true)
+  const [expandedPkgs, setExpandedPkgs]   = useState(['b']) // Package B open by default
+
+  const togglePkg = (key) => setExpandedPkgs(prev =>
+    prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
+  )
 
   /** Load connected social accounts from Firestore on mount */
   useEffect(() => {
@@ -357,19 +423,66 @@ export default function PackageBPage() {
                   Select a tool to launch
                 </p>
 
-                <div style={{ fontSize: 9, fontWeight: 800, color: '#c8973e', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 6 }}>
-                  Package B Tools
-                </div>
-                <div style={{ borderTop: `1px solid ${BORDER}` }}>
-                  {ALL_AGENTS.map(agent => (
-                    <AgentRow
-                      key={agent.id}
-                      agent={agent}
-                      selected={selectedAgent?.id === agent.id}
-                      onSelect={() => setSelectedAgent(agent)}
-                    />
-                  ))}
-                </div>
+                {[
+                  { key: 'a', label: 'Package A', color: '#c8973e', agents: ALL_AGENTS.filter(a => a.tag === 'PKG A') },
+                  { key: 'b', label: 'Package B', color: '#3b82f6', agents: ALL_AGENTS.filter(a => a.tag === 'PACKAGE B') },
+                ].map(pkg => {
+                  const isOpen = expandedPkgs.includes(pkg.key)
+                  return (
+                    <div key={pkg.key} style={{ marginBottom: 6 }}>
+                      <button
+                        onClick={() => togglePkg(pkg.key)}
+                        style={{
+                          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                          padding: '8px 10px', borderRadius: 10, cursor: 'pointer',
+                          background: isOpen ? `${pkg.color}14` : 'rgba(255,255,255,0.04)',
+                          border: `1px solid ${isOpen ? pkg.color + '35' : 'rgba(255,255,255,0.07)'}`,
+                          marginBottom: 2, transition: 'all 0.18s',
+                        }}
+                        onMouseEnter={e => { if (!isOpen) e.currentTarget.style.background = 'rgba(255,255,255,0.07)' }}
+                        onMouseLeave={e => { if (!isOpen) e.currentTarget.style.background = 'rgba(255,255,255,0.04)' }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{ width: 8, height: 8, borderRadius: '50%', background: pkg.color, flexShrink: 0 }} />
+                          <span style={{ fontSize: 11, fontWeight: 800, color: isOpen ? pkg.color : 'rgba(240,235,224,0.55)', letterSpacing: '0.04em' }}>
+                            {pkg.label}
+                          </span>
+                          <span style={{ fontSize: 9, color: 'rgba(240,235,224,0.28)', fontWeight: 600 }}>
+                            {pkg.agents.length} tools
+                          </span>
+                        </div>
+                        <svg
+                          width="12" height="12" viewBox="0 0 24 24" fill="none"
+                          stroke={isOpen ? pkg.color : 'rgba(240,235,224,0.3)'}
+                          strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                          style={{ transition: 'transform 0.2s', transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink: 0 }}
+                        >
+                          <path d="M6 9l6 6 6-6" />
+                        </svg>
+                      </button>
+                      <AnimatePresence initial={false}>
+                        {isOpen && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.22, ease: 'easeInOut' }}
+                            style={{ overflow: 'hidden', borderLeft: `2px solid ${pkg.color}30`, marginLeft: 4 }}
+                          >
+                            {pkg.agents.map(agent => (
+                              <AgentRow
+                                key={agent.id}
+                                agent={agent}
+                                selected={selectedAgent?.id === agent.id}
+                                onSelect={() => setSelectedAgent(agent)}
+                              />
+                            ))}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  )
+                })}
               </>
             ) : (
               /* Collapsed — icon only */

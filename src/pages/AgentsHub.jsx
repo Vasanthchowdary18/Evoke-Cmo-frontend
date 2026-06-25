@@ -8,7 +8,9 @@ import {
   CheckCircle2, AlertCircle, Play, Sparkles, ChevronRight,
   Link2, Coins, Bot, LayoutDashboard, Camera,
   Eye, Trash2, Clock, ChevronDown, ChevronUp, ArrowLeft,
-  Shield, Code2, TrendingDown, DollarSign, Crown,
+  Shield, Code2, TrendingDown, DollarSign, Crown, Download, BookOpen,
+  Inbox,
+  Share2,
 } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
 import { useAuth } from '../hooks/useAuth.js'
@@ -78,34 +80,20 @@ function timeAgo(iso) {
   return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-/* ─── Agent Org Chart data ─── */
-const AGENT_STATUSES = [
-  { id: 'cmo_director',   status: 'active',  text: 'Orchestrating strategy...' },
-  { id: 'strategy',       status: 'active',  text: 'Building roadmap...' },
-  { id: 'content_seo',    status: 'running', text: 'Building 30-day plan...' },
-  { id: 'visual',         status: 'active',  text: 'Generating visuals...' },
-  { id: 'ads',            status: 'idle',    text: 'Ready to deploy' },
-  { id: 'social',         status: 'running', text: 'Scheduling posts...' },
-  { id: 'seo_sub',        status: 'idle',    text: 'Ready' },
-  { id: 'content_sub',    status: 'running', text: 'Drafting blog post...' },
-  { id: 'image_gen',      status: 'active',  text: 'Processing images...' },
-  { id: 'video_360',      status: 'idle',    text: 'Ready' },
-  { id: 'analytics',      status: 'running', text: 'Analysing performance...' },
-]
-
-const STATUS_COLORS = {
-  active:  { dot: '#10b981', bg: 'rgba(16,185,129,0.12)',  border: 'rgba(16,185,129,0.3)',  label: 'ACTIVE'  },
-  running: { dot: GOLD,      bg: GDIM,                     border: GBORDER,                  label: 'RUNNING' },
-  idle:    { dot: '#64748b', bg: 'rgba(100,116,139,0.08)', border: 'rgba(100,116,139,0.2)',  label: 'IDLE'    },
-}
-
-function getStatus(id) {
-  return AGENT_STATUSES.find(a => a.id === id) || { status: 'idle', text: 'Ready' }
-}
-
 /* ─── Recommended Actions based on user state ─── */
 function getRecommendedActions(connectedCount, campaigns, tokenBalance) {
   const actions = []
+
+  actions.push({
+    priority: 0,
+    icon: <BookOpen size={18} />,
+    title: 'Set Up Brand Knowledge Base',
+    desc: 'Your AI CMO needs to know your brand, goals and market before it can personalize any campaign.',
+    color: GOLD,
+    cta: 'Set Up Now',
+    path: '/brand-kb',
+    highlight: true,
+  })
 
   if (connectedCount === 0) {
     actions.push({
@@ -127,7 +115,7 @@ function getRecommendedActions(connectedCount, campaigns, tokenBalance) {
       desc: 'Let EVOX CMO build a complete multi-channel marketing campaign for your brand.',
       color: GOLD,
       cta: 'Launch Campaign',
-      path: '/cmo',
+      path: '/campaign-hub',
     })
   } else {
     actions.push({
@@ -171,75 +159,27 @@ function getRecommendedActions(connectedCount, campaigns, tokenBalance) {
     path: '/products',
   })
 
+  actions.push({
+    priority: 6,
+    icon: <TrendingUp size={18} />,
+    title: 'Analyse Current Trends',
+    desc: 'Get trending hashtags, content ideas, and competitor intelligence for your industry.',
+    color: '#ec4899',
+    cta: 'View Trends',
+    path: '/trends',
+  })
+
+  actions.push({
+    priority: 7,
+    icon: <Inbox size={18} />,
+    title: 'Check Social Inbox',
+    desc: 'View and reply to messages from LinkedIn, Instagram, Facebook, and WhatsApp.',
+    color: '#25d366',
+    cta: 'Open Inbox',
+    path: '/inbox',
+  })
+
   return actions.slice(0, 4)
-}
-
-/* ─── Org Chart node component ─── */
-function AgentNode({ id, title, role, model, color, onClick, compact = false }) {
-  const { status, text } = getStatus(id)
-  const sc = STATUS_COLORS[status]
-
-  return (
-    <motion.div
-      whileHover={{ y: -2, boxShadow: `0 8px 24px ${color}20` }}
-      onClick={onClick}
-      style={{
-        background: CARD,
-        border: `1px solid ${status === 'idle' ? BORDER : sc.border}`,
-        borderRadius: compact ? 10 : 14,
-        padding: compact ? '10px 14px' : '14px 16px',
-        cursor: 'pointer',
-        transition: 'all 0.2s',
-        minWidth: compact ? 130 : 160,
-        position: 'relative',
-      }}
-    >
-      {/* Status dot */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-        <div style={{
-          width: 7, height: 7, borderRadius: '50%', background: sc.dot, flexShrink: 0,
-          boxShadow: status !== 'idle' ? `0 0 6px ${sc.dot}` : 'none',
-          animation: status === 'running' ? 'pulse 2s ease-in-out infinite' : 'none',
-        }} />
-        <span style={{ fontSize: 9, fontWeight: 800, color: sc.dot, letterSpacing: '0.06em' }}>
-          {sc.label}
-        </span>
-      </div>
-
-      <div style={{ fontSize: compact ? 11 : 12, fontWeight: 800, color: TEXT, marginBottom: 2, letterSpacing: '-0.01em', lineHeight: 1.3 }}>
-        {title}
-      </div>
-      {!compact && (
-        <>
-          <div style={{ fontSize: 10, color: TEXT3, marginBottom: 4 }}>{role}</div>
-          <div style={{
-            fontSize: 9, color: sc.dot, fontStyle: 'italic',
-            display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden',
-          }}>
-            {text}
-          </div>
-        </>
-      )}
-      {compact && (
-        <div style={{ fontSize: 9, color: TEXT3, marginTop: 1 }}>{model}</div>
-      )}
-    </motion.div>
-  )
-}
-
-/* ─── Vertical connector line ─── */
-const VLine = ({ height = 24 }) => (
-  <div style={{ width: 1, height, background: `${GOLD}30`, margin: '0 auto' }} />
-)
-
-/* ─── Horizontal connector spans ─── */
-function HConnector({ count }) {
-  if (count <= 1) return <VLine />
-  return (
-    <div style={{ position: 'relative', display: 'flex', justifyContent: 'center' }}>
-      <div style={{ width: 1, height: 20, background: `${GOLD}30`, margin: '0 auto' }} />
-    </div>
-  )
 }
 
 export default function AgentsHub() {
@@ -273,12 +213,16 @@ export default function AgentsHub() {
 
   const handleLaunchCMO = () => {
     if (!user) { redirectToLogin(); return }
-    navigate('/cmo')
+    const pkg = (() => { try { return localStorage.getItem('evoke_selected_package') || 'free' } catch { return 'free' } })()
+    const dest = { 'package-a': '/package-a', 'package-b': '/package-b', 'package-c': '/package-c' }[pkg] || '/package-a'
+    navigate(dest)
   }
 
   const handleLaunchObjective = () => {
     if (!user) { redirectToLogin(); return }
-    navigate('/cmo')
+    const pkg = (() => { try { return localStorage.getItem('evoke_selected_package') || 'free' } catch { return 'free' } })()
+    const dest = { 'package-a': '/package-a', 'package-b': '/package-b', 'package-c': '/package-c' }[pkg] || '/package-a'
+    navigate(dest)
   }
 
   const viewCampaign = (c) => {
@@ -322,8 +266,8 @@ export default function AgentsHub() {
       { id: 'content_sub',  title: 'Content Sub-Agent', role: 'Blog & Landing Pages',       model: 'EVOX AI',         color: '#6366f1', path: '/campaign/seo_blog' },
     ],
     visual: [
-      { id: 'image_gen', title: 'Image Gen Agent',      role: 'Product & Lifestyle Photos', model: 'GPT Image 2 / Replicate', color: '#ec4899', path: '/products' },
-      { id: 'video_360', title: 'Video/360 Agent',      role: 'Lifestyle & 360° Videos',    model: 'Runway ML / Luma AI',  color: '#f97316', path: '/products' },
+      { id: 'image_gen', title: 'Image Gen Agent',      role: 'Product & Lifestyle Photos', model: 'GPT Image 2 / Replicate', color: '#ec4899', path: '/campaign/image_angles' },
+      { id: 'video_360', title: 'Video/360 Agent',      role: 'Lifestyle & 360° Videos',    model: 'Runway ML / Luma AI',  color: '#f97316', path: '/campaign/image_360' },
     ],
   }
   const analyticsAgent = { id: 'analytics', title: 'Analytics & Reporting', role: 'KPIs, ROAS & Insights', model: 'EVOX AI + data tools', color: '#8b5cf6', path: '/campaign/analytics_report' }
@@ -399,6 +343,126 @@ export default function AgentsHub() {
                 <Coins size={13} />
                 {tokenBalance !== null ? `${tokenBalance} Token${tokenBalance !== 1 ? 's' : ''}` : '— Tokens'}
               </button>
+              <button
+                onClick={() => navigate('/trends')}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '9px 18px',
+                  background: 'rgba(236,72,153,0.08)',
+                  border: '1px solid rgba(236,72,153,0.25)',
+                  borderRadius: 10, color: '#ec4899',
+                  fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                }}
+              >
+                <TrendingUp size={13} /> Trends
+              </button>
+              <button
+                onClick={() => navigate('/audience-builder')}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '9px 18px',
+                  background: 'rgba(139,92,246,0.08)',
+                  border: '1px solid rgba(139,92,246,0.25)',
+                  borderRadius: 10, color: '#8b5cf6',
+                  fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                }}
+              >
+                <Users size={13} /> Audiences
+              </button>
+              <button
+                onClick={() => navigate('/team')}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '9px 18px',
+                  background: 'rgba(99,102,241,0.08)',
+                  border: '1px solid rgba(99,102,241,0.25)',
+                  borderRadius: 10, color: '#6366f1',
+                  fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                }}
+              >
+                <Users size={13} /> Team
+              </button>
+              <button
+                onClick={() => navigate('/partner-sharing')}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '9px 18px',
+                  background: 'rgba(20,184,166,0.08)',
+                  border: '1px solid rgba(20,184,166,0.25)',
+                  borderRadius: 10, color: '#14b8a6',
+                  fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                }}
+              >
+                <Share2 size={13} /> Partners
+              </button>
+              <button
+                onClick={() => navigate('/strategy')}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '9px 18px',
+                  background: 'rgba(200,151,62,0.08)',
+                  border: `1px solid ${GBORDER}`,
+                  borderRadius: 10, color: GOLD,
+                  fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                }}
+              >
+                <TrendingUp size={13} /> Strategy
+              </button>
+              <button
+                onClick={() => navigate('/video-gen')}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '9px 18px',
+                  background: 'rgba(239,68,68,0.08)',
+                  border: '1px solid rgba(239,68,68,0.25)',
+                  borderRadius: 10, color: '#ef4444',
+                  fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                }}
+              >
+                <Film size={13} /> Video Gen
+              </button>
+              <button
+                onClick={() => navigate('/brand-governance')}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '9px 18px',
+                  background: 'rgba(99,102,241,0.08)',
+                  border: '1px solid rgba(99,102,241,0.25)',
+                  borderRadius: 10, color: '#6366f1',
+                  fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                }}
+              >
+                <Shield size={13} /> Brand Gov
+              </button>
+              <button
+                onClick={() => navigate('/execution')}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '9px 18px',
+                  background: 'rgba(16,185,129,0.08)',
+                  border: '1px solid rgba(16,185,129,0.25)',
+                  borderRadius: 10, color: '#10b981',
+                  fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                }}
+              >
+                <Rocket size={13} /> Execution
+              </button>
+              <a
+                href="/EVOX-CMO-Gap-Analysis.docx"
+                download="EVOX-CMO-Gap-Analysis.docx"
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '9px 18px',
+                  background: 'rgba(99,102,241,0.12)',
+                  border: '1px solid rgba(99,102,241,0.3)',
+                  borderRadius: 10, color: '#6366f1',
+                  fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                  fontFamily: 'inherit', textDecoration: 'none',
+                }}
+              >
+                <Download size={13} />
+                Gap Analysis
+              </a>
             </div>
           </div>
         </motion.div>
@@ -472,6 +536,64 @@ export default function AgentsHub() {
               <div style={{ fontSize: 11, color: TEXT3, fontWeight: 500 }}>{metric.sub}</div>
             </motion.div>
           ))}
+        </motion.div>
+
+        {/* ═══ SECTION: Recommended Actions ═══ */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.3 }}
+          style={{ marginBottom: 48 }}
+        >
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '4px 12px', background: GDIM, border: `1px solid ${GBORDER}`,
+            borderRadius: 100, fontSize: 11, fontWeight: 700, color: GOLD, letterSpacing: '0.06em', marginBottom: 14,
+          }}>
+            <Zap size={11} /> NEXT STEPS
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 14 }}>
+            {recommendedActions.map((action, i) => (
+              <motion.div
+                key={i}
+                whileHover={{ y: -2, boxShadow: `0 8px 24px ${action.color}18` }}
+                onClick={() => navigate(action.path)}
+                style={{
+                  background: CARD,
+                  border: `1px solid ${action.highlight ? action.color + '50' : BORDER}`,
+                  borderRadius: 14, padding: '18px 20px', cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  position: 'relative', overflow: 'hidden',
+                }}
+              >
+                {action.highlight && (
+                  <div style={{
+                    position: 'absolute', top: 0, left: 0, right: 0, height: 2,
+                    background: `linear-gradient(90deg, ${action.color}, ${action.color}80)`,
+                  }} />
+                )}
+                <div style={{
+                  width: 36, height: 36, borderRadius: 10, marginBottom: 12,
+                  background: `${action.color}18`, border: `1px solid ${action.color}30`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: action.color,
+                }}>
+                  {action.icon}
+                </div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: TEXT, marginBottom: 6 }}>
+                  {action.title}
+                </div>
+                <div style={{ fontSize: 12, color: TEXT2, lineHeight: 1.55, marginBottom: 14 }}>
+                  {action.desc}
+                </div>
+                <div style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                  fontSize: 12, fontWeight: 700, color: action.color,
+                }}>
+                  {action.cta} <ChevronRight size={13} />
+                </div>
+              </motion.div>
+            ))}
+          </div>
         </motion.div>
 
         {/* ═══ SECTION 5: Campaign History ═══ */}
@@ -574,7 +696,7 @@ export default function AgentsHub() {
         {/* ═══ Back to Agents ═══ */}
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: 48 }}>
           <button
-            onClick={() => navigate('/package-a')}
+            onClick={() => navigate('/')}
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 8,
               padding: '12px 26px', background: CARD,

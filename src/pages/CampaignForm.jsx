@@ -40,7 +40,7 @@ import { buildEventSlug, saveEventPage, downloadEventHtml } from "../services/ev
 const CLOUDINARY_CLOUD = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "dxbn3vyig";
 const CLOUDINARY_PRESET = "tiktok_videos"; // Unsigned preset in Cloudinary
 const WS_KEY  = import.meta.env.VITE_WAVESPEED_API_KEY || "";
-const GEM_KEY = import.meta.env.VITE_GEMINI_API_KEY   || "";
+const GROQ_KEY = import.meta.env.VITE_GROQ_API_KEY || "";
 
 /* ── WaveSpeed image-to-video ── */
 async function wsSubmit(model, prompt, imageUrl, duration = 5) {
@@ -65,16 +65,24 @@ async function wsPoll(getUrl) {
   throw new Error("Timed out waiting for video.");
 }
 
-/* ── Gemini text ── */
+/* ── Groq text ── */
 async function gemText(prompt) {
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEM_KEY}`,
-    { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) }
+    'https://api.groq.com/openai/v1/chat/completions',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_KEY}` },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.7,
+        max_tokens: 4096,
+      }),
+    }
   );
-  if (!res.ok) throw new Error(`Gemini ${res.status}`);
+  if (!res.ok) throw new Error(`Groq ${res.status}`);
   const d = await res.json();
-  return d?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+  return d?.choices?.[0]?.message?.content || "";
 }
 
 /* ── 6 converter configs ── */
@@ -365,6 +373,9 @@ ${form.keywords ? `Keywords: ${form.keywords}` : ""}
 ${form.toneOfVoice ? `Brand Tone of Voice: ${form.toneOfVoice}` : ""}
 ${form.socialPlatforms?.length ? `Connected Social Platforms to target: ${form.socialPlatforms.join(", ")}` : ""}
 ${form.contentTypes?.length ? `Formats Requested: ${form.contentTypes.join(", ")}` : ""}
+${form.targetClientProfile ? `Ideal Client Profile: ${form.targetClientProfile}` : ""}
+${form.avgDealSize ? `Average Deal / Contract Value: ${form.avgDealSize}` : ""}
+${form.acquisitionChannel ? `Primary Acquisition Channel: ${form.acquisitionChannel}` : ""}
 ${websiteContent ? `\n--- LIVE WEBSITE CONTENT (use this to deeply understand the business, products, and tone) ---\n${websiteContent}\n---` : ""}
 `.trim();
 
@@ -936,8 +947,8 @@ const campaignMeta = {
   },
   growth_agent: {
     title: "Growth Agent",
-    color: "#10b981",
-    icon: <Zap size={22} />,
+    color: "#f97316",
+    icon: <TrendingUp size={22} />,
     badge: "GROWTH",
   },
   competitive_intel: {
@@ -1079,7 +1090,7 @@ export default function CampaignForm() {
   const { type } = useParams();
   const navigate  = useNavigate();
   const location  = useLocation();
-  const backPath  = location.state?.from || "/cmo";
+  const backPath  = location.state?.from;
   const { user: authUser } = useAuth();
   // Free-trial users have no membership type ID. Show the social-connect panel
   // only for paid Package A members — leave the free-trial flow untouched.
@@ -1696,7 +1707,7 @@ export default function CampaignForm() {
     )
     if (!popup) {
       // Popup blocked — fall back to navigation
-      navigate('/connect-accounts', { state: { from: backPath } })
+      navigate('/connect-accounts', { state: { from: backPath || window.location.pathname } })
       return
     }
     // Poll for popup close, then refresh accounts
@@ -1955,7 +1966,7 @@ export default function CampaignForm() {
     competitive_intel:{ name: "Your Brand",            namePh: "Your brand name",                   desc: "Your Product / Service to Analyze"        },
     content_calendar: { name: "Brand / Channel",       namePh: "Brand or social channel name",      desc: "What content do you want to create & what are your goals?" },
     seo_blog:         { name: "Blog Topic",            namePh: "e.g. How to grow on LinkedIn",      desc: "Target Audience & Context"                },
-    email_drip:       { name: "Campaign / Product",    namePh: "What this email series is for",     desc: "Funnel Goal & Audience Segment"           },
+    email_drip:       { name: "Campaign / Product",    namePh: "What this email series is for",     desc: "Campaign Brief"           },
     influencer:       { name: "Brand / Campaign",      namePh: "Brand or campaign name",            desc: "Campaign Objectives & Key Messages"       },
     analytics_report: { name: "Company / Period",      namePh: "e.g. Acme Inc - Q1 2025",           desc: "Marketing Activities to Report On"        },
     sales_enablement: { name: "Product / Service",     namePh: "What you're selling",               desc: "Target Customer & Unique Value Prop"      },
@@ -2087,7 +2098,7 @@ export default function CampaignForm() {
       <Navbar />
       <div style={s.container}>
         <button
-          onClick={() => navigate(backPath)}
+          onClick={() => backPath ? navigate(backPath) : navigate(-1)}
           style={{
             display: "inline-flex",
             alignItems: "center",
@@ -2506,6 +2517,37 @@ export default function CampaignForm() {
               <select value={form.budget || ""} onChange={(e) => set("budget", e.target.value)} style={{ ...s.input, cursor: "pointer", colorScheme: "dark" }}>
                 {["","Under ₹50,000 / $500","₹50,000–₹2L / $500–$2,000","₹2L–₹5L / $2,000–$5,000","₹5L–₹15L / $5,000–$15,000","₹15L–₹50L / $15,000–$50,000","Above ₹50L / $50,000+"].map((v) => (
                   <option key={v} value={v} style={{ background: "#1c1a13", color: v ? "#f0ebe0" : "rgba(240,235,224,0.4)" }}>{v || "Select budget range..."}</option>
+                ))}
+              </select>
+            </>
+          )}
+
+          {/* ── Growth Agent–only fields: client acquisition context ── */}
+          {type === "growth_agent" && (
+            <>
+              <label style={s.label}>Target Client Profile <span style={s.req}>*</span></label>
+              <p style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginTop: -8, marginBottom: 8 }}>
+                Describe your ideal client — industry, size, pain points, and buying behaviour.
+              </p>
+              <textarea
+                value={form.targetClientProfile || ""}
+                onChange={(e) => set("targetClientProfile", e.target.value)}
+                placeholder="e.g. Mid-size SaaS companies with 50–500 employees struggling with lead generation and churn..."
+                rows={3}
+                style={{ ...s.input, resize: "vertical", minHeight: 80 }}
+              />
+
+              <label style={s.label}>Average Deal / Contract Value <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 11, fontWeight: 400 }}>(optional)</span></label>
+              <select value={form.avgDealSize || ""} onChange={(e) => set("avgDealSize", e.target.value)} style={{ ...s.input, cursor: "pointer", colorScheme: "dark" }}>
+                {["", "Under $1,000", "$1,000 – $5,000", "$5,000 – $20,000", "$20,000 – $50,000", "$50,000 – $150,000", "$150,000+"].map((v) => (
+                  <option key={v} value={v} style={{ background: "#1c1a13", color: v ? "#f0ebe0" : "rgba(240,235,224,0.4)" }}>{v || "Select deal size..."}</option>
+                ))}
+              </select>
+
+              <label style={s.label}>Primary Acquisition Channel <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 11, fontWeight: 400 }}>(optional)</span></label>
+              <select value={form.acquisitionChannel || ""} onChange={(e) => set("acquisitionChannel", e.target.value)} style={{ ...s.input, cursor: "pointer", colorScheme: "dark" }}>
+                {["", "Cold Outreach (Email / LinkedIn)", "Referrals & Word of Mouth", "Inbound / Content Marketing", "Paid Ads (Google / Meta)", "Events & Networking", "Partnerships & Resellers", "Social Media Organic", "Not sure yet"].map((v) => (
+                  <option key={v} value={v} style={{ background: "#1c1a13", color: v ? "#f0ebe0" : "rgba(240,235,224,0.4)" }}>{v || "Select main channel..."}</option>
                 ))}
               </select>
             </>
@@ -3038,7 +3080,7 @@ export default function CampaignForm() {
             </>
           )}
 
-          {type !== "event" && type !== "growth_strategy" && type !== "growth_agent" && type !== "content_calendar" && type !== "ads_creation" && type !== "ads_manager" && type !== "target_audience" && !EXEC_TYPES.includes(type) && (
+          {type !== "event" && type !== "growth_strategy" && type !== "growth_agent" && type !== "content_calendar" && type !== "ads_creation" && type !== "ads_manager" && type !== "target_audience" && type !== "email_drip" && type !== "influencer" && type !== "analytics_report" && !EXEC_TYPES.includes(type) && (
             <>
               <label style={s.label}>
                 Price / Pricing Info{" "}
@@ -3408,50 +3450,41 @@ export default function CampaignForm() {
           <label style={{ ...s.label, marginTop: "12px" }}>
             Campaign Duration <span style={s.req}>*</span>
           </label>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "4px" }}>
-            {[
-              { days: 1,  label: "1 Day",     sub: "Single post"   },
-              { days: 7,  label: "7 Days",    sub: "1 week"        },
-              { days: 10, label: "10 Days",   sub: "Boost phase"   },
-              { days: 14, label: "14 Days",   sub: "2 weeks"       },
-              { days: 21, label: "21 Days",   sub: "3 weeks"       },
-              { days: 30, label: "30 Days",   sub: "Full month"    },
-            ].map(({ days, label, sub }) => {
-              const active = form.campaignDays === days;
-              return (
-                <button
-                  key={days}
-                  type="button"
-                  onClick={() => set("campaignDays", days)}
-                  style={{
-                    display: "flex", flexDirection: "column", alignItems: "center",
-                    padding: "10px 18px", minWidth: "80px",
-                    background: active ? `${meta.color}12` : "#f8fafc",
-                    border: `1.5px solid ${active ? meta.color : "rgba(245,240,232,0.15)"}`,
-                    borderRadius: "12px", cursor: "pointer",
-                    transition: "all 0.15s",
-                  }}
-                >
-                  <span style={{ fontSize: "14px", fontWeight: 800, color: active ? meta.color : "#0f172a" }}>{label}</span>
-                  <span style={{ fontSize: "10px", color: active ? meta.color : "#94a3b8", fontWeight: 500, marginTop: "2px" }}>{sub}</span>
-                </button>
-              );
-            })}
-
-            {/* Custom input */}
-            <div style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 14px", background: "#211f17", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "12px" }}>
-              <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.5)", fontWeight: 600 }}>Custom:</span>
-              <input
-                type="number"
-                min="1"
-                max="90"
-                value={![1,7,10,14,21,30].includes(form.campaignDays) ? form.campaignDays : ""}
-                placeholder="days"
-                onChange={e => { const v = parseInt(e.target.value); if (v >= 1 && v <= 90) set("campaignDays", v); }}
-                style={{ width: "52px", background: "#1c1a13", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "6px", padding: "4px 8px", fontSize: "13px", color: "#ffffff", outline: "none" }}
-              />
-            </div>
-          </div>
+          <select
+            value={form.campaignDays || 7}
+            onChange={(e) => set("campaignDays", parseInt(e.target.value))}
+            style={{
+              width: "100%",
+              padding: "10px 14px",
+              background: "#1c1a13",
+              border: "1px solid rgba(200,151,62,0.25)",
+              borderRadius: "10px",
+              color: "#f0ebe0",
+              fontSize: "14px",
+              fontWeight: 600,
+              cursor: "pointer",
+              fontFamily: "'Inter', sans-serif",
+              outline: "none",
+              transition: "border-color 0.2s",
+              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23c8973e' d='M1 1l5 5 5-5'/%3E%3C/svg%3E")`,
+              backgroundRepeat: "no-repeat",
+              backgroundPosition: "right 12px center",
+              paddingRight: "36px",
+              appearance: "none",
+            }}
+            onFocus={(e) => e.target.style.borderColor = "#c8973e"}
+            onBlur={(e) => e.target.style.borderColor = "rgba(200,151,62,0.25)"}
+          >
+            <option value="1">1 Day (Single post)</option>
+            <option value="7">7 Days (1 week)</option>
+            <option value="10">10 Days (Boost phase)</option>
+            <option value="14">14 Days (2 weeks)</option>
+            <option value="21">21 Days (3 weeks)</option>
+            <option value="30">30 Days (Full month)</option>
+            <option value="45">45 Days</option>
+            <option value="60">60 Days</option>
+            <option value="90">90 Days</option>
+          </select>
 
           {form.campaignDays > 1 && (
             <div style={{ marginTop: "8px", padding: "10px 14px", background: `${meta.color}08`, border: `1px solid ${meta.color}25`, borderRadius: "10px", display: "flex", alignItems: "center", gap: "8px", fontSize: "12px", color: "rgba(255,255,255,0.5)" }}>
@@ -3548,100 +3581,6 @@ export default function CampaignForm() {
           <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.3)", marginTop: "6px" }}>
             Green dot = connected. Tap an unconnected platform to link your account.
           </p>
-
-          {/* ── WhatsApp Recipients ── */}
-          {form.platforms.includes("whatsapp") && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              style={{ marginTop: "16px", padding: "18px", background: "rgba(37,211,102,0.06)", border: "1px solid rgba(37,211,102,0.2)", borderRadius: "14px" }}
-            >
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
-                <div style={{ fontWeight: 700, fontSize: "14px", color: "#25d366" }}>WhatsApp Recipients</div>
-                <label style={{
-                  display: "flex", alignItems: "center", gap: "6px", cursor: "pointer",
-                  fontSize: "12px", fontWeight: 700, color: "#25d366",
-                  background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.3)",
-                  borderRadius: "8px", padding: "5px 12px",
-                }}>
-                  <Upload size={12} /> Upload CSV
-                  <input type="file" accept=".csv,.txt" style={{ display: "none" }} onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    const reader = new FileReader();
-                    reader.onload = (ev) => {
-                      const text = ev.target.result;
-                      const phones = text.split(/[\n,;]+/).map(s => s.trim()).filter(s => s.match(/^\+?\d[\d\s\-]{6,}/));
-                      if (phones.length) set("whatsappRecipients", (form.whatsappRecipients ? form.whatsappRecipients + ", " : "") + phones.join(", "));
-                    };
-                    reader.readAsText(file);
-                    e.target.value = "";
-                  }} />
-                </label>
-              </div>
-              <div style={{ fontSize: "12px", color: "rgba(255,255,255,0.5)", marginBottom: "10px" }}>
-                Paste numbers with country code or upload a CSV — separated by commas.<br />
-                <span style={{ color: "rgba(255,255,255,0.35)" }}>Example: +919876543210, +918123456789</span>
-              </div>
-              <textarea
-                value={form.whatsappRecipients}
-                onChange={(e) => set("whatsappRecipients", e.target.value)}
-                placeholder="+919876543210, +918123456789, +971501234567"
-                style={{ ...s.textarea, minHeight: "80px", borderColor: "rgba(37,211,102,0.25)" }}
-              />
-              <div style={{ fontSize: "11px", color: "rgba(37,211,102,0.6)", marginTop: "6px" }}>
-                WhatsApp Business API will send messages to each number
-              </div>
-            </motion.div>
-          )}
-
-          {/* ── Email Recipients ── */}
-          {form.platforms.includes("email") && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              style={{ marginTop: "16px", padding: "18px", background: "rgba(212,168,83,0.05)", border: "1px solid rgba(124,58,237,0.2)", borderRadius: "14px" }}
-            >
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
-                <div style={{ fontWeight: 700, fontSize: "14px", color: "#c8973e" }}>Email Recipients</div>
-                <label style={{
-                  display: "flex", alignItems: "center", gap: "6px", cursor: "pointer",
-                  fontSize: "12px", fontWeight: 700, color: "#c8973e",
-                  background: "rgba(200,151,62,0.1)", border: "1px solid rgba(200,151,62,0.3)",
-                  borderRadius: "8px", padding: "5px 12px",
-                }}>
-                  <Upload size={12} /> Upload CSV
-                  <input type="file" accept=".csv,.txt" style={{ display: "none" }} onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    const reader = new FileReader();
-                    reader.onload = (ev) => {
-                      const text = ev.target.result;
-                      const emails = text.split(/[\n,;]+/).map(s => s.trim()).filter(s => s.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/));
-                      if (emails.length) set("emailRecipients", (form.emailRecipients ? form.emailRecipients + ", " : "") + emails.join(", "));
-                    };
-                    reader.readAsText(file);
-                    e.target.value = "";
-                  }} />
-                </label>
-              </div>
-              <div style={{ fontSize: "12px", color: "rgba(255,255,255,0.5)", marginBottom: "10px" }}>
-                Paste addresses or upload a CSV — separated by commas.<br />
-                <span style={{ color: "rgba(255,255,255,0.35)" }}>Example: john@example.com, team@company.com</span>
-              </div>
-              <textarea
-                value={form.emailRecipients}
-                onChange={(e) => set("emailRecipients", e.target.value)}
-                placeholder="john@example.com, team@company.com, leads@business.com"
-                style={{ ...s.textarea, minHeight: "80px", borderColor: "rgba(124,58,237,0.25)" }}
-              />
-              <div style={{ fontSize: "11px", color: "rgba(124,58,237,0.6)", marginTop: "6px" }}>
-                AI-generated email content will be sent to each address via Gmail
-              </div>
-            </motion.div>
-          )}
 
             </>
           )} {/* end type !== "growth_strategy" publishing settings */}

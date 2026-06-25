@@ -80,11 +80,11 @@ export default function FreePlanPage() {
     <div style={{ minHeight: '100vh', background: BG, color: TEXT, fontFamily: "'Inter', sans-serif" }}>
       <Navbar />
 
-      <div style={{ maxWidth: 820, margin: '0 auto', padding: '28px 24px 72px' }}>
+      <div style={{ maxWidth: 820, margin: '0 auto', padding: '90px 24px 72px' }}>
 
         {/* ── Back ── */}
         <button
-          onClick={() => navigate('/plans')}
+          onClick={() => navigate('/#pricing')}
           style={{
             display: 'inline-flex', alignItems: 'center', gap: 6,
             background: 'none', border: 'none', color: TEXT2,
