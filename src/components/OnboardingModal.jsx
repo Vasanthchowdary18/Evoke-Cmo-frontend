@@ -4,9 +4,9 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Zap, ArrowRight, Loader2, Send, Sparkles, Check } from 'lucide-react'
 import { saveOnboardingData } from '../services/userService'
 
-/* ─── Gemini ─── */
-const GEMINI_KEY = import.meta.env.VITE_GEMINI_API_KEY
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`
+/* ─── Groq ─── */
+const GROQ_KEY = import.meta.env.VITE_GROQ_API_KEY || ''
+const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
 
 const LS_STEP    = 'evoke_onboarding_step'      // 'needs_social'
 const LS_PROFILE = 'evoke_onboarding_profile'   // JSON of cmoData
@@ -155,16 +155,18 @@ Extract:
 }`
 
     try {
-      const res = await fetch(GEMINI_URL, {
+      const res = await fetch(GROQ_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_KEY}` },
         body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: extractPrompt }] }],
-          generationConfig: { temperature: 0.1, maxOutputTokens: 200 },
+          model: 'llama-3.3-70b-versatile',
+          messages: [{ role: 'user', content: extractPrompt }],
+          temperature: 0.1,
+          max_tokens: 200,
         }),
       })
       const data = await res.json()
-      const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+      const raw = data.choices?.[0]?.message?.content || ''
       const clean = raw.replace(/```json|```/g, '').trim()
       return JSON.parse(clean)
     } catch {
@@ -224,20 +226,29 @@ Extract:
   async function callGemini(userText) {
     historyRef.current = [...historyRef.current, { role: 'user', parts: [{ text: userText }] }]
 
-    const res = await fetch(GEMINI_URL, {
+    const messages = [
+      { role: 'system', content: buildSystemPrompt(name) },
+      ...historyRef.current.map(m => ({
+        role: m.role === 'model' ? 'assistant' : 'user',
+        content: m.parts[0].text,
+      })),
+    ]
+
+    const res = await fetch(GROQ_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_KEY}` },
       body: JSON.stringify({
-        system_instruction: { parts: [{ text: buildSystemPrompt(name) }] },
-        contents: historyRef.current,
-        generationConfig: { temperature: 0.8, maxOutputTokens: 220 },
+        model: 'llama-3.3-70b-versatile',
+        messages,
+        temperature: 0.8,
+        max_tokens: 220,
       }),
     })
 
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const data = await res.json()
     if (data.error) throw new Error(data.error.message)
-    const replyText = data.candidates?.[0]?.content?.parts?.[0]?.text
+    const replyText = data.choices?.[0]?.message?.content
     if (!replyText) throw new Error('Empty response')
 
     historyRef.current = [...historyRef.current, { role: 'model', parts: [{ text: replyText }] }]

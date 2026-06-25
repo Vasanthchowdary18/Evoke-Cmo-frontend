@@ -134,8 +134,8 @@ async function submitWaveSpeedJob(apiKey, model, prompt, imageUrl, duration) {
 }
 
 async function pollWaveSpeedJob(apiKey, getUrl) {
-  for (let i = 0; i < 60; i++) {
-    await new Promise(r => setTimeout(r, 3000))
+  for (let i = 0; i < 90; i++) {
+    await new Promise(r => setTimeout(r, 2000))
     const res = await fetch(getUrl, {
       headers: { 'Authorization': `Bearer ${apiKey}` },
     })
@@ -149,24 +149,26 @@ async function pollWaveSpeedJob(apiKey, getUrl) {
   throw new Error('Timed out waiting for video. Please try again.')
 }
 
-/* ─── Gemini API ─── */
-const GEMINI_MODEL = 'gemini-2.0-flash'
-
-async function callGemini(apiKey, prompt) {
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
-    }
-  )
+/* ─── Groq text generation ─── */
+async function callGroqText(prompt) {
+  const apiKey = import.meta.env.VITE_GROQ_API_KEY
+  if (!apiKey) throw new Error('VITE_GROQ_API_KEY not configured.')
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify({
+      model: 'llama-3.3-70b-versatile',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.7,
+      max_tokens: 4096,
+    }),
+  })
   if (!res.ok) {
     const e = await res.json()
-    throw new Error(e?.error?.message || `Gemini error ${res.status}`)
+    throw new Error(e?.error?.message || `Groq error ${res.status}`)
   }
   const data = await res.json()
-  return data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
+  return data?.choices?.[0]?.message?.content || ''
 }
 
 function tryParseJSON(text) {
@@ -237,7 +239,6 @@ export default function ImageToolPage() {
   const isVideo = tool?.type === 'video'
 
   const wsKey  = import.meta.env.VITE_WAVESPEED_API_KEY || ''
-  const gemKey = import.meta.env.VITE_GEMINI_API_KEY   || ''
   const [imageUrl,   setImageUrl]   = useState('')
   const [fields,     setFields]     = useState({})
   const [loading,    setLoading]    = useState(false)
@@ -317,32 +318,8 @@ export default function ImageToolPage() {
         if (!wsKey) throw new Error('WaveSpeed API key not configured. Add VITE_WAVESPEED_API_KEY to your .env file.')
         if (!imageUrl.trim()) throw new Error('Upload your product image first.')
 
-        setStatus('Checking your image...')
-        await new Promise((resolve, reject) => {
-          const img = new window.Image()
-          const timer = setTimeout(() => {
-            img.src = ''
-            reject(new Error('Your image took too long to load. Please re-upload and try again.'))
-          }, 15000)
-          img.onload = () => { clearTimeout(timer); resolve() }
-          img.onerror = () => {
-            clearTimeout(timer)
-            reject(new Error('Could not load your product image. Please re-upload and try again.'))
-          }
-          img.src = imageUrl.trim()
-        })
-
-        // Auto-generate AI prompt via Groq before video generation
-        let prompt = aiPrompt.trim()
-        if (!prompt) {
-          setStatus('Crafting AI prompt with Groq…')
-          try {
-            prompt = await generateGroqPrompt(tool.buildPrompt(fields), tool.title, fields)
-            setAiPrompt(prompt)
-          } catch {
-            prompt = tool.buildPrompt(fields)
-          }
-        }
+        // Use existing AI prompt or fall back to built prompt immediately — no extra Groq call here
+        const prompt = aiPrompt.trim() || tool.buildPrompt(fields)
 
         setStatus('Submitting job to WaveSpeed...')
         const job = await submitWaveSpeedJob(wsKey.trim(), tool.model, prompt, imageUrl.trim(), tool.duration)
@@ -354,9 +331,8 @@ export default function ImageToolPage() {
         setVideoUrl(url)
         setStatus('')
       } else {
-        if (!gemKey) throw new Error('Gemini API key not configured. Add VITE_GEMINI_API_KEY to your .env file.')
-        setStatus('Generating with Gemini AI...')
-        const text = await callGemini(gemKey.trim(), tool.buildPrompt(fields))
+        setStatus('Generating with EVOX AI...')
+        const text = await callGroqText(tool.buildPrompt(fields))
         const json = tryParseJSON(text)
         setTextResult({ raw: text, json })
         setStatus('')
@@ -520,6 +496,84 @@ export default function ImageToolPage() {
               </div>
             ))}
 
+            {/* ── AI Prompt section (inline, below fields) ── */}
+            {isVideo && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Wand2 size={13} color="#a78bfa" />
+                    <span style={{ fontSize: 10, fontWeight: 700, color: '#a78bfa', letterSpacing: '0.08em', textTransform: 'uppercase' }}>AI Prompt</span>
+                  </div>
+                  {aiPrompt && (
+                    <button
+                      onClick={handleGeneratePrompt}
+                      disabled={promptLoading}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: TEXT3, display: 'flex', alignItems: 'center', gap: 4, fontSize: 11 }}
+                    >
+                      <RefreshCw size={11} /> Regenerate
+                    </button>
+                  )}
+                </div>
+
+                {promptError && (
+                  <div style={{ padding: '9px 12px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, color: '#f87171', fontSize: 12 }}>
+                    {promptError}
+                  </div>
+                )}
+
+                {promptLoading ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 14px', background: 'rgba(139,92,246,0.07)', border: '1px dashed rgba(139,92,246,0.3)', borderRadius: 12 }}>
+                    <Loader2 size={14} color="#a78bfa" style={{ animation: 'spin 1s linear infinite', flexShrink: 0 }} />
+                    <span style={{ fontSize: 12, color: '#a78bfa' }}>Generating cinematic prompt…</span>
+                  </div>
+                ) : aiPrompt ? (
+                  <>
+                    <textarea
+                      value={aiPrompt}
+                      onChange={e => setAiPrompt(e.target.value)}
+                      rows={6}
+                      style={{ width: '100%', background: 'rgba(139,92,246,0.07)', border: '1.5px solid rgba(139,92,246,0.3)', borderRadius: 12, padding: '12px 14px', color: TEXT, fontSize: 12, lineHeight: 1.7, resize: 'vertical', outline: 'none', boxSizing: 'border-box', fontFamily: "'Inter',sans-serif" }}
+                    />
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button
+                        onClick={() => { navigator.clipboard.writeText(aiPrompt).then(() => { setCopied('prompt'); setTimeout(() => setCopied(null), 2000) }) }}
+                        style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '8px', background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.3)', borderRadius: 9, color: copied === 'prompt' ? '#4ade80' : '#a78bfa', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                      >
+                        {copied === 'prompt' ? <><Check size={11} /> Copied</> : <><Copy size={11} /> Copy Prompt</>}
+                      </button>
+                      <button
+                        onClick={() => setAiPrompt('')}
+                        style={{ padding: '8px 12px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 9, color: TEXT3, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ padding: '14px', background: 'rgba(139,92,246,0.05)', border: '1px dashed rgba(139,92,246,0.2)', borderRadius: 12, textAlign: 'center' }}>
+                    <Wand2 size={20} color="rgba(139,92,246,0.4)" style={{ marginBottom: 8 }} />
+                    <p style={{ color: TEXT3, fontSize: 11, lineHeight: 1.5, margin: 0 }}>
+                      Click <strong style={{ color: '#a78bfa' }}>Generate Prompt with AI</strong> to create a cinematic video prompt.
+                    </p>
+                  </div>
+                )}
+
+                {/* Generate Prompt with AI button */}
+                <button
+                  onClick={handleGeneratePrompt}
+                  disabled={promptLoading}
+                  style={{ padding: '11px 14px', background: promptLoading ? 'rgba(139,92,246,0.2)' : 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.4)', borderRadius: 10, color: '#a78bfa', fontSize: 13, fontWeight: 700, cursor: promptLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, fontFamily: "'Inter',sans-serif", transition: 'all 0.2s' }}
+                  onMouseEnter={e => { if (!promptLoading) e.currentTarget.style.background = 'rgba(139,92,246,0.22)' }}
+                  onMouseLeave={e => { if (!promptLoading) e.currentTarget.style.background = 'rgba(139,92,246,0.12)' }}
+                >
+                  {promptLoading
+                    ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Generating…</>
+                    : <><Wand2 size={14} /> Generate Prompt with AI</>
+                  }
+                </button>
+              </div>
+            )}
+
             {error && (
               <div style={{ padding: '11px 14px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10, color: '#f87171', fontSize: 13, lineHeight: 1.5 }}>
                 {error}
@@ -535,7 +589,7 @@ export default function ImageToolPage() {
             >
               {loading
                 ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> {status || 'Working...'}</>
-                : <><Sparkles size={16} /> {isVideo ? (aiPrompt ? 'Generate Video' : 'Generate AI Prompt + Video') : 'Generate SEO'}</>
+                : <><Sparkles size={16} /> {isVideo ? 'Generate Video' : 'Generate SEO'}</>
               }
             </button>
 
@@ -543,80 +597,6 @@ export default function ImageToolPage() {
               <p style={{ fontSize: 12, color: TEXT3, textAlign: 'center', marginTop: -4 }}>{status}</p>
             )}
           </div>
-
-          {/* ── MIDDLE: AI Prompt column (video tools only) ── */}
-          {isVideo && (
-            <div style={{ width: 300, flexShrink: 0, borderRight: '1px solid rgba(255,255,255,0.07)', overflowY: 'auto', padding: '20px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <Wand2 size={13} color="#a78bfa" />
-                  <span style={{ fontSize: 10, fontWeight: 700, color: '#a78bfa', letterSpacing: '0.08em', textTransform: 'uppercase' }}>AI Prompt</span>
-                </div>
-                {aiPrompt && (
-                  <button
-                    onClick={handleGeneratePrompt}
-                    disabled={promptLoading}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: TEXT3, display: 'flex', alignItems: 'center', gap: 4, fontSize: 11 }}
-                  >
-                    <RefreshCw size={11} /> Regenerate
-                  </button>
-                )}
-              </div>
-
-              {promptError && (
-                <div style={{ padding: '9px 12px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, color: '#f87171', fontSize: 12 }}>
-                  {promptError}
-                </div>
-              )}
-
-              {promptLoading && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '14px', background: 'rgba(139,92,246,0.07)', border: '1px dashed rgba(139,92,246,0.3)', borderRadius: 12 }}>
-                  <Loader2 size={14} color="#a78bfa" style={{ animation: 'spin 1s linear infinite', flexShrink: 0 }} />
-                  <span style={{ fontSize: 12, color: '#a78bfa' }}>Generating cinematic prompt…</span>
-                </div>
-              )}
-
-              {!promptLoading && aiPrompt && (
-                <AnimatePresence>
-                  <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-                    <textarea
-                      value={aiPrompt}
-                      onChange={e => setAiPrompt(e.target.value)}
-                      rows={10}
-                      style={{ width: '100%', background: 'rgba(139,92,246,0.07)', border: '1.5px solid rgba(139,92,246,0.3)', borderRadius: 12, padding: '12px 14px', color: TEXT, fontSize: 12, lineHeight: 1.7, resize: 'vertical', outline: 'none', boxSizing: 'border-box', fontFamily: "'Inter',sans-serif" }}
-                    />
-                    <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                      <button
-                        onClick={() => { navigator.clipboard.writeText(aiPrompt).then(() => { setCopied('prompt'); setTimeout(() => setCopied(null), 2000) }) }}
-                        style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '8px', background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.3)', borderRadius: 9, color: copied === 'prompt' ? '#4ade80' : '#a78bfa', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
-                      >
-                        {copied === 'prompt' ? <><Check size={11} /> Copied</> : <><Copy size={11} /> Copy Prompt</>}
-                      </button>
-                      <button
-                        onClick={() => setAiPrompt('')}
-                        style={{ padding: '8px 12px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 9, color: TEXT3, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
-                      >
-                        Clear
-                      </button>
-                    </div>
-                    <p style={{ fontSize: 11, color: TEXT3, marginTop: 10, lineHeight: 1.5 }}>
-                      This prompt will be used when you click <strong style={{ color: TEXT2 }}>Generate Video</strong>. Edit it freely.
-                    </p>
-                  </motion.div>
-                </AnimatePresence>
-              )}
-
-              {!promptLoading && !aiPrompt && (
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '30px 10px', border: '1px dashed rgba(139,92,246,0.2)', borderRadius: 12 }}>
-                  <Wand2 size={28} color="rgba(139,92,246,0.4)" style={{ marginBottom: 12 }} />
-                  <p style={{ color: TEXT3, fontSize: 12, lineHeight: 1.6 }}>
-                    Click <strong style={{ color: '#a78bfa' }}>Generate AI Prompt</strong> to create a cinematic video prompt from your inputs.
-                  </p>
-                  <p style={{ color: TEXT3, fontSize: 11, marginTop: 6 }}>You can edit it before generating.</p>
-                </div>
-              )}
-            </div>
-          )}
 
           {/* ── RIGHT: Output ── */}
           <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>

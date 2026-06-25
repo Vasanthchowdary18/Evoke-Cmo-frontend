@@ -191,6 +191,16 @@ export default function PostContent() {
     if (selectedPlatforms.includes('gmail') && !emailRecipients.trim()) {
       setError('Enter at least one recipient email for the Gmail invitation.'); return
     }
+
+    // Warn if LinkedIn token looks stale (stored more than 55 days ago)
+    if (selectedPlatforms.includes('linkedin') && accounts.linkedin?.connectedAt) {
+      const ageMs = Date.now() - accounts.linkedin.connectedAt
+      if (ageMs > 55 * 24 * 60 * 60 * 1000) {
+        setError('Your LinkedIn connection may have expired (tokens last 60 days). Please go to Connect Accounts and reconnect LinkedIn before posting.')
+        return
+      }
+    }
+
     setError('')
     setPosting(true)
 
@@ -208,6 +218,7 @@ export default function PostContent() {
         platforms: selectedPlatforms.join(','),
         userCredentials: creds,
         linkedinPost: caption,
+        linkedinAccessToken: accounts.linkedin?.accessToken || '',
         instagramCaption: caption,
         facebookPost: caption,
         imageUrl: finalMediaType === 'image' ? finalMediaUrl : '',
@@ -225,7 +236,23 @@ export default function PostContent() {
         body: JSON.stringify(payload),
       })
 
-      if (!res.ok) throw new Error('Post failed: ' + res.status)
+      // Try to read error detail from n8n response body
+      if (!res.ok) {
+        let detail = `HTTP ${res.status}`
+        try {
+          const body = await res.json()
+          detail = body?.message || body?.error || JSON.stringify(body) || detail
+        } catch {}
+        throw new Error('Post failed: ' + detail)
+      }
+
+      // n8n returns 200 even on workflow errors — check body for error signals
+      let resBody = null
+      try { resBody = await res.json() } catch {}
+      if (resBody?.error || resBody?.message?.toLowerCase().includes('error')) {
+        throw new Error('Workflow error: ' + (resBody.message || resBody.error || 'Check your n8n execution log.'))
+      }
+
       setPosted(true)
 
       // ── Record published items in the Firestore content library ──

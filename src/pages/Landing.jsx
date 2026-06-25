@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion, useInView } from 'framer-motion'
+import { motion, AnimatePresence, useInView } from 'framer-motion'
 import { ArrowRight, Check, Star, Zap, TrendingUp, Target, Calendar, Search, Mail, Users, BarChart2, Briefcase, Megaphone, ShoppingCart, Sparkles, Activity, Lightbulb, DollarSign, Rocket, Image, Film, Monitor, Share2, Layers, Play } from 'lucide-react'
 // OnboardingModal moved to AgentsHub — not triggered on landing page
 import Navbar from '../components/Navbar.jsx'
 import { useAuth } from '../hooks/useAuth.js'
 import { redirectToLogin } from '../lib/authUtils'
+import { saveOnboardingData, getUserData } from '../services/userService'
 
 /* ─── animation ─── */
 const fadeUp = { hidden:{opacity:0,y:24}, visible:{opacity:1,y:0,transition:{duration:0.55,ease:[0.22,1,0.36,1]}} }
@@ -73,18 +74,57 @@ const LOGO_ROW2 = [
 
 /* Agent cards — PDF strip_03/04 */
 const AGENTS = [
-  { title:'Growth Strategy',      desc:'Full GTM plan, revenue forecast, market sizing, and milestone roadmap.',            icon:<TrendingUp size={28}/>,  color:'#c8973e', bg:'linear-gradient(135deg,#2a1f0a,#1c1508)' },
-  { title:'Competitive Intel',    desc:'SWOT analysis, competitor profiles, pricing analysis, and positioning.',            icon:<Target size={28}/>,      color:'#ef4444', bg:'linear-gradient(135deg,#2a0a0a,#1c0808)' },
-  { title:'Content Calendar',     desc:'30-day multi-platform content plan with daily post ideas and hashtags.',             icon:<Calendar size={28}/>,    color:'#10b981', bg:'linear-gradient(135deg,#0a2a1a,#081c12)' },
-  { title:'SEO Blog Post',        desc:'Full 1,500-word SEO-optimised blog with meta, keywords, and internal links.',       icon:<Search size={28}/>,      color:'#3b82f6', bg:'linear-gradient(135deg,#0a1a2a,#08121c)' },
-  { title:'Email Drip Campaign',  desc:'5-email nurture sequence with subject lines, preheaders, and CTAs.',                icon:<Mail size={28}/>,        color:'#a855f7', bg:'linear-gradient(135deg,#1a0a2a,#12081c)' },
-  { title:'Influencer & PR Brief',desc:'Influencer campaign brief, press release, and media pitch templates.',              icon:<Users size={28}/>,       color:'#f59e0b', bg:'linear-gradient(135deg,#2a1f0a,#1c1508)' },
-  { title:'Analytics Report',     desc:'Executive KPI summary, channel breakdown, and data-driven recommendations.',       icon:<BarChart2 size={28}/>,   color:'#06b6d4', bg:'linear-gradient(135deg,#0a1f2a,#081418)' },
-  { title:'Sales Enablement',     desc:'Sales deck, elevator pitch, objection handling, and cold-call scripts.',            icon:<Briefcase size={28}/>,   color:'#84cc16', bg:'linear-gradient(135deg,#0f2a0a,#0a1c08)' },
-  { title:'Event Marketing',      desc:'Full event campaign — promotion timeline, content plan, and post-event follow-up.', icon:<Megaphone size={28}/>,   color:'#f97316', bg:'linear-gradient(135deg,#2a1208,#1c0c06)' },
-  { title:'Marketplace Growth',   desc:'Vendor strategy, buyer acquisition plan, and promotional campaign roadmap.',        icon:<ShoppingCart size={28}/>,color:'#ec4899', bg:'linear-gradient(135deg,#2a0a1a,#1c0812)' },
-  { title:'Brand Strategy',       desc:'Brand identity, tone of voice, messaging framework, and content pillars.',          icon:<Sparkles size={28}/>,    color:'#8b5cf6', bg:'linear-gradient(135deg,#1a0a2a,#12081c)' },
-  { title:'Funnel & CRO Audit',   desc:'Top-to-bottom funnel audit, A/B test ideas, and quick-win CTA optimisations.',     icon:<Activity size={28}/>,    color:'#14b8a6', bg:'linear-gradient(135deg,#0a2a28,#081c1a)' },
+  { title:'Growth Strategy',      type:'growth_strategy',   desc:'Full GTM plan, revenue forecast, market sizing, and milestone roadmap.',            icon:<TrendingUp size={28}/>,  color:'#c8973e', bg:'linear-gradient(135deg,#2a1f0a,#1c1508)' },
+  { title:'Competitive Intel',    type:'competitive_intel', desc:'SWOT analysis, competitor profiles, pricing analysis, and positioning.',            icon:<Target size={28}/>,      color:'#ef4444', bg:'linear-gradient(135deg,#2a0a0a,#1c0808)' },
+  { title:'Content Calendar',     type:'content_calendar',  desc:'30-day multi-platform content plan with daily post ideas and hashtags.',             icon:<Calendar size={28}/>,    color:'#10b981', bg:'linear-gradient(135deg,#0a2a1a,#081c12)' },
+  { title:'SEO Blog Post',        type:'seo_blog',          desc:'Full 1,500-word SEO-optimised blog with meta, keywords, and internal links.',       icon:<Search size={28}/>,      color:'#3b82f6', bg:'linear-gradient(135deg,#0a1a2a,#08121c)' },
+  { title:'Email Drip Campaign',  type:'email_drip',        desc:'5-email nurture sequence with subject lines, preheaders, and CTAs.',                icon:<Mail size={28}/>,        color:'#a855f7', bg:'linear-gradient(135deg,#1a0a2a,#12081c)' },
+  { title:'Influencer & PR Brief',type:'influencer',        desc:'Influencer campaign brief, press release, and media pitch templates.',              icon:<Users size={28}/>,       color:'#f59e0b', bg:'linear-gradient(135deg,#2a1f0a,#1c1508)' },
+  { title:'Analytics Report',     type:'analytics_report',  desc:'Executive KPI summary, channel breakdown, and data-driven recommendations.',       icon:<BarChart2 size={28}/>,   color:'#06b6d4', bg:'linear-gradient(135deg,#0a1f2a,#081418)' },
+  { title:'Sales Enablement',     type:'sales_enablement',  desc:'Sales deck, elevator pitch, objection handling, and cold-call scripts.',            icon:<Briefcase size={28}/>,   color:'#84cc16', bg:'linear-gradient(135deg,#0f2a0a,#0a1c08)' },
+  { title:'Event Marketing',      type:'event_full',        desc:'Full event campaign — promotion timeline, content plan, and post-event follow-up.', icon:<Megaphone size={28}/>,   color:'#f97316', bg:'linear-gradient(135deg,#2a1208,#1c0c06)' },
+  { title:'Marketplace Growth',   type:'marketplace',       desc:'Vendor strategy, buyer acquisition plan, and promotional campaign roadmap.',        icon:<ShoppingCart size={28}/>,color:'#ec4899', bg:'linear-gradient(135deg,#2a0a1a,#1c0812)' },
+  { title:'Brand Strategy',       type:'brand_strategy',    desc:'Brand identity, tone of voice, messaging framework, and content pillars.',          icon:<Sparkles size={28}/>,    color:'#8b5cf6', bg:'linear-gradient(135deg,#1a0a2a,#12081c)' },
+  { title:'Funnel & CRO Audit',   type:'funnel_cro',        desc:'Top-to-bottom funnel audit, A/B test ideas, and quick-win CTA optimisations.',     icon:<Activity size={28}/>,    color:'#14b8a6', bg:'linear-gradient(135deg,#0a2a28,#081c1a)' },
+]
+
+const PLAN_OPTIONS = [
+  {
+    key: 'free',
+    label: 'Free Plan',
+    tag: 'FREE',
+    tagColor: '#10b981',
+    desc: 'Try this module instantly — no payment required.',
+    cta: 'Try Free',
+    path: null, // uses module type → /campaign/{type}
+  },
+  {
+    key: 'package-a',
+    label: 'Package A',
+    tag: 'STARTER',
+    tagColor: '#3b82f6',
+    desc: 'Images, banners, social posting + all strategy modules.',
+    cta: 'Choose Package A',
+    path: '/package-a',
+  },
+  {
+    key: 'package-b',
+    label: 'Package B',
+    tag: 'POPULAR',
+    tagColor: '#c8973e',
+    desc: 'Full motion — lifestyle video, 360° product video & 30-day content.',
+    cta: 'Choose Package B',
+    path: '/package-b',
+  },
+  {
+    key: 'package-c',
+    label: 'Package C',
+    tag: 'PREMIUM',
+    tagColor: '#a855f7',
+    desc: 'Deploy paid ads at scale — FB & Google, managed end-to-end.',
+    cta: 'Choose Package C',
+    path: '/package-c',
+  },
 ]
 
 const PLANS = [
@@ -213,19 +253,6 @@ const AUTO_STEPS = [
 
 const WIZARD_STEPS = [
   {
-    key: 'background', frameworkIdx: null,
-    multiSelect: false,   // single-select — one role only
-    hasOther: true,       // "Other" option with free-text input
-    question: 'What best describes your background?',
-    sub: 'This helps EVOX personalise your marketing strategy from the start.',
-    options: [
-      { value: 'founder',  label: 'Founder / CEO',          icon: '🚀', desc: 'Building or scaling a startup'              },
-      { value: 'marketer', label: 'Marketing Lead',          icon: '📣', desc: 'CMO, Marketing Manager or Head of Growth'   },
-      { value: 'business', label: 'Business Owner',          icon: '💼', desc: 'Running an established business'            },
-      { value: 'agency',   label: 'Agency / Freelancer',     icon: '🎯', desc: 'Managing marketing for multiple clients'    },
-    ],
-  },
-  {
     key: 'objective', frameworkIdx: 0,
     multiSelect: true,
     question: 'What is your #1 marketing objective right now?',
@@ -259,7 +286,9 @@ const WIZARD_STEPS = [
       { value: 'mid',        label: '₹50K – ₹2L / mo',    icon: '📈', desc: 'Growing and actively scaling up'           },
       { value: 'high',       label: '₹2L – ₹10L / mo',    icon: '🚀', desc: 'Established brand with a strong budget'    },
       { value: 'enterprise', label: '₹10L+ / mo',          icon: '🏢', desc: 'Enterprise-level investment and scale'      },
+      { value: 'custom',     label: 'Custom',               icon: '✏️', desc: 'Enter your own budget figure'              },
     ],
+    hasCustomBudget: true,
   },
   {
     key: 'execution', frameworkIdx: 3,
@@ -328,6 +357,8 @@ export default function Landing() {
   const navigate = useNavigate()
 
   const [wizardOpen,      setWizardOpen]      = useState(false)
+  const [wizardPhase,     setWizardPhase]     = useState('plan') // 'plan' | 'questions' | 'connect'
+  const [wizardPlan,      setWizardPlan]      = useState(null)
   const [wizardStep,      setWizardStep]      = useState(0)
   const [wizardAnswers,   setWizardAnswers]   = useState({})
   const [wizardDone,      setWizardDone]      = useState(false)
@@ -340,21 +371,56 @@ export default function Landing() {
   // Persisted assessment + selected package (remembered until logout)
   const [selectedPackage, setSelectedPackage] = useState(null)
 
+  // Plan selector modal triggered by clicking an agent card
+  const [activeModule, setActiveModule] = useState(null)
+
   const persistAssessment = (answers) => {
     try { localStorage.setItem('evoke_assessment', JSON.stringify({ answers, ts: Date.now() })) } catch {}
   }
 
-  // On mount: restore a previously completed assessment + selected package
+  const saveProgress = (step, answers) => {
+    try { localStorage.setItem('evoke_wizard_progress', JSON.stringify({ step, answers })) } catch {}
+  }
+
+  const clearProgress = () => {
+    try { localStorage.removeItem('evoke_wizard_progress') } catch {}
+  }
+
+  // On mount: restore completed assessment OR partial progress + selected package
+  useEffect(() => {
+    // Scroll to hash anchor when returning from a sub-page (e.g. back from campaign-hub)
+    if (window.location.hash) {
+      const el = document.getElementById(window.location.hash.slice(1))
+      if (el) setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
+    }
+  }, [])
+
   useEffect(() => {
     try {
       const a = JSON.parse(localStorage.getItem('evoke_assessment') || 'null')
       if (a?.answers) { setWizardAnswers(a.answers); setWizardDone(true) }
+      else {
+        const p = JSON.parse(localStorage.getItem('evoke_wizard_progress') || 'null')
+        if (p?.answers) { setWizardAnswers(p.answers); setWizardStep(p.step ?? 0) }
+      }
     } catch {}
     try {
       const pkg = localStorage.getItem('evoke_selected_package')
       if (pkg) setSelectedPackage(pkg)
     } catch {}
   }, [])
+
+  // Sync assessment from Firestore when user logs in (same account, any device)
+  useEffect(() => {
+    if (!user) return
+    getUserData(user.uid).then(data => {
+      if (data?.onboardingComplete && data?.onboardingData) {
+        setWizardAnswers(data.onboardingData)
+        setWizardDone(true)
+        try { localStorage.setItem('evoke_assessment', JSON.stringify({ answers: data.onboardingData, ts: Date.now() })) } catch {}
+      }
+    }).catch(() => {})
+  }, [user])
 
   const handleWizardSelect = (value) => {
     const step = WIZARD_STEPS[wizardStep]
@@ -363,42 +429,70 @@ export default function Landing() {
       setWizardAnswers(prev => {
         const current = Array.isArray(prev[step.key]) ? prev[step.key] : []
         const has = current.includes(value)
-        return { ...prev, [step.key]: has ? current.filter(v => v !== value) : [...current, value] }
+        const next = { ...prev, [step.key]: has ? current.filter(v => v !== value) : [...current, value] }
+        saveProgress(wizardStep, next)
+        return next
       })
     } else {
-      // Single-select — auto-advance
+      // Single-select — set answer, but don't auto-advance if it needs extra input
       const finalAnswers = { ...wizardAnswers, [step.key]: value }
       setWizardAnswers(finalAnswers)
       setOtherBgSelected(false)
       setOtherBgInput('')
+      // If custom budget selected, stay on step to show the $ input
+      if (step.hasCustomBudget && value === 'custom') { saveProgress(wizardStep, finalAnswers); return }
       if (wizardStep < WIZARD_STEPS.length - 1) {
-        setWizardStep(s => s + 1)
+        const nextStep = wizardStep + 1
+        setWizardStep(nextStep)
+        saveProgress(nextStep, finalAnswers)
       } else {
         setWizardDone(true)
         persistAssessment(finalAnswers)
+        clearProgress()
       }
     }
   }
 
+  const goToConnect = (answers) => {
+    if (answers) persistAssessment(answers)
+    clearProgress()
+    setWizardDone(true)
+    setWizardOpen(false)
+    if (user) { saveOnboardingData(user.uid, answers).catch(() => {}) }
+    const planRoute = wizardPlan === 'free' ? '/free-plan' : wizardPlan ? `/${wizardPlan}` : '/agents-hub'
+    navigate(planRoute)
+  }
+
   const handleWizardContinue = () => {
     if (wizardStep < WIZARD_STEPS.length - 1) {
-      setWizardStep(s => s + 1)
+      const nextStep = wizardStep + 1
+      setWizardStep(nextStep)
+      saveProgress(nextStep, wizardAnswers)
     } else {
       setWizardDone(true)
-      persistAssessment(wizardAnswers)
+      goToConnect(wizardAnswers)
     }
   }
 
   // "Retake Assessment" — clear the saved result and start fresh
+  const closeWizard = () => {
+    setWizardOpen(false)
+    // Don't clear progress on close — user can resume where they left off
+  }
+
   const resetWizard = () => {
     try { localStorage.removeItem('evoke_assessment') } catch {}
+    clearProgress()
+    setWizardOpen(false)
+    setWizardPhase('questions')
+    setWizardPlan(null)
     setWizardStep(0)
     setWizardAnswers({})
     setWizardDone(false)
     setOtherBgInput('')
     setOtherBgSelected(false)
     setExpandedFeature(null)
-    setWizardOpen(true)
+    setTimeout(() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' }), 100)
   }
 
   const goSignIn = () => user ? navigate('/agents-hub') : redirectToLogin()
@@ -429,20 +523,22 @@ export default function Landing() {
   // If the user already completed the assessment, show their saved result
   // instead of asking the questions again.
   const openAssessment = () => {
-    let saved = null
-    try { saved = JSON.parse(localStorage.getItem('evoke_assessment') || 'null') } catch {}
-    if (saved?.answers) {
-      setWizardAnswers(saved.answers)
-      setWizardDone(true)
+    document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  const startWizardWithPlan = (planKey) => {
+    try { localStorage.setItem('evoke_selected_package', planKey) } catch {}
+    setWizardPlan(planKey)
+    if (wizardDone) {
+      setWizardPhase('ready')
     } else {
+      setWizardPhase('questions')
       setWizardStep(0)
       setWizardAnswers({})
-      setWizardDone(false)
+      setOtherBgInput('')
+      setOtherBgSelected(false)
     }
     setWizardOpen(true)
-    setTimeout(() => {
-      document.getElementById('cmo-assessment')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }, 50)
   }
 
   /* Gold gradient text helper */
@@ -630,242 +726,18 @@ export default function Landing() {
             </div>
           </FadeIn>
 
-          {/* ── Wizard CTA (when not open) ── */}
-          {!wizardOpen && (
-            <motion.div initial={{opacity:0,y:12}} animate={{opacity:1,y:0}} style={{textAlign:'center'}}>
-              <button
-                onClick={openAssessment}
-                style={{...goldPill,fontSize:15,padding:'14px 36px'}}
-                onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 10px 28px rgba(200,151,62,0.4)'}}
-                onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none'}}
-              >
-                Get Your Free CMO Assessment <ArrowRight size={16}/>
-              </button>
-              <p style={{marginTop:12,fontSize:12,color:TEXT3}}>7 quick questions · Takes under 2 minutes · No sign-up needed</p>
-            </motion.div>
-          )}
-
-          {/* ── Wizard question card ── */}
-          {wizardOpen && !wizardDone && (()=>{
-            const step = WIZARD_STEPS[wizardStep]
-            return (
-              <motion.div key={wizardStep} initial={{opacity:0,y:20}} animate={{opacity:1,y:0}} transition={{duration:0.35}}
-                style={{background:'linear-gradient(160deg,#161410,#131210)',border:`1px solid ${GBORDER}`,borderRadius:20,padding:'40px 36px',position:'relative'}}>
-
-                {/* Progress bar */}
-                <div style={{marginBottom:28}}>
-                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
-                    <span style={{fontSize:11,color:GOLD,fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase'}}>
-                      {step.frameworkIdx !== null ? WORKFLOW[step.frameworkIdx].label : 'Your Background'} · Step {wizardStep+1} of {WIZARD_STEPS.length}
-                    </span>
-                    <button onClick={resetWizard} style={{background:'none',border:'none',color:TEXT3,cursor:'pointer',fontSize:12,padding:0}}>✕ Close</button>
-                  </div>
-                  <div style={{height:4,borderRadius:4,background:'rgba(200,151,62,0.12)',overflow:'hidden'}}>
-                    <div style={{height:'100%',borderRadius:4,background:`linear-gradient(90deg,${GOLD},#b8803a)`,width:`${((wizardStep+1)/WIZARD_STEPS.length)*100}%`,transition:'width 0.4s ease'}}/>
-                  </div>
-                </div>
-
-                {/* Question */}
-                <div style={{marginBottom:8,fontSize:'clamp(16px,1.6vw,22px)',fontWeight:700,color:TEXT,fontFamily:"'Syne','Inter',sans-serif",lineHeight:1.3}}>{step.question}</div>
-                <div style={{fontSize:13,color:TEXT2,marginBottom:28,lineHeight:1.6}}>{step.sub}</div>
-
-                {/* Options grid */}
-                {(()=>{
-                  const selectedArr = Array.isArray(wizardAnswers[step.key]) ? wizardAnswers[step.key] : []
-                  const singleSel   = wizardAnswers[step.key]
-                  return (
-                    <>
-                      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:14}}>
-                        {step.options.map(opt=>{
-                          const isSelected = step.multiSelect
-                            ? selectedArr.includes(opt.value)
-                            : singleSel === opt.value
-                          return (
-                            <button key={opt.value} onClick={()=>handleWizardSelect(opt.value)}
-                              style={{
-                                background: isSelected ? 'rgba(200,151,62,0.12)' : CARD,
-                                border:`2px solid ${isSelected ? GOLD : GBORDER}`,
-                                borderRadius:14, padding:'18px 16px',
-                                cursor:'pointer', textAlign:'left',
-                                transition:'all 0.18s',
-                                display:'flex', flexDirection:'column', gap:6,
-                                position:'relative',
-                              }}
-                              onMouseEnter={e=>{if(!isSelected){e.currentTarget.style.borderColor='rgba(200,151,62,0.55)';e.currentTarget.style.background='rgba(200,151,62,0.05)';e.currentTarget.style.transform='translateY(-2px)'}}}
-                              onMouseLeave={e=>{if(!isSelected){e.currentTarget.style.borderColor=GBORDER;e.currentTarget.style.background=CARD;e.currentTarget.style.transform='translateY(0)'}}}>
-                              {/* Checkmark for multi-select */}
-                              {step.multiSelect && (
-                                <div style={{
-                                  position:'absolute', top:10, right:10,
-                                  width:18, height:18, borderRadius:'50%',
-                                  background: isSelected ? 'linear-gradient(135deg,#d4a853,#b8803a)' : 'rgba(255,255,255,0.06)',
-                                  border:`1.5px solid ${isSelected ? GOLD : 'rgba(255,255,255,0.12)'}`,
-                                  display:'flex', alignItems:'center', justifyContent:'center',
-                                  transition:'all 0.18s',
-                                }}>
-                                  {isSelected && <Check size={10} color="#0e0c09"/>}
-                                </div>
-                              )}
-                              <span style={{fontSize:22}}>{opt.icon}</span>
-                              <span style={{fontSize:13,fontWeight:700,color: isSelected ? GOLD : TEXT,transition:'color 0.18s'}}>{opt.label}</span>
-                              <span style={{fontSize:11,color:TEXT2,lineHeight:1.5}}>{opt.desc}</span>
-                            </button>
-                          )
-                        })}
-
-                        {/* "Other" card — background step only */}
-                        {step.hasOther && (
-                          <button
-                            onClick={()=>{ setOtherBgSelected(true); setTimeout(()=>document.getElementById('wiz-other-input')?.focus(),50) }}
-                            style={{
-                              background: otherBgSelected ? 'rgba(200,151,62,0.12)' : CARD,
-                              border:`2px solid ${otherBgSelected ? GOLD : GBORDER}`,
-                              borderRadius:14, padding:'18px 16px',
-                              cursor:'pointer', textAlign:'left',
-                              transition:'all 0.18s',
-                              display:'flex', flexDirection:'column', gap:6,
-                            }}
-                            onMouseEnter={e=>{if(!otherBgSelected){e.currentTarget.style.borderColor='rgba(200,151,62,0.55)';e.currentTarget.style.background='rgba(200,151,62,0.05)';e.currentTarget.style.transform='translateY(-2px)'}}}
-                            onMouseLeave={e=>{if(!otherBgSelected){e.currentTarget.style.borderColor=GBORDER;e.currentTarget.style.background=CARD;e.currentTarget.style.transform='translateY(0)'}}}>
-                            <span style={{fontSize:22}}>✏️</span>
-                            <span style={{fontSize:13,fontWeight:700,color: otherBgSelected ? GOLD : TEXT}}>Other</span>
-                            <span style={{fontSize:11,color:TEXT2,lineHeight:1.5}}>Describe your own role or background</span>
-                          </button>
-                        )}
-                      </div>
-
-                      {/* "Other" text input (background step) */}
-                      {step.hasOther && otherBgSelected && (
-                        <div style={{ marginTop:14, display:'flex', gap:10 }}>
-                          <input
-                            id="wiz-other-input"
-                            value={otherBgInput}
-                            onChange={e => setOtherBgInput(e.target.value)}
-                            onKeyDown={e => {
-                              if (e.key === 'Enter' && otherBgInput.trim()) {
-                                setWizardAnswers(prev => ({ ...prev, [step.key]: otherBgInput.trim() }))
-                                setOtherBgSelected(false)
-                                if (wizardStep < WIZARD_STEPS.length - 1) setWizardStep(s=>s+1); else setWizardDone(true)
-                              }
-                            }}
-                            placeholder="e.g. Growth Hacker, Product Manager, Consultant…"
-                            style={{
-                              flex:1, background:'rgba(255,255,255,0.05)',
-                              border:`1px solid rgba(200,151,62,0.45)`,
-                              borderRadius:10, padding:'11px 14px',
-                              fontSize:13, color:TEXT, outline:'none',
-                              fontFamily:"'Inter',sans-serif",
-                            }}
-                          />
-                          <button
-                            disabled={!otherBgInput.trim()}
-                            onClick={()=>{
-                              if (!otherBgInput.trim()) return
-                              setWizardAnswers(prev => ({ ...prev, [step.key]: otherBgInput.trim() }))
-                              setOtherBgSelected(false)
-                              if (wizardStep < WIZARD_STEPS.length - 1) setWizardStep(s=>s+1); else setWizardDone(true)
-                            }}
-                            style={{
-                              padding:'11px 20px', borderRadius:10,
-                              background: otherBgInput.trim() ? 'linear-gradient(135deg,#d4a853,#b8803a)' : 'rgba(200,151,62,0.15)',
-                              border:'none', color: otherBgInput.trim() ? '#0e0c09' : TEXT3,
-                              fontSize:13, fontWeight:700, cursor: otherBgInput.trim() ? 'pointer' : 'not-allowed',
-                              transition:'all 0.2s', whiteSpace:'nowrap',
-                            }}
-                          >
-                            Continue →
-                          </button>
-                        </div>
-                      )}
-
-                      {/* "Continue" button for multi-select steps */}
-                      {step.multiSelect && (
-                        <div style={{ marginTop:20, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-                          <span style={{ fontSize:11, color:TEXT3 }}>
-                            {selectedArr.length === 0
-                              ? 'Select at least one option'
-                              : `${selectedArr.length} selected`}
-                          </span>
-                          <button
-                            disabled={selectedArr.length === 0}
-                            onClick={handleWizardContinue}
-                            style={{
-                              padding:'11px 28px', borderRadius:100,
-                              background: selectedArr.length > 0 ? 'linear-gradient(135deg,#d4a853,#b8803a)' : 'rgba(200,151,62,0.15)',
-                              border:'none',
-                              color: selectedArr.length > 0 ? '#0e0c09' : TEXT3,
-                              fontSize:13, fontWeight:700,
-                              cursor: selectedArr.length > 0 ? 'pointer' : 'not-allowed',
-                              display:'flex', alignItems:'center', gap:7,
-                              transition:'all 0.2s',
-                            }}
-                            onMouseEnter={e=>{ if(selectedArr.length>0){e.currentTarget.style.transform='translateY(-1px)';e.currentTarget.style.boxShadow='0 6px 20px rgba(200,151,62,0.35)'}}}
-                            onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none'}}
-                          >
-                            Continue <ArrowRight size={14}/>
-                          </button>
-                        </div>
-                      )}
-                    </>
-                  )
-                })()}
-
-                {wizardStep > 0 && (
-                  <button onClick={()=>setWizardStep(s=>s-1)}
-                    style={{marginTop:16,background:'none',border:'none',color:TEXT3,cursor:'pointer',fontSize:12,padding:0,display:'inline-flex',alignItems:'center',gap:4}}>
-                    ← Back
-                  </button>
-                )}
-              </motion.div>
-            )
-          })()}
-
-          {/* ── Wizard result card ── */}
-          {wizardOpen && wizardDone && (()=>{
-            const r = getPersonalisedResult(wizardAnswers)
-            return (
-              <motion.div key="result" initial={{opacity:0,scale:0.97}} animate={{opacity:1,scale:1}} transition={{duration:0.4}}
-                style={{background:'linear-gradient(160deg,#1c1a13,#161410)',border:`1px solid rgba(200,151,62,0.4)`,borderRadius:20,padding:'44px 40px',textAlign:'center',boxShadow:'0 0 60px rgba(200,151,62,0.08)'}}>
-                <div style={{fontSize:32,marginBottom:12}}>✅</div>
-                <div style={{fontSize:11,fontWeight:700,color:GOLD,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:10}}>Your EVOX Strategy is Ready</div>
-                <h3 style={{fontSize:'clamp(18px,2vw,28px)',fontWeight:800,color:TEXT,fontFamily:"'Syne','Inter',sans-serif",marginBottom:12,lineHeight:1.3}}>
-                  As a <span style={goldGrad}>{r.role}</span>, here's what EVOX will do for you
-                </h3>
-                <p style={{fontSize:14,color:TEXT2,maxWidth:520,margin:'0 auto 28px',lineHeight:1.7}}>
-                  Your focus on <strong style={{color:TEXT}}>{r.objective}</strong> with the challenge of <strong style={{color:TEXT}}>{r.challenge}</strong> — EVOX will activate these modules first:
-                </p>
-                <div style={{display:'flex',gap:10,justifyContent:'center',flexWrap:'wrap',marginBottom:36}}>
-                  {r.modules.map(m=>(
-                    <span key={m} style={{padding:'7px 16px',background:'rgba(200,151,62,0.12)',border:`1px solid rgba(200,151,62,0.3)`,borderRadius:100,fontSize:12,fontWeight:600,color:GOLD}}>
-                      ✦ {m}
-                    </span>
-                  ))}
-                </div>
-                <p style={{fontSize:13,color:TEXT3,marginBottom:20}}>
-                  Your plan is set — jump straight into your campaign ↓
-                </p>
-                <div style={{display:'flex',gap:12,justifyContent:'center',flexWrap:'wrap'}}>
-                  <button onClick={()=>{
-                    if (!user) { goSignIn(); return }
-                    try { localStorage.setItem('evoke_selected_package', selectedPackage || 'free') } catch {}
-                    navigate('/connect-accounts?setup=cmo')
-                  }} style={{...goldPill,padding:'13px 32px'}}
-                    onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 10px 28px rgba(200,151,62,0.4)'}}
-                    onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none'}}>
-                    Start Your Campaign <ArrowRight size={16}/>
-                  </button>
-                  <button onClick={()=>document.getElementById('pricing')?.scrollIntoView({behavior:'smooth'})} style={{...outlinePill,padding:'13px 24px',fontSize:13}}
-                    onMouseEnter={e=>{e.currentTarget.style.borderColor='rgba(200,151,62,0.6)'}}
-                    onMouseLeave={e=>{e.currentTarget.style.borderColor=''}}>
-                    Choose Plan <ArrowRight size={14}/>
-                  </button>
-                  <button onClick={resetWizard} style={{...outlinePill,padding:'13px 24px',fontSize:13}}>
-                    Retake Assessment
-                  </button>
-                </div>
-              </motion.div>
-            )
-          })()}
+          {/* ── Wizard CTA ── */}
+          <motion.div initial={{opacity:0,y:12}} animate={{opacity:1,y:0}} style={{textAlign:'center'}}>
+            <button
+              onClick={openAssessment}
+              style={{...goldPill,fontSize:15,padding:'14px 36px'}}
+              onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 10px 28px rgba(200,151,62,0.4)'}}
+              onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none'}}
+            >
+              Get Your Free CMO Assessment <ArrowRight size={16}/>
+            </button>
+            <p style={{marginTop:12,fontSize:12,color:TEXT3}}>7 quick questions · Takes under 2 minutes · No sign-up needed</p>
+          </motion.div>
 
 
         </div>
@@ -922,7 +794,7 @@ export default function Landing() {
                 key:'cmo', label:'CMO Agent', role:'Chief Marketing Officer',
                 desc:'Generate complete multi-channel marketing campaigns for events, products, and brands — deployed in seconds.',
                 icon:(<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>),
-                color:GOLD, active:true, href:'/cmo', tags:['Campaigns','Content','Social'],
+                color:GOLD, active:true, href:'#pricing', tags:['Campaigns','Content','Social'],
               },
               {
                 key:'cfo', label:'CFO Agent', role:'Chief Financial Officer',
@@ -945,7 +817,7 @@ export default function Landing() {
             ].map((agent,i)=>(
               <FadeIn key={agent.key} delay={i*0.09}>
                 <div
-                  onClick={()=>agent.active&&(user?navigate(agent.href):goSignIn())}
+                  onClick={()=>agent.active&&(agent.href.startsWith('#')?document.getElementById(agent.href.slice(1))?.scrollIntoView({behavior:'smooth'}):navigate(agent.href))}
                   style={{
                     background:agent.active?'linear-gradient(160deg,#221d10,#1c1a13)':'linear-gradient(160deg,#161410,#131210)',
                     border:`1px solid ${agent.active?'rgba(200,151,62,0.5)':'rgba(200,151,62,0.15)'}`,
@@ -965,7 +837,7 @@ export default function Landing() {
                     {agent.tags.map(tag=>(<span key={tag} style={{padding:'3px 9px',background:agent.active?'rgba(200,151,62,0.08)':'rgba(255,255,255,0.03)',border:`1px solid ${agent.active?'rgba(200,151,62,0.2)':'rgba(255,255,255,0.06)'}`,borderRadius:100,fontSize:10,color:agent.active?'rgba(240,235,224,0.6)':'rgba(240,235,224,0.25)',fontWeight:500}}>{tag}</span>))}
                   </div>
                   {agent.active?(
-                    <button onClick={e=>{e.stopPropagation();user?navigate(agent.href):goSignIn()}} style={{width:'100%',padding:'11px',background:'linear-gradient(135deg,#d4a853,#b8803a)',border:'none',borderRadius:10,color:'#0e0c09',fontSize:13,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:6,fontFamily:"'Inter',sans-serif",transition:'all 0.2s'}}
+                    <button onClick={e=>{e.stopPropagation();agent.href.startsWith('#')?document.getElementById(agent.href.slice(1))?.scrollIntoView({behavior:'smooth'}):navigate(agent.href)}} style={{width:'100%',padding:'11px',background:'linear-gradient(135deg,#d4a853,#b8803a)',border:'none',borderRadius:10,color:'#0e0c09',fontSize:13,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:6,fontFamily:"'Inter',sans-serif",transition:'all 0.2s'}}
                       onMouseEnter={e=>{e.currentTarget.style.boxShadow='0 6px 20px rgba(200,151,62,0.4)'}}
                       onMouseLeave={e=>{e.currentTarget.style.boxShadow='none'}}>
                       Launch CMO Agent
@@ -982,64 +854,134 @@ export default function Landing() {
       </section>
 
       {/* ══════════════════════════════════════════════════
-          12 AI AGENTS
+          8 CORE AI AGENTS ECOSYSTEM
       ══════════════════════════════════════════════════ */}
-      <section id="features" style={{padding:'80px 40px',background:'#0a0908'}}>
+      <section id="agents-ecosystem" style={{padding:'80px 40px',background:BG}}>
         <div style={{maxWidth:1200,margin:'0 auto'}}>
           <FadeIn style={{textAlign:'center',marginBottom:60}}>
-            <SBadge>12 AI Agents</SBadge>
+            <SBadge>Agent &amp; Tool Ecosystem</SBadge>
             <h2 style={{fontSize:'clamp(22px,2.8vw,42px)',fontWeight:800,letterSpacing:'-0.03em',lineHeight:1.2,color:TEXT,fontFamily:"'Syne','Inter',sans-serif"}}>
-              Everything you need to market<br/>
-              like a <span style={goldGrad}>Fortune 500 CMO</span>
+              8 Core Agents.<br/><span style={goldGrad}>Every business function covered.</span>
             </h2>
-            <p style={{fontSize:15,color:TEXT2,maxWidth:500,margin:'14px auto 0',lineHeight:1.65}}>
-              12 specialised AI marketing agents — each generates complete, professional output in under 60 seconds.
+            <p style={{fontSize:15,color:TEXT2,maxWidth:520,margin:'14px auto 0',lineHeight:1.65}}>
+              Each agent runs its own specialist function autonomously — strategy, creative, execution, governance, and more.
             </p>
           </FadeIn>
 
           <motion.div initial="hidden" whileInView="visible" viewport={{once:true,margin:'-60px'}} variants={stagger}
-            style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))',gap:20}}>
-            {AGENTS.map((a,i)=>(
-              <motion.div key={a.title} variants={fadeUp}
-                style={{background:CARD,border:`1px solid rgba(255,255,255,0.07)`,borderRadius:20,overflow:'hidden',cursor:'pointer',transition:'all 0.25s'}}
-                onMouseEnter={e=>{e.currentTarget.style.borderColor=a.color+'55';e.currentTarget.style.transform='translateY(-4px)';e.currentTarget.style.boxShadow=`0 20px 50px ${a.color}18`}}
+            style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:16}}>
+            {[
+              {
+                label:'Marketing Strategy Agent',
+                badge:'STRATEGY',
+                color:'#c8973e',
+                headerBg:'linear-gradient(135deg,#2a1f0a,#1c1508)',
+                icon:<TrendingUp size={20}/>,
+                points:['Annual / Quarterly / Monthly Plans','Budget recommendations per channel','7 input fields · 5 output tabs'],
+                tag:'NEW',
+                route:'/hub/strategy',
+              },
+              {
+                label:'Campaign Planning Agent',
+                badge:'CAMPAIGNS',
+                color:'#3b82f6',
+                headerBg:'linear-gradient(135deg,#0a1428,#08101e)',
+                icon:<Target size={20}/>,
+                points:['Campaign brief + timeline','Growth / Content / Product types','AI-generated full plan'],
+                tag:null,
+                route:'/campaign-hub',
+              },
+              {
+                label:'Audience Intelligence',
+                badge:'AUDIENCE',
+                color:'#a855f7',
+                headerBg:'linear-gradient(135deg,#1a0828,#12061c)',
+                icon:<Users size={20}/>,
+                points:['Segmentation + lookalike builder','Retargeting audience profiles','Trend analysis + CRM data'],
+                tag:null,
+                route:'/hub/audience',
+              },
+              {
+                label:'Content Generation Agent',
+                badge:'CONTENT',
+                color:'#10b981',
+                headerBg:'linear-gradient(135deg,#0a2018,#081410)',
+                icon:<Layers size={20}/>,
+                points:['Captions + Reel scripts','Product descriptions + Blogs','Brand voice matching'],
+                tag:null,
+                route:'/hub/content',
+              },
+              {
+                label:'Creative Asset Agent',
+                badge:'CREATIVE',
+                color:'#ec4899',
+                headerBg:'linear-gradient(135deg,#280a18,#1c0812)',
+                icon:<Image size={20}/>,
+                points:['Images: Angles · 360 · 3D · SEO','AI Banners + Product Renders','Meta Ads Boost'],
+                tag:null,
+                route:'/hub/creative',
+              },
+              {
+                label:'Video Generation Agent',
+                badge:'VIDEO · NEW',
+                color:'#ef4444',
+                headerBg:'linear-gradient(135deg,#280a0a,#1c0808)',
+                icon:<Film size={20}/>,
+                points:['Promo · Product · Reel · Ad · Event','Script + Visual + Audio + Brand Review','6 video types'],
+                tag:'NEW',
+                route:'/hub/video',
+              },
+              {
+                label:'Brand Governance Agent',
+                badge:'GOVERNANCE · NEW',
+                color:'#06b6d4',
+                headerBg:'linear-gradient(135deg,#0a1e28,#08141c)',
+                icon:<Monitor size={20}/>,
+                points:['5-pillar brand standards database','Approved / Flagged / Rejected routing','Conformance review · Live audit log'],
+                tag:'NEW',
+                route:'/hub/governance',
+              },
+              {
+                label:'Marketing Execution Agent',
+                badge:'EXECUTION · NEW',
+                color:'#84cc16',
+                headerBg:'linear-gradient(135deg,#102808,#0a1c06)',
+                icon:<Share2 size={20}/>,
+                points:['7-channel: Meta · LinkedIn · TikTok · Google','Email · SMS · Marketplace','Scheduler · Budget · Audience · KPIs'],
+                tag:'NEW',
+                route:'/hub/execution',
+              },
+            ].map((agent,i)=>(
+              <motion.div key={agent.label} variants={fadeUp}
+                onClick={()=>{if(user){navigate(agent.route)}else{try{sessionStorage.setItem('evoke_post_login_route',agent.route)}catch{}redirectToLogin()}}}
+                style={{background:'#141210',border:`1px solid rgba(255,255,255,0.07)`,borderRadius:16,overflow:'hidden',cursor:'pointer',transition:'all 0.25s'}}
+                onMouseEnter={e=>{e.currentTarget.style.borderColor=agent.color+'66';e.currentTarget.style.transform='translateY(-4px)';e.currentTarget.style.boxShadow=`0 20px 50px ${agent.color}18`}}
                 onMouseLeave={e=>{e.currentTarget.style.borderColor='rgba(255,255,255,0.07)';e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none'}}>
-                {/* Image header zone */}
-                <div style={{
-                  height:130,
-                  background:a.bg,
-                  display:'flex',
-                  alignItems:'center',
-                  justifyContent:'center',
-                  position:'relative',
-                  overflow:'hidden',
-                }}>
-                  {/* glow orb */}
-                  <div style={{position:'absolute',width:120,height:120,borderRadius:'50%',background:a.color,opacity:0.12,filter:'blur(40px)'}}/>
-                  {/* grid lines overlay */}
-                  <div style={{position:'absolute',inset:0,backgroundImage:`linear-gradient(${a.color}08 1px,transparent 1px),linear-gradient(90deg,${a.color}08 1px,transparent 1px)`,backgroundSize:'24px 24px'}}/>
-                  {/* number badge top-right */}
-                  <div style={{position:'absolute',top:12,right:14,fontSize:10,fontWeight:800,color:a.color+'88',letterSpacing:'0.1em'}}>{String(i+1).padStart(2,'0')}</div>
-                  {/* icon */}
-                  <div style={{
-                    width:64,height:64,borderRadius:18,
-                    background:`${a.color}18`,
-                    border:`1.5px solid ${a.color}35`,
-                    display:'flex',alignItems:'center',justifyContent:'center',
-                    color:a.color,
-                    position:'relative',zIndex:1,
-                    boxShadow:`0 0 30px ${a.color}22`,
-                  }}>
-                    {a.icon}
+                {/* Colored header */}
+                <div style={{background:agent.headerBg,borderBottom:`1px solid ${agent.color}22`,padding:'16px 18px',display:'flex',alignItems:'center',gap:10}}>
+                  <div style={{width:34,height:34,borderRadius:9,background:`${agent.color}20`,border:`1px solid ${agent.color}40`,display:'flex',alignItems:'center',justifyContent:'center',color:agent.color,flexShrink:0}}>
+                    {agent.icon}
+                  </div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{display:'flex',alignItems:'center',gap:6}}>
+                      <span style={{fontSize:9,fontWeight:800,color:agent.color,letterSpacing:'0.07em'}}>{agent.badge}</span>
+                      {agent.tag&&(<span style={{fontSize:8,fontWeight:700,padding:'2px 6px',background:`${agent.color}20`,border:`1px solid ${agent.color}40`,borderRadius:100,color:agent.color,letterSpacing:'0.06em'}}>{agent.tag}</span>)}
+                    </div>
+                    <div style={{fontSize:12,fontWeight:700,color:TEXT,lineHeight:1.3,marginTop:3}}>{agent.label}</div>
                   </div>
                 </div>
-                {/* Text body */}
-                <div style={{padding:'20px 22px 24px'}}>
-                  <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
-                    <h3 style={{fontSize:15,fontWeight:700,color:TEXT,letterSpacing:'-0.01em',margin:0}}>{a.title}</h3>
-                    <div style={{width:6,height:6,borderRadius:'50%',background:a.color,flexShrink:0,marginLeft:'auto'}}/>
+                {/* Body */}
+                <div style={{padding:'16px 18px 18px'}}>
+                  {agent.points.map((pt,pi)=>(
+                    <div key={pi} style={{display:'flex',alignItems:'flex-start',gap:8,marginBottom:pi<agent.points.length-1?10:0}}>
+                      <div style={{width:5,height:5,borderRadius:'50%',background:agent.color,flexShrink:0,marginTop:5}}/>
+                      <span style={{fontSize:12,color:TEXT2,lineHeight:1.55}}>{pt}</span>
+                    </div>
+                  ))}
+                  <div style={{marginTop:16,display:'flex',alignItems:'center',gap:4,color:agent.color,fontSize:11,fontWeight:600}}>
+                    <span>Launch agent</span>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
                   </div>
-                  <p style={{fontSize:13,color:TEXT2,lineHeight:1.65,margin:0}}>{a.desc}</p>
                 </div>
               </motion.div>
             ))}
@@ -1251,11 +1193,7 @@ export default function Landing() {
                   <p style={{fontSize:12,color:TEXT2,marginBottom:16,paddingBottom:16,borderBottom:`1px solid ${BORDER}`,lineHeight:1.55}}>{plan.tagline}</p>
 
                   <button
-                    onClick={()=>{
-                      try { localStorage.setItem('evoke_selected_package', plan.key) } catch {}
-                      if (!user) { goSignIn(); return }
-                      navigate('/connect-accounts?setup=cmo')
-                    }}
+                    onClick={()=> startWizardWithPlan(plan.key)}
                     style={{
                       width:'100%',padding:'12px',marginBottom:20,
                       background:plan.key==='free'?'linear-gradient(135deg,#d4a853,#b8803a)':plan.ctaDark?'linear-gradient(135deg,#d4a853,#b8803a)':'rgba(255,255,255,0.06)',
@@ -1266,7 +1204,7 @@ export default function Landing() {
                     }}
                     onMouseEnter={e=>{e.currentTarget.style.opacity='0.88';e.currentTarget.style.transform='translateY(-1px)'}}
                     onMouseLeave={e=>{e.currentTarget.style.opacity='1';e.currentTarget.style.transform='translateY(0)'}}
-                  >{plan.key === 'free' ? 'Start Free Assessment' : plan.cta}</button>
+                  >{plan.cta}</button>
 
                   <div style={{borderTop:`1px solid ${BORDER}`,paddingTop:16}}>
                     <div style={{fontSize:10,fontWeight:800,color:TEXT3,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:12}}>WHAT'S INCLUDED</div>
@@ -1315,41 +1253,6 @@ export default function Landing() {
               </div>
             </div>
           </FadeIn>
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════════════════
-          TESTIMONIALS  (strip_07)
-      ══════════════════════════════════════════════════ */}
-      <section style={{padding:'96px 40px',background:BG}}>
-        <div style={{maxWidth:1100,margin:'0 auto'}}>
-          <FadeIn style={{textAlign:'center',marginBottom:56}}>
-            <SBadge>Testimonials</SBadge>
-            <h2 style={{fontSize:'clamp(18px,2.6vw,38px)',fontWeight:800,letterSpacing:'-0.03em',lineHeight:1.2,fontFamily:"'Syne','Inter',sans-serif",color:TEXT}}>
-              Loved by marketers &<br/>
-              <span style={goldGrad}>bootstrapped founders</span>
-            </h2>
-          </FadeIn>
-
-          <div className="testimonials-grid" style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:18}}>
-            {TESTIMONIALS.map((t,i)=>(
-              <FadeIn key={t.name} delay={i*0.1}>
-                <div style={{background:CARD,border:`1px solid ${GBORDER}`,borderRadius:18,padding:'28px',height:'100%',display:'flex',flexDirection:'column'}}>
-                  <div style={{display:'flex',gap:3,marginBottom:18}}>
-                    {Array.from({length:5}).map((_,j)=><Star key={j} size={14} fill={GOLD} color={GOLD}/>)}
-                  </div>
-                  <p style={{fontSize:14,color:TEXT2,lineHeight:1.75,marginBottom:24,flex:1}}>{t.quote}</p>
-                  <div style={{display:'flex',alignItems:'center',gap:12}}>
-                    <div style={{width:38,height:38,borderRadius:'50%',background:t.bg,display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:13,fontWeight:700,flexShrink:0}}>{t.initials}</div>
-                    <div>
-                      <div style={{fontSize:14,fontWeight:700,color:TEXT}}>{t.name}</div>
-                      <div style={{fontSize:12,color:TEXT3}}>{t.role}</div>
-                    </div>
-                  </div>
-                </div>
-              </FadeIn>
-            ))}
-          </div>
         </div>
       </section>
 
@@ -1455,6 +1358,389 @@ export default function Landing() {
           <p style={{fontSize:13,color:TEXT3}}>© 2026 Evoke CMO. All rights reserved.</p>
         </div>
       </footer>
+
+      {/* ── Plan Selector Modal ── */}
+      <AnimatePresence>
+        {activeModule && (
+          <motion.div
+            key="plan-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setActiveModule(null)}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 9999,
+              background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: '20px',
+            }}
+          >
+            <motion.div
+              key="plan-panel"
+              initial={{ opacity: 0, y: 32, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.96 }}
+              transition={{ type: 'spring', damping: 24, stiffness: 300 }}
+              onClick={e => e.stopPropagation()}
+              style={{
+                background: '#16140f',
+                border: `1px solid ${activeModule.color}40`,
+                borderRadius: 24,
+                padding: '36px 32px',
+                maxWidth: 540,
+                width: '100%',
+                boxShadow: `0 40px 80px rgba(0,0,0,0.6), 0 0 0 1px ${activeModule.color}20`,
+              }}
+            >
+              {/* Header */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 8 }}>
+                <div style={{
+                  width: 52, height: 52, borderRadius: 14, flexShrink: 0,
+                  background: `${activeModule.color}18`,
+                  border: `1.5px solid ${activeModule.color}40`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: activeModule.color,
+                }}>
+                  {activeModule.icon}
+                </div>
+                <div>
+                  <h3 style={{ fontSize: 20, fontWeight: 800, color: '#f0ebe0', margin: 0, letterSpacing: '-0.02em' }}>
+                    {activeModule.title}
+                  </h3>
+                  <p style={{ fontSize: 12, color: 'rgba(240,235,224,0.45)', margin: '4px 0 0' }}>
+                    Select a plan to get started
+                  </p>
+                </div>
+                <button
+                  onClick={() => setActiveModule(null)}
+                  style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'rgba(240,235,224,0.35)', cursor: 'pointer', fontSize: 22, lineHeight: 1, padding: 4 }}
+                >
+                  ×
+                </button>
+              </div>
+
+              <div style={{ height: 1, background: `${activeModule.color}20`, margin: '20px 0' }} />
+
+              {/* Plan options */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {PLAN_OPTIONS.map(plan => (
+                  <motion.button
+                    key={plan.key}
+                    whileHover={{ x: 4 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => {
+                      setActiveModule(null)
+                      if (plan.path) {
+                        navigate(plan.path)
+                      } else {
+                        navigate(`/campaign/${activeModule.type}`)
+                      }
+                    }}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 14,
+                      padding: '14px 18px',
+                      background: plan.key === 'package-b'
+                        ? 'rgba(200,151,62,0.08)'
+                        : 'rgba(255,255,255,0.03)',
+                      border: plan.key === 'package-b'
+                        ? '1px solid rgba(200,151,62,0.35)'
+                        : '1px solid rgba(255,255,255,0.08)',
+                      borderRadius: 14, cursor: 'pointer',
+                      fontFamily: "'Inter',sans-serif",
+                      textAlign: 'left', width: '100%',
+                      transition: 'all 0.18s',
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.borderColor = `${activeModule.color}55`
+                      e.currentTarget.style.background = `${activeModule.color}0d`
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.borderColor = plan.key === 'package-b' ? 'rgba(200,151,62,0.35)' : 'rgba(255,255,255,0.08)'
+                      e.currentTarget.style.background = plan.key === 'package-b' ? 'rgba(200,151,62,0.08)' : 'rgba(255,255,255,0.03)'
+                    }}
+                  >
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+                        <span style={{ fontSize: 14, fontWeight: 700, color: '#f0ebe0' }}>{plan.label}</span>
+                        <span style={{
+                          fontSize: 9, fontWeight: 800, letterSpacing: '0.08em',
+                          padding: '2px 7px', borderRadius: 100,
+                          background: `${plan.tagColor}18`, color: plan.tagColor,
+                          border: `1px solid ${plan.tagColor}30`,
+                        }}>{plan.tag}</span>
+                      </div>
+                      <span style={{ fontSize: 12, color: 'rgba(240,235,224,0.45)', lineHeight: 1.5 }}>
+                        {plan.desc}
+                      </span>
+                    </div>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: plan.tagColor, whiteSpace: 'nowrap', flexShrink: 0 }}>
+                      {plan.cta} →
+                    </span>
+                  </motion.button>
+                ))}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {/* ── Assessment Wizard Modal ── */}
+        {wizardOpen && (
+          <motion.div
+            key="wizard-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={closeWizard}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 10000,
+              background: 'rgba(0,0,0,0.82)', backdropFilter: 'blur(8px)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: '20px',
+            }}
+          >
+            <motion.div
+              key="wizard-panel"
+              initial={{ opacity: 0, y: 32, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.96 }}
+              transition={{ type: 'spring', damping: 24, stiffness: 300 }}
+              onClick={e => e.stopPropagation()}
+              style={{
+                width: '100%', maxWidth: 680,
+                maxHeight: '90vh', overflowY: 'auto',
+                borderRadius: 24,
+              }}
+            >
+              {/* ══ PHASE 1: Plan Selection ══ */}
+              {wizardPhase === 'plan' && (
+                <motion.div key="plan-select" initial={{opacity:0,y:20}} animate={{opacity:1,y:0}} transition={{duration:0.35}}
+                  style={{background:'linear-gradient(160deg,#161410,#131210)',border:`1px solid ${GBORDER}`,borderRadius:24,padding:'32px 28px',position:'relative'}}>
+                  <button onClick={closeWizard} style={{position:'absolute',top:16,right:20,background:'none',border:'none',color:TEXT3,cursor:'pointer',fontSize:18,lineHeight:1,padding:4}}>✕</button>
+                  <div style={{textAlign:'center',marginBottom:28}}>
+                    <div style={{fontSize:11,fontWeight:700,color:GOLD,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:8}}>Step 1 of 3</div>
+                    <h2 style={{fontSize:'clamp(18px,2vw,24px)',fontWeight:800,color:TEXT,fontFamily:"'Syne','Inter',sans-serif",margin:'0 0 6px',lineHeight:1.3}}>Choose your <span style={goldGrad}>production tier</span></h2>
+                    <p style={{fontSize:13,color:TEXT2,margin:0}}>Each tier builds on the previous — start free, scale up anytime.</p>
+                  </div>
+                  <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(230px,1fr))',gap:14,alignItems:'start'}}>
+                    {PLANS.map((plan,i)=>(
+                      <div key={plan.key} style={{
+                        background:plan.popular?'linear-gradient(160deg,#221d10,#1c1a13)':CARD,
+                        border:`1px solid ${plan.popular?'rgba(200,151,62,0.5)':BORDER}`,
+                        borderRadius:18,padding:'22px 18px',position:'relative',
+                        boxShadow:plan.popular?'0 0 40px rgba(200,151,62,0.1)':'none',
+                        boxSizing:'border-box',height:'100%',
+                      }}>
+                        {plan.popular && (
+                          <div style={{position:'absolute',top:-12,left:'50%',transform:'translateX(-50%)',background:'linear-gradient(135deg,#d4a853,#b8803a)',color:'#0e0c09',fontSize:10,fontWeight:800,padding:'4px 14px',borderRadius:100,letterSpacing:'0.08em',whiteSpace:'nowrap'}}>MOST POPULAR</div>
+                        )}
+                        <div style={{fontSize:10,fontWeight:800,color:plan.popular?GOLD:TEXT3,letterSpacing:'0.12em',textTransform:'uppercase',marginBottom:8}}>{plan.label}</div>
+                        <div style={{fontSize:26,fontWeight:800,letterSpacing:'-0.03em',color:TEXT,fontFamily:"'Syne','Inter',sans-serif",marginBottom:3}}>{plan.price}</div>
+                        <div style={{fontSize:11,color:TEXT3,marginBottom:8}}>{plan.priceNote}</div>
+                        <p style={{fontSize:12,color:TEXT2,marginBottom:14,paddingBottom:14,borderBottom:`1px solid ${BORDER}`,lineHeight:1.55}}>{plan.tagline}</p>
+                        {/* CTA button */}
+                        <button onClick={()=>{
+                          setWizardPlan(plan.key)
+                          try { localStorage.setItem('evoke_selected_package', plan.key) } catch {}
+                          setWizardPhase('questions')
+                          setWizardStep(0)
+                        }} style={{
+                          width:'100%',padding:'11px',marginBottom:16,
+                          background:plan.key==='free'?'linear-gradient(135deg,#d4a853,#b8803a)':plan.ctaDark?'linear-gradient(135deg,#d4a853,#b8803a)':'rgba(255,255,255,0.06)',
+                          border:plan.ctaDark||plan.key==='free'?'none':`1px solid ${BORDER}`,
+                          borderRadius:10,color:plan.ctaDark||plan.key==='free'?'#0e0c09':TEXT2,
+                          fontSize:13,fontWeight:700,cursor:'pointer',
+                          fontFamily:"'Inter',sans-serif",transition:'all 0.2s',
+                        }}
+                          onMouseEnter={e=>{e.currentTarget.style.opacity='0.88';e.currentTarget.style.transform='translateY(-1px)'}}
+                          onMouseLeave={e=>{e.currentTarget.style.opacity='1';e.currentTarget.style.transform='translateY(0)'}}
+                        >{plan.key==='free'?'Start Free →':plan.cta+' →'}</button>
+                        {/* Features list */}
+                        <div style={{borderTop:`1px solid ${BORDER}`,paddingTop:12}}>
+                          <div style={{fontSize:10,fontWeight:800,color:TEXT3,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:10}}>WHAT'S INCLUDED</div>
+                          {plan.features.map((f,fi)=>{
+                            const fKey=`wiz-${plan.key}-${fi}`
+                            const isOpen=expandedFeature===fKey
+                            return (
+                              <div key={f.text} style={{marginBottom:5,borderRadius:7,border:`1px solid ${isOpen?(plan.popular?'rgba(200,151,62,0.35)':BORDER):BORDER}`,overflow:'hidden',background:isOpen?'rgba(255,255,255,0.03)':'transparent'}}>
+                                <button onClick={()=>setExpandedFeature(isOpen?null:fKey)}
+                                  style={{width:'100%',display:'flex',alignItems:'center',gap:8,padding:'8px 9px',background:'none',border:'none',cursor:'pointer',textAlign:'left'}}>
+                                  <div style={{color:plan.popular?GOLD:TEXT3,flexShrink:0}}>{f.icon}</div>
+                                  <span style={{fontSize:11,color:isOpen?(plan.popular?GOLD:TEXT):TEXT2,lineHeight:1.5,flex:1,fontWeight:isOpen?600:400,transition:'color 0.2s'}}>{f.text}</span>
+                                  <span style={{color:TEXT3,fontSize:13,flexShrink:0,transform:isOpen?'rotate(180deg)':'rotate(0deg)',transition:'transform 0.25s',lineHeight:1}}>›</span>
+                                </button>
+                                {isOpen&&(
+                                  <div style={{padding:'0 9px 9px 29px',fontSize:11,color:TEXT2,lineHeight:1.65,borderTop:`1px solid ${BORDER}`}}>
+                                    <div style={{paddingTop:7}}>{f.desc}</div>
+                                  </div>
+                                )}
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+
+              {/* ══ PHASE 2: Workflow Questions ══ */}
+              {wizardPhase === 'questions' && !wizardDone && (()=>{
+                const step = WIZARD_STEPS[wizardStep]
+                const totalSteps = WIZARD_STEPS.length
+                const selectedArr = Array.isArray(wizardAnswers[step.key]) ? wizardAnswers[step.key] : []
+                const singleSel   = wizardAnswers[step.key]
+                return (
+                  <motion.div key={wizardStep} initial={{opacity:0,y:20}} animate={{opacity:1,y:0}} transition={{duration:0.35}}
+                    style={{background:'linear-gradient(160deg,#161410,#131210)',border:`1px solid ${GBORDER}`,borderRadius:24,padding:'40px 36px',position:'relative'}}>
+
+                    {/* Progress */}
+                    <div style={{marginBottom:28}}>
+                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+                        <span style={{fontSize:11,color:GOLD,fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase'}}>
+                          Step 2 of 3 · {WORKFLOW[step.frameworkIdx]?.label ?? step.key} · {wizardStep+1}/{totalSteps}
+                        </span>
+                        <button onClick={closeWizard} style={{background:'none',border:'none',color:TEXT3,cursor:'pointer',fontSize:18,lineHeight:1,padding:4}}>✕</button>
+                      </div>
+                      {/* Workflow steps track */}
+                      <div style={{display:'flex',gap:6,marginBottom:12}}>
+                        {WORKFLOW.map((w,i)=>(
+                          <div key={w.label} style={{flex:1,height:3,borderRadius:3,background: i<=wizardStep?GOLD:'rgba(200,151,62,0.15)',transition:'background 0.3s'}}/>
+                        ))}
+                      </div>
+                      {/* Workflow labels */}
+                      <div style={{display:'flex',gap:4,overflowX:'auto',paddingBottom:4}}>
+                        {WORKFLOW.map((w,i)=>(
+                          <div key={w.label} style={{flex:'0 0 auto',display:'flex',flexDirection:'column',alignItems:'center',gap:4,opacity: i===wizardStep?1:0.4,transition:'opacity 0.3s'}}>
+                            <div style={{width:28,height:28,borderRadius:'50%',background: i<wizardStep?GOLD:i===wizardStep?'rgba(200,151,62,0.25)':'rgba(255,255,255,0.05)',border:`1.5px solid ${i<=wizardStep?GOLD:'rgba(255,255,255,0.08)'}`,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                              {i<wizardStep ? <Check size={12} color="#0e0c09"/> : <span style={{fontSize:8,color:i===wizardStep?GOLD:TEXT3,fontWeight:700}}>{i+1}</span>}
+                            </div>
+                            <span style={{fontSize:8,color:i===wizardStep?GOLD:TEXT3,fontWeight:600,letterSpacing:'0.04em',textTransform:'uppercase',whiteSpace:'nowrap'}}>{w.label}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div style={{marginBottom:8,fontSize:'clamp(16px,1.6vw,22px)',fontWeight:700,color:TEXT,fontFamily:"'Syne','Inter',sans-serif",lineHeight:1.3}}>{step.question}</div>
+                    <div style={{fontSize:13,color:TEXT2,marginBottom:28,lineHeight:1.6}}>{step.sub}</div>
+
+                    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:14}}>
+                      {step.options.map(opt=>{
+                        const isSelected = step.multiSelect ? selectedArr.includes(opt.value) : singleSel === opt.value
+                        return (
+                          <button key={opt.value} onClick={()=>handleWizardSelect(opt.value)}
+                            style={{background:isSelected?'rgba(200,151,62,0.12)':CARD,border:`2px solid ${isSelected?GOLD:GBORDER}`,borderRadius:14,padding:'18px 16px',cursor:'pointer',textAlign:'left',transition:'all 0.18s',display:'flex',flexDirection:'column',gap:6,position:'relative'}}
+                            onMouseEnter={e=>{if(!isSelected){e.currentTarget.style.borderColor='rgba(200,151,62,0.55)';e.currentTarget.style.background='rgba(200,151,62,0.05)';e.currentTarget.style.transform='translateY(-2px)'}}}
+                            onMouseLeave={e=>{if(!isSelected){e.currentTarget.style.borderColor=GBORDER;e.currentTarget.style.background=CARD;e.currentTarget.style.transform='translateY(0)'}}}>
+                            {step.multiSelect && (
+                              <div style={{position:'absolute',top:10,right:10,width:18,height:18,borderRadius:'50%',background:isSelected?'linear-gradient(135deg,#d4a853,#b8803a)':'rgba(255,255,255,0.06)',border:`1.5px solid ${isSelected?GOLD:'rgba(255,255,255,0.12)'}`,display:'flex',alignItems:'center',justifyContent:'center',transition:'all 0.18s'}}>
+                                {isSelected && <Check size={10} color="#0e0c09"/>}
+                              </div>
+                            )}
+                            <span style={{fontSize:22}}>{opt.icon}</span>
+                            <span style={{fontSize:13,fontWeight:700,color:isSelected?GOLD:TEXT,transition:'color 0.18s'}}>{opt.label}</span>
+                            <span style={{fontSize:11,color:TEXT2,lineHeight:1.5}}>{opt.desc}</span>
+                          </button>
+                        )
+                      })}
+                    </div>
+
+                    {/* Custom budget input */}
+                    {step.hasCustomBudget && singleSel === 'custom' && (
+                      <div style={{marginTop:14}}>
+                        <div style={{display:'flex',alignItems:'center',background:'rgba(255,255,255,0.05)',border:`1.5px solid ${GOLD}`,borderRadius:12,overflow:'hidden'}}>
+                          <span style={{padding:'0 14px',fontSize:16,fontWeight:700,color:GOLD,borderRight:`1px solid ${GBORDER}`,lineHeight:'50px'}}>$</span>
+                          <input autoFocus id="wiz-custom-budget" type="text" placeholder="Enter your budget e.g. 5,000"
+                            value={wizardAnswers['customBudgetText']||''}
+                            onChange={e=>setWizardAnswers(prev=>({...prev,customBudgetText:e.target.value}))}
+                            onKeyDown={e=>{if(e.key==='Enter'&&(wizardAnswers['customBudgetText']||'').trim()){if(wizardStep<WIZARD_STEPS.length-1)setWizardStep(s=>s+1);else{setWizardDone(true);goToConnect(wizardAnswers)}}}}
+                            style={{flex:1,background:'transparent',border:'none',outline:'none',padding:'12px 14px',fontSize:15,fontWeight:600,color:TEXT,fontFamily:"'Inter',sans-serif"}}/>
+                          <span style={{padding:'0 14px',fontSize:12,color:TEXT3,whiteSpace:'nowrap'}}>/&nbsp;mo</span>
+                        </div>
+                        <div style={{marginTop:14,display:'flex',justifyContent:'flex-end'}}>
+                          <button disabled={!(wizardAnswers['customBudgetText']||'').trim()}
+                            onClick={()=>{if(wizardStep<WIZARD_STEPS.length-1)setWizardStep(s=>s+1);else{setWizardDone(true);goToConnect(wizardAnswers)}}}
+                            style={{padding:'11px 28px',borderRadius:100,background:(wizardAnswers['customBudgetText']||'').trim()?'linear-gradient(135deg,#d4a853,#b8803a)':'rgba(200,151,62,0.15)',border:'none',color:(wizardAnswers['customBudgetText']||'').trim()?'#0e0c09':TEXT3,fontSize:13,fontWeight:700,cursor:(wizardAnswers['customBudgetText']||'').trim()?'pointer':'not-allowed',display:'flex',alignItems:'center',gap:7,transition:'all 0.2s'}}>
+                            Continue <ArrowRight size={14}/>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {step.multiSelect && (
+                      <div style={{marginTop:20,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                        <span style={{fontSize:11,color:TEXT3}}>{selectedArr.length===0?'Select at least one option':`${selectedArr.length} selected`}</span>
+                        <button disabled={selectedArr.length===0}
+                          onClick={()=>{
+                            if(wizardStep<WIZARD_STEPS.length-1){setWizardStep(s=>s+1)}
+                            else{setWizardDone(true);goToConnect(wizardAnswers)}
+                          }}
+                          style={{padding:'11px 28px',borderRadius:100,background:selectedArr.length>0?'linear-gradient(135deg,#d4a853,#b8803a)':'rgba(200,151,62,0.15)',border:'none',color:selectedArr.length>0?'#0e0c09':TEXT3,fontSize:13,fontWeight:700,cursor:selectedArr.length>0?'pointer':'not-allowed',display:'flex',alignItems:'center',gap:7,transition:'all 0.2s'}}
+                          onMouseEnter={e=>{if(selectedArr.length>0){e.currentTarget.style.transform='translateY(-1px)';e.currentTarget.style.boxShadow='0 6px 20px rgba(200,151,62,0.35)'}}}
+                          onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none'}}>
+                          {wizardStep===WIZARD_STEPS.length-1?'Finish':'Continue'} <ArrowRight size={14}/>
+                        </button>
+                      </div>
+                    )}
+
+                    <div style={{marginTop:16,display:'flex',alignItems:'center',gap:12}}>
+                      <button onClick={()=>wizardStep>0?setWizardStep(s=>s-1):setWizardPhase('plan')}
+                        style={{background:'none',border:'none',color:TEXT2,cursor:'pointer',fontSize:12,padding:0,display:'inline-flex',alignItems:'center',gap:4}}
+                        onMouseEnter={e=>e.currentTarget.style.color=TEXT}
+                        onMouseLeave={e=>e.currentTarget.style.color=TEXT2}>
+                        ← Back
+                      </button>
+                    </div>
+                  </motion.div>
+                )
+              })()}
+
+              {/* ══ PHASE: Ready to Go ══ */}
+              {wizardPhase === 'ready' && (
+                <motion.div key="ready" initial={{opacity:0,scale:0.95}} animate={{opacity:1,scale:1}} transition={{duration:0.35}}
+                  style={{background:'linear-gradient(160deg,#161410,#131210)',border:`1px solid ${GBORDER}`,borderRadius:24,padding:'48px 36px',position:'relative',textAlign:'center'}}>
+                  <button onClick={closeWizard} style={{position:'absolute',top:16,right:20,background:'none',border:'none',color:TEXT3,cursor:'pointer',fontSize:18,lineHeight:1,padding:4}}>✕</button>
+
+                  {/* Success icon */}
+                  <div style={{width:72,height:72,borderRadius:'50%',background:'rgba(16,185,129,0.15)',border:'2px solid rgba(16,185,129,0.4)',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 24px',boxShadow:'0 0 32px rgba(16,185,129,0.2)'}}>
+                    <Check size={32} color="#10b981"/>
+                  </div>
+
+                  <div style={{fontSize:11,fontWeight:800,color:GOLD,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:10}}>Assessment Complete</div>
+                  <h2 style={{fontSize:'clamp(20px,2.5vw,28px)',fontWeight:900,color:TEXT,fontFamily:"'Syne','Inter',sans-serif",marginBottom:12,letterSpacing:'-0.02em'}}>
+                    You're ready to go! 🎯
+                  </h2>
+                  <p style={{fontSize:14,color:TEXT2,maxWidth:400,margin:'0 auto 32px',lineHeight:1.7}}>
+                    We already have your preferences saved. Your AI CMO is personalised and ready — no need to answer questions again.
+                  </p>
+
+                  {/* Plan label */}
+                  <div style={{display:'inline-flex',alignItems:'center',gap:6,padding:'6px 16px',background:'rgba(200,151,62,0.1)',border:`1px solid ${GBORDER}`,borderRadius:100,fontSize:12,fontWeight:700,color:GOLD,marginBottom:28}}>
+                    {wizardPlan === 'free' ? 'Free Plan' : wizardPlan === 'package-a' ? 'Package A' : wizardPlan === 'package-b' ? 'Package B' : 'Package C'} selected
+                  </div>
+
+                  <div style={{display:'flex',flexDirection:'column',gap:12,alignItems:'center'}}>
+                    <button
+                      onClick={()=>{ setWizardOpen(false); const r = wizardPlan==='free'?'/free-plan':wizardPlan?`/${wizardPlan}`:'/agents-hub'; navigate(r) }}
+                      style={{padding:'14px 40px',background:'linear-gradient(135deg,#d4a853,#b8803a)',border:'none',borderRadius:100,color:'#0e0c09',fontSize:15,fontWeight:800,cursor:'pointer',display:'inline-flex',alignItems:'center',gap:8,transition:'all 0.2s'}}
+                      onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 8px 24px rgba(200,151,62,0.4)'}}
+                      onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none'}}>
+                      Launch {wizardPlan === 'free' ? 'Free Plan' : wizardPlan === 'package-a' ? 'Package A' : wizardPlan === 'package-b' ? 'Package B' : 'Package C'} <ArrowRight size={16}/>
+                    </button>
+                    <button
+                      onClick={()=>{ setWizardDone(false); setWizardPhase('questions'); setWizardStep(0); setWizardAnswers({}); try{localStorage.removeItem('evoke_assessment')}catch{} }}
+                      style={{background:'none',border:'none',color:TEXT3,cursor:'pointer',fontSize:12,fontWeight:600,padding:'4px 0'}}
+                      onMouseEnter={e=>e.currentTarget.style.color=TEXT2}
+                      onMouseLeave={e=>e.currentTarget.style.color=TEXT3}>
+                      Retake Assessment
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

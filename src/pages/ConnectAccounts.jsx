@@ -604,17 +604,19 @@ export default function ConnectAccounts() {
         throw new Error("No accessToken in response: " + rawText);
       }
       const { accessToken, name, personUrn } = data;
+      const connectedAt = Date.now();
 
       await saveSocialAccount(resolvedUid, "linkedin", {
         accessToken,
         name,
         personUrn,
+        connectedAt,
         connected: true,
       });
 
       setAccounts((a) => ({
         ...a,
-        linkedin: { connected: true, name, personUrn },
+        linkedin: { connected: true, name, personUrn, connectedAt },
       }));
 
       setOk("linkedin", true);
@@ -1776,7 +1778,7 @@ export default function ConnectAccounts() {
               } else if (returnTo === '/post-content') {
                 navigate('/post-content', { state: { toolTitle: 'Post to Social', toolColor: '#c8973e' } });
               } else {
-                navigate(fromPackageA ? returnTo : '/');
+                navigate(fromPackageA ? returnTo : '/agents-hub');
               }
             }}
             style={{

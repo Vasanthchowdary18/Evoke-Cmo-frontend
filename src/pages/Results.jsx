@@ -12,18 +12,21 @@ import {
 import Navbar from '../components/Navbar.jsx'
 import { getEvokeUserProfile } from '../lib/session'
 import { profileToUser } from '../lib/authUtils'
+import { useAuth } from '../hooks/useAuth.js'
 import { deductToken, getUserData } from '../services/userService'
 import { saveContentItems, updateContentItem, markItemsPublished } from '../services/contentService'
 import { WEBHOOK_URL, DAY_WEBHOOK_URL } from '../config.js'
+import { getGoogleAdsAccount, createGoogleAdsCampaign, extractAdsContent } from '../services/googleAdsService'
 
 const PLATFORMS = [
-  { key: 'linkedin',  label: 'LinkedIn',      icon: <Linkedin size={15} />,        color: '#0a66c2' },
-  { key: 'instagram', label: 'Instagram',     icon: <Instagram size={15} />,       color: '#e1306c' },
-  { key: 'facebook',  label: 'Facebook',      icon: <Facebook size={15} />,        color: '#1877f2' },
-  { key: 'tiktok',    label: 'TikTok',        icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.75a4.85 4.85 0 01-1.01-.06z"/></svg>, color: '#ff0050' },
-  { key: 'whatsapp',  label: 'WhatsApp',      icon: <MessageSquare size={15} />,   color: '#25d366' },
-  { key: 'email',     label: 'Gmail / Email', icon: <Mail size={15} />,            color: '#ea4335' },
-  { key: 'sheets',    label: 'Google Sheets', icon: <Send size={15} />,            color: '#34a853' },
+  { key: 'linkedin',   label: 'LinkedIn',      icon: <Linkedin size={15} />,        color: '#0a66c2' },
+  { key: 'instagram',  label: 'Instagram',     icon: <Instagram size={15} />,       color: '#e1306c' },
+  { key: 'facebook',   label: 'Facebook',      icon: <Facebook size={15} />,        color: '#1877f2' },
+  { key: 'tiktok',     label: 'TikTok',        icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.75a4.85 4.85 0 01-1.01-.06z"/></svg>, color: '#ff0050' },
+  { key: 'whatsapp',   label: 'WhatsApp',      icon: <MessageSquare size={15} />,   color: '#25d366' },
+  { key: 'email',      label: 'Gmail / Email', icon: <Mail size={15} />,            color: '#ea4335' },
+  { key: 'sheets',     label: 'Google Sheets', icon: <Send size={15} />,            color: '#34a853' },
+  { key: 'eventbrite', label: 'Eventbrite',    icon: <Calendar size={15} />,        color: '#f05537' },
 ]
 
 function useCopy() {
@@ -308,10 +311,9 @@ function safeStr(val) {
 }
 
 function ContentText({ value, fallback = 'Not generated' }) {
-  if (!value) return <p style={{ color: '#cbd5e1', fontSize: 14, fontStyle: 'italic' }}>{fallback}</p>
-  // Delegate all serialisation to safeStr — handles strings, arrays, and nested objects uniformly
+  if (!value) return <p style={{ color: '#94a3b8', fontSize: 14, fontStyle: 'italic' }}>{fallback}</p>
   const text = safeStr(value)
-  return <p style={{ color: '#334155', fontSize: 14, lineHeight: 1.75, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{text || fallback}</p>
+  return <p style={{ color: '#1e293b', fontSize: 14.5, lineHeight: 1.8, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{text || fallback}</p>
 }
 
 function FieldRow({ label, value }) {
@@ -628,6 +630,7 @@ function PostingStatusBanner({ postingStatus, selectedPlatforms, connectedAccoun
 export default function Results() {
   const navigate = useNavigate()
   const { copied, copy } = useCopy()
+  const { user: authUser } = useAuth()
 
   const [result, setResult]               = useState(null)
   const [campaignType, setCampaignType]   = useState('')
@@ -639,15 +642,29 @@ export default function Results() {
   const [selectedPlatforms, setSelectedPlatforms] = useState(null)
   const [connectedAccounts, setConnectedAccounts] = useState(null)
   const [campaignDays, setCampaignDays]   = useState(7)
+  const [googleAdsAccount, setGoogleAdsAccount] = useState(null)
+  const [googleAdsStatus, setGoogleAdsStatus]   = useState('idle') // idle | loading | success | error
+  const [googleAdsError, setGoogleAdsError]     = useState('')
+  const [googleAdsCampaignId, setGoogleAdsCampaignId] = useState('')
 
-  useEffect(() => {
-    const profile = getEvokeUserProfile()
-    const user = profileToUser(profile)
+  const checkGoogleAdsAccount = () => {
+    const user = authUser || profileToUser(getEvokeUserProfile())
     if (!user) return
     getUserData(user.uid).then(data => {
       if (data?.socialAccounts) setConnectedAccounts(data.socialAccounts)
     }).catch(() => {})
-  }, [])
+    getGoogleAdsAccount(user.uid).then(acc => { if (acc) setGoogleAdsAccount(acc) }).catch(() => {})
+  }
+
+  useEffect(() => {
+    if (authUser) checkGoogleAdsAccount()
+  }, [authUser]) // eslint-disable-line
+
+  useEffect(() => {
+    const onVisible = () => { if (document.visibilityState === 'visible') checkGoogleAdsAccount() }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, []) // eslint-disable-line
   const [dailySchedule, setDailySchedule] = useState([])
   const [calExpanded, setCalExpanded]     = useState(false)
 
@@ -1036,6 +1053,18 @@ export default function Results() {
   const r = result
   const emailSubject         = r.emailSubject         || r.email_subject         || ''
   const emailBody            = r.emailBody            || r.email_body            || ''
+
+  // Email Drip — extract all 5 emails
+  const email1Subject = r.email1Subject || r.email_1_subject || ''
+  const email1Body = r.email1Body || r.email_1_body || ''
+  const email2Subject = r.email2Subject || r.email_2_subject || ''
+  const email2Body = r.email2Body || r.email_2_body || ''
+  const email3Subject = r.email3Subject || r.email_3_subject || ''
+  const email3Body = r.email3Body || r.email_3_body || ''
+  const email4Subject = r.email4Subject || r.email_4_subject || ''
+  const email4Body = r.email4Body || r.email_4_body || ''
+  const email5Subject = r.email5Subject || r.email_5_subject || ''
+  const email5Body = r.email5Body || r.email_5_body || ''
   const linkedinPost         = r.linkedinPost         || r.linkedin_post         || ''
   const instagramCaption     = r.instagramCaption     || r.instagram_caption     || ''
   const facebookPost         = r.facebookPost         || r.facebook_post         || ''
@@ -1051,6 +1080,15 @@ export default function Results() {
   const imageUrl             = r.imageUrl             || r.image_url             || ''
   const videoUrl             = r.videoUrl             || ''
   const hasVideo             = r.hasVideo             || !!videoUrl
+
+  // Email Drip campaign — show only email content
+  const isEmailDrip          = campaignType === 'email_drip'
+
+  // Influencer & PR — specialized brief content
+  const isInfluencer         = campaignType === 'influencer'
+
+  // Analytics Report — report-specific content
+  const isAnalyticsReport    = campaignType === 'analytics_report'
 
   // Ads Creation (Package C) — multi-variant ad creative output
   const isAdsCreation        = campaignType === 'ads_creation'
@@ -1158,21 +1196,18 @@ export default function Results() {
   return (
     <div style={{
       minHeight: '100vh',
-      ...(isStrategy ? { height: '100vh', overflow: 'hidden' } : {}),
       background: '#f8fafc',
     }}>
       <Navbar />
 
       <div style={{
-        maxWidth: isStrategy ? 1280 : 860,
+        maxWidth: isStrategy ? 1100 : 860,
         margin: '0 auto',
-        ...(isStrategy
-          ? { height: '100vh', padding: '74px 20px 14px', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }
-          : { padding: '108px 24px 40px' }),
+        padding: isStrategy ? '88px 24px 60px' : '108px 24px 40px',
       }}>
 
         {/* Header */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: isStrategy ? 14 : 32, flexShrink: 0 }}>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: isStrategy ? 28 : 32 }}>
           <button
             onClick={() => navigate('/agents-hub')}
             style={{
@@ -1257,8 +1292,8 @@ export default function Results() {
           </motion.div>
         )}
 
-        {/* Campaign visual — image + video */}
-        {(imageUrl || videoUrl) && (
+        {/* Campaign visual — image + video (not needed for email drip, influencer, or analytics) */}
+        {!isEmailDrip && !isInfluencer && !isAnalyticsReport && (imageUrl || videoUrl) && (
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
             style={{ marginBottom: 16, background: '#fff', border: '1px solid rgba(245,240,232,0.15)', borderRadius: 16, padding: 18, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
             <p style={{ fontWeight: 700, fontSize: 14, color: '#0f172a', marginBottom: 12 }}>Campaign Visual</p>
@@ -1293,59 +1328,73 @@ export default function Results() {
           </motion.div>
         )}
 
-        {/* ── Strategy-specific cards — fixed grid, fills screen, no page scroll ── */}
-        {isStrategy && (
-          <div style={{
-            flex: 1, minHeight: 0,
-            display: 'grid',
-            gridTemplateColumns: 'repeat(4, 1fr)',
-            gridTemplateRows: 'repeat(2, minmax(0, 1fr))',
-            gap: 12,
-          }}>
-            {[
-              { key: 'executiveSummary',    value: executiveSummary,    icon: <Zap size={15}/>,          color: '#10b981', title: 'Executive Summary'        },
-              { key: 'growthOpportunities', value: growthOpportunities, icon: <TrendingUp size={15}/>,   color: '#c8973e', title: 'Growth Opportunities'      },
-              { key: 'gtmPlan',             value: gtmPlan,             icon: <Rocket size={15}/>,       color: '#6366f1', title: 'Go-To-Market Plan'         },
-              { key: 'revenueProjection',   value: revenueProjection,   icon: <BarChart2 size={15}/>,    color: '#f59e0b', title: '12-Month Revenue Forecast' },
-              { key: 'partnershipIdeas',    value: partnershipIdeas,    icon: <Users size={15}/>,        color: '#0a66c2', title: 'Strategic Partnerships'    },
-              { key: 'expansionRoadmap',    value: expansionRoadmap,    icon: <Globe size={15}/>,        color: '#14b8a6', title: 'Expansion Roadmap'         },
-              { key: 'competitorGaps',      value: competitorGaps,      icon: <Target size={15}/>,       color: '#a855f7', title: 'Competitor Gaps to Exploit'},
-            ].filter(s => s.value).map((s, i) => {
-              const isCopied = copied === s.key
-              return (
-                <motion.div key={s.key}
-                  initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: i * 0.05 }}
-                  style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: 14, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}
-                >
-                  {/* Card header (fixed) */}
-                  <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', borderBottom: '1px solid #f1f5f9', background: '#fafbff' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-                      <div style={{ width: 26, height: 26, borderRadius: 7, background: `${s.color}15`, border: `1px solid ${s.color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: s.color, flexShrink: 0 }}>
-                        {s.icon}
-                      </div>
-                      <span style={{ fontWeight: 700, fontSize: 12.5, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.title}</span>
-                    </div>
-                    <button onClick={() => copy(safeStr(s.value), s.key)} style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 4, padding: '4px 8px', background: isCopied ? '#f0fdf4' : '#f8fafc', border: `1px solid ${isCopied ? 'rgba(16,185,129,0.3)' : 'rgba(0,0,0,0.08)'}`, borderRadius: 6, color: isCopied ? '#10b981' : '#64748b', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
-                      {isCopied ? <Check size={11} /> : <Copy size={11} />}
-                    </button>
-                  </div>
-                  {/* Card body — visual (derived from the generated text) + detail, scrolls internally */}
-                  <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 14px', scrollbarWidth: 'thin', scrollbarColor: `${s.color}40 transparent` }}>
-                    {s.key === 'revenueProjection' ? (
-                      <RevenueBars data={s.value} />
-                    ) : s.key === 'growthOpportunities' ? (
-                      <><ImpactBars data={s.value} /><ContentText value={s.value} /></>
-                    ) : (s.key === 'gtmPlan' || s.key === 'expansionRoadmap') ? (
-                      <><PhaseTimeline data={s.value} color={s.color} /><ContentText value={s.value} /></>
-                    ) : (
-                      <ContentText value={s.value} />
-                    )}
-                  </div>
-                </motion.div>
-              )
-            })}
-          </div>
-        )}
+        {/* ── Strategy-specific cards — scrollable report layout ── */}
+        {isStrategy && (() => {
+          const sections = [
+            { key: 'executiveSummary',    value: executiveSummary,    icon: <Zap size={16}/>,        color: '#10b981', title: 'Executive Summary',          span: 'full' },
+            { key: 'growthOpportunities', value: growthOpportunities, icon: <TrendingUp size={16}/>, color: '#c8973e', title: 'Growth Opportunities',        span: 'half' },
+            { key: 'gtmPlan',             value: gtmPlan,             icon: <Rocket size={16}/>,     color: '#6366f1', title: 'Go-To-Market Plan',           span: 'half' },
+            { key: 'revenueProjection',   value: revenueProjection,   icon: <BarChart2 size={16}/>,  color: '#f59e0b', title: '12-Month Revenue Forecast',   span: 'full' },
+            { key: 'partnershipIdeas',    value: partnershipIdeas,    icon: <Users size={16}/>,      color: '#0a66c2', title: 'Strategic Partnerships',      span: 'half' },
+            { key: 'expansionRoadmap',    value: expansionRoadmap,    icon: <Globe size={16}/>,      color: '#14b8a6', title: 'Expansion Roadmap',           span: 'half' },
+            { key: 'competitorGaps',      value: competitorGaps,      icon: <Target size={16}/>,     color: '#a855f7', title: 'Competitor Gaps to Exploit',  span: 'full' },
+          ].filter(s => s.value)
+
+          const rows = []
+          let i = 0
+          while (i < sections.length) {
+            const s = sections[i]
+            if (s.span === 'full') { rows.push([s]); i++ }
+            else {
+              const next = sections[i + 1]
+              if (next && next.span === 'half') { rows.push([s, next]); i += 2 }
+              else { rows.push([s]); i++ }
+            }
+          }
+
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {rows.map((row, ri) => (
+                <div key={ri} style={{ display: 'grid', gridTemplateColumns: row.length === 2 ? '1fr 1fr' : '1fr', gap: 16, alignItems: 'start' }}>
+                  {row.map((s, si) => {
+                    const isCopied = copied === s.key
+                    return (
+                      <motion.div key={s.key}
+                        initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: (ri * 2 + si) * 0.07 }}
+                        style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: 18, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}
+                      >
+                        {/* Card header */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: `2px solid ${s.color}20`, background: `linear-gradient(135deg, ${s.color}08, #ffffff)` }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <div style={{ width: 36, height: 36, borderRadius: 10, background: `${s.color}15`, border: `1.5px solid ${s.color}35`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: s.color }}>
+                              {s.icon}
+                            </div>
+                            <span style={{ fontWeight: 800, fontSize: 15, color: '#0f172a', letterSpacing: '-0.01em' }}>{s.title}</span>
+                          </div>
+                          <button onClick={() => copy(safeStr(s.value), s.key)} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', background: isCopied ? '#f0fdf4' : '#f8fafc', border: `1px solid ${isCopied ? 'rgba(16,185,129,0.35)' : 'rgba(0,0,0,0.1)'}`, borderRadius: 8, color: isCopied ? '#10b981' : '#64748b', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                            {isCopied ? <><Check size={12} /> Copied</> : <><Copy size={12} /> Copy</>}
+                          </button>
+                        </div>
+                        {/* Card body */}
+                        <div style={{ padding: '20px 22px' }}>
+                          {s.key === 'revenueProjection' ? (
+                            <RevenueBars data={s.value} />
+                          ) : s.key === 'growthOpportunities' ? (
+                            <><ImpactBars data={s.value} /><ContentText value={s.value} /></>
+                          ) : (s.key === 'gtmPlan' || s.key === 'expansionRoadmap') ? (
+                            <><PhaseTimeline data={s.value} color={s.color} /><ContentText value={s.value} /></>
+                          ) : (
+                            <ContentText value={s.value} />
+                          )}
+                        </div>
+                      </motion.div>
+                    )
+                  })}
+                </div>
+              ))}
+            </div>
+          )
+        })()}
 
         {/* ── Ads Creation — multi-variant ad creative cards ── */}
         {isAdsCreation && (
@@ -1457,54 +1506,76 @@ export default function Results() {
         <div style={{ display: isStrategy ? 'none' : 'flex', flexDirection: 'column', gap: 14 }}>
 
           {!isStrategy && !isAdsCreation && <>
-            {(emailSubject || emailBody) && (
-              <EmailCard emailSubject={emailSubject} emailBody={emailBody} editedContent={editedContent} setEditedContent={setEditedContent} copied={copied} copy={copy} delay={0.05} {...editProps} />
+            {isEmailDrip ? (
+              /* Email Drip — show all 5 emails */
+              <>
+                {email1Subject && (
+                  <EmailCard emailSubject={email1Subject} emailBody={email1Body} editedContent={editedContent} setEditedContent={setEditedContent} copied={copied} copy={copy} delay={0.05} {...editProps} />
+                )}
+                {email2Subject && (
+                  <EmailCard emailSubject={email2Subject} emailBody={email2Body} editedContent={editedContent} setEditedContent={setEditedContent} copied={copied} copy={copy} delay={0.08} {...editProps} />
+                )}
+                {email3Subject && (
+                  <EmailCard emailSubject={email3Subject} emailBody={email3Body} editedContent={editedContent} setEditedContent={setEditedContent} copied={copied} copy={copy} delay={0.11} {...editProps} />
+                )}
+                {email4Subject && (
+                  <EmailCard emailSubject={email4Subject} emailBody={email4Body} editedContent={editedContent} setEditedContent={setEditedContent} copied={copied} copy={copy} delay={0.14} {...editProps} />
+                )}
+                {email5Subject && (
+                  <EmailCard emailSubject={email5Subject} emailBody={email5Body} editedContent={editedContent} setEditedContent={setEditedContent} copied={copied} copy={copy} delay={0.17} {...editProps} />
+                )}
+              </>
+            ) : (
+              /* Other campaigns — show single email if present */
+              (emailSubject || emailBody) && (
+                <EmailCard emailSubject={emailSubject} emailBody={emailBody} editedContent={editedContent} setEditedContent={setEditedContent} copied={copied} copy={copy} delay={0.05} {...editProps} />
+              )
             )}
 
-            {linkedinPost && (
+            {!isEmailDrip && !isInfluencer && !isAnalyticsReport && linkedinPost && (
               <ResultCard icon={<Linkedin size={16} />} title="LinkedIn Post" color="#0a66c2" copyText={linkedinPost} copyId="linkedin" copied={copied} copy={copy} editKey="linkedinPost" editValue={editedContent.linkedinPost} delay={0.08} {...editProps}>
                 <ContentText value={editedContent.linkedinPost || linkedinPost} />
               </ResultCard>
             )}
 
-            {facebookPost && (
+            {!isEmailDrip && !isInfluencer && !isAnalyticsReport && facebookPost && (
               <ResultCard icon={<Facebook size={16} />} title="Facebook Post" color="#1877f2" copyText={facebookPost} copyId="facebook" copied={copied} copy={copy} editKey="facebookPost" editValue={editedContent.facebookPost} delay={0.11} {...editProps}>
                 <ContentText value={editedContent.facebookPost || facebookPost} />
               </ResultCard>
             )}
 
-            {tiktokCaption && (
+            {!isEmailDrip && !isInfluencer && !isAnalyticsReport && tiktokCaption && (
               <ResultCard icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.75a4.85 4.85 0 01-1.01-.06z"/></svg>}
                 title="TikTok Caption" color="#ff0050" copyText={tiktokCaption} copyId="tiktok" copied={copied} copy={copy} editKey="tiktokCaption" editValue={editedContent.tiktokCaption} delay={0.14} {...editProps}>
                 <ContentText value={editedContent.tiktokCaption || tiktokCaption} />
               </ResultCard>
             )}
 
-            {whatsappMessage && (
+            {!isEmailDrip && !isInfluencer && !isAnalyticsReport && whatsappMessage && (
               <ResultCard icon={<MessageSquare size={16} />} title="WhatsApp Message" color="#25d366" copyText={whatsappMessage} copyId="whatsapp" copied={copied} copy={copy} editKey="whatsappMessage" editValue={editedContent.whatsappMessage} delay={0.17} {...editProps}>
                 <ContentText value={editedContent.whatsappMessage || whatsappMessage} />
               </ResultCard>
             )}
 
-            {instagramCaption && (
+            {!isEmailDrip && !isInfluencer && !isAnalyticsReport && instagramCaption && (
               <ResultCard icon={<Instagram size={16} />} title="Instagram Caption" color="#e1306c" copyText={instagramCaption} copyId="instagram" copied={copied} copy={copy} editKey="instagramCaption" editValue={editedContent.instagramCaption} delay={0.2} {...editProps}>
                 <ContentText value={editedContent.instagramCaption || instagramCaption} />
               </ResultCard>
             )}
 
-            {smsMessage && (
+            {!isEmailDrip && !isInfluencer && !isAnalyticsReport && smsMessage && (
               <ResultCard icon={<Phone size={16} />} title="SMS Message" color="#c8973e" copyText={smsMessage} copyId="sms" copied={copied} copy={copy} editKey="smsMessage" editValue={editedContent.smsMessage} delay={0.2} {...editProps}>
                 <ContentText value={editedContent.smsMessage || smsMessage} />
               </ResultCard>
             )}
 
-            {positioningStatement && (
+            {!isEmailDrip && !isInfluencer && !isAnalyticsReport && positioningStatement && (
               <ResultCard icon={<Target size={16} />} title="Positioning Statement" color="#a855f7" copyText={positioningStatement} copyId="positioning" copied={copied} copy={copy} editKey="positioningStatement" editValue={editedContent.positioningStatement} delay={0.23} {...editProps}>
                 <ContentText value={editedContent.positioningStatement || positioningStatement} />
               </ResultCard>
             )}
 
-            {(seoTitle || seoDescription) && (
+            {!isEmailDrip && !isInfluencer && !isAnalyticsReport && (seoTitle || seoDescription) && (
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.26 }}
                 style={{ background: '#fff', border: '1px solid rgba(245,240,232,0.15)', borderRadius: 16, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid #f5f0e8', background: '#fafbff' }}>
@@ -1521,7 +1592,7 @@ export default function Results() {
               </motion.div>
             )}
 
-            {(adHeadline || adBody) && (
+            {!isEmailDrip && !isInfluencer && !isAnalyticsReport && (adHeadline || adBody) && (
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.29 }}
                 style={{ background: '#fff', border: '1px solid rgba(245,240,232,0.15)', borderRadius: 16, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid #f5f0e8', background: '#fafbff' }}>
@@ -1539,8 +1610,8 @@ export default function Results() {
             )}
           </>}
 
-          {/* ── Campaign Calendar (N-day) — hidden for free trial users on growth_strategy ── */}
-          {!(isStrategy && isFreeUser) && (calendarDays.length > 0 || dailySchedule.length > 0) && (
+          {/* ── Campaign Calendar (N-day) — hidden for free trial users on growth_strategy, email_drip, influencer, and analytics ── */}
+          {!isEmailDrip && !isInfluencer && !isAnalyticsReport && !(isStrategy && isFreeUser) && (calendarDays.length > 0 || dailySchedule.length > 0) && (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.32 }}
               style={{ background: '#fff', border: '1px solid rgba(245,240,232,0.15)', borderRadius: 16, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid #f5f0e8', background: '#fafbff' }}>
@@ -1632,6 +1703,152 @@ export default function Results() {
             </motion.div>
           )}
         </div>
+
+        {/* Google Ads launch panel — shown for non-strategy, non-email-drip, non-influencer, and non-analytics campaigns */}
+        {!isStrategy && !isEmailDrip && !isInfluencer && !isAnalyticsReport && (
+          <motion.div
+            initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }}
+            style={{ marginTop: 16, background: '#fff', border: '1px solid rgba(66,133,244,0.25)', borderRadius: 16, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
+          >
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 20px', borderBottom: '1px solid #f0f4ff', background: '#f8faff' }}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(66,133,244,0.1)', border: '1px solid rgba(66,133,244,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <svg width="20" height="20" viewBox="0 0 48 48">
+                  <path fill="#fbbc05" d="M5.6 30.3 15 14a4.5 4.5 0 0 1 7.8 4.5L13.4 34.8A4.5 4.5 0 0 1 5.6 30.3z"/>
+                  <path fill="#34a853" d="M24 38.5h-9a4.5 4.5 0 0 1 0-9h18a4.5 4.5 0 0 1 0 9H24z"/>
+                  <path fill="#ea4335" d="M33 14a4.5 4.5 0 0 0-7.8 4.5l9.4 16.3a4.5 4.5 0 1 0 7.8-4.5L33 14z"/>
+                </svg>
+              </div>
+              <div style={{ flex: 1 }}>
+                <span style={{ fontWeight: 700, fontSize: 14, color: '#0f172a' }}>Launch on Google Ads</span>
+                <p style={{ fontSize: 12, color: '#64748b', margin: 0 }}>Push this campaign as a Responsive Search Ad to your Google Ads account</p>
+              </div>
+              {googleAdsStatus === 'success' && (
+                <span style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px', background: '#f0fdf4', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 100, fontSize: 11, fontWeight: 700, color: '#10b981' }}>
+                  <Check size={11} /> Live
+                </span>
+              )}
+            </div>
+
+            <div style={{ padding: '16px 20px' }}>
+              {!googleAdsAccount ? (
+                /* Not connected */
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+                  <p style={{ fontSize: 13, color: '#64748b', margin: 0 }}>Connect your Google Ads account to push campaigns directly from EVOX.</p>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      onClick={checkGoogleAdsAccount}
+                      style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 14px', background: 'transparent', border: '1px solid #cbd5e1', borderRadius: 10, color: '#475569', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                    >
+                      ↻ Refresh
+                    </button>
+                    <button
+                      onClick={() => navigate('/connect-accounts')}
+                      style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', background: '#4285f4', border: 'none', borderRadius: 10, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+                    >
+                      Connect Google Ads
+                    </button>
+                  </div>
+                </div>
+              ) : googleAdsStatus === 'success' ? (
+                /* Success */
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <CheckCircle2 size={20} style={{ color: '#10b981', flexShrink: 0 }} />
+                  <div>
+                    <p style={{ fontWeight: 700, fontSize: 14, color: '#0f172a', margin: '0 0 2px' }}>Campaign created in Google Ads!</p>
+                    <p style={{ fontSize: 12, color: '#64748b', margin: 0 }}>
+                      Campaign ID: <strong style={{ color: '#4285f4' }}>{googleAdsCampaignId}</strong> · Under review — goes live in 1–3 hours.
+                    </p>
+                  </div>
+                </div>
+              ) : googleAdsStatus === 'error' ? (
+                /* Error */
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <AlertCircle size={16} style={{ color: '#ef4444', flexShrink: 0 }} />
+                    <p style={{ fontSize: 13, color: '#ef4444', margin: 0 }}>{googleAdsError || 'Failed to create campaign. Please try again.'}</p>
+                  </div>
+                  <button
+                    onClick={() => setGoogleAdsStatus('idle')}
+                    style={{ padding: '7px 14px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 8, color: '#ef4444', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : (
+                /* Ready to launch */
+                (() => {
+                  const { headlines, descriptions } = extractAdsContent(result, campaignType)
+                  const metaRaw = sessionStorage.getItem('campaignMeta')
+                  const meta = metaRaw ? (() => { try { return JSON.parse(metaRaw) } catch { return {} } })() : {}
+                  return (
+                    <div>
+                      {/* Preview extracted content */}
+                      <div style={{ marginBottom: 14 }}>
+                        <p style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>Ad Headlines (auto-extracted)</p>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                          {headlines.slice(0, 5).map((h, i) => (
+                            <span key={i} style={{ padding: '4px 10px', background: 'rgba(66,133,244,0.08)', border: '1px solid rgba(66,133,244,0.2)', borderRadius: 100, fontSize: 11, fontWeight: 600, color: '#4285f4' }}>{h}</span>
+                          ))}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#34a853' }} />
+                          <span style={{ fontSize: 12, color: '#64748b' }}>Connected: <strong style={{ color: '#0f172a' }}>{googleAdsAccount.email || 'Google Ads'}</strong></span>
+                        </div>
+                        <button
+                          disabled={googleAdsStatus === 'loading'}
+                          onClick={async () => {
+                            setGoogleAdsStatus('loading')
+                            setGoogleAdsError('')
+                            try {
+                              const user = authUser || profileToUser(getEvokeUserProfile())
+                              const data = await createGoogleAdsCampaign(user.uid, {
+                                name: meta.name || meta.brandName || 'EVOX Campaign',
+                                headlines,
+                                descriptions,
+                                keywords: meta.keywords ? meta.keywords.split(',').map(k => k.trim()) : ['marketing', 'campaign'],
+                                budget: 500,
+                                finalUrl: meta.website || window.location.origin,
+                              })
+                              setGoogleAdsCampaignId(data.campaignId || data.id || 'created')
+                              setGoogleAdsStatus('success')
+                              // Track Google Ads launch in campaign history
+                              try {
+                                const campaigns = JSON.parse(localStorage.getItem('evoke_campaigns') || '[]')
+                                if (campaigns.length > 0) {
+                                  campaigns[0].platforms = [...new Set([...(campaigns[0].platforms || []), 'google-ads'])]
+                                  localStorage.setItem('evoke_campaigns', JSON.stringify(campaigns))
+                                }
+                              } catch {}
+                            } catch (e) {
+                              setGoogleAdsError(e.message)
+                              setGoogleAdsStatus('error')
+                            }
+                          }}
+                          style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px', background: googleAdsStatus === 'loading' ? 'rgba(66,133,244,0.5)' : '#4285f4', border: 'none', borderRadius: 10, color: '#fff', fontSize: 13, fontWeight: 700, cursor: googleAdsStatus === 'loading' ? 'not-allowed' : 'pointer' }}
+                        >
+                          {googleAdsStatus === 'loading'
+                            ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Creating…</>
+                            : <>
+                                <svg width="14" height="14" viewBox="0 0 48 48">
+                                  <path fill="#fff" d="M5.6 30.3 15 14a4.5 4.5 0 0 1 7.8 4.5L13.4 34.8A4.5 4.5 0 0 1 5.6 30.3z" opacity="0.8"/>
+                                  <path fill="#fff" d="M24 38.5h-9a4.5 4.5 0 0 1 0-9h18a4.5 4.5 0 0 1 0 9H24z"/>
+                                  <path fill="#fff" d="M33 14a4.5 4.5 0 0 0-7.8 4.5l9.4 16.3a4.5 4.5 0 1 0 7.8-4.5L33 14z" opacity="0.8"/>
+                                </svg>
+                                Launch on Google Ads
+                              </>
+                          }
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })()
+              )}
+            </div>
+          </motion.div>
+        )}
 
         {/* Bottom CTA — strategy fills the screen (no bottom CTA); campaigns get "Launch" */}
         {isStrategy ? null : (

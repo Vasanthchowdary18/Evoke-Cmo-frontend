@@ -1,10 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Zap, Menu, X, LayoutDashboard, Image, LogOut, ChevronDown, Inbox } from 'lucide-react'
+import { Zap, Menu, X, LayoutDashboard, Image, LogOut, ChevronDown, Inbox, TrendingUp, Target, Calendar, Search, Mail, Users, BarChart2, Briefcase, Megaphone, ShoppingCart, Sparkles, Activity } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth.js'
 import { buildAccountsLoginUrl, signOut as ssoSignOut } from '../lib/session'
 import EgtWalletHeader from './EgtWalletHeader.jsx'
+
+const NAV_AGENTS = [
+  { label: 'Growth Strategy',       type: 'growth_strategy',   icon: <TrendingUp size={13}/>,  color: '#c8973e' },
+  { label: 'Content Calendar',      type: 'content_calendar',  icon: <Calendar size={13}/>,    color: '#10b981' },
+  { label: 'SEO Blog Post',         type: 'seo_blog',          icon: <Search size={13}/>,      color: '#3b82f6' },
+  { label: 'Email Drip Campaign',   type: 'email_drip',        icon: <Mail size={13}/>,        color: '#a855f7' },
+  { label: 'Brand Strategy',        type: 'brand_strategy',    icon: <Sparkles size={13}/>,    color: '#8b5cf6' },
+]
 
 export default function Navbar() {
   const [scrolled, setScrolled]       = useState(false)
@@ -12,8 +20,10 @@ export default function Navbar() {
   const { user, status } = useAuth()
   const authLoading = status === 'loading'
   const [profileOpen, setProfileOpen] = useState(false)
+  const [agentsOpen, setAgentsOpen]   = useState(false)
   const [signingOut, setSigningOut]   = useState(false)
   const profileRef                    = useRef(null)
+  const agentsRef                     = useRef(null)
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -25,12 +35,11 @@ export default function Navbar() {
     return () => window.removeEventListener('scroll', fn)
   }, [])
 
-  // Close profile dropdown when clicking outside
+  // Close dropdowns when clicking outside
   useEffect(() => {
     const handler = (e) => {
-      if (profileRef.current && !profileRef.current.contains(e.target)) {
-        setProfileOpen(false)
-      }
+      if (profileRef.current && !profileRef.current.contains(e.target)) setProfileOpen(false)
+      if (agentsRef.current && !agentsRef.current.contains(e.target)) setAgentsOpen(false)
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
@@ -138,8 +147,91 @@ export default function Navbar() {
             alignItems: 'center',
             gap: 0,
           }}>
-            {navLinks.map(link => (
-              link.href.startsWith('#') ? (
+            {navLinks.map(link => {
+              if (link.label === 'Agents') {
+                return (
+                  <div key="agents" ref={agentsRef} style={{ position: 'relative' }}>
+                    <button
+                      onClick={() => setAgentsOpen(o => !o)}
+                      style={{ ...navLink, display: 'flex', alignItems: 'center', gap: 4, color: agentsOpen ? '#f0ebe0' : 'rgba(240,235,224,0.55)' }}
+                      onMouseEnter={e => e.currentTarget.style.color = '#f0ebe0'}
+                      onMouseLeave={e => { if (!agentsOpen) e.currentTarget.style.color = 'rgba(240,235,224,0.55)' }}
+                    >
+                      Agents
+                      <ChevronDown size={13} style={{ transition: 'transform 0.18s', transform: agentsOpen ? 'rotate(180deg)' : 'rotate(0deg)' }} />
+                    </button>
+
+                    <AnimatePresence>
+                      {agentsOpen && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -8, scale: 0.97 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: -8, scale: 0.97 }}
+                          transition={{ duration: 0.15 }}
+                          style={{
+                            position: 'absolute', top: 'calc(100% + 14px)', left: '50%',
+                            transform: 'translateX(-50%)',
+                            width: 420,
+                            background: '#1a1710',
+                            border: '1px solid rgba(200,151,62,0.2)',
+                            borderRadius: 16,
+                            boxShadow: '0 20px 60px rgba(0,0,0,0.7)',
+                            overflow: 'hidden',
+                            zIndex: 999,
+                          }}
+                        >
+                          {/* Header */}
+                          <div style={{ padding: '14px 18px 10px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: '#c8973e', letterSpacing: '0.1em' }}>AI AGENTS</div>
+                            <div style={{ fontSize: 12, color: 'rgba(240,235,224,0.4)', marginTop: 2 }}>Choose an agent to launch a campaign</div>
+                          </div>
+
+                          {/* Agent grid */}
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, padding: '10px 10px 12px' }}>
+                            {NAV_AGENTS.map(agent => (
+                              <button
+                                key={agent.type}
+                                onClick={() => { navigate(`/campaign/${agent.type}`); setAgentsOpen(false) }}
+                                style={{
+                                  display: 'flex', alignItems: 'center', gap: 9,
+                                  padding: '9px 12px',
+                                  background: 'none', border: 'none',
+                                  borderRadius: 10, cursor: 'pointer',
+                                  textAlign: 'left', transition: 'background 0.12s',
+                                  fontFamily: "'Inter', sans-serif",
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.background = `${agent.color}12`}
+                                onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                              >
+                                <div style={{
+                                  width: 28, height: 28, borderRadius: 8, flexShrink: 0,
+                                  background: `${agent.color}18`,
+                                  border: `1px solid ${agent.color}30`,
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                  color: agent.color,
+                                }}>
+                                  {agent.icon}
+                                </div>
+                                <span style={{ fontSize: 12, fontWeight: 600, color: 'rgba(240,235,224,0.8)', lineHeight: 1.3 }}>
+                                  {agent.label}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+
+                          {/* Footer CTA */}
+                          <div style={{ padding: '10px 18px 14px', borderTop: '1px solid rgba(255,255,255,0.06)', textAlign: 'center' }}>
+                            <a href="#agents" onClick={() => setAgentsOpen(false)} style={{ fontSize: 12, color: '#c8973e', textDecoration: 'none', fontWeight: 600 }}>
+                              View all agents ↓
+                            </a>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                )
+              }
+              return link.href.startsWith('#') ? (
                 <a key={link.label} href={link.href} style={navLink}
                   onMouseEnter={e => e.currentTarget.style.color = '#f0ebe0'}
                   onMouseLeave={e => e.currentTarget.style.color = 'rgba(240,235,224,0.55)'}
@@ -153,7 +245,7 @@ export default function Navbar() {
                   onMouseLeave={e => e.currentTarget.style.color = location.pathname === link.href ? '#c8973e' : 'rgba(240,235,224,0.55)'}
                 >{link.label}</Link>
               )
-            ))}
+            })}
           </div>
         )}
 

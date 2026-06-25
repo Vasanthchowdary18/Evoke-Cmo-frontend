@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -57,6 +57,11 @@ import {
   BadgePercent,
   HeartHandshake,
   LayoutDashboard,
+  Share2,
+  Layers,
+  Box,
+  Clapperboard,
+  CalendarRange,
 } from "lucide-react";
 import Navbar from "../components/Navbar.jsx";
 import OnboardingModal from "../components/OnboardingModal.jsx";
@@ -399,9 +404,9 @@ const productToolCards = [
     color: "#3b82f6",
     border: "rgba(59,130,246,0.22)",
     badge: "CONTENT",
-    active: false,
-    comingSoon: true,
-    path: null,
+    active: true,
+    comingSoon: false,
+    path: "/campaign/content_calendar",
   },
   {
     icon: <MonitorPlay size={24} />,
@@ -411,9 +416,9 @@ const productToolCards = [
     color: "#6366f1",
     border: "rgba(99,102,241,0.22)",
     badge: "ADS",
-    active: false,
-    comingSoon: true,
-    path: null,
+    active: true,
+    comingSoon: false,
+    path: "/connect-accounts",
   },
   {
     icon: <UserCheck size={24} />,
@@ -423,9 +428,9 @@ const productToolCards = [
     color: "#8b5cf6",
     border: "rgba(139,92,246,0.22)",
     badge: "AUDIENCE",
-    active: false,
-    comingSoon: true,
-    path: null,
+    active: true,
+    comingSoon: false,
+    path: "/audience-builder",
   },
   {
     icon: <RefreshCw size={24} />,
@@ -435,9 +440,9 @@ const productToolCards = [
     color: "#ef4444",
     border: "rgba(239,68,68,0.22)",
     badge: "RETARGET",
-    active: false,
-    comingSoon: true,
-    path: null,
+    active: true,
+    comingSoon: false,
+    path: "/campaign/paid_advertising",
   },
   {
     icon: <BarChart2 size={24} />,
@@ -447,9 +452,9 @@ const productToolCards = [
     color: "#14b8a6",
     border: "rgba(20,184,166,0.22)",
     badge: "ANALYTICS",
-    active: false,
-    comingSoon: true,
-    path: null,
+    active: true,
+    comingSoon: false,
+    path: "/analytics",
   },
   {
     icon: <HeartHandshake size={24} />,
@@ -459,9 +464,9 @@ const productToolCards = [
     color: "#f59e0b",
     border: "rgba(245,158,11,0.22)",
     badge: "RETENTION",
-    active: false,
-    comingSoon: true,
-    path: null,
+    active: true,
+    comingSoon: false,
+    path: "/campaign/crm_lifecycle",
   },
 ];
 
@@ -1212,6 +1217,32 @@ export default function Dashboard() {
                     : "Connect Accounts"}
                 </button>
                 <button
+                  onClick={() => navigate('/analytics')}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 6,
+                    padding: "7px 14px",
+                    background: "rgba(129,140,248,0.1)",
+                    border: "1px solid rgba(129,140,248,0.25)",
+                    borderRadius: 10, color: "#818cf8",
+                    fontSize: 12, fontWeight: 700, cursor: "pointer",
+                  }}
+                >
+                  <BarChart2 size={12} /> Analytics
+                </button>
+                <button
+                  onClick={() => navigate('/crm')}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 6,
+                    padding: "7px 14px",
+                    background: "rgba(16,185,129,0.08)",
+                    border: "1px solid rgba(16,185,129,0.25)",
+                    borderRadius: 10, color: "#10b981",
+                    fontSize: 12, fontWeight: 700, cursor: "pointer",
+                  }}
+                >
+                  <Users size={12} /> CRM
+                </button>
+                <button
                   onClick={handleRetakeOnboarding}
                   title="Retake CMO onboarding"
                   style={{
@@ -1253,7 +1284,7 @@ export default function Dashboard() {
             <h2 style={{ fontSize: 22, fontWeight: 900, letterSpacing: "-0.02em", color: "#ffffff", marginBottom: 4 }}>
               Choose a campaign type
             </h2>
-            <p style={{ fontSize: 13, color: "rgba(255,255,255,0.45)" }}>All 17 AI agents, tools and campaign types in one place — pick one to generate.</p>
+            <p style={{ fontSize: 13, color: "rgba(255,255,255,0.45)" }}>All 25 AI agents, tools and campaign types in one place — pick one to generate.</p>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))", gap: 12 }}>
@@ -1261,6 +1292,7 @@ export default function Dashboard() {
               { title: "Events",           color: "#c8973e", icon: <Calendar size={16} />, type: "event" },
               { title: "Products",         color: "#a855f7", icon: <Package size={16} />,  type: "product" },
               { title: "Brand Strategy",   color: "#6366f1", icon: <Zap size={16} />,      type: "brand" },
+              { title: "Brand Knowledge Base", color: "#c8973e", icon: <BookOpen size={16} />, path: "/brand-kb" },
               { title: "Growth Strategy",  color: "#10b981", icon: <Rocket size={16} />,   type: "growth_strategy" },
               { title: "Content Calendar", color: "#3b82f6", icon: <Calendar size={16} />, type: "content_calendar" },
               { title: "SEO & Blog",       color: "#14b8a6", icon: <Globe size={16} />,    type: "seo_blog" },
@@ -1270,6 +1302,18 @@ export default function Dashboard() {
               { title: "Product Images",   color: "#06b6d4", icon: <Image size={16} />,    path: "/products" },
               { title: "360° Videos",      color: "#f97316", icon: <Film size={16} />,     path: "/products" },
               { title: "Lifestyle Photos", color: "#10b981", icon: <Image size={16} />,    path: "/products" },
+              { title: "Trend Analysis",   color: "#ec4899", icon: <Hash size={16} />,     path: "/trends" },
+              { title: "Audience Builder", color: "#8b5cf6", icon: <Users size={16} />,    path: "/audience-builder" },
+              { title: "Paid Advertising", color: "#f59e0b", icon: <MonitorPlay size={16} />, type: "paid_advertising" },
+              { title: "GEO Targeting",    color: "#14b8a6", icon: <Globe size={16} />,    type: "growth_strategy" },
+              { title: "CRM & Lifecycle",  color: "#a855f7", icon: <HeartHandshake size={16} />, type: "crm_lifecycle" },
+              { title: "Team Management",    color: "#6366f1", icon: <Users size={16} />,        path: "/team" },
+              { title: "Partner Sharing",    color: "#14b8a6", icon: <Share2 size={16} />,      path: "/partner-sharing" },
+              { title: "Banner Creation",    color: "#f59e0b", icon: <Sparkles size={16} />,    path: "/campaign/content_calendar", pkg: "A" },
+              { title: "Social Posting",     color: "#10b981", icon: <Share2 size={16} />,      path: "/connect-accounts", pkg: "A" },
+              { title: "Lifestyle Video",    color: "#f97316", icon: <Clapperboard size={16} />,path: "/products", pkg: "B" },
+              { title: "30-Day Content Plan",color: "#3b82f6", icon: <CalendarRange size={16} />,type: "content_calendar", pkg: "B" },
+              { title: "3D Product Images",  color: "#a855f7", icon: <Box size={16} />,         path: "/products", pkg: "C" },
             ].map((item, i) => (
               <motion.div
                 key={item.title}
@@ -1293,483 +1337,17 @@ export default function Dashboard() {
                 }}>
                   {item.icon}
                 </div>
-                <div>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 12, fontWeight: 700, color: "#f0ebe0", letterSpacing: "-0.01em" }}>{item.title}</div>
-                  <div style={{ fontSize: 10, color: "rgba(240,235,224,0.32)", marginTop: 1 }}>1 token</div>
+                  <div style={{ fontSize: 10, color: "rgba(240,235,224,0.32)", marginTop: 1 }}>
+                    {item.pkg ? <span style={{ color: "#c8973e", fontWeight: 700 }}>Pkg {item.pkg}</span> : "1 token"}
+                  </div>
                 </div>
               </motion.div>
             ))}
           </div>
         </motion.div>
 
-        {/* Campaign History */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          style={{ marginTop: 8 }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              marginBottom: 20,
-            }}
-          >
-            <div>
-              <div
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 6,
-                  padding: "4px 12px",
-                  background: "rgba(200,151,62,0.12)",
-                  border: "1px solid rgba(124,58,237,0.2)",
-                  borderRadius: 100,
-                  fontSize: 11,
-                  fontWeight: 700,
-                  color: "#c8973e",
-                  letterSpacing: "0.06em",
-                  marginBottom: 12,
-                }}
-              >
-                <Clock size={11} /> CAMPAIGN HISTORY
-              </div>
-              <h2
-                style={{
-                  fontSize: 22,
-                  fontWeight: 800,
-                  letterSpacing: "-0.02em",
-                  color: "#ffffff",
-                }}
-              >
-                Campaign History
-              </h2>
-              <p style={{ color: "rgba(255,255,255,0.35)", fontSize: 14, marginTop: 4 }}>
-                {campaigns.length === 0
-                  ? "No campaigns yet — launch one above"
-                  : `${campaigns.length} campaign${campaigns.length > 1 ? "s" : ""} generated`}
-              </p>
-            </div>
-            {campaigns.length > 5 && (
-              <button
-                onClick={() => setShowAll((v) => !v)}
-                className="btn-ghost"
-                style={{ fontSize: 13 }}
-              >
-                {showAll ? (
-                  <>
-                    <ChevronUp size={14} /> Show less
-                  </>
-                ) : (
-                  <>
-                    <ChevronDown size={14} /> Show all ({campaigns.length})
-                  </>
-                )}
-              </button>
-            )}
-          </div>
-
-          {campaigns.length === 0 ? (
-            <div
-              style={{
-                padding: "48px 24px",
-                textAlign: "center",
-                background: "#1c1a13",
-                border: "1px dashed #cbd5e1",
-                borderRadius: 16,
-              }}
-            >
-              <Clock size={36} style={{ color: "rgba(255,255,255,0.25)", marginBottom: 14 }} />
-              <p style={{ color: "rgba(255,255,255,0.35)", fontSize: 15 }}>
-                Your campaign history will appear here once you launch your
-                first campaign
-              </p>
-            </div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <AnimatePresence>
-                {displayed.map((c, i) => {
-                  const meta = TYPE_META[c.type] || TYPE_META.event;
-                  const platforms = Array.isArray(c.platforms)
-                    ? c.platforms
-                    : [];
-                  const goalText = c.goal
-                    ? c.goal.length > 90
-                      ? c.goal.slice(0, 90) + "…"
-                      : c.goal
-                    : "";
-                  const audience = c.targetAudience || "";
-                  const totalDays = c.campaignDays || 1;
-                  const postedDays = Array.isArray(c.daysPosted)
-                    ? c.daysPosted.length
-                    : 1;
-                  const isMultiDay = totalDays > 1;
-                  const pct = Math.round((postedDays / totalDays) * 100);
-                  return (
-                    <motion.div
-                      key={c.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, x: -20 }}
-                      transition={{ delay: i * 0.04 }}
-                      style={{
-                        background: "#1c1a13",
-                        border: "1px solid rgba(255,255,255,0.08)",
-                        borderRadius: 16,
-                        padding: "18px 20px",
-                        transition: "border-color 0.2s, box-shadow 0.2s",
-                        boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = `${meta.color}40`;
-                        e.currentTarget.style.boxShadow = `0 4px 16px ${meta.color}10`;
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = "rgba(245,240,232,0.15)";
-                        e.currentTarget.style.boxShadow =
-                          "0 1px 3px rgba(0,0,0,0.04)";
-                      }}
-                    >
-                      {/* ── Top row: icon + name + actions ── */}
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "flex-start",
-                          gap: 14,
-                        }}
-                      >
-                        <div
-                          style={{
-                            width: 46,
-                            height: 46,
-                            borderRadius: 13,
-                            background: `${meta.color}12`,
-                            border: `1px solid ${meta.color}25`,
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            color: meta.color,
-                            flexShrink: 0,
-                          }}
-                        >
-                          {React.cloneElement(meta.icon, { size: 20 })}
-                        </div>
-
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 8,
-                              flexWrap: "wrap",
-                              marginBottom: 4,
-                            }}
-                          >
-                            <span
-                              style={{
-                                fontWeight: 800,
-                                fontSize: 15,
-                                color: "#ffffff",
-                              }}
-                            >
-                              {c.name}
-                            </span>
-                            <span
-                              style={{
-                                padding: "2px 9px",
-                                background: `${meta.color}12`,
-                                border: `1px solid ${meta.color}25`,
-                                borderRadius: 100,
-                                fontSize: 10,
-                                fontWeight: 700,
-                                color: meta.color,
-                                letterSpacing: "0.05em",
-                                flexShrink: 0,
-                              }}
-                            >
-                              {meta.label.toUpperCase()}
-                            </span>
-                            {isMultiDay && (
-                              <span
-                                style={{
-                                  padding: "2px 9px",
-                                  background: "rgba(16,185,129,0.1)",
-                                  border: "1px solid rgba(16,185,129,0.3)",
-                                  borderRadius: 100,
-                                  fontSize: 10,
-                                  fontWeight: 700,
-                                  color: "#10b981",
-                                  flexShrink: 0,
-                                }}
-                              >
-                                🗓 {totalDays}-DAY
-                              </span>
-                            )}
-                            <span
-                              style={{
-                                marginLeft: "auto",
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 4,
-                                fontSize: 11,
-                                color: "rgba(255,255,255,0.35)",
-                              }}
-                            >
-                              <Clock size={10} /> {timeAgo(c.date)}
-                            </span>
-                          </div>
-
-                          {/* Goal */}
-                          {goalText && (
-                            <p
-                              style={{
-                                fontSize: 12,
-                                color: "rgba(255,255,255,0.5)",
-                                lineHeight: 1.55,
-                                marginBottom: 8,
-                                margin: "0 0 8px",
-                              }}
-                            >
-                              🎯 {goalText}
-                            </p>
-                          )}
-
-                          {/* Brand name if different from campaign name */}
-                          {c.brandName && c.brandName !== c.name && (
-                            <p
-                              style={{
-                                fontSize: 11,
-                                color: "rgba(255,255,255,0.35)",
-                                marginBottom: 8,
-                              }}
-                            >
-                              Brand:{" "}
-                              <span
-                                style={{ color: "rgba(255,255,255,0.5)", fontWeight: 600 }}
-                              >
-                                {c.brandName}
-                              </span>
-                            </p>
-                          )}
-
-                          {/* Target audience */}
-                          {audience && (
-                            <div
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 5,
-                                fontSize: 11,
-                                color: "rgba(255,255,255,0.35)",
-                                marginBottom: 8,
-                              }}
-                            >
-                              <Users size={10} />
-                              <span style={{ color: "rgba(255,255,255,0.5)" }}>
-                                {audience.length > 60
-                                  ? audience.slice(0, 60) + "…"
-                                  : audience}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Action buttons */}
-                        <div
-                          style={{
-                            display: "flex",
-                            gap: 8,
-                            flexShrink: 0,
-                            alignItems: "flex-start",
-                          }}
-                        >
-                          <button
-                            onClick={() => viewCampaign(c)}
-                            className="btn-ghost"
-                            style={{
-                              fontSize: 12,
-                              padding: "6px 12px",
-                              whiteSpace: "nowrap",
-                            }}
-                          >
-                            <Eye size={12} /> View Results
-                          </button>
-                          <button
-                            onClick={() => deleteCampaign(c.id)}
-                            style={{
-                              padding: "6px 9px",
-                              background: "none",
-                              border: "1px solid rgba(255,255,255,0.08)",
-                              borderRadius: 8,
-                              cursor: "pointer",
-                              color: "rgba(255,255,255,0.25)",
-                              display: "flex",
-                              alignItems: "center",
-                              transition: "all 0.2s",
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.borderColor =
-                                "rgba(239,68,68,0.4)";
-                              e.currentTarget.style.color = "#ef4444";
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.borderColor = "rgba(245,240,232,0.15)";
-                              e.currentTarget.style.color = "#cbd5e1";
-                            }}
-                          >
-                            <Trash2 size={12} />
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* ── Multi-day progress bar ── */}
-                      {isMultiDay && (
-                        <div
-                          style={{
-                            marginTop: 10,
-                            paddingTop: 10,
-                            borderTop: "1px solid rgba(255,255,255,0.06)",
-                          }}
-                        >
-                          <div
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "space-between",
-                              marginBottom: 6,
-                            }}
-                          >
-                            <span
-                              style={{
-                                fontSize: 11,
-                                fontWeight: 700,
-                                color: "rgba(255,255,255,0.5)",
-                              }}
-                            >
-                              Campaign Progress
-                            </span>
-                            <span
-                              style={{
-                                fontSize: 11,
-                                color: "#10b981",
-                                fontWeight: 700,
-                              }}
-                            >
-                              {postedDays} / {totalDays} days posted
-                            </span>
-                          </div>
-                          <div
-                            style={{
-                              height: 6,
-                              background: "#1c1a13",
-                              borderRadius: 100,
-                              overflow: "hidden",
-                            }}
-                          >
-                            <div
-                              style={{
-                                width: `${pct}%`,
-                                height: "100%",
-                                background: `linear-gradient(90deg, ${meta.color}, ${meta.color}99)`,
-                                borderRadius: 100,
-                                transition: "width 0.5s ease",
-                              }}
-                            />
-                          </div>
-                          {c.dailyPostTime && (
-                            <div
-                              style={{
-                                fontSize: 10,
-                                color: "rgba(255,255,255,0.35)",
-                                marginTop: 4,
-                              }}
-                            >
-                              ⏰ Auto-posts daily at {c.dailyPostTime}
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* ── Bottom row: platform badges + posted status ── */}
-                      {platforms.length > 0 && (
-                        <div
-                          style={{
-                            marginTop: 12,
-                            paddingTop: 12,
-                            borderTop: "1px solid rgba(255,255,255,0.06)",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 6,
-                            flexWrap: "wrap",
-                          }}
-                        >
-                          <span
-                            style={{
-                              fontSize: 10,
-                              fontWeight: 700,
-                              color: "rgba(255,255,255,0.35)",
-                              letterSpacing: "0.06em",
-                              marginRight: 4,
-                            }}
-                          >
-                            POSTED TO
-                          </span>
-                          {platforms.map((p) => {
-                            const pm = PLATFORM_META[p];
-                            if (!pm) return null;
-                            return (
-                              <span
-                                key={p}
-                                style={{
-                                  display: "inline-flex",
-                                  alignItems: "center",
-                                  gap: 4,
-                                  padding: "3px 9px",
-                                  background: `${pm.color}0f`,
-                                  border: `1px solid ${pm.color}30`,
-                                  borderRadius: 100,
-                                  fontSize: 10,
-                                  fontWeight: 700,
-                                  color: pm.color,
-                                }}
-                              >
-                                <span
-                                  style={{
-                                    width: 5,
-                                    height: 5,
-                                    borderRadius: "50%",
-                                    background: pm.color,
-                                    flexShrink: 0,
-                                  }}
-                                />
-                                {pm.label}
-                              </span>
-                            );
-                          })}
-                          <span
-                            style={{
-                              marginLeft: "auto",
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 4,
-                              fontSize: 11,
-                              color: "#10b981",
-                              fontWeight: 600,
-                            }}
-                          >
-                            <Check size={11} /> Sent
-                          </span>
-                        </div>
-                      )}
-                    </motion.div>
-                  );
-                })}
-              </AnimatePresence>
-            </div>
-          )}
-        </motion.div>
       </div>
     </div>
   );

@@ -37,3 +37,8 @@ export const AGENT_WEBHOOK_URL = import.meta.env.DEV
 
 // Meta / Evoke Marketing API base URL  (FastAPI backend — handler_api.py)
 export const META_API_BASE = import.meta.env.VITE_META_API_BASE || '';
+
+// Google Ads n8n webhooks
+export const GOOGLE_ADS_OAUTH_WEBHOOK    = 'https://vasanthchowdary373.app.n8n.cloud/webhook/google-ads-oauth';
+export const GOOGLE_ADS_CREATE_WEBHOOK   = 'https://vasanthchowdary373.app.n8n.cloud/webhook/google-ads-create-campaign';
+export const GOOGLE_ADS_METRICS_WEBHOOK  = 'https://vasanthchowdary373.app.n8n.cloud/webhook/google-ads-metrics';

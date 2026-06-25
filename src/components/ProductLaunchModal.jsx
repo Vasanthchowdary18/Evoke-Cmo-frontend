@@ -7,8 +7,7 @@ import {
   Play, ZoomIn
 } from 'lucide-react'
 
-const GEMINI_KEY = () =>
-  localStorage.getItem('gemini_api_key') || import.meta.env.VITE_GEMINI_API_KEY || ''
+const GROQ_KEY = import.meta.env.VITE_GROQ_API_KEY || ''
 
 const CLOUDINARY_CLOUD  = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'dxbn3vyig'
 const CLOUDINARY_PRESET = 'tiktok_videos'
@@ -24,51 +23,35 @@ async function uploadToCloudinary(base64, mimeType = 'image/jpeg') {
   return data.secure_url || ''
 }
 
-/* ── Call Gemini image-generation model ─────────────────────────────────── */
-async function geminiGenerateImage(prompt, imageBase64, mimeType) {
-  const apiKey = GEMINI_KEY()
-  const parts = [{ text: prompt }]
-  if (imageBase64) parts.push({ inlineData: { mimeType, data: imageBase64 } })
-
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent?key=${apiKey}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts }],
-        generationConfig: { responseModalities: ['IMAGE', 'TEXT'], temperature: 0.8 },
-      }),
-    }
-  )
-  if (!res.ok) { const e = await res.json(); throw new Error(e?.error?.message || `API ${res.status}`) }
-  const data = await res.json()
-  const images = []
-  for (const part of data.candidates?.[0]?.content?.parts || []) {
-    if (part.inlineData?.mimeType?.startsWith('image/')) {
-      images.push({ base64: part.inlineData.data, mimeType: part.inlineData.mimeType })
-    }
-  }
-  return images
+/* ── Generate image via Pollinations (free, no API key) ─────────────────── */
+async function pollinationsGenerateImage(prompt) {
+  const encoded = encodeURIComponent(prompt)
+  const url = `https://image.pollinations.ai/prompt/${encoded}?width=1024&height=1024&model=flux&nologo=true&seed=${Date.now()}`
+  const res = await fetch(url)
+  if (!res.ok) throw new Error(`Pollinations error ${res.status}`)
+  const buffer = await res.arrayBuffer()
+  const bytes = new Uint8Array(buffer)
+  let binary = ''
+  for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i])
+  const base64 = btoa(binary)
+  return [{ base64, mimeType: 'image/jpeg' }]
 }
 
-/* ── Call Gemini text model ─────────────────────────────────────────────── */
-async function geminiText(prompt) {
-  const apiKey = GEMINI_KEY()
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.7, maxOutputTokens: 4096 },
-      }),
-    }
-  )
+/* ── Call Groq text model ───────────────────────────────────────────────── */
+async function groqText(prompt) {
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${GROQ_KEY}` },
+    body: JSON.stringify({
+      model: 'llama-3.3-70b-versatile',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.7,
+      max_tokens: 4096,
+    }),
+  })
   if (!res.ok) { const e = await res.json(); throw new Error(e?.error?.message || `API ${res.status}`) }
   const data = await res.json()
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+  const text = data.choices?.[0]?.message?.content || ''
   const match = text.match(/```json\s*([\s\S]*?)```/) || text.match(/(\{[\s\S]*\})/)
   if (match) { try { return JSON.parse(match[1]) } catch (_) {} }
   return { raw: text }
@@ -170,39 +153,35 @@ export default function ProductLaunchModal({ onClose, onProceed, productName = '
 
   /* ── Generate per tool ────────────────────────────────────────────────── */
   const generate = async (toolKey) => {
-    if (!GEMINI_KEY()) { setTe(toolKey, 'No Gemini API key found. Add it in settings.'); return }
     setTs(toolKey, 'generating')
     setTe(toolKey, '')
     try {
       if (toolKey === 'angles') {
-        const imgs = await geminiGenerateImage(
-          `You are a professional product photographer. Generate a high-resolution, white-background e-commerce product photo showing the product "${prodName || 'product'}" from FOUR different angles arranged in a 2x2 grid: top-left=front view, top-right=right side view, bottom-left=back view, bottom-right=top-down view. Clean studio lighting, no shadows. The image should match the uploaded product exactly.`,
-          imgBase64, imgMime
+        const imgs = await pollinationsGenerateImage(
+          `Professional product photography, ${prodName || 'product'}, four angles 2x2 grid, front side back top views, pure white background, studio lighting, e-commerce quality, ultra realistic`
         )
         const urls = await Promise.all(imgs.map(i => uploadToCloudinary(i.base64, i.mimeType)))
         setTr(toolKey, { type: 'images', urls, base64s: imgs })
       }
 
       else if (toolKey === 'lifestyle') {
-        const imgs = await geminiGenerateImage(
-          `You are a professional lifestyle photographer. Place the product "${prodName || 'product'}" from the uploaded image onto a beautiful, diverse professional model in a realistic real-world lifestyle setting. Generate TWO lifestyle scenes: one casual (everyday use, natural light) and one premium (luxury/aspirational setting). High resolution, social-media ready. Match the exact product from the uploaded image.`,
-          imgBase64, imgMime
+        const imgs = await pollinationsGenerateImage(
+          `Lifestyle product photography, ${prodName || 'product'}, person using the product in a real-world setting, natural light, social media ready, high resolution, professional`
         )
         const urls = await Promise.all(imgs.map(i => uploadToCloudinary(i.base64, i.mimeType)))
         setTr(toolKey, { type: 'images', urls, base64s: imgs })
       }
 
       else if (toolKey === '360') {
-        const imgs = await geminiGenerateImage(
-          `You are a product photography expert. Generate a smooth 360° turntable rotation strip of the product "${prodName || 'product'}" from the uploaded image, showing 8 evenly-spaced rotation frames laid out in a single horizontal strip (0°, 45°, 90°, 135°, 180°, 225°, 270°, 315°). Pure white background, consistent lighting, e-commerce professional quality. Match the exact product.`,
-          imgBase64, imgMime
+        const imgs = await pollinationsGenerateImage(
+          `Product photography 360 rotation strip, ${prodName || 'product'}, 8 rotation frames 0 45 90 135 180 225 270 315 degrees, pure white background, consistent lighting, e-commerce quality`
         )
         const urls = await Promise.all(imgs.map(i => uploadToCloudinary(i.base64, i.mimeType)))
         setTr(toolKey, { type: 'images', urls, base64s: imgs })
       }
 
       else if (toolKey === 'video') {
-        const result = await geminiText(`You are an expert video director and social media strategist. Create a complete lifestyle video script for the product "${prodName || 'product'}". ${prodDesc2 ? `Product details: ${prodDesc2}` : ''}
+        const result = await groqText(`You are an expert video director and social media strategist. Create a complete lifestyle video script for the product "${prodName || 'product'}". ${prodDesc2 ? `Product details: ${prodDesc2}` : ''}
 
 Return ONLY valid JSON:
 {
@@ -223,7 +202,7 @@ Return ONLY valid JSON:
       }
 
       else if (toolKey === 'description') {
-        const result = await geminiText(`You are an expert ecommerce copywriter. Generate complete product listing copy for: "${prodName || 'product'}". ${prodDesc2 ? `Details: ${prodDesc2}` : ''}
+        const result = await groqText(`You are an expert ecommerce copywriter. Generate complete product listing copy for: "${prodName || 'product'}". ${prodDesc2 ? `Details: ${prodDesc2}` : ''}
 
 Return ONLY valid JSON:
 {
@@ -241,7 +220,7 @@ Return ONLY valid JSON:
       }
 
       else if (toolKey === 'seo') {
-        const result = await geminiText(`You are an SEO expert. Generate complete SEO content for the product "${prodName || 'product'}". ${prodDesc2 ? `Details: ${prodDesc2}` : ''}
+        const result = await groqText(`You are an SEO expert. Generate complete SEO content for the product "${prodName || 'product'}". ${prodDesc2 ? `Details: ${prodDesc2}` : ''}
 
 Return ONLY valid JSON:
 {
