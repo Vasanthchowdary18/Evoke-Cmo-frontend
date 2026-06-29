@@ -32,6 +32,7 @@ const SCRIPT_TYPES = [
 ]
 
 const DURATIONS = ['15 seconds', '30 seconds', '45 seconds', '60 seconds']
+const TARGET_AUDIENCES = ['Marketing Managers', 'CMOs & Marketing Leaders', 'Small Business Owners', 'Startup Founders', 'E-Commerce Brands', 'B2B Decision Makers', 'Sales Professionals', 'Product Managers', 'Entrepreneurs', 'Enterprise Teams', 'Agency Clients', 'General Consumers']
 
 async function generateScriptForPlatform({ platformKey, scriptType, context, audience, duration }) {
   const apiKey = import.meta.env.VITE_GROQ_API_KEY || ''
@@ -262,10 +263,10 @@ export default function ReelScriptsPage() {
 
         {/* Back */}
         <button
-          onClick={() => navigate('/package-b')}
+          onClick={() => navigate('/hub/content')}
           style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: TEXT3, fontSize: 13, cursor: 'pointer', marginBottom: 28, padding: 0, fontFamily: FONT }}
         >
-          <ArrowLeft size={14} /> Back to Package B
+          <ArrowLeft size={14} /> Back to Content Generation
         </button>
 
         {/* Header */}
@@ -360,12 +361,10 @@ export default function ReelScriptsPage() {
             Target Audience
             <span style={{ color: TEXT3, fontWeight: 400, marginLeft: 6 }}>(optional)</span>
           </label>
-          <input
-            value={audience}
-            onChange={e => setAudience(e.target.value)}
-            placeholder="e.g. Young professionals aged 25–35, fitness enthusiasts, startup founders..."
-            style={s.input}
-          />
+          <select value={audience} onChange={e => setAudience(e.target.value)} style={s.select}>
+            <option value="">Select target audience...</option>
+            {TARGET_AUDIENCES.map(a => <option key={a} value={a}>{a}</option>)}
+          </select>
         </div>
 
         {/* ── Error ── */}

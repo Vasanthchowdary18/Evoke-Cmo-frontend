@@ -16,13 +16,13 @@ const PRODUCT_CATEGORIES = [
 ]
 
 const PRICE_RANGES = [
-  'Under ₹500 / Under $10',
-  '₹500 – ₹1,000 / $10 – $20',
-  '₹1,000 – ₹2,500 / $20 – $50',
-  '₹2,500 – ₹5,000 / $50 – $100',
-  '₹5,000 – ₹10,000 / $100 – $200',
-  '₹10,000 – ₹25,000 / $200 – $500',
-  '₹25,000+ / $500+',
+  'Under $10',
+  '$10 – $20',
+  '$20 – $50',
+  '$50 – $100',
+  '$100 – $200',
+  '$200 – $500',
+  '$500+',
 ]
 
 const AUDIENCE_OPTIONS = [
@@ -263,7 +263,7 @@ export default function ProductDescription() {
               onChange={v => set('price', v)}
               options={PRICE_RANGES}
               placeholder="— select price range —"
-              customPlaceholder="e.g. ₹2,499 / $29.99"
+              customPlaceholder="e.g. $29.99"
             />
 
             <label style={S.label}>Target Audience</label>

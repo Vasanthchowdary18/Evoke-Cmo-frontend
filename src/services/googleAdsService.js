@@ -1,6 +1,6 @@
 import { getUserData } from './userService'
 
-const N8N_BASE = 'https://vasanthchowdary373.app.n8n.cloud/webhook'
+const N8N_BASE = 'https://vasanthchowadry373.app.n8n.cloud/webhook'
 
 export const GOOGLE_ADS_CREATE_WEBHOOK = `${N8N_BASE}/google-ads-create-campaign`
 export const GOOGLE_ADS_METRICS_WEBHOOK = `${N8N_BASE}/google-ads-metrics`

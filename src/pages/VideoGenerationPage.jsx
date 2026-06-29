@@ -111,6 +111,7 @@ Return ONLY valid JSON:
 
 const DURATIONS = ['15 seconds', '30 seconds', '60 seconds', '90 seconds', '2 minutes', '3-5 minutes']
 const TONES     = ['Energetic', 'Professional', 'Friendly', 'Inspirational', 'Urgent', 'Cinematic']
+const TARGET_AUDIENCES = ['Marketing Managers', 'CMOs & Marketing Leaders', 'Small Business Owners', 'Startup Founders', 'E-Commerce Brands', 'B2B Decision Makers', 'Sales Professionals', 'Product Managers', 'Entrepreneurs', 'Enterprise Teams', 'Agency Clients', 'General Consumers']
 
 export default function VideoGenerationPage() {
   useRequireAuth()
@@ -242,7 +243,10 @@ export default function VideoGenerationPage() {
             </div>
             <div>
               <label style={label}>Target audience</label>
-              <input style={inputStyle} placeholder="e.g. Marketing managers, 28-45, India" {...inp('audience')} />
+              <select style={selectStyle} value={inputs.audience} onChange={e => setInputs(p => ({ ...p, audience: e.target.value }))}>
+                <option value="">Select target audience...</option>
+                {TARGET_AUDIENCES.map(a => <option key={a} value={a}>{a}</option>)}
+              </select>
             </div>
             <div>
               <label style={label}>Video duration</label>

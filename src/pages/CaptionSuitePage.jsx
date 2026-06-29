@@ -186,10 +186,10 @@ export default function CaptionSuitePage() {
 
         {/* Back */}
         <button
-          onClick={() => navigate('/package-b')}
+          onClick={() => navigate('/hub/content')}
           style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: TEXT3, fontSize: 13, cursor: 'pointer', marginBottom: 28, padding: 0, fontFamily: FONT }}
         >
-          <ArrowLeft size={14} /> Back to Package B
+          <ArrowLeft size={14} /> Back to Content Generation
         </button>
 
         {/* Header */}

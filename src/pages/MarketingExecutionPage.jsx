@@ -64,10 +64,10 @@ Return ONLY valid JSON:
   "budgetAllocation": {
     "total": "${inputs.budget}",
     "byChannel": [
-      { "channel": "Meta / Instagram", "amount": "Allocated amount", "percentage": "35%", "expectedCPM": "₹120-180", "expectedROAS": "2.8x" },
-      { "channel": "LinkedIn", "amount": "Allocated amount", "percentage": "25%", "expectedCPM": "₹400-600", "expectedROAS": "3.2x" },
-      { "channel": "Google / YouTube", "amount": "Allocated amount", "percentage": "25%", "expectedCPM": "₹80-150", "expectedROAS": "4.1x" },
-      { "channel": "Email Marketing", "amount": "Allocated amount", "percentage": "15%", "expectedCPM": "₹5-15", "expectedROAS": "8.5x" }
+      { "channel": "Meta / Instagram", "amount": "Allocated amount", "percentage": "35%", "expectedCPM": "$8-15", "expectedROAS": "2.8x" },
+      { "channel": "LinkedIn", "amount": "Allocated amount", "percentage": "25%", "expectedCPM": "$30-60", "expectedROAS": "3.2x" },
+      { "channel": "Google / YouTube", "amount": "Allocated amount", "percentage": "25%", "expectedCPM": "$5-12", "expectedROAS": "4.1x" },
+      { "channel": "Email Marketing", "amount": "Allocated amount", "percentage": "15%", "expectedCPM": "$0.5-1.5", "expectedROAS": "8.5x" }
     ]
   },
   "audienceTargeting": {
@@ -86,7 +86,7 @@ Return ONLY valid JSON:
   "performanceKPIs": [
     { "metric": "Total Reach", "target": "500K+", "channel": "All" },
     { "metric": "Click-through Rate", "target": "3.5%", "channel": "Meta" },
-    { "metric": "Cost per Lead", "target": "₹250-350", "channel": "LinkedIn" },
+    { "metric": "Cost per Lead", "target": "$20-35", "channel": "LinkedIn" },
     { "metric": "Email Open Rate", "target": "28%", "channel": "Email" },
     { "metric": "Conversion Rate", "target": "4.2%", "channel": "Google" },
     { "metric": "Overall ROAS", "target": "3.5x", "channel": "All" }
@@ -215,6 +215,7 @@ export default function MarketingExecutionPage() {
   const label = { fontSize: 11, color: TEXT3, marginBottom: 6, display: 'block', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 500 }
 
   const DURATIONS = ['1 week', '2 weeks', '4 weeks', '6 weeks', '2 months', '3 months', '6 months']
+  const TARGET_AUDIENCES = ['Marketing Managers', 'CMOs & Marketing Leaders', 'Small Business Owners', 'Startup Founders', 'E-Commerce Brands', 'B2B Decision Makers', 'Sales Professionals', 'Product Managers', 'Entrepreneurs', 'Enterprise Teams', 'Agency Clients', 'General Consumers']
 
   return (
     <div style={{ minHeight: '100vh', background: BG, color: TEXT, fontFamily: "'Inter', sans-serif" }}>
@@ -266,7 +267,7 @@ export default function MarketingExecutionPage() {
             </div>
             <div>
               <label style={label}>Total budget *</label>
-              <input value={inputs.budget} onChange={e => set('budget', e.target.value)} placeholder="e.g. ₹5,00,000 / $10,000" style={inputStyle} />
+              <input value={inputs.budget} onChange={e => set('budget', e.target.value)} placeholder="e.g. $10,000" style={inputStyle} />
             </div>
             <div>
               <label style={label}>Duration</label>
@@ -276,7 +277,10 @@ export default function MarketingExecutionPage() {
             </div>
             <div>
               <label style={label}>Target audience</label>
-              <input value={inputs.audience} onChange={e => set('audience', e.target.value)} placeholder="e.g. Marketing managers, B2B SaaS" style={inputStyle} />
+              <select value={inputs.audience} onChange={e => set('audience', e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
+                <option value="">Select target audience...</option>
+                {TARGET_AUDIENCES.map(a => <option key={a} value={a}>{a}</option>)}
+              </select>
             </div>
             <div>
               <label style={label}>Launch date</label>
