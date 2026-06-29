@@ -43,6 +43,9 @@ import MarketingStrategyPage from './pages/MarketingStrategyPage.jsx'
 import MarketingExecutionPage from './pages/MarketingExecutionPage.jsx'
 import CampaignHub from './pages/CampaignHub.jsx'
 import AgentHub from './pages/AgentHub.jsx'
+import ContentGenerationPage from './pages/ContentGenerationPage.jsx'
+import CopywritingAgentPage from './pages/CopywritingAgentPage.jsx'
+import ExecutiveReportPage from './pages/ExecutiveReportPage.jsx'
 import Chatbot from './components/Chatbot.jsx'
 
 // Handles token returned from accounts.evokemarketplace.com after login
@@ -121,6 +124,9 @@ export default function App() {
         <Route path="/execution"             element={<MarketingExecutionPage />} />
         <Route path="/campaign-hub"          element={<CampaignHub />} />
         <Route path="/hub/:agent"            element={<AgentHub />} />
+        <Route path="/content-gen"           element={<ContentGenerationPage />} />
+        <Route path="/copywriting"           element={<CopywritingAgentPage />} />
+        <Route path="/executive-report"      element={<ExecutiveReportPage />} />
         <Route path="/privacy"            element={<Privacy />} />
         <Route path="/terms"              element={<Terms />} />
         <Route path="*"                  element={<Navigate to="/" replace />} />

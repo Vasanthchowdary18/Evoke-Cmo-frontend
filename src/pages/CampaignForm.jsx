@@ -1723,7 +1723,6 @@ export default function CampaignForm() {
     setSubmitError("");
     const needsBrandName = ["product", "brand", "brand_strategy"].includes(type);
     if (!form.name.trim()) return setSubmitError("Please enter a name.");
-    if (!form.description.trim()) return setSubmitError("Please enter a description.");
     if (!form.goal.trim() && !form.goalType && type !== "ads_creation" && type !== "ads_manager" && type !== "target_audience") return setSubmitError("Please select or describe a campaign goal.");
     if (needsBrandName && !form.brandName.trim()) return setSubmitError("Please enter a brand name.");
     if (form.targetAudience.length === 0) return setSubmitError("Please select at least one target audience.");
@@ -2305,22 +2304,12 @@ export default function CampaignForm() {
             style={s.input}
           />
 
-          <label style={s.label}>
-            {descLabel} <span style={s.req}>*</span>
-          </label>
-          <textarea
-            value={form.description}
-            onChange={(e) => set("description", e.target.value)}
-            placeholder="Describe in detail..."
-            style={s.textarea}
-          />
-
           {/* â"€â"€ Type-specific extra fields â"€â"€ */}
           {type === "ads_creation" && (
             <>
               <label style={s.label}>Ad Budget <span style={s.req}>*</span></label>
               <select value={form.budget || ""} onChange={(e) => set("budget", e.target.value)} style={{ ...s.input, cursor: "pointer", colorScheme: "dark" }}>
-                {["","Under ₹5,000 / $50","₹5,000–₹20,000 / $50–$200","₹20,000–₹50,000 / $200–$500","₹50,000–₹1.5L / $500–$1,500","₹1.5L–₹5L / $1,500–$5,000","Above ₹5L / $5,000+"].map(v => (
+                {["","Under $50","$50–$200","$200–$500","$500–$1,500","$1,500–$5,000","Above $5,000"].map(v => (
                   <option key={v} value={v} style={{ background: "#1c1a13", color: v ? "#f0ebe0" : "rgba(240,235,224,0.4)" }}>{v || "Select ad budget..."}</option>
                 ))}
               </select>
@@ -2482,7 +2471,7 @@ export default function CampaignForm() {
                 <>
                   <label style={s.label}>Monthly Budget (optional)</label>
                   <select value={form.budget || ""} onChange={(e) => set("budget", e.target.value)} style={{ ...s.input, cursor: "pointer", colorScheme: "dark" }}>
-                    {["","Under ₹50,000 / $500","₹50,000–₹2L / $500–$2,000","₹2L–₹5L / $2,000–$5,000","₹5L–₹15L / $5,000–$15,000","₹15L–₹50L / $15,000–$50,000","Above ₹50L / $50,000+"].map((v) => (
+                    {["","Under $500","$500–$2,000","$2,000–$5,000","$5,000–$15,000","$15,000–$50,000","Above $50,000"].map((v) => (
                       <option key={v} value={v} style={{ background: "#1c1a13", color: v ? "#f0ebe0" : "rgba(240,235,224,0.4)" }}>{v || "Select budget range..."}</option>
                     ))}
                   </select>
@@ -2515,7 +2504,7 @@ export default function CampaignForm() {
 
               <label style={s.label}>Monthly Marketing Budget (optional)</label>
               <select value={form.budget || ""} onChange={(e) => set("budget", e.target.value)} style={{ ...s.input, cursor: "pointer", colorScheme: "dark" }}>
-                {["","Under ₹50,000 / $500","₹50,000–₹2L / $500–$2,000","₹2L–₹5L / $2,000–$5,000","₹5L–₹15L / $5,000–$15,000","₹15L–₹50L / $15,000–$50,000","Above ₹50L / $50,000+"].map((v) => (
+                {["","Under $500","$500–$2,000","$2,000–$5,000","$5,000–$15,000","$15,000–$50,000","Above $50,000"].map((v) => (
                   <option key={v} value={v} style={{ background: "#1c1a13", color: v ? "#f0ebe0" : "rgba(240,235,224,0.4)" }}>{v || "Select budget range..."}</option>
                 ))}
               </select>
@@ -2573,7 +2562,7 @@ export default function CampaignForm() {
           )}
 
           {/* ── Social Platforms — Package A free agents (strategy / growth / content) ── */}
-          {(type === "growth_strategy" || type === "growth_agent" || type === "content_calendar") && (
+          {!isFreeUser && (type === "growth_strategy" || type === "growth_agent" || type === "content_calendar") && (
             <>
               <label style={s.label}>
                 Social Platforms to Target

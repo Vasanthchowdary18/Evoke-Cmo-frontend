@@ -43,9 +43,9 @@ AI EXECUTIVE SUITE (Active & Coming Soon):
 - Compliance Agent: AI Compliance Officer — Legal, privacy, GDPR, ad compliance (Coming soon)
 
 PRICING PLANS:
-1. Starter Plan — ₹999/month: Events campaigns, Email + WhatsApp + calendar + SEO, Standard support
-2. Growth Plan — ₹1,999/month (Most Popular): Everything in Starter + Products + LinkedIn + SMS + positioning
-3. Enterprise Plan — ₹4,999/month: Everything in Growth + Brands + Full brand strategy + Ad copy + Sheet logging + 24/7 support
+1. Starter Plan — $19/month: Events campaigns, Email + WhatsApp + calendar + SEO, Standard support
+2. Growth Plan — $49/month (Most Popular): Everything in Starter + Products + LinkedIn + SMS + positioning
+3. Enterprise Plan — $99/month: Everything in Growth + Brands + Full brand strategy + Ad copy + Sheet logging + 24/7 support
 
 WHAT THE AI CMO CAN DO (Complete List):
 - Create growth strategies and GTM plans

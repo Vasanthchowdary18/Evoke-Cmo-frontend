@@ -186,7 +186,7 @@ export default function CampaignHub() {
               </p>
 
               {/* CTA */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: ct.color, fontSize: 12, fontWeight: 600, transition: 'gap 0.2s', gap: hovered === ct.type ? 8 : 5 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: hovered === ct.type ? 8 : 5, color: ct.color, fontSize: 12, fontWeight: 600, transition: 'gap 0.2s' }}>
                 <span>Generate campaign</span>
                 <ArrowRight size={13} />
               </div>

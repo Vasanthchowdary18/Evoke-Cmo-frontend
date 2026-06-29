@@ -80,12 +80,12 @@ const INDUSTRY_OPTIONS = [
 
 const PRICING_OPTIONS = [
   { value: 'free',           label: 'Free / Freemium' },
-  { value: 'under_1k',       label: 'Under ₹1,000' },
-  { value: '1k_5k',          label: '₹1,000 – ₹5,000' },
-  { value: '5k_15k',         label: '₹5,000 – ₹15,000' },
-  { value: '15k_50k',        label: '₹15,000 – ₹50,000' },
-  { value: '50k_150k',       label: '₹50,000 – ₹1.5L' },
-  { value: 'above_150k',     label: 'Above ₹1.5L' },
+  { value: 'under_1k',       label: 'Under $10' },
+  { value: '1k_5k',          label: '$10 – $50' },
+  { value: '5k_15k',         label: '$50 – $200' },
+  { value: '15k_50k',        label: '$200 – $600' },
+  { value: '50k_150k',       label: '$600 – $2,000' },
+  { value: 'above_150k',     label: 'Above $2,000' },
   { value: 'custom',         label: 'Custom / Enterprise' },
 ]
 
@@ -539,7 +539,7 @@ export default function BrandKnowledgeBase() {
                   </Field>
                   <Field label="Revenue Target" hint="optional">
                     <input value={form.revenueTarget} onChange={e => set('revenueTarget', e.target.value)}
-                      placeholder="e.g. ₹1 Cr ARR" style={inputStyle} />
+                      placeholder="e.g. $1M ARR" style={inputStyle} />
                   </Field>
                 </div>
 

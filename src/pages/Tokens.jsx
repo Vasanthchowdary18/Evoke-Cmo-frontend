@@ -425,7 +425,7 @@ export default function Tokens() {
           ['500+', 'Active Members'],
           ['10,000+', 'Campaigns Generated'],
           ['8', 'Token Tiers'],
-          ['₹0', 'Cost to Start'],
+          ['$0', 'Cost to Start'],
         ].map(([num, label]) => (
           <div key={label}>
             <div style={{ color: '#f5c542', fontSize: 32, fontWeight: 900, lineHeight: 1 }}>{num}</div>

@@ -45,7 +45,7 @@ Return ONLY valid JSON:
     "interests": ["interest1","interest2","interest3","interest4","interest5","interest6"],
     "behaviours": ["behaviour1","behaviour2","behaviour3","behaviour4"],
     "platforms": ["Facebook","Instagram"],
-    "cpmEstimate": "₹180-320",
+    "cpmEstimate": "$2-5",
     "conversionProbability": "High",
     "color": "#10b981"
   },
@@ -86,9 +86,9 @@ Return ONLY valid JSON:
     "color": "#ec4899"
   },
   "metaAdSets": [
-    { "name": "Ad set name", "audience": "Primary", "budget": "₹500/day", "objective": "Conversions", "placements": ["Feed","Stories"] },
-    { "name": "...", "audience": "Secondary", "budget": "₹300/day", "objective": "Traffic", "placements": ["Feed","Reels"] },
-    { "name": "...", "audience": "Retargeting", "budget": "₹200/day", "objective": "Conversions", "placements": ["Feed","Stories","Messenger"] }
+    { "name": "Ad set name", "audience": "Primary", "budget": "$50/day", "objective": "Conversions", "placements": ["Feed","Stories"] },
+    { "name": "...", "audience": "Secondary", "budget": "$30/day", "objective": "Traffic", "placements": ["Feed","Reels"] },
+    { "name": "...", "audience": "Retargeting", "budget": "$20/day", "objective": "Conversions", "placements": ["Feed","Stories","Messenger"] }
   ],
   "googleKeywords": {
     "branded": ["keyword1","keyword2","keyword3"],
@@ -216,7 +216,7 @@ function AudienceCard({ seg, label }) {
 export default function AudienceBuilder() {
   useRequireAuth()
   const navigate = useNavigate()
-  const [inputs, setInputs] = useState({ product: '', industry: 'Marketing & Advertising', goal: 'Lead Generation', budget: '₹500 - ₹2,000/day', geo: 'India' })
+  const [inputs, setInputs] = useState({ product: '', industry: 'Marketing & Advertising', goal: 'Lead Generation', budget: '$50 - $200/day', geo: 'United States' })
   const [loading, setLoading] = useState(false)
   const [data, setData] = useState(null)
   const [error, setError] = useState('')
@@ -278,7 +278,7 @@ export default function AudienceBuilder() {
             <div>
               <label style={{ fontSize: 11, fontWeight: 700, color: TEXT3, letterSpacing: '0.05em', display: 'block', marginBottom: 6 }}>DAILY BUDGET</label>
               <select value={inputs.budget} onChange={e => set('budget', e.target.value)} style={SEL}>
-                {['₹200 - ₹500/day','₹500 - ₹2,000/day','₹2,000 - ₹10,000/day','₹10,000+/day','$50-$200/day','$200-$1,000/day'].map(b => <option key={b}>{b}</option>)}
+                {['Under $50/day','$50 - $200/day','$200 - $500/day','$500 - $2,000/day','$2,000 - $5,000/day','$5,000+/day'].map(b => <option key={b}>{b}</option>)}
               </select>
             </div>
             <div>

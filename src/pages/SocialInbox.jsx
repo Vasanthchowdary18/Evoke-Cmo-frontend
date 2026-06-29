@@ -45,7 +45,7 @@ const MESSAGES = [
   ]},
   { id: '5', platform: 'whatsapp', sender: '+91 98765 43210', initials: 'WA', role: 'WhatsApp Lead', preview: 'Hello, I am interested in your marketing packages. What are the pricing options?', time: '3h ago', unread: false, starred: true, thread: [
     { from: 'them', text: 'Hello, I am interested in your marketing packages. What are the pricing options?', time: '3h ago' },
-    { from: 'me',   text: 'Hi! Thanks for reaching out. Our packages start at ₹15,000/month. I will send you the full brochure shortly.', time: '2h ago' },
+    { from: 'me',   text: 'Hi! Thanks for reaching out. Our packages start at $199/month. I will send you the full brochure shortly.', time: '2h ago' },
     { from: 'them', text: 'That sounds great! Please do send it across. Looking forward to it.', time: '1h ago' },
   ]},
   { id: '6', platform: 'linkedin', sender: 'Anita Singh', initials: 'AS', role: 'CEO · StartupXYZ', preview: "We're looking for a marketing partner for our Series A launch. Your EVOX platform looks perfect for us.", time: '5h ago', unread: false, starred: false, thread: [

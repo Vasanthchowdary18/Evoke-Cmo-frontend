@@ -179,6 +179,37 @@ function getRecommendedActions(connectedCount, campaigns, tokenBalance) {
     path: '/inbox',
   })
 
+  actions.push({
+    priority: 8,
+    icon: <FileText size={18} />,
+    title: 'Generate Long-Form Content',
+    desc: 'AI-powered blog articles, landing page copy, and newsletters — SEO-ready in seconds.',
+    color: '#6366f1',
+    cta: 'Open Content Gen',
+    path: '/content-gen',
+  })
+
+  actions.push({
+    priority: 9,
+    icon: <Megaphone size={18} />,
+    title: 'Copywriting Agent',
+    desc: 'Create ad copy, taglines, brand voice, product names, and value propositions with AI.',
+    color: '#ec4899',
+    cta: 'Open Copywriting',
+    path: '/copywriting',
+  })
+
+  actions.push({
+    priority: 10,
+    icon: <BarChart2 size={18} />,
+    title: 'Executive Report',
+    desc: 'Generate a board-ready executive marketing report with ROI, ROAS, and strategic recommendations.',
+    color: GOLD,
+    cta: 'Generate Report',
+    path: '/executive-report',
+    highlight: true,
+  })
+
   return actions.slice(0, 4)
 }
 
