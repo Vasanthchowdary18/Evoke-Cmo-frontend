@@ -1725,7 +1725,7 @@ export default function CampaignForm() {
     if (!form.name.trim()) return setSubmitError("Please enter a name.");
     if (!form.goal.trim() && !form.goalType && type !== "ads_creation" && type !== "ads_manager" && type !== "target_audience") return setSubmitError("Please select or describe a campaign goal.");
     if (needsBrandName && !form.brandName.trim()) return setSubmitError("Please enter a brand name.");
-    if (form.targetAudience.length === 0) return setSubmitError("Please select at least one target audience.");
+    if (form.targetAudience.length === 0 && type !== "analytics_report" && type !== "competitive_intel") return setSubmitError("Please select at least one target audience.");
 
     setLoading(true);
     setLoadingPhase("generating");
@@ -2279,10 +2279,28 @@ export default function CampaignForm() {
 
           {type === "competitive_intel" && (
             <>
+              <label style={s.label}>Competitor Name(s) <span style={s.req}>*</span></label>
+              <input value={form.competitorName || ""} onChange={(e) => set("competitorName", e.target.value)} placeholder="e.g. HubSpot, Salesforce, Mailchimp" style={s.input} />
+
               <label style={s.label}>Competitor Website URL</label>
               <input value={form.competitorUrl} onChange={(e) => set("competitorUrl", e.target.value)} placeholder="https://competitor.com" style={s.input} />
+
               <label style={s.label}>Industry / Niche <span style={s.req}>*</span></label>
               <input value={form.industry} onChange={(e) => set("industry", e.target.value)} placeholder="e.g. SaaS, E-commerce, Events" style={s.input} />
+
+              <label style={s.label}>Your Unique Value vs Competitor</label>
+              <textarea value={form.uniqueValue || ""} onChange={(e) => set("uniqueValue", e.target.value)} placeholder="e.g. We offer 3x faster onboarding and lower pricing than competitors..." rows={2} style={{ ...s.input, resize: "vertical", minHeight: 70 }} />
+
+              <label style={s.label}>Aspects to Analyse <span style={s.req}>*</span></label>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {["Pricing & Packaging","Product Features","Marketing & Messaging","Social Media Presence","SEO & Content","Paid Advertising","Customer Reviews","Brand Positioning"].map((aspect) => {
+                  const sel = (form.intelAspects || []).includes(aspect);
+                  return (
+                    <button key={aspect} type="button" onClick={() => { const cur = form.intelAspects || []; set("intelAspects", sel ? cur.filter(a => a !== aspect) : [...cur, aspect]); }}
+                      style={{ padding: "8px 14px", borderRadius: 10, cursor: "pointer", fontSize: 12, fontWeight: 600, fontFamily: "inherit", background: sel ? "rgba(245,158,11,0.14)" : "rgba(255,255,255,0.04)", border: `1.5px solid ${sel ? "#f59e0b" : "rgba(255,255,255,0.12)"}`, color: sel ? "#f59e0b" : "rgba(255,255,255,0.55)", transition: "all 0.15s" }}>{aspect}</button>
+                  );
+                })}
+              </div>
             </>
           )}
 
@@ -2397,12 +2415,50 @@ export default function CampaignForm() {
                 ))}
               </select>
 
-              <label style={s.label}>Monthly Marketing Budget (optional)</label>
-              <select value={form.budget || ""} onChange={(e) => set("budget", e.target.value)} style={{ ...s.input, cursor: "pointer", colorScheme: "dark" }}>
-                {["","Under $500","$500–$2,000","$2,000–$5,000","$5,000–$15,000","$15,000–$50,000","Above $50,000"].map((v) => (
-                  <option key={v} value={v} style={{ background: "#1c1a13", color: v ? "#f0ebe0" : "rgba(240,235,224,0.4)" }}>{v || "Select budget range..."}</option>
-                ))}
-              </select>
+              {type !== "analytics_report" && (
+                <>
+                  <label style={s.label}>Monthly Marketing Budget (optional)</label>
+                  <select value={form.budget || ""} onChange={(e) => set("budget", e.target.value)} style={{ ...s.input, cursor: "pointer", colorScheme: "dark" }}>
+                    {["","Under $500","$500–$2,000","$2,000–$5,000","$5,000–$15,000","$15,000–$50,000","Above $50,000"].map((v) => (
+                      <option key={v} value={v} style={{ background: "#1c1a13", color: v ? "#f0ebe0" : "rgba(240,235,224,0.4)" }}>{v || "Select budget range..."}</option>
+                    ))}
+                  </select>
+                </>
+              )}
+
+              {/* Analytics-specific extra fields */}
+              {type === "analytics_report" && (
+                <>
+                  <label style={s.label}>Channels to Analyse <span style={s.req}>*</span></label>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                    {["Social Media","Email Marketing","Paid Ads (Google/Meta)","SEO / Organic","Content / Blog","Influencer","All Channels"].map((ch) => {
+                      const sel = (form.analyseChannels || []).includes(ch);
+                      return (
+                        <button key={ch} type="button" onClick={() => { const cur = form.analyseChannels || []; set("analyseChannels", sel ? cur.filter(c => c !== ch) : [...cur, ch]); }}
+                          style={{ padding: "8px 14px", borderRadius: 10, cursor: "pointer", fontSize: 12, fontWeight: 600, fontFamily: "inherit", background: sel ? "rgba(249,115,22,0.14)" : "rgba(255,255,255,0.04)", border: `1.5px solid ${sel ? "#f97316" : "rgba(255,255,255,0.12)"}`, color: sel ? "#f97316" : "rgba(255,255,255,0.55)", transition: "all 0.15s" }}>{ch}</button>
+                      );
+                    })}
+                  </div>
+
+                  <label style={{ ...s.label, marginTop: 16 }}>Key Metrics to Focus On</label>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                    {["ROAS","CTR","Conversion Rate","Cost per Lead","Reach / Impressions","Engagement Rate","Revenue / Sales","Churn Rate"].map((m) => {
+                      const sel = (form.keyMetrics || []).includes(m);
+                      return (
+                        <button key={m} type="button" onClick={() => { const cur = form.keyMetrics || []; set("keyMetrics", sel ? cur.filter(c => c !== m) : [...cur, m]); }}
+                          style={{ padding: "8px 14px", borderRadius: 10, cursor: "pointer", fontSize: 12, fontWeight: 600, fontFamily: "inherit", background: sel ? "rgba(249,115,22,0.14)" : "rgba(255,255,255,0.04)", border: `1.5px solid ${sel ? "#f97316" : "rgba(255,255,255,0.12)"}`, color: sel ? "#f97316" : "rgba(255,255,255,0.55)", transition: "all 0.15s" }}>{m}</button>
+                      );
+                    })}
+                  </div>
+
+                  <label style={{ ...s.label, marginTop: 16 }}>Report Format</label>
+                  <select value={form.reportFormat || ""} onChange={(e) => set("reportFormat", e.target.value)} style={{ ...s.input, cursor: "pointer", colorScheme: "dark" }}>
+                    {["","Executive Summary (1-page)", "Detailed Report (full breakdown)","Board / Investor Presentation","Client-Facing Report","Internal Team Review"].map((v) => (
+                      <option key={v} value={v} style={{ background: "#1c1a13", color: v ? "#f0ebe0" : "rgba(240,235,224,0.4)" }}>{v || "Select report format..."}</option>
+                    ))}
+                  </select>
+                </>
+              )}
             </>
           )}
 
@@ -2481,6 +2537,59 @@ export default function CampaignForm() {
                 <option value="retention">Retention & Upsell</option>
                 <option value="full">Full Funnel Audit</option>
               </select>
+
+              <label style={s.label}>Current Conversion Rate <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 12, fontWeight: 400 }}>(optional)</span></label>
+              <input value={form.conversionRate || ""} onChange={(e) => set("conversionRate", e.target.value)} placeholder="e.g. 1.5% — or 'Not tracking yet'" style={s.input} />
+
+              <label style={s.label}>Monthly Website Traffic <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 12, fontWeight: 400 }}>(optional)</span></label>
+              <select value={form.monthlyTraffic || ""} onChange={(e) => set("monthlyTraffic", e.target.value)} style={{ ...s.input, cursor: "pointer", colorScheme: "dark" }}>
+                {["","Under 1,000","1,000 – 5,000","5,000 – 20,000","20,000 – 100,000","100,000 – 500,000","500,000+"].map((v) => (
+                  <option key={v} value={v} style={{ background: "#1c1a13", color: v ? "#f0ebe0" : "rgba(240,235,224,0.4)" }}>{v || "Select traffic range..."}</option>
+                ))}
+              </select>
+
+              <label style={s.label}>Biggest Drop-off Point</label>
+              <select value={form.dropOffPoint || ""} onChange={(e) => set("dropOffPoint", e.target.value)} style={{ ...s.input, cursor: "pointer", colorScheme: "dark" }}>
+                {["","Landing page (visitors bounce immediately)","Product/pricing page (no add to cart)","Checkout (cart abandonment)","Email sign-up form","Demo / booking page","Post-sign-up (low activation)","Not sure"].map((v) => (
+                  <option key={v} value={v} style={{ background: "#1c1a13", color: v ? "#f0ebe0" : "rgba(240,235,224,0.4)" }}>{v || "Select drop-off point..."}</option>
+                ))}
+              </select>
+            </>
+          )}
+
+          {type === "sales_enablement" && (
+            <>
+              <label style={s.label}>Sales Stage Being Targeted</label>
+              <select value={form.salesStage || ""} onChange={(e) => set("salesStage", e.target.value)} style={{ ...s.input, cursor: "pointer", colorScheme: "dark" }}>
+                {["","Prospecting / Awareness","Initial Outreach / Cold Contact","Discovery Call / Qualification","Proposal / Demo","Negotiation / Objection Handling","Closing","Post-Sale / Retention & Upsell"].map((v) => (
+                  <option key={v} value={v} style={{ background: "#1c1a13", color: v ? "#f0ebe0" : "rgba(240,235,224,0.4)" }}>{v || "Select sales stage..."}</option>
+                ))}
+              </select>
+
+              <label style={s.label}>Key Objections to Handle <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 12, fontWeight: 400 }}>(optional)</span></label>
+              <textarea value={form.salesObjections || ""} onChange={(e) => set("salesObjections", e.target.value)} placeholder="e.g. 'Too expensive', 'Already using a competitor', 'Not the right time'..." style={{ ...s.textarea, minHeight: "90px" }} />
+
+              <label style={s.label}>Average Deal / Contract Value <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 12, fontWeight: 400 }}>(optional)</span></label>
+              <select value={form.dealValue || ""} onChange={(e) => set("dealValue", e.target.value)} style={{ ...s.input, cursor: "pointer", colorScheme: "dark" }}>
+                {["","Under $500","$500 – $2,000","$2,000 – $10,000","$10,000 – $50,000","$50,000 – $200,000","$200,000+","Not sure"].map((v) => (
+                  <option key={v} value={v} style={{ background: "#1c1a13", color: v ? "#f0ebe0" : "rgba(240,235,224,0.4)" }}>{v || "Select deal value range..."}</option>
+                ))}
+              </select>
+
+              <label style={s.label}>Sales Collateral Needed</label>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {["Sales Deck / Pitch Deck","One-Pager / Brochure","Case Studies","Battle Card (vs Competitors)","Email Sequences","Proposal Template","Demo Script","FAQ / Objection Handling Sheet"].map((opt) => {
+                  const active = (form.salesCollateral || []).includes(opt);
+                  return (
+                    <button key={opt} type="button" onClick={() => {
+                      const curr = form.salesCollateral || [];
+                      set("salesCollateral", active ? curr.filter(v => v !== opt) : [...curr, opt]);
+                    }} style={{ padding: "7px 14px", borderRadius: 20, fontSize: 12, fontWeight: 500, cursor: "pointer", fontFamily: "inherit", border: `1px solid ${active ? "#6366f1" : "rgba(255,255,255,0.15)"}`, background: active ? "rgba(99,102,241,0.18)" : "rgba(255,255,255,0.04)", color: active ? "#a5b4fc" : "rgba(255,255,255,0.6)", transition: "all 0.15s" }}>
+                      {opt}
+                    </button>
+                  );
+                })}
+              </div>
             </>
           )}
 
@@ -2840,6 +2949,73 @@ export default function CampaignForm() {
             </>
           )}
 
+          {/* ── ELEVATE-ONLY premium fields (event_full only) ── */}
+          {type === "event_full" && (
+            <>
+              {/* Divider */}
+              <div style={{ margin: "24px 0 20px", display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ flex: 1, height: 1, background: "rgba(200,151,62,0.2)" }} />
+                <span style={{ fontSize: 11, fontWeight: 700, color: "#c8973e", letterSpacing: "0.12em", textTransform: "uppercase" }}>ELEVATE — Premium Details</span>
+                <div style={{ flex: 1, height: 1, background: "rgba(200,151,62,0.2)" }} />
+              </div>
+
+              {/* Venue */}
+              <label style={s.label}>Venue Name <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 12, fontWeight: 400 }}>(optional)</span></label>
+              <input value={form.venueName || ""} onChange={(e) => set("venueName", e.target.value)} placeholder="e.g. Dubai World Trade Centre, The Ritz-Carlton" style={s.input} />
+
+              {/* Expected Attendance */}
+              <label style={s.label}>Expected Attendance <span style={s.req}>*</span></label>
+              <select value={form.expectedAttendance || ""} onChange={(e) => set("expectedAttendance", e.target.value)} style={{ ...s.input, cursor: "pointer", colorScheme: "dark" }}>
+                {["", "Under 50", "50 – 200", "200 – 500", "500 – 1,000", "1,000 – 5,000", "5,000 – 20,000", "20,000+"].map((v) => (
+                  <option key={v} value={v} style={{ background: "#1c1a13", color: v ? "#f0ebe0" : "rgba(240,235,224,0.4)" }}>{v || "Select expected attendance..."}</option>
+                ))}
+              </select>
+
+              {/* Number of Days */}
+              <label style={s.label}>Event Duration</label>
+              <select value={form.eventDuration || ""} onChange={(e) => set("eventDuration", e.target.value)} style={{ ...s.input, cursor: "pointer", colorScheme: "dark" }}>
+                {["", "Half day (< 4 hrs)", "Full day (1 day)", "2 days", "3 days", "4 days", "5+ days", "Multi-week / Ongoing"].map((v) => (
+                  <option key={v} value={v} style={{ background: "#1c1a13", color: v ? "#f0ebe0" : "rgba(240,235,224,0.4)" }}>{v || "Select duration..."}</option>
+                ))}
+              </select>
+
+              {/* Ticket Type */}
+              <label style={s.label}>Ticket / Entry Type <span style={s.req}>*</span></label>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {["Free Entry", "Paid — Single Tier", "Paid — Multi Tier (Early Bird / VIP)", "Invite Only", "Hybrid (Free + Paid VIP)"].map((v) => {
+                  const sel = form.ticketType === v;
+                  return (
+                    <button key={v} type="button" onClick={() => set("ticketType", sel ? "" : v)} style={{ padding: "8px 16px", borderRadius: 10, cursor: "pointer", fontSize: 12, fontWeight: 600, fontFamily: "inherit", background: sel ? "rgba(200,151,62,0.15)" : "rgba(255,255,255,0.04)", border: `1.5px solid ${sel ? "#c8973e" : "rgba(255,255,255,0.12)"}`, color: sel ? "#c8973e" : "rgba(255,255,255,0.55)", transition: "all 0.15s" }}>{v}</button>
+                  );
+                })}
+              </div>
+
+              {/* Speakers / Performers */}
+              <label style={{ ...s.label, marginTop: 16 }}>Speakers / Performers</label>
+              <select value={form.speakerCount || ""} onChange={(e) => set("speakerCount", e.target.value)} style={{ ...s.input, cursor: "pointer", colorScheme: "dark" }}>
+                {["", "None", "1 – 3", "4 – 10", "10 – 25", "25+", "Multiple stages / tracks"].map((v) => (
+                  <option key={v} value={v} style={{ background: "#1c1a13", color: v ? "#f0ebe0" : "rgba(240,235,224,0.4)" }}>{v || "Select number of speakers..."}</option>
+                ))}
+              </select>
+
+              {/* Sponsorship */}
+              <label style={s.label}>Sponsorship Packages</label>
+              <select value={form.sponsorshipTiers || ""} onChange={(e) => set("sponsorshipTiers", e.target.value)} style={{ ...s.input, cursor: "pointer", colorScheme: "dark" }}>
+                {["", "No sponsorship", "Presenting Sponsor only", "Gold / Silver / Bronze tiers", "Custom packages", "Community / Media partners only"].map((v) => (
+                  <option key={v} value={v} style={{ background: "#1c1a13", color: v ? "#f0ebe0" : "rgba(240,235,224,0.4)" }}>{v || "Select sponsorship model..."}</option>
+                ))}
+              </select>
+
+              {/* Post-event goal */}
+              <label style={s.label}>Post-Event Follow-Up Goal</label>
+              <select value={form.postEventGoal || ""} onChange={(e) => set("postEventGoal", e.target.value)} style={{ ...s.input, cursor: "pointer", colorScheme: "dark" }}>
+                {["", "Drive on-demand recording views", "Convert attendees to customers", "Build media & PR coverage", "Grow email / social following", "Collect testimonials & case studies", "Launch next event / series", "No specific post-event goal"].map((v) => (
+                  <option key={v} value={v} style={{ background: "#1c1a13", color: v ? "#f0ebe0" : "rgba(240,235,224,0.4)" }}>{v || "Select post-event goal..."}</option>
+                ))}
+              </select>
+            </>
+          )}
+
           {(type === "product" || type === "brand") && (
             <>
               <label style={s.label}>
@@ -2875,7 +3051,7 @@ export default function CampaignForm() {
             </>
           )}
 
-          {type !== "event" && type !== "growth_strategy" && type !== "growth_agent" && type !== "content_calendar" && type !== "ads_creation" && type !== "ads_manager" && type !== "target_audience" && type !== "email_drip" && type !== "influencer" && type !== "analytics_report" && !EXEC_TYPES.includes(type) && (
+          {type !== "event" && type !== "growth_strategy" && type !== "growth_agent" && type !== "content_calendar" && type !== "ads_creation" && type !== "ads_manager" && type !== "target_audience" && type !== "email_drip" && type !== "influencer" && type !== "analytics_report" && type !== "competitive_intel" && type !== "funnel_cro" && type !== "sales_enablement" && !EXEC_TYPES.includes(type) && (
             <>
               <label style={s.label}>
                 Price / Pricing Info{" "}
@@ -2898,9 +3074,12 @@ export default function CampaignForm() {
             </>
           )}
 
+          {type !== "analytics_report" && type !== "competitive_intel" && (
           <label style={s.label}>
             Target Audience <span style={s.req}>*</span>
           </label>
+          )}
+          {type !== "analytics_report" && type !== "competitive_intel" && (
           <div ref={audienceRef} style={{ position: "relative" }}>
             <button
               onClick={() => setAudienceOpen((v) => !v)}
@@ -2981,32 +3160,35 @@ export default function CampaignForm() {
               )}
             </AnimatePresence>
           </div>
+          )}
 
           {type !== "ads_creation" && type !== "ads_manager" && type !== "target_audience" && (
             <>
               <label style={s.label}>
-                Campaign Goal <span style={s.req}>*</span>
+                {type === "competitive_intel" ? "Intel Objective"
+                  : type === "analytics_report" ? "Report Purpose"
+                  : type === "funnel_cro" ? "Optimization Goal"
+                  : type === "sales_enablement" ? "Sales Goal"
+                  : "Campaign Goal"}{" "}
+                <span style={s.req}>*</span>
               </label>
               <select
                 value={form.goalType}
                 onChange={(e) => set("goalType", e.target.value)}
                 style={{ ...s.input, cursor: "pointer", colorScheme: "dark", marginBottom: "8px" }}
               >
-                {[
-                  "",
-                  type === "event" || type === "event_full" ? "Drive Event Registrations / Attendance" : null,
-                  "Increase Brand Awareness",
-                  "Generate Leads",
-                  "Drive Sales / Conversions",
-                  "Grow Community / Following",
-                  "Build Brand Authority",
-                  "Launch New Product / Event",
-                  "Re-engage Existing Customers",
-                  "Boost Website Traffic",
-                  "Other",
-                ].filter(v => v !== null).map((v) => (
+                {(type === "competitive_intel"
+                  ? ["", "Identify Competitor Weaknesses", "Benchmark Pricing Strategy", "Analyse Competitor Content", "Track Market Positioning", "Find Untapped Market Gaps", "Improve Our Value Proposition", "Other"]
+                  : type === "analytics_report"
+                  ? ["", "Monthly Performance Review", "Quarterly Business Review (QBR)", "Campaign Post-Mortem", "Channel ROI Analysis", "Executive Summary Report", "Annual Marketing Audit", "Custom Period Report", "Other"]
+                  : type === "funnel_cro"
+                  ? ["", "Increase Landing Page Conversion Rate", "Reduce Cart Abandonment", "Improve Email Click-Through", "Optimise Lead Magnet Sign-ups", "Boost Demo / Trial Requests", "Lower Cost Per Acquisition", "Other"]
+                  : type === "sales_enablement"
+                  ? ["", "Shorten Sales Cycle", "Improve Lead-to-Close Rate", "Equip Team with Sales Collateral", "Handle Common Objections", "Increase Average Deal Value", "Expand Into New Market Segment", "Other"]
+                  : ["", type === "event" || type === "event_full" ? "Drive Event Registrations / Attendance" : null, "Increase Brand Awareness", "Generate Leads", "Drive Sales / Conversions", "Grow Community / Following", "Build Brand Authority", "Launch New Product / Event", "Re-engage Existing Customers", "Boost Website Traffic", "Other"].filter(v => v !== null)
+                ).map((v) => (
                   <option key={v} value={v} style={{ background: "#1c1a13", color: v ? "#f0ebe0" : "rgba(240,235,224,0.4)" }}>
-                    {v || "Select campaign goal..."}
+                    {v || `Select ${type === "competitive_intel" ? "intel objective" : type === "analytics_report" ? "report purpose" : type === "funnel_cro" ? "optimization goal" : type === "sales_enablement" ? "sales goal" : "campaign goal"}...`}
                   </option>
                 ))}
               </select>

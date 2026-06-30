@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Calendar, Package, Zap, TrendingUp, Mail, Users, BarChart2, Briefcase, ShoppingCart, Sparkles, Activity, Search, ChevronLeft, ArrowRight } from 'lucide-react'
+import { Calendar, Package, Zap, TrendingUp, Mail, Users, BarChart2, Briefcase, ShoppingCart, Sparkles, Activity, Search, ChevronLeft, ArrowRight, Megaphone } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
 
 const BG    = '#0e0c09'
@@ -19,7 +19,15 @@ const CAMPAIGN_TYPES = [
     desc: 'Promote events with full multi-channel campaign — social posts, email invites, and post-event follow-up.',
     icon: <Calendar size={22} />,
     color: '#c8973e',
-    badge: 'EVENTS',
+    badge: 'STARTER',
+  },
+  {
+    type: 'event_full',
+    label: 'ELEVATE Event',
+    desc: 'Premium event campaign — venue details, speaker lineup, sponsorships, ticket strategy, and full post-event follow-up.',
+    icon: <Megaphone size={22} />,
+    color: '#c8973e',
+    badge: 'ELEVATE',
   },
   {
     type: 'product',
@@ -122,7 +130,7 @@ export default function CampaignHub() {
 
         {/* Back */}
         <button
-          onClick={() => navigate('/#agents-ecosystem')}
+          onClick={() => navigate(-1)}
           style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: 'rgba(240,235,224,0.45)', fontSize: 13, fontWeight: 600, cursor: 'pointer', marginBottom: 36, padding: 0, transition: 'color 0.15s' }}
           onMouseEnter={e => e.currentTarget.style.color = 'rgba(240,235,224,0.85)'}
           onMouseLeave={e => e.currentTarget.style.color = 'rgba(240,235,224,0.45)'}

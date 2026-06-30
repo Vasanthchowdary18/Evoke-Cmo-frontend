@@ -953,7 +953,7 @@ export default function Landing() {
               },
             ].map((agent,i)=>(
               <motion.div key={agent.label} variants={fadeUp}
-                onClick={()=>{if(user){navigate(agent.route)}else{try{sessionStorage.setItem('evoke_post_login_route',agent.route)}catch{}redirectToLogin()}}}
+                onClick={()=>{if(user){navigate(agent.route,{state:{backTo:'/',backScroll:'agents-ecosystem'}})}else{try{sessionStorage.setItem('evoke_post_login_route',agent.route)}catch{}redirectToLogin()}}}
                 style={{background:'#141210',border:`1px solid rgba(255,255,255,0.07)`,borderRadius:16,overflow:'hidden',cursor:'pointer',transition:'all 0.25s'}}
                 onMouseEnter={e=>{e.currentTarget.style.borderColor=agent.color+'66';e.currentTarget.style.transform='translateY(-4px)';e.currentTarget.style.boxShadow=`0 20px 50px ${agent.color}18`}}
                 onMouseLeave={e=>{e.currentTarget.style.borderColor='rgba(255,255,255,0.07)';e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none'}}>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   TrendingUp, Target, Calendar, Search, Mail, Users, BarChart2, Briefcase,
@@ -70,7 +70,8 @@ const HUB_CONFIG = {
     subtitle: 'AI-generated images, banners, lifestyle photos, and product visuals — ready for ads and social.',
     accentColor: '#ec4899',
     tools: [
-      { label: 'Product Image Angles', badge: 'IMAGES', desc: 'Generate multiple product angles — front, side, top, and lifestyle on clean backgrounds.', icon: <Camera size={20}/>, color: '#ec4899', route: '/image-angles' },
+      { label: 'Creative Asset Generator', badge: 'NEW', desc: 'Generate brand-approved images, graphics, social creatives, display ads and infographics from a campaign brief.', icon: <Sparkles size={20}/>, color: '#ec4899', route: '/creative-asset', isNew: true },
+      { label: 'Product Image Angles', badge: 'IMAGES', desc: 'Generate multiple product angles — front, side, top, and lifestyle on clean backgrounds.', icon: <Camera size={20}/>, color: '#f97316', route: '/image-angles' },
       { label: '360° Product Video', badge: '360°', desc: 'Smooth rotating product showcase video for e-commerce and ads.', icon: <Video size={20}/>, color: '#f97316', route: '/image-360' },
       { label: 'Lifestyle Photos', badge: 'LIFESTYLE', desc: 'Product in real-life settings — homes, outdoors, events, and social contexts.', icon: <Image size={20}/>, color: '#10b981', route: '/image-lifestyle' },
       { label: '3D Product Images', badge: '3D', desc: 'Photorealistic 3D renders of your product for premium campaigns.', icon: <Box size={20}/>, color: '#8b5cf6', route: '/image-3d' },
@@ -124,7 +125,18 @@ const HUB_CONFIG = {
 export default function AgentHub() {
   const { agent } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const [hovered, setHovered] = useState(null)
+
+  const handleBack = () => {
+    const { backTo, backScroll } = location.state || {}
+    if (backTo) {
+      navigate(backTo)
+      if (backScroll) setTimeout(() => document.getElementById(backScroll)?.scrollIntoView({ behavior: 'smooth' }), 150)
+    } else {
+      navigate(-1)
+    }
+  }
 
   const config = HUB_CONFIG[agent]
   if (!config) { navigate(-1); return null }
@@ -136,7 +148,7 @@ export default function AgentHub() {
 
         {/* Back */}
         <button
-          onClick={() => navigate(-1)}
+          onClick={handleBack}
           style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, color: 'rgba(240,235,224,0.75)', fontSize: 13, fontWeight: 600, cursor: 'pointer', marginBottom: 36, padding: '8px 14px', transition: 'all 0.15s' }}
           onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = '#f0ebe0' }}
           onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = 'rgba(240,235,224,0.75)' }}
