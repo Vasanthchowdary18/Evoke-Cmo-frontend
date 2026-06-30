@@ -2181,8 +2181,8 @@ export default function CampaignForm() {
           </p>
         </motion.div>
 
-        {/* ── Social Accounts connect panel — Package A agents only ── */}
-        {fromPackageA && (() => {
+        {/* Social Accounts panel removed */}
+        {false && (() => {
           const ICONS = {
             instagram: (
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
