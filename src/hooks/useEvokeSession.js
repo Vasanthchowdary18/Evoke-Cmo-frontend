@@ -9,6 +9,23 @@ import {
 
 const getProfileServer = () => null;
 
+// localhost only — never runs on Vercel/production
+const isLocalhost = typeof window !== "undefined" &&
+  (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+
+const DEV_USER = isLocalhost
+  ? {
+      email: "vasanthchowadry35@gmail.com",
+      firstName: "Vasanth",
+      lastName: "chowdary",
+      fullName: "Vasanth chowdary",
+      custID: 260417001,
+      role: 4,
+      token: null,
+      walletAddress: null,
+    }
+  : null;
+
 export function useEvokeSession() {
   const profile = useSyncExternalStore(
     subscribeSession,
@@ -16,6 +33,11 @@ export function useEvokeSession() {
     getProfileServer,
   );
   const [bootstrapTried, setBootstrapTried] = useState(false);
+
+  // Skip real auth on localhost
+  if (DEV_USER) {
+    return { profile: DEV_USER, status: "authenticated" };
+  }
 
   useEffect(() => {
     if (bootstrapTried) return;
