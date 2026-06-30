@@ -9,12 +9,22 @@ import {
 
 const getProfileServer = () => null;
 
-// DEV ONLY — remove before production
-const DEV_USER = {
-  email: "vasanthchowadry35@gmail.com",
-  displayName: "Vasanth",
-  uid: "dev-vasanth-local",
-};
+// DEV ONLY — localhost bypass so you don't need to log in during local development
+const isLocalhost = typeof window !== "undefined" &&
+  (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+
+const DEV_USER = isLocalhost
+  ? {
+      email: "vasanthchowadry35@gmail.com",
+      firstName: "Vasanth",
+      lastName: "chowdary",
+      fullName: "Vasanth chowdary",
+      custID: 260417001,
+      role: 4,
+      token: null,
+      walletAddress: null,
+    }
+  : null;
 
 export function useEvokeSession() {
   const profile = useSyncExternalStore(
@@ -24,7 +34,7 @@ export function useEvokeSession() {
   );
   const [bootstrapTried, setBootstrapTried] = useState(false);
 
-  //  Return hardcoded dev user instantly on localhost
+  // On localhost only — skip real auth and use hardcoded dev user
   if (DEV_USER) {
     return { profile: DEV_USER, status: "authenticated" };
   }
