@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Users, Zap, ArrowLeft, Loader2, Download,
@@ -213,10 +213,24 @@ function AudienceCard({ seg, label }) {
   )
 }
 
+const GEO_MAP = {
+  'India': 'India', 'Global': 'United States', 'USA': 'United States',
+  'UK': 'United States', 'Southeast Asia': 'United States',
+  'Middle East': 'United States', 'Australia': 'Australia', 'Canada': 'United States',
+}
+
 export default function AudienceBuilder() {
   useRequireAuth()
   const navigate = useNavigate()
-  const [inputs, setInputs] = useState({ product: '', industry: 'Marketing & Advertising', goal: 'Lead Generation', budget: '$50 - $200/day', geo: 'United States' })
+  const location = useLocation()
+  const incomingPrefill = location.state?.prefill || null
+  const [inputs, setInputs] = useState({
+    product: '',
+    industry: incomingPrefill?.industry || 'Marketing & Advertising',
+    goal: 'Lead Generation',
+    budget: '$50 - $200/day',
+    geo: GEO_MAP[incomingPrefill?.geo] || 'United States',
+  })
   const [loading, setLoading] = useState(false)
   const [data, setData] = useState(null)
   const [error, setError] = useState('')
@@ -255,6 +269,16 @@ export default function AudienceBuilder() {
             <p style={{ fontSize: 13, color: TEXT2, marginTop: 4 }}>Build precision audience segments for Meta, Google & LinkedIn ads</p>
           </div>
         </div>
+
+        {/* Pre-fill banner from Trend Analysis */}
+        {incomingPrefill?.industry && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 16px', background: 'rgba(99,102,241,0.07)', border: '1px solid rgba(99,102,241,0.25)', borderRadius: 12, marginBottom: 16 }}>
+            <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#818cf8', flexShrink: 0 }} />
+            <span style={{ fontSize: 13, color: 'rgba(129,140,248,0.9)', fontWeight: 600 }}>
+              Industry pre-filled from Trend Analysis — <strong style={{ color: '#818cf8' }}>{incomingPrefill.industry}</strong>. Add your product to build audience segments.
+            </span>
+          </div>
+        )}
 
         {/* Input form */}
         <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: '20px 24px', marginBottom: 24 }}>
@@ -402,6 +426,108 @@ export default function AudienceBuilder() {
                 })}
               </div>
             )}
+            {/* Next Steps */}
+            <div style={{ marginTop: 32, padding: '24px 28px', background: 'rgba(200,151,62,0.06)', border: `1px solid rgba(200,151,62,0.2)`, borderRadius: 18 }}>
+              <div style={{ fontSize: 12, fontWeight: 800, color: GOLD, letterSpacing: '0.08em', marginBottom: 6 }}>WHAT TO DO WITH THIS DATA</div>
+              <h3 style={{ fontSize: 17, fontWeight: 800, color: TEXT, marginBottom: 20, marginTop: 0 }}>3 Steps to Launch Your Real Ad Campaign</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14, marginBottom: 22 }}>
+                {[
+                  {
+                    step: '01',
+                    title: 'Meta Ads Manager',
+                    color: '#1877f2',
+                    icon: '📘',
+                    items: [
+                      'Go to Meta Ads Manager → Create Campaign',
+                      'Set Objective matching your Campaign Goal above',
+                      'In Ad Set → Detailed Targeting, paste your Interests from Audience Segments tab',
+                      'Set age range & gender from Demographics',
+                      'Use placements from Meta Ad Sets tab',
+                      'Set daily budget as shown in Ad Sets tab',
+                    ]
+                  },
+                  {
+                    step: '02',
+                    title: 'Google Ads',
+                    color: '#4285f4',
+                    icon: '🔍',
+                    items: [
+                      'Go to Google Ads → New Campaign → Search',
+                      'Copy High Intent keywords from Google Keywords tab',
+                      'Add Branded keywords for your own brand protection',
+                      'Add Competitor keywords to capture rival traffic',
+                      'Use Discovery keywords for top-of-funnel reach',
+                      'Set bids — High Intent = highest, Discovery = lowest',
+                    ]
+                  },
+                  {
+                    step: '03',
+                    title: 'Write Your Ad Copy',
+                    color: '#10b981',
+                    icon: '✍️',
+                    items: [
+                      'Go to Messaging Guide tab — copy each segment message',
+                      'Primary message → use in your main headline ads',
+                      'Secondary message → use in alternative ad variations',
+                      'Retargeting message → urgency copy for warm audience',
+                      'Test 2-3 ad variations per audience segment',
+                      'Match ad creative to the audience interests listed',
+                    ]
+                  },
+                ].map(card => (
+                  <div key={card.step} style={{ background: CARD, border: `1px solid ${card.color}25`, borderRadius: 14, padding: '16px 18px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                      <div style={{ width: 34, height: 34, borderRadius: 10, background: `${card.color}18`, border: `1px solid ${card.color}35`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>{card.icon}</div>
+                      <div>
+                        <div style={{ fontSize: 9, fontWeight: 800, color: card.color, letterSpacing: '0.07em' }}>STEP {card.step}</div>
+                        <div style={{ fontSize: 13, fontWeight: 800, color: TEXT }}>{card.title}</div>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {card.items.map((item, i) => (
+                        <div key={i} style={{ display: 'flex', gap: 7, alignItems: 'flex-start' }}>
+                          <div style={{ width: 16, height: 16, borderRadius: '50%', background: `${card.color}20`, border: `1px solid ${card.color}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>
+                            <span style={{ fontSize: 8, fontWeight: 800, color: card.color }}>{i + 1}</span>
+                          </div>
+                          <span style={{ fontSize: 11, color: TEXT2, lineHeight: 1.55 }}>{item}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingTop: 16, borderTop: `1px solid rgba(200,151,62,0.15)` }}>
+                <span style={{ fontSize: 13, color: TEXT2 }}>Ready to build your full campaign brief with AI?</span>
+                <button
+                  onClick={() => {
+                    const GOAL_MAP = {
+                      'Lead Generation': 'Generate Leads',
+                      'Sales & Conversions': 'Drive Sales / Conversions',
+                      'Brand Awareness': 'Increase Brand Awareness',
+                      'App Installs': 'Launch New Product / Event',
+                      'Event Registrations': 'Drive Event Registrations / Attendance',
+                      'Website Traffic': 'Boost Website Traffic',
+                      'Retargeting': 'Re-engage Existing Customers',
+                    }
+                    navigate('/campaign-hub', {
+                      state: {
+                        prefill: {
+                          name: inputs.product,
+                          brandName: inputs.product,
+                          industry: inputs.industry,
+                          budget: inputs.budget,
+                          geo: inputs.geo,
+                          goalType: GOAL_MAP[inputs.goal] || '',
+                        }
+                      }
+                    })
+                  }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 20px', background: `linear-gradient(135deg, ${GOLD}, #a87030)`, border: 'none', borderRadius: 10, color: '#0e0c09', fontSize: 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}
+                >
+                  <Target size={13} /> Launch Campaign Builder →
+                </button>
+              </div>
+            </div>
           </motion.div>
         )}
 

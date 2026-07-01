@@ -41,8 +41,8 @@ const HUB_CONFIG = {
     subtitle: 'Build precision audience segments, track trends, and manage your CRM — all powered by AI.',
     accentColor: '#a855f7',
     tools: [
-      { label: 'Audience Builder', badge: 'SEGMENTS', desc: 'Build 4 precision audience segments with demographics, interests, and ad-ready configurations for Meta & Google.', icon: <Users size={20}/>, color: '#a855f7', route: '/audience-builder' },
       { label: 'Trend Analysis', badge: 'TRENDS', desc: 'Real-time trend tracking across your market, keywords, and competitor movements.', icon: <TrendingUp size={20}/>, color: '#06b6d4', route: '/trends' },
+      { label: 'Audience Builder', badge: 'SEGMENTS', desc: 'Build 4 precision audience segments with demographics, interests, and ad-ready configurations for Meta & Google.', icon: <Users size={20}/>, color: '#a855f7', route: '/audience-builder' },
       { label: 'CRM & Lifecycle', badge: 'CRM', desc: 'Manage your customer lifecycle, segment contacts, and automate follow-ups.', icon: <UserCheck size={20}/>, color: '#10b981', route: '/crm' },
     ],
   },
@@ -86,11 +86,11 @@ const HUB_CONFIG = {
     subtitle: 'Generate promo videos, product reels, ad creatives, and event videos — script to visual in seconds.',
     accentColor: '#ef4444',
     tools: [
-      { label: 'Promo Video', badge: 'PROMO', desc: 'High-energy promotional video with motion, text overlays, and brand colours.', icon: <Play size={20}/>, color: '#ef4444', route: '/video-gen' },
-      { label: 'Product Showcase', badge: 'PRODUCT', desc: 'Clean product-focused video with close-ups, features, and CTA.', icon: <Film size={20}/>, color: '#f97316', route: '/video-gen' },
-      { label: 'Social Reel', badge: 'REEL', desc: 'Short-form vertical video for Instagram Reels, TikTok, and YouTube Shorts.', icon: <Sparkles size={20}/>, color: '#ec4899', route: '/video-gen' },
-      { label: 'Ad Creative Video', badge: 'AD', desc: 'Conversion-optimised video ad with hook, offer, and CTA for paid campaigns.', icon: <DollarSign size={20}/>, color: '#c8973e', route: '/video-gen' },
-      { label: 'Event Video', badge: 'EVENT', desc: 'Event highlight reel or promotional video for upcoming or past events.', icon: <Calendar size={20}/>, color: '#10b981', route: '/video-gen' },
+      { label: 'Promo Video',       badge: 'PROMO',   desc: 'High-energy promotional video with motion, text overlays, and brand colours.', icon: <Play size={20}/>,      color: '#ef4444', route: '/video-gen', videoType: 'promo'   },
+      { label: 'Product Showcase',  badge: 'PRODUCT', desc: 'Clean product-focused video with close-ups, features, and CTA.',                icon: <Film size={20}/>,      color: '#f97316', route: '/video-gen', videoType: 'product' },
+      { label: 'Social Reel',       badge: 'REEL',    desc: 'Short-form vertical video for Instagram Reels, TikTok, and YouTube Shorts.',     icon: <Sparkles size={20}/>,  color: '#ec4899', route: '/video-gen', videoType: 'reel'    },
+      { label: 'Ad Creative Video', badge: 'AD',      desc: 'Conversion-optimised video ad with hook, offer, and CTA for paid campaigns.',    icon: <DollarSign size={20}/>, color: '#c8973e', route: '/video-gen', videoType: 'ad'      },
+      { label: 'Event Video',       badge: 'EVENT',   desc: 'Event highlight reel or promotional video for upcoming or past events.',         icon: <Calendar size={20}/>,  color: '#10b981', route: '/video-gen', videoType: 'event'   },
     ],
   },
 
@@ -177,7 +177,7 @@ export default function AgentHub() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.05, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-              onClick={() => navigate(tool.route)}
+              onClick={() => navigate(tool.route, { state: { from: `/hub/${agent}`, fromLabel: config.title, ...(tool.videoType && { videoType: tool.videoType }) } })}
               onMouseEnter={() => setHovered(i)}
               onMouseLeave={() => setHovered(null)}
               style={{

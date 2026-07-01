@@ -7,7 +7,8 @@ import {
   ArrowLeft, Zap, AlertCircle, RefreshCw, Send,
   CheckCircle2, Facebook, Loader2, RotateCcw,
   Pencil, X, Instagram, TrendingUp, BarChart2,
-  Globe, Rocket, Users, Download,
+  Globe, Rocket, Users, Download, ArrowRight, ChevronRight,
+  Link2, BookOpen, Film, LayoutDashboard,
 } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
 import { getEvokeUserProfile } from '../lib/session'
@@ -480,18 +481,43 @@ function ImpactBars({ data }) {
 }
 
 // ── Parse "Phase 1 …", "Q1 …", "Week 1-2 …", "Month 1-3 …" into timeline steps ──
+const PHASE_TAG_RE = /^(Q\s*[1-4]|Quarter\s*\d|Phase\s*\d|Week\s*[\d\-–]+|Month\s*[\d\-–]+)\s*[:.—-]?\s*(.*)$/i
+const normalizeTag = (raw) => raw.replace(/quarter\s*/i, 'Q').replace(/\s+/g, ' ').replace(/^phase\s*/i, 'P').replace(/^week\s*/i, 'W').replace(/^month\s*/i, 'M').toUpperCase()
+// Strips a leading phase tag from a description so near-duplicate phases (the
+// same step written twice — once as a short tag, once as full prose further
+// down) compare equal instead of producing empty/duplicate timeline steps.
+const stripLeadingTag = (str) => str.replace(PHASE_TAG_RE, (full, tag, rest) => rest || full).toLowerCase().slice(0, 50)
+
 function parsePhases(text) {
   const str = safeStr(text)
   if (!str) return []
-  const out = []
-  for (const rawLine of str.split(/\n+/)) {
-    const line = rawLine.trim()
-    if (!line) continue
-    const m = line.match(/^(Q\s*[1-4]|Quarter\s*\d|Phase\s*\d|Week\s*[\d\-–]+|Month\s*[\d\-–]+)\s*[:.—-]?\s*(.+)/i)
-    if (m) {
-      const tag = m[1].replace(/quarter\s*/i, 'Q').replace(/\s+/g, ' ').replace(/^phase\s*/i, 'P').replace(/^week\s*/i, 'W').replace(/^month\s*/i, 'M').toUpperCase()
-      out.push({ tag, text: m[2].trim() })
+  const lines = str.split(/\n+/).map(l => l.trim()).filter(Boolean)
+  const raw = []
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(PHASE_TAG_RE)
+    if (!m) continue
+    const tag = normalizeTag(m[1])
+    let content = m[2].trim()
+    // Tag sits alone on its own line (e.g. "P1:") — pull the description
+    // from the next line instead of rendering an empty timeline step.
+    if (!content && i + 1 < lines.length) {
+      const next = lines[i + 1]
+      const nextMatch = next.match(PHASE_TAG_RE)
+      content = nextMatch ? nextMatch[2].trim() : next
+      i++
     }
+    if (content) raw.push({ tag, text: content })
+  }
+
+  // Drop phases whose description repeats one already captured — the same
+  // step is sometimes written twice by the AI (short tag list + full prose).
+  const seen = new Set()
+  const out = []
+  for (const p of raw) {
+    const key = stripLeadingTag(p.text)
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(p)
   }
   return out.slice(0, 6)
 }
@@ -1106,18 +1132,28 @@ export default function Results() {
   const profile    = getEvokeUserProfile()
   const isFreeUser = !profile?.data?.memberShipTypeID
 
-  // Strategy-specific fields (populated for growth_strategy, growth_agent and content_calendar free-form)
-  const isStrategy         = campaignType === 'growth_strategy' || campaignType === 'growth_agent' || campaignType === 'content_calendar'
-  const executiveSummary   = r.executiveSummary   || r.executive_summary   || ''
-  const growthOpportunities= r.growthOpportunities|| r.growth_opportunities|| ''
-  const gtmPlan            = r.gtmPlan            || r.gtm_plan            || ''
-  const revenueProjection  = r.revenueProjection  || r.revenue_projection  || ''
-  const partnershipIdeas   = r.partnershipIdeas   || r.partnership_ideas   || ''
-  const expansionRoadmap   = r.expansionRoadmap   || r.expansion_roadmap   || ''
-  const competitorGaps     = r.competitorGaps     || r.competitor_gaps     || ''
+  // Strategy-specific fields (populated for growth_strategy, growth_agent and content_calendar)
+  const isCalendar          = campaignType === 'content_calendar'
+  const isStrategy          = campaignType === 'growth_strategy' || campaignType === 'growth_agent' || isCalendar
+  const executiveSummary    = r.executiveSummary   || r.executive_summary   || ''
+  const growthOpportunities = r.growthOpportunities|| r.growth_opportunities|| ''
+  const gtmPlan             = r.gtmPlan            || r.gtm_plan            || ''
+  const revenueProjection   = r.revenueProjection  || r.revenue_projection  || ''
+  const partnershipIdeas    = r.partnershipIdeas   || r.partnership_ideas   || ''
+  const expansionRoadmap    = r.expansionRoadmap   || r.expansion_roadmap   || ''
+  const competitorGaps      = r.competitorGaps     || r.competitor_gaps     || ''
 
-  // ── Ordered strategy sections (used by the report download + cards) ──
-  const strategySections = [
+  // ── Ordered strategy/calendar sections ──
+  // Content Calendar reuses the same AI fields but with calendar-appropriate labels
+  const strategySections = isCalendar ? [
+    { title: 'Content Strategy Overview',  value: executiveSummary },
+    { title: 'Top Content Channels',       value: growthOpportunities },
+    { title: '4-Week Content Plan',        value: gtmPlan },
+    { title: 'Content ROI Milestones',     value: revenueProjection },
+    { title: 'Collaboration Opportunities',value: partnershipIdeas },
+    { title: 'Content Growth Roadmap',     value: expansionRoadmap },
+    { title: 'Content Gaps to Fill',       value: competitorGaps },
+  ].filter(s => s.value) : [
     { title: 'Executive Summary',          value: executiveSummary },
     { title: 'Growth Opportunities',       value: growthOpportunities },
     { title: 'Go-To-Market Plan',          value: gtmPlan },
@@ -1209,7 +1245,7 @@ export default function Results() {
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: isStrategy ? 28 : 32 }}>
           <button
-            onClick={() => navigate('/agents-hub')}
+            onClick={() => navigate(-1)}
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 7,
               marginBottom: 20, padding: '9px 16px',
@@ -1220,22 +1256,31 @@ export default function Results() {
             onMouseEnter={e => { e.currentTarget.style.background = '#26231a'; e.currentTarget.style.borderColor = '#c8973e' }}
             onMouseLeave={e => { e.currentTarget.style.background = '#1c1a13'; e.currentTarget.style.borderColor = 'rgba(200,151,62,0.3)' }}
           >
-            <ArrowLeft size={14} /> Back to Dashboard
+            <ArrowLeft size={14} />
+            {isCalendar ? 'Back to Content Calendar' : isStrategy ? 'Back to Agents Hub' : 'Back to Campaign'}
           </button>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
             <div>
               <div className="badge" style={{ marginBottom: 10, display: 'inline-flex' }}>
-                {isStrategy ? <><TrendingUp size={13} /> Strategy Generated</> : <><Zap size={13} /> Campaign Generated</>}
+                {isCalendar
+                  ? <><Calendar size={13} /> Content Calendar Ready</>
+                  : isStrategy
+                    ? <><TrendingUp size={13} /> Strategy Generated</>
+                    : <><Zap size={13} /> Campaign Generated</>}
               </div>
               <h1 style={{ fontSize: 'clamp(26px, 5vw, 40px)', fontWeight: 900, letterSpacing: '-0.025em', color: '#0f172a', marginBottom: 6 }}>
-                {isStrategy
-                  ? <>Your <span className="gradient-text">Growth Strategy is Ready</span></>
-                  : <>Your <span className="gradient-text">Campaign is Ready</span></>}
+                {isCalendar
+                  ? <>Your <span className="gradient-text">Content Calendar is Ready</span></>
+                  : isStrategy
+                    ? <>Your <span className="gradient-text">Growth Strategy is Ready</span></>
+                    : <>Your <span className="gradient-text">Campaign is Ready</span></>}
               </h1>
               <p style={{ color: '#64748b', fontSize: 14 }}>
-                {isStrategy
-                  ? 'Your AI-generated strategy document is below. Copy any section or download the full strategy.'
-                  : 'Review and edit your content below, then launch to post to all platforms.'}
+                {isCalendar
+                  ? 'Your AI-generated content calendar is below. Copy any section or download the full plan.'
+                  : isStrategy
+                    ? 'Your AI-generated strategy document is below. Copy any section or download the full strategy.'
+                    : 'Review and edit your content below, then launch to post to all platforms.'}
               </p>
             </div>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
@@ -1330,10 +1375,48 @@ export default function Results() {
 
         {/* ── Strategy-specific cards — scrollable report layout ── */}
         {isStrategy && (() => {
-          const sections = [
+          // ── Build section list based on campaign type ──
+          const sections = isCalendar ? (() => {
+            // Pull all calendar-specific fields from the AI result
+            const calSections = [
+              { key: 'executiveSummary', value: r.executiveSummary || '', icon: <Zap size={16}/>, color: '#10b981', title: 'Content Strategy Overview', span: 'full' },
+              { key: 'weeklyPlan',       value: r.weeklyPlan       || '', icon: <Calendar size={16}/>, color: '#c8973e', title: '4-Week Content Schedule', span: 'full' },
+              // Instagram
+              { key: 'instagramPost1', value: r.instagramPost1 || '', icon: <Instagram size={16}/>, color: '#e1306c', title: 'Instagram Post — Week 1', span: 'half', platform: 'instagram' },
+              { key: 'instagramPost2', value: r.instagramPost2 || '', icon: <Instagram size={16}/>, color: '#e1306c', title: 'Instagram Post — Week 2', span: 'half', platform: 'instagram' },
+              { key: 'instagramPost3', value: r.instagramPost3 || '', icon: <Instagram size={16}/>, color: '#e1306c', title: 'Instagram Post — Week 3', span: 'full', platform: 'instagram' },
+              // LinkedIn
+              { key: 'linkedinPost1', value: r.linkedinPost1 || '', icon: <Linkedin size={16}/>, color: '#0a66c2', title: 'LinkedIn Post — Week 1', span: 'half', platform: 'linkedin' },
+              { key: 'linkedinPost2', value: r.linkedinPost2 || '', icon: <Linkedin size={16}/>, color: '#0a66c2', title: 'LinkedIn Post — Week 2', span: 'half', platform: 'linkedin' },
+              // Facebook
+              { key: 'facebookPost1', value: r.facebookPost1 || '', icon: <Facebook size={16}/>, color: '#1877f2', title: 'Facebook Post — Week 1', span: 'half', platform: 'facebook' },
+              { key: 'facebookPost2', value: r.facebookPost2 || '', icon: <Facebook size={16}/>, color: '#1877f2', title: 'Facebook Post — Week 2', span: 'half', platform: 'facebook' },
+              // Reels
+              { key: 'reelScript1', value: r.reelScript1 || '', icon: <Film size={16}/>, color: '#e1306c', title: 'Reel Script — Week 1', span: 'half', platform: 'reel' },
+              { key: 'reelScript2', value: r.reelScript2 || '', icon: <Film size={16}/>, color: '#e1306c', title: 'Reel Script — Week 2', span: 'half', platform: 'reel' },
+              // Twitter/X
+              { key: 'twitterPost1', value: r.twitterPost1 || '', icon: <MessageSquare size={16}/>, color: '#1da1f2', title: 'X / Twitter — Week 1', span: 'half', platform: 'twitter' },
+              { key: 'twitterPost2', value: r.twitterPost2 || '', icon: <MessageSquare size={16}/>, color: '#1da1f2', title: 'X / Twitter — Week 2', span: 'half', platform: 'twitter' },
+              { key: 'twitterPost3', value: r.twitterPost3 || '', icon: <MessageSquare size={16}/>, color: '#1da1f2', title: 'X / Twitter — Week 3', span: 'full', platform: 'twitter' },
+              // YouTube
+              { key: 'youtubeIdea1', value: r.youtubeIdea1 || '', icon: <Zap size={16}/>, color: '#ff0000', title: 'YouTube Shorts — Week 1', span: 'half', platform: 'youtube' },
+              { key: 'youtubeIdea2', value: r.youtubeIdea2 || '', icon: <Zap size={16}/>, color: '#ff0000', title: 'YouTube Shorts — Week 2', span: 'half', platform: 'youtube' },
+              // Stories
+              { key: 'storyIdea1', value: r.storyIdea1 || '', icon: <Globe size={16}/>, color: '#f59e0b', title: 'Story Idea — Week 1', span: 'half', platform: 'story' },
+              { key: 'storyIdea2', value: r.storyIdea2 || '', icon: <Globe size={16}/>, color: '#f59e0b', title: 'Story Idea — Week 2', span: 'half', platform: 'story' },
+              // Blog
+              { key: 'blogTitle1',   value: r.blogTitle1   || '', icon: <BookOpen size={16}/>, color: '#6366f1', title: 'Blog Post — Week 1', span: 'half', platform: 'blog' },
+              { key: 'blogOutline1', value: r.blogOutline1 || '', icon: <BookOpen size={16}/>, color: '#6366f1', title: 'Blog Outline — Week 1', span: 'half', platform: 'blog' },
+              { key: 'blogTitle2',   value: r.blogTitle2   || '', icon: <BookOpen size={16}/>, color: '#6366f1', title: 'Blog Post — Week 2', span: 'half', platform: 'blog' },
+              { key: 'blogOutline2', value: r.blogOutline2 || '', icon: <BookOpen size={16}/>, color: '#6366f1', title: 'Blog Outline — Week 2', span: 'half', platform: 'blog' },
+              // Gaps
+              { key: 'contentGaps', value: r.contentGaps || '', icon: <Target size={16}/>, color: '#a855f7', title: 'Content Gaps to Fill', span: 'full' },
+            ]
+            return calSections.filter(s => s.value)
+          })() : [
             { key: 'executiveSummary',    value: executiveSummary,    icon: <Zap size={16}/>,        color: '#10b981', title: 'Executive Summary',          span: 'full' },
-            { key: 'growthOpportunities', value: growthOpportunities, icon: <TrendingUp size={16}/>, color: '#c8973e', title: 'Growth Opportunities',        span: 'half' },
-            { key: 'gtmPlan',             value: gtmPlan,             icon: <Rocket size={16}/>,     color: '#6366f1', title: 'Go-To-Market Plan',           span: 'half' },
+            { key: 'growthOpportunities', value: growthOpportunities, icon: <TrendingUp size={16}/>, color: '#c8973e', title: 'Growth Opportunities',        span: 'full' },
+            { key: 'gtmPlan',             value: gtmPlan,             icon: <Rocket size={16}/>,     color: '#6366f1', title: 'Go-To-Market Plan',           span: 'full' },
             { key: 'revenueProjection',   value: revenueProjection,   icon: <BarChart2 size={16}/>,  color: '#f59e0b', title: '12-Month Revenue Forecast',   span: 'full' },
             { key: 'partnershipIdeas',    value: partnershipIdeas,    icon: <Users size={16}/>,      color: '#0a66c2', title: 'Strategic Partnerships',      span: 'half' },
             { key: 'expansionRoadmap',    value: expansionRoadmap,    icon: <Globe size={16}/>,      color: '#14b8a6', title: 'Expansion Roadmap',           span: 'half' },
@@ -1850,10 +1933,201 @@ export default function Results() {
           </motion.div>
         )}
 
-        {/* Bottom CTA — strategy fills the screen (no bottom CTA); campaigns get "Launch" */}
-        {isStrategy ? null : (
+        {/* ── Content Calendar: Post to Accounts ── */}
+        {isCalendar && (() => {
+          const raw = sessionStorage.getItem('webhookPayload')
+          const payload = raw ? (() => { try { return JSON.parse(raw) } catch { return {} } })() : {}
+          const platforms = payload.platforms ? payload.platforms.split(',').filter(Boolean) : []
+          const platformLabels = { instagram: 'Instagram', facebook: 'Facebook', linkedin: 'LinkedIn', tiktok: 'TikTok', twitter: 'Twitter', email: 'Email', whatsapp: 'WhatsApp' }
+          const platformColors = { instagram: '#e1306c', facebook: '#1877f2', linkedin: '#0a66c2', tiktok: '#ff0050', twitter: '#1da1f2', email: '#c8973e', whatsapp: '#25d366' }
+
+          // Map calendar fields to standard posting field names n8n expects.
+          // Use campaignType 'brand' so n8n routes it through the normal social posting flow.
+          const calendarPostPayload = {
+            ...payload,
+            campaignType:     'brand',
+            name:             payload.name || r.campaignName || '',
+            brandName:        payload.brandName || payload.name || r.campaignName || '',
+            instagramCaption: r.instagramPost1 || r.instagramPost2 || '',
+            linkedinPost:     r.linkedinPost1  || '',
+            facebookPost:     r.facebookPost1  || '',
+            twitterPost:      r.twitterPost1   || '',
+            whatsappMessage:  r.storyIdea1     || '',
+            emailSubject:     `New Content from ${payload.name || r.campaignName || 'Your Brand'}`,
+            emailBody:        r.instagramPost1 || r.linkedinPost1 || r.facebookPost1 || '',
+            campaignDays:     1,
+            mediaType:        'image',
+            hasVideo:         false,
+          }
+
+          const handleCalendarPost = async () => {
+            setPostingStatus('posting')
+            try {
+              // Re-fetch latest credentials from Firestore so newly-connected accounts are included
+              const currentUser = authUser || profileToUser(getEvokeUserProfile())
+              let freshCredentials = calendarPostPayload.userCredentials || {}
+              if (currentUser) {
+                try {
+                  const freshData = await getUserData(currentUser.uid)
+                  if (freshData?.socialAccounts) {
+                    const sa = freshData.socialAccounts
+                    freshCredentials = {
+                      facebook:  sa.facebook?.connected  ? { pageId: sa.facebook.pageId, pageAccessToken: sa.facebook.pageAccessToken } : null,
+                      instagram: sa.instagram?.connected ? { businessAccountId: sa.instagram.businessAccountId, pageAccessToken: sa.instagram.pageAccessToken } : null,
+                      linkedin:  sa.linkedin?.connected  ? { personUrn: sa.linkedin.personUrn, accessToken: sa.linkedin.accessToken } : null,
+                      gmail:     sa.gmail?.connected     ? { email: sa.gmail.email, accessToken: sa.gmail.accessToken, refreshToken: sa.gmail.refreshToken } : null,
+                      tiktok:    sa.tiktok?.connected    ? { accessToken: sa.tiktok.accessToken, openId: sa.tiktok.openId } : null,
+                    }
+                  }
+                } catch {}
+              }
+
+              const finalPayload = { ...calendarPostPayload, userCredentials: freshCredentials }
+              const res = await Promise.race([
+                fetch(WEBHOOK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(finalPayload) }),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 30000)),
+              ])
+              if (res.ok) {
+                setPostingStatus('success')
+                sessionStorage.setItem('webhookStatus', 'success')
+              } else {
+                setPostingStatus('failed')
+              }
+            } catch {
+              setPostingStatus('failed')
+            }
+          }
+
+          if (platforms.length === 0) return null
+          return (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.3 }}
+              style={{ marginTop: 32, padding: '22px 26px', background: '#fff', border: '1px solid rgba(200,151,62,0.2)', borderRadius: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
+                <div>
+                  <p style={{ fontWeight: 800, fontSize: 16, color: '#0f172a', marginBottom: 6 }}>Post Week 1 content to your accounts</p>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {platforms.map(p => (
+                      <span key={p} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 12px', background: `${platformColors[p] || '#64748b'}12`, border: `1px solid ${platformColors[p] || '#64748b'}40`, borderRadius: 20, fontSize: 12, fontWeight: 700, color: platformColors[p] || '#64748b' }}>
+                        {platformLabels[p] || p}
+                      </span>
+                    ))}
+                  </div>
+                  <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 6 }}>Posts Week 1 content to all connected accounts above</p>
+                </div>
+                {postingStatus === 'idle' || postingStatus === 'failed' ? (
+                  <motion.button
+                    onClick={handleCalendarPost}
+                    whileTap={{ scale: 0.97 }} whileHover={{ scale: 1.02 }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 28px', background: 'linear-gradient(135deg, #d4a853, #b8803a)', border: 'none', borderRadius: 12, color: '#fff', fontSize: 15, fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap', boxShadow: '0 4px 24px rgba(200,151,62,0.3)' }}
+                  >
+                    <Send size={16} /> Post to Accounts
+                  </motion.button>
+                ) : postingStatus === 'posting' ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#c8973e', fontWeight: 700, fontSize: 14 }}>
+                    <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Posting…
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#10b981', fontWeight: 700, fontSize: 14 }}>
+                    <CheckCircle2 size={16} /> Posted successfully!
+                  </div>
+                )}
+              </div>
+              {postingStatus === 'failed' && (
+                <p style={{ fontSize: 12, color: '#ef4444', marginTop: 10 }}>Failed to post — check your connections and try again.</p>
+              )}
+            </motion.div>
+          )
+        })()}
+
+        {/* ── Strategy: Next Steps ── */}
+        {isStrategy && (
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.4 }}
+            style={{ marginTop: 40, borderRadius: 20, overflow: 'hidden', border: '1px solid rgba(200,151,62,0.2)', background: '#0e0c09' }}
+          >
+            <div style={{ padding: '20px 26px', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ width: 34, height: 34, borderRadius: 10, background: 'rgba(200,151,62,0.12)', border: '1px solid rgba(200,151,62,0.28)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {isCalendar ? <Calendar size={16} color="#c8973e" /> : <Rocket size={16} color="#c8973e" />}
+              </div>
+              <div>
+                <p style={{ fontWeight: 800, fontSize: 15, color: '#f0ebe0', margin: 0 }}>
+                  {isCalendar ? 'Start posting your content' : 'Now, execute your strategy'}
+                </p>
+                <p style={{ fontSize: 12, color: 'rgba(240,235,224,0.55)', margin: '2px 0 0 0' }}>
+                  {isCalendar
+                    ? 'Your content calendar is ready — connect platforms and start scheduling posts'
+                    : 'Your strategy is ready — launch campaigns and activate your CMO tools'}
+                </p>
+              </div>
+            </div>
+            {(() => {
+              const rawMeta = sessionStorage.getItem('campaignMeta')
+              const meta = rawMeta ? (() => { try { return JSON.parse(rawMeta) } catch { return {} } })() : {}
+              const strategyPrefill = {
+                name:        r.campaignName || meta.name || '',
+                brandName:   r.campaignName || meta.name || '',
+                industry:    meta.industry  || '',
+                website:     meta.website   || '',
+                description: executiveSummary
+                  ? executiveSummary.slice(0, 400)
+                  : (meta.description || ''),
+                goalType:    meta.goalType  || '',
+                budget:      meta.budget    || '',
+                location:    meta.location  || '',
+                toneOfVoice: meta.toneOfVoice || '',
+              }
+              const strategyCards = isCalendar ? [
+                { icon: <Link2 size={17} />, color: '#10b981', title: 'Connect Social Accounts', desc: 'Link Instagram, Facebook, LinkedIn to auto-post', path: '/connect-accounts', prefill: null },
+                { icon: <Mail size={17} />, color: '#7c3aed', title: 'Build Email Drip', desc: 'Add email sequences to complement your calendar', path: '/campaign/email_drip', prefill: strategyPrefill },
+                { icon: <Film size={17} />, color: '#06b6d4', title: 'Generate Reel Scripts', desc: 'Create short-form video scripts from your plan', path: '/reel-scripts', prefill: null },
+                { icon: <LayoutDashboard size={17} />, color: '#c8973e', title: 'Back to Dashboard', desc: 'Return to your AI CMO hub', path: '/agents-hub', prefill: null },
+              ] : [
+                { icon: <Calendar size={17} />, color: '#c8973e', title: 'Launch Content Calendar', desc: 'Build a 30-day content plan from this strategy', path: '/campaign/content_calendar', prefill: strategyPrefill },
+                { icon: <Mail size={17} />, color: '#7c3aed', title: 'Build Email Drip', desc: 'Create automated email sequences to convert leads', path: '/campaign/email_drip', prefill: strategyPrefill },
+                { icon: <Film size={17} />, color: '#06b6d4', title: 'Generate Reel Scripts', desc: 'Turn your strategy into short-form video scripts', path: '/reel-scripts', prefill: null },
+                { icon: <Users size={17} />, color: '#10b981', title: 'Build Your Audience', desc: 'Define and segment your target audience profiles', path: '/audience-builder', prefill: null },
+              ]
+              return (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '1px', background: 'rgba(255,255,255,0.05)' }}>
+                  {strategyCards.map((card, i) => (
+                    <motion.button
+                      key={i}
+                      onClick={() => {
+                        if (card.path === '/connect-accounts') {
+                          try { sessionStorage.setItem('connectReturnTo', '/results') } catch {}
+                        }
+                        navigate(card.path, { state: { from: '/results', ...(card.prefill ? { prefill: card.prefill } : {}) } })
+                      }}
+                      whileHover={{ background: 'rgba(200,151,62,0.05)' }}
+                      whileTap={{ scale: 0.98 }}
+                      style={{ display: 'flex', alignItems: 'flex-start', gap: 13, padding: '20px 20px', background: '#0e0c09', border: 'none', cursor: 'pointer', textAlign: 'left', width: '100%', borderTop: `3px solid ${card.color}` }}
+                    >
+                      <div style={{ width: 34, height: 34, borderRadius: 9, background: `${card.color}18`, border: `1px solid ${card.color}35`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: card.color, flexShrink: 0 }}>
+                        {card.icon}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontWeight: 700, fontSize: 13, color: '#f0ebe0', margin: '0 0 4px 0' }}>{card.title}</p>
+                        <p style={{ fontSize: 12, color: 'rgba(240,235,224,0.5)', margin: 0, lineHeight: 1.5 }}>{card.desc}</p>
+                      </div>
+                      <ArrowRight size={14} color="rgba(240,235,224,0.25)" style={{ flexShrink: 0, marginTop: 4 }} />
+                    </motion.button>
+                  ))}
+                </div>
+              )
+            })()}
+          </motion.div>
+        )}
+
+        {/* ── Campaign: Launch CTA + post-launch next steps ── */}
+        {!isStrategy && (
           <>
-            {/* Bottom Launch CTA */}
+            {/* Launch button */}
             {!launched && (
               <motion.div
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
@@ -1880,19 +2154,57 @@ export default function Results() {
               </motion.div>
             )}
 
-            {/* Success CTA */}
+            {/* Success banner */}
             {launched && postingStatus === 'success' && (
               <motion.div
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
-                style={{ marginTop: 32, padding: '22px 26px', background: '#f0fdf4', border: '1px solid rgba(16,185,129,0.25)', borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}
+                style={{ marginTop: 32, padding: '18px 24px', background: '#f0fdf4', border: '1px solid rgba(16,185,129,0.25)', borderRadius: 14, display: 'flex', alignItems: 'center', gap: 12 }}
               >
+                <CheckCircle2 size={22} color="#10b981" style={{ flexShrink: 0 }} />
                 <div>
-                  <p style={{ fontWeight: 700, color: '#0f172a', marginBottom: 4 }}>Campaign launched successfully!</p>
-                  <p style={{ color: '#64748b', fontSize: 13 }}>Ready to create your next campaign?</p>
+                  <p style={{ fontWeight: 700, color: '#0f172a', margin: '0 0 2px 0' }}>Campaign launched successfully!</p>
+                  <p style={{ color: '#64748b', fontSize: 13, margin: 0 }}>Your content is live — here's what to do next.</p>
                 </div>
-                <button className="btn-primary" onClick={handleNewCampaign} style={{ whiteSpace: 'nowrap' }}>
-                  New Campaign <Zap size={16} />
-                </button>
+              </motion.div>
+            )}
+
+            {/* Post-launch Next Steps */}
+            {launched && postingStatus === 'success' && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.35 }}
+                style={{ marginTop: 16, borderRadius: 20, overflow: 'hidden', border: '1px solid rgba(200,151,62,0.2)', background: '#0e0c09' }}
+              >
+                <div style={{ padding: '18px 24px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                  <p style={{ fontWeight: 800, fontSize: 15, color: '#f0ebe0', margin: 0 }}>What to do next</p>
+                  <p style={{ fontSize: 12, color: 'rgba(240,235,224,0.55)', margin: '3px 0 0 0' }}>Keep the momentum — your AI CMO is ready for the next step</p>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '1px', background: 'rgba(255,255,255,0.05)' }}>
+                  {[
+                    { icon: <CheckCircle2 size={17} />, color: '#10b981', title: 'Review Content Queue', desc: 'Approve and schedule what was generated', path: '/queue' },
+                    { icon: <BarChart2 size={17} />, color: '#06b6d4', title: 'Track Analytics', desc: 'See how your campaign is performing', path: '/analytics' },
+                    { icon: <Rocket size={17} />, color: '#c8973e', title: 'Launch Another Campaign', desc: 'Keep momentum with a new campaign', path: '/agents-hub' },
+                    { icon: <BookOpen size={17} />, color: '#a855f7', title: 'Back to Brand Profile', desc: 'View all AI CMO recommendations', path: '/brand-profile' },
+                  ].map((card, i) => (
+                    <motion.button
+                      key={i}
+                      onClick={() => navigate(card.path)}
+                      whileHover={{ background: 'rgba(200,151,62,0.05)' }}
+                      whileTap={{ scale: 0.98 }}
+                      style={{ display: 'flex', alignItems: 'flex-start', gap: 13, padding: '18px 20px', background: '#0e0c09', border: 'none', cursor: 'pointer', textAlign: 'left', width: '100%', borderTop: `3px solid ${card.color}` }}
+                    >
+                      <div style={{ width: 33, height: 33, borderRadius: 9, background: `${card.color}18`, border: `1px solid ${card.color}35`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: card.color, flexShrink: 0 }}>
+                        {card.icon}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontWeight: 700, fontSize: 13, color: '#f0ebe0', margin: '0 0 3px 0' }}>{card.title}</p>
+                        <p style={{ fontSize: 12, color: 'rgba(240,235,224,0.5)', margin: 0, lineHeight: 1.5 }}>{card.desc}</p>
+                      </div>
+                      <ArrowRight size={14} color="rgba(240,235,224,0.25)" style={{ flexShrink: 0, marginTop: 3 }} />
+                    </motion.button>
+                  ))}
+                </div>
               </motion.div>
             )}
           </>

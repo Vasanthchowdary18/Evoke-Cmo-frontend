@@ -468,12 +468,12 @@ export default function CrmPage() {
             }}>
               <RefreshCw size={13} />
             </button>
-            <button onClick={() => navigate('/analytics')} style={{
+            <button onClick={() => navigate('/campaign-hub')} style={{
               display: 'flex', alignItems: 'center', gap: 6,
               padding: '9px 14px', background: CARD, border: `1px solid ${BORDER}`,
               borderRadius: 9, color: '#818cf8', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
             }}>
-              <BarChart2 size={13} /> Analytics
+              <BarChart2 size={13} /> Campaign Builder
             </button>
             <button onClick={() => setShowAdd(true)} style={{
               display: 'flex', alignItems: 'center', gap: 7,
@@ -484,6 +484,46 @@ export default function CrmPage() {
               <Plus size={14} /> Add Contact
             </button>
           </div>
+        </div>
+
+        {/* ── Quick Actions ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 24 }}>
+          {[
+            {
+              icon: '📧',
+              title: 'Email Drip for Leads',
+              desc: 'Build an automated email sequence to nurture your leads into customers.',
+              color: '#8b5cf6',
+              action: () => navigate('/campaign/email_drip', { state: { prefill: { goalType: 'Generate Leads', description: 'Email nurture sequence for CRM leads' } } }),
+              cta: 'Build Email Campaign →',
+            },
+            {
+              icon: '📢',
+              title: 'Campaign for Prospects',
+              desc: 'Create a targeted campaign to convert warm prospects into paying customers.',
+              color: '#3b82f6',
+              action: () => navigate('/campaign-hub', { state: { prefill: { goalType: 'Drive Sales / Conversions', description: 'Convert prospects from CRM pipeline' } } }),
+              cta: 'Build Campaign →',
+            },
+            {
+              icon: '🤝',
+              title: 'Retention Campaign',
+              desc: 'Keep existing customers engaged with loyalty content and re-engagement campaigns.',
+              color: '#a855f7',
+              action: () => navigate('/campaign-hub', { state: { prefill: { goalType: 'Re-engage Existing Customers', description: 'Retention campaign for existing customers' } } }),
+              cta: 'Build Retention Campaign →',
+            },
+          ].map((a, i) => (
+            <div key={i} onClick={a.action} style={{ background: CARD, border: `1px solid ${a.color}22`, borderRadius: 14, padding: '16px 18px', cursor: 'pointer', transition: 'border-color 0.15s' }}
+              onMouseEnter={e => e.currentTarget.style.borderColor = a.color + '55'}
+              onMouseLeave={e => e.currentTarget.style.borderColor = a.color + '22'}
+            >
+              <div style={{ fontSize: 20, marginBottom: 8 }}>{a.icon}</div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: '#e0e0e0', marginBottom: 6 }}>{a.title}</div>
+              <p style={{ fontSize: 12, color: '#555', lineHeight: 1.55, margin: '0 0 12px' }}>{a.desc}</p>
+              <span style={{ fontSize: 12, fontWeight: 700, color: a.color }}>{a.cta}</span>
+            </div>
+          ))}
         </div>
 
         {/* ── Pipeline stage stat cards ── */}
@@ -503,7 +543,9 @@ export default function CrmPage() {
               <div style={{ fontSize: 22, fontWeight: 800, color: '#fff', letterSpacing: '-0.03em' }}>
                 {counts[s.key] || 0}
               </div>
-              <div style={{ fontSize: 12, fontWeight: 600, color: s.color, marginTop: 2 }}>{s.label}s</div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: s.color, marginTop: 2 }}>
+                {s.key === 'retained' ? 'Retained' : `${s.label}s`}
+              </div>
             </div>
           ))}
         </div>
@@ -625,7 +667,23 @@ export default function CrmPage() {
                   )}
 
                   {/* Action buttons */}
-                  <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                  <div style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
+                    <button
+                      onClick={() => navigate('/campaign/email_drip', {
+                        state: { prefill: { name: contact.company || contact.name, brandName: contact.company || '', goalType: 'Generate Leads', description: `Follow-up email sequence for ${contact.name}${contact.company ? ` at ${contact.company}` : ''}` } }
+                      })}
+                      style={{
+                        padding: '5px 11px', borderRadius: 8, cursor: 'pointer',
+                        background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.25)',
+                        color: '#8b5cf6', fontSize: 11, fontWeight: 700, fontFamily: 'inherit',
+                        display: 'flex', alignItems: 'center', gap: 4, transition: 'all 0.15s',
+                        whiteSpace: 'nowrap',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.18)' }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.1)' }}
+                    >
+                      <Mail size={11} /> Follow Up
+                    </button>
                     <button
                       onClick={() => setEditContact(contact)}
                       style={{

@@ -39,6 +39,7 @@ export async function getOrCreateUser(uid, displayName, email) {
         gmail:     { connected: false, email: '' },
       },
       onboardingComplete: false,
+      userPlan: 'free',
       createdAt: serverTimestamp(),
     })
     return { tokenBalance: 0, socialAccounts: {}, onboardingComplete: false }
@@ -98,6 +99,12 @@ export async function disconnectSocialAccount(uid, platform) {
   await updateDoc(doc(db, 'users', uid), {
     [`socialAccounts.${platform}`]: { connected: false },
   })
+}
+
+/** Updates the user's selected plan. */
+export async function updateUserPlan(uid, planKey) {
+  await updateDoc(doc(db, 'users', uid), { userPlan: planKey })
+  try { localStorage.setItem('evoke_selected_package', planKey) } catch {}
 }
 
 /** Returns all social accounts linked to the user. */

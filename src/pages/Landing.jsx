@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence, useInView } from 'framer-motion'
-import { ArrowRight, Check, Star, Zap, TrendingUp, Target, Calendar, Search, Mail, Users, BarChart2, Briefcase, Megaphone, ShoppingCart, Sparkles, Activity, Lightbulb, DollarSign, Rocket, Image, Film, Monitor, Share2, Layers, Play } from 'lucide-react'
+import { ArrowRight, Check, Star, Zap, TrendingUp, Target, Calendar, Search, Mail, Users, BarChart2, Briefcase, Megaphone, ShoppingCart, Sparkles, Activity, Lightbulb, DollarSign, Rocket, Image, Film, Monitor, Share2, Layers, Play, BookOpen, Link2, ChevronRight, X, CheckCircle2 } from 'lucide-react'
 // OnboardingModal moved to AgentsHub — not triggered on landing page
 import Navbar from '../components/Navbar.jsx'
 import { useAuth } from '../hooks/useAuth.js'
 import { redirectToLogin } from '../lib/authUtils'
-import { saveOnboardingData, getUserData } from '../services/userService'
+import { saveOnboardingData, getUserData, updateUserPlan } from '../services/userService'
 
 /* ─── animation ─── */
 const fadeUp = { hidden:{opacity:0,y:24}, visible:{opacity:1,y:0,transition:{duration:0.55,ease:[0.22,1,0.36,1]}} }
@@ -133,6 +133,7 @@ const PLANS = [
     tagline: 'Start with strategy — no cost, no commitment',
     price: '$0', priceNote: 'No credit card required',
     features: [
+      { icon: <BookOpen size={13}/>, text: 'Brand Knowledge Base Setup — Your AI CMO', desc: 'Set up your brand profile — business identity, target audience, brand voice and goals — so your AI CMO understands your brand from day one and every recommendation is on-brand.' },
       { icon: <Target size={13}/>, text: 'Objective & Strategy Development', desc: 'EVOX CMO works with you to define clear, measurable marketing goals — whether that\'s lead generation, brand awareness, or revenue growth. It builds a full GTM strategy aligned to your business objectives.' },
       { icon: <Megaphone size={13}/>, text: 'New Leads / Client Retention Planning', desc: 'Get a custom plan for attracting new customers and keeping existing ones engaged. Includes outreach strategies, nurture sequences, and loyalty campaign frameworks tailored to your audience.' },
       { icon: <Layers size={13}/>, text: 'Content Creation Framework', desc: 'A structured content blueprint covering your brand voice, content pillars, post formats, and publishing cadence across all channels — so every piece of content works toward your goals.' },
@@ -374,6 +375,11 @@ export default function Landing() {
   // Plan selector modal triggered by clicking an agent card
   const [activeModule, setActiveModule] = useState(null)
 
+  // Inline "Get Started" panel for logged-in users
+  const [showGetStarted, setShowGetStarted]   = useState(false)
+  const [gsData,         setGsData]           = useState(null)
+  const [gsLoading,      setGsLoading]        = useState(false)
+
   const persistAssessment = (answers) => {
     try { localStorage.setItem('evoke_assessment', JSON.stringify({ answers, ts: Date.now() })) } catch {}
   }
@@ -519,26 +525,32 @@ export default function Landing() {
     }
   }
 
-  // Open the wizard card panel and scroll to it.
-  // If the user already completed the assessment, show their saved result
-  // instead of asking the questions again.
+  // "Get Started" always shows pricing first — plan selection happens before
+  // brand setup / dashboard, never after. Selecting a plan (startWizardWithPlan)
+  // is what actually takes the user into brand setup.
   const openAssessment = () => {
-    document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })
+    document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
-  const startWizardWithPlan = (planKey) => {
+  const startWizardWithPlan = async (planKey) => {
     try { localStorage.setItem('evoke_selected_package', planKey) } catch {}
-    setWizardPlan(planKey)
-    if (wizardDone) {
-      setWizardPhase('ready')
+    if (user) {
+      // Save plan selection then open Getting Started overlay with plan pre-selected
+      try { await updateUserPlan(user.uid, planKey) } catch {}
+      setGsData(prev => prev ? { ...prev, userPlan: planKey } : { userPlan: planKey })
+      setShowGetStarted(true)
+      if (!gsData) {
+        setGsLoading(true)
+        getUserData(user.uid).then(d => {
+          setGsData(d ? { ...d, userPlan: planKey } : { userPlan: planKey })
+          setGsLoading(false)
+        }).catch(() => setGsLoading(false))
+      }
     } else {
-      setWizardPhase('questions')
-      setWizardStep(0)
-      setWizardAnswers({})
-      setOtherBgInput('')
-      setOtherBgSelected(false)
+      // Plan is already saved above — after login, take them straight to
+      // brand setup instead of bouncing back to the dashboard.
+      redirectToLogin(window.location.origin + '/brand-kb')
     }
-    setWizardOpen(true)
   }
 
   /* Gold gradient text helper */
@@ -1292,7 +1304,7 @@ export default function Landing() {
             Join hundreds of founders and marketers who replaced their expensive marketing teams with Evoke CMO.
           </p>
           <div style={{display:'flex',gap:14,justifyContent:'center',flexWrap:'wrap',marginBottom:20}}>
-            <button onClick={open} style={goldPill}
+            <button onClick={openAssessment} style={goldPill}
               onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 10px 32px rgba(200,151,62,0.45)'}}
               onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none'}}>
               Get Started Free <ArrowRight size={18}/>
@@ -1738,6 +1750,192 @@ export default function Landing() {
               )}
 
             </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ══════════════════════════════════════════════════
+          GET STARTED — Full-screen overlay
+      ══════════════════════════════════════════════════ */}
+      <AnimatePresence>
+        {showGetStarted && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{ position: 'fixed', inset: 0, background: '#0e0c09', zIndex: 1000, overflowY: 'auto', fontFamily: "'Inter',sans-serif" }}
+          >
+            {/* Top bar */}
+            <div style={{ position: 'sticky', top: 0, zIndex: 10, background: 'rgba(14,12,9,0.95)', backdropFilter: 'blur(12px)', borderBottom: `1px solid ${BORDER}`, padding: '14px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 32, height: 32, borderRadius: 9, background: 'linear-gradient(135deg,#c8973e,#a87030)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Zap size={15} color="#0e0c09" fill="#0e0c09"/>
+                </div>
+                <span style={{ fontWeight: 800, fontSize: 16, color: TEXT, letterSpacing: '-0.02em' }}>EVOX CMO</span>
+              </div>
+              {/* Step tracker */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {['Brand Profile','Campaigns'].map((s, i) => (
+                  <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'rgba(200,151,62,0.15)', border: '1px solid rgba(200,151,62,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, color: GOLD }}>{i+1}</div>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: TEXT2 }}>{s}</span>
+                    </div>
+                    {i < 1 && <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.15)' }}>→</span>}
+                  </div>
+                ))}
+              </div>
+              <button onClick={() => setShowGetStarted(false)} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(255,255,255,0.05)', border: `1px solid ${BORDER}`, color: TEXT2, cursor: 'pointer', padding: '7px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600 }}>
+                <X size={14}/> Close
+              </button>
+            </div>
+
+            {/* Content */}
+            <div style={{ maxWidth: 960, margin: '0 auto', padding: '48px 24px 80px' }}>
+              {gsLoading ? (
+                <div style={{ textAlign: 'center', padding: '80px 0', color: TEXT2, fontSize: 14 }}>Loading your profile…</div>
+              ) : (() => {
+                // KB fields are stored flat: kb.industry, kb.audienceType, kb.toneOfVoice, kb.primaryObjective[]
+                const kb          = gsData?.knowledgeBase || {}
+                const hasBrandKb  = !!(kb && Object.keys(kb).length > 1)
+                const industry    = kb.industry || ''
+                const audienceType= kb.audienceType || ''
+                const brandName   = kb.brandName || kb.companyName || ''
+                const tone        = kb.toneOfVoice || ''
+                const objectives  = Array.isArray(kb.primaryObjective) ? kb.primaryObjective : (kb.primaryObjective ? [kb.primaryObjective] : [])
+
+                const allCampaigns = [
+                  { key: 'product',         title: 'Product Campaign',   desc: 'Launch a product with full multi-channel campaign.', icon: '🛍️', path: '/campaign/product',         tags: ['ecommerce','retail','fashion','beauty','d2c','b2c'] },
+                  { key: 'brand',           title: 'Brand Campaign',     desc: 'Build awareness with social posts, ads and emails.', icon: '📢', path: '/campaign/brand',           tags: ['b2c','b2b','both','d2c','all'] },
+                  { key: 'content_calendar',title: 'Content Calendar',   desc: '30-day post plan for all your social platforms.',    icon: '📅', path: '/campaign/content_calendar', tags: ['b2c','d2c','fashion','food_beverage','beauty','ecommerce'] },
+                  { key: 'growth_strategy', title: 'Growth Strategy',    desc: 'Full GTM plan, revenue forecast and roadmap.',       icon: '🚀', path: '/campaign/growth_strategy', tags: ['all'] },
+                  { key: 'email_drip',      title: 'Email Drip',         desc: 'Nurture leads with automated email sequences.',      icon: '📧', path: '/campaign/email_drip',      tags: ['b2b','tech_saas','education','agency'] },
+                  { key: 'influencer',      title: 'Influencer & PR',    desc: 'Influencer brief, press release and media pitches.', icon: '🎤', path: '/campaign/influencer',      tags: ['b2c','fashion','beauty','ecommerce','lifestyle'] },
+                ]
+
+                const scored = allCampaigns.map(c => {
+                  let score = 0
+                  if (c.tags.includes('all')) score += 1
+                  if (industry && c.tags.some(t => industry.toLowerCase().includes(t.toLowerCase()) || t.toLowerCase().includes(industry.toLowerCase()))) score += 3
+                  if (audienceType && c.tags.includes(audienceType.toLowerCase())) score += 2
+                  objectives.forEach(obj => {
+                    if (obj.includes('brand') && ['brand','content_calendar'].includes(c.key)) score += 2
+                    if (obj.includes('revenue') && ['growth_strategy','product'].includes(c.key)) score += 2
+                    if (obj.includes('leads') && ['email_drip','growth_strategy'].includes(c.key)) score += 2
+                    if (obj.includes('product') && ['product','brand'].includes(c.key)) score += 2
+                    if (obj.includes('social') && ['content_calendar','brand'].includes(c.key)) score += 2
+                  })
+                  return { ...c, score }
+                }).sort((a, b) => b.score - a.score).slice(0, 4)
+
+                return (
+                  <>
+                    {/* ── STEP 1: Brand Knowledge Base ── */}
+                    <motion.div id="gs-step2" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1 }}>
+                      <div style={{ marginBottom: 8 }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: GOLD, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Step 1 — Brand Profile</span>
+                        <h2 style={{ fontSize: 26, fontWeight: 800, color: TEXT, margin: '6px 0 4px', letterSpacing: '-0.02em' }}>
+                          {hasBrandKb ? `Welcome back${brandName ? `, ${brandName}` : ''}! 👋` : 'Set up your Brand Profile'}
+                        </h2>
+                        <p style={{ fontSize: 14, color: TEXT2, margin: 0 }}>
+                          {hasBrandKb ? 'Your brand profile is ready. EVOX uses it to personalise every campaign.' : 'Tell EVOX about your brand so every campaign is perfectly on-brand.'}
+                        </p>
+                      </div>
+
+                      <motion.div
+                        whileHover={{ scale: 1.005 }} whileTap={{ scale: 0.99 }}
+                        onClick={() => { setShowGetStarted(false); navigate('/brand-kb', hasBrandKb ? { state: { edit: true } } : undefined) }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '20px 22px', marginTop: 20, background: hasBrandKb ? 'rgba(16,185,129,0.05)' : 'rgba(200,151,62,0.07)', border: `1.5px solid ${hasBrandKb ? 'rgba(16,185,129,0.25)' : 'rgba(200,151,62,0.3)'}`, borderRadius: 16, cursor: 'pointer', transition: 'all 0.18s' }}
+                      >
+                        <div style={{ width: 52, height: 52, borderRadius: 14, flexShrink: 0, background: hasBrandKb ? 'rgba(16,185,129,0.15)' : 'rgba(200,151,62,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>
+                          {hasBrandKb ? '✅' : '📖'}
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 15, fontWeight: 700, color: TEXT }}>Brand Knowledge Base</div>
+                          <div style={{ fontSize: 13, color: TEXT2, marginTop: 3 }}>
+                            {hasBrandKb
+                              ? `Industry: ${industry.replace(/_/g,' ') || '—'} · Tone: ${tone || '—'} · ${objectives.length} goal${objectives.length !== 1 ? 's' : ''} set`
+                              : 'Business identity, audience, brand voice and goals — all in one place.'}
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, fontWeight: 700, color: hasBrandKb ? '#10b981' : GOLD, flexShrink: 0 }}>
+                          {hasBrandKb ? 'Update' : 'Set Up Now'} <ChevronRight size={15}/>
+                        </div>
+                      </motion.div>
+                    </motion.div>
+
+                    {/* Divider */}
+                    <div style={{ height: 1, background: BORDER, margin: '40px 0' }}/>
+
+                    {/* ── STEP 3: Campaign Recommendations ── */}
+                    <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.2 }}>
+                      <div style={{ marginBottom: 20 }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: hasBrandKb ? GOLD : TEXT3, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Step 2 — Recommended Campaigns</span>
+                        <h2 style={{ fontSize: 22, fontWeight: 800, color: hasBrandKb ? TEXT : TEXT3, margin: '6px 0 4px', letterSpacing: '-0.02em' }}>
+                          {hasBrandKb ? 'Best Campaigns for Your Brand' : 'Launch Your First Campaign'}
+                        </h2>
+                        <p style={{ fontSize: 13, color: TEXT2, margin: 0 }}>
+                          {hasBrandKb
+                            ? `Ranked based on your ${industry ? industry.replace(/_/g,' ') : 'brand'} profile and goals.`
+                            : 'Complete Step 1 first — EVOX will recommend the perfect campaigns for your brand.'}
+                        </p>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+                        {scored.map((c, i) => (
+                          <motion.div
+                            key={c.key}
+                            initial={{ opacity: 0, y: 16 }}
+                            animate={{ opacity: hasBrandKb ? 1 : 0.3, y: 0 }}
+                            transition={{ duration: 0.3, delay: 0.25 + i * 0.06 }}
+                            whileHover={hasBrandKb ? { scale: 1.02 } : {}}
+                            onClick={() => { if (!hasBrandKb) return; setShowGetStarted(false); navigate(c.path) }}
+                            style={{ padding: '16px', background: 'rgba(255,255,255,0.02)', border: `1px solid ${hasBrandKb && i === 0 ? 'rgba(200,151,62,0.3)' : BORDER}`, borderRadius: 14, cursor: hasBrandKb ? 'pointer' : 'default', transition: 'all 0.18s', position: 'relative' }}
+                          >
+                            {i === 0 && hasBrandKb && (
+                              <div style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(200,151,62,0.15)', border: '1px solid rgba(200,151,62,0.3)', borderRadius: 6, padding: '2px 6px', fontSize: 9, fontWeight: 700, color: GOLD }}>
+                                BEST FIT
+                              </div>
+                            )}
+                            <div style={{ fontSize: 22, marginBottom: 8 }}>{c.icon}</div>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: TEXT, marginBottom: 4 }}>{c.title}</div>
+                            <div style={{ fontSize: 11, color: TEXT2, lineHeight: 1.5 }}>{c.desc}</div>
+                            {hasBrandKb && (
+                              <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: GOLD }}>
+                                Launch <ChevronRight size={11}/>
+                              </div>
+                            )}
+                          </motion.div>
+                        ))}
+                      </div>
+
+                      {!hasBrandKb && (
+                        <div style={{ marginTop: 14, padding: '12px 16px', background: 'rgba(200,151,62,0.06)', border: '1px solid rgba(200,151,62,0.18)', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <span style={{ fontSize: 15 }}>💡</span>
+                          <span style={{ fontSize: 13, color: TEXT2 }}>Set up your <strong style={{ color: GOLD }}>Brand Profile</strong> above to unlock personalised campaign recommendations.</span>
+                        </div>
+                      )}
+                    </motion.div>
+
+                    {/* Footer */}
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} style={{ marginTop: 48, display: 'flex', gap: 12 }}>
+                      <button
+                        onClick={() => { setShowGetStarted(false); navigate('/agents-hub') }}
+                        style={{ flex: 1, padding: '14px', background: 'linear-gradient(135deg, #d4a853, #b8803a)', border: 'none', borderRadius: 14, color: '#0e0c09', fontSize: 15, fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontFamily: 'inherit' }}
+                      >
+                        Go to Dashboard <ArrowRight size={16}/>
+                      </button>
+                      <button
+                        onClick={() => setShowGetStarted(false)}
+                        style={{ padding: '14px 22px', background: 'transparent', border: `1px solid ${BORDER}`, borderRadius: 14, color: TEXT2, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+                      >
+                        Close
+                      </button>
+                    </motion.div>
+                  </>
+                )
+              })()}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

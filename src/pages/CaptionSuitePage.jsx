@@ -33,6 +33,8 @@ const CONTENT_TYPES = [
   'Testimonial / Review',
 ]
 
+const TONES = ['Professional', 'Conversational', 'Bold', 'Inspirational', 'Playful', 'Authoritative', 'Witty', 'Urgent']
+
 async function generateCaptions({ platforms, contentType, context, tone }) {
   const apiKey = import.meta.env.VITE_GROQ_API_KEY || ''
 
@@ -200,7 +202,6 @@ export default function CaptionSuitePage() {
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <h1 style={{ fontSize: 22, fontWeight: 900, color: TEXT, margin: 0, letterSpacing: '-0.02em' }}>Caption & Hashtag Suite</h1>
-              <span style={{ fontSize: 9, fontWeight: 800, padding: '3px 8px', borderRadius: 6, background: 'rgba(200,151,62,0.15)', color: GOLD, border: '1px solid rgba(200,151,62,0.3)' }}>PACKAGE B</span>
             </div>
             <p style={{ fontSize: 13, color: TEXT2, margin: '4px 0 0', lineHeight: 1.5 }}>
               Generate platform-optimised captions, CTAs, and hashtag sets in seconds.
@@ -267,12 +268,12 @@ export default function CaptionSuitePage() {
             Brand Tone
             <span style={{ color: TEXT3, fontWeight: 400, marginLeft: 6 }}>(optional)</span>
           </label>
-          <input
-            value={tone}
-            onChange={e => setTone(e.target.value)}
-            placeholder="e.g. Professional, Playful, Bold, Inspirational, Conversational..."
-            style={s.input}
-          />
+          <select value={tone} onChange={e => setTone(e.target.value)} style={s.select}>
+            <option value="" style={{ background: '#1c1a13', color: TEXT3 }}>Select tone... (optional)</option>
+            {TONES.map(t => (
+              <option key={t} value={t} style={{ background: '#1c1a13', color: TEXT }}>{t}</option>
+            ))}
+          </select>
         </div>
 
         {/* ── Error ── */}

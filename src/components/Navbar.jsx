@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Zap, Menu, X, LayoutDashboard, Image, LogOut, ChevronDown, Inbox, TrendingUp, Target, Calendar, Search, Mail, Users, BarChart2, Briefcase, Megaphone, ShoppingCart, Sparkles, Activity } from 'lucide-react'
+import { Zap, Menu, X, LayoutDashboard, Image, LogOut, ChevronDown, Inbox, TrendingUp, Target, Calendar, Search, Mail, Users, BarChart2, Briefcase, Megaphone, ShoppingCart, Sparkles } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth.js'
 import { buildAccountsLoginUrl, signOut as ssoSignOut } from '../lib/session'
 import EgtWalletHeader from './EgtWalletHeader.jsx'
@@ -65,6 +65,14 @@ export default function Navbar() {
   const handleSsoSignIn = (e) => {
     e?.preventDefault?.()
     window.location.href = buildAccountsLoginUrl(window.location.href)
+  }
+
+  // "Get Started Free" — new users should land on pricing/plan selection
+  // after login, not straight into the dashboard.
+  const handleGetStartedFree = (e) => {
+    e?.preventDefault?.()
+    try { sessionStorage.setItem('evoke_post_login_route', '/#pricing') } catch {}
+    window.location.href = buildAccountsLoginUrl(window.location.origin + '/')
   }
 
   const landingLinks = [
@@ -328,7 +336,7 @@ export default function Navbar() {
                     {/* Menu items */}
                     <div style={{ padding: '8px 0' }}>
                       {[
-                        { icon: <LayoutDashboard size={15} />, label: 'Workspace',      action: () => { navigate('/agents-hub'); setProfileOpen(false) } },
+                        { icon: <LayoutDashboard size={15} />, label: 'Dashboard',      action: () => { navigate('/agents-hub'); setProfileOpen(false) } },
                         { icon: <Inbox size={15} />,           label: 'Approval Queue', action: () => { navigate('/queue');      setProfileOpen(false) } },
                         { icon: <Image size={15} />,           label: 'My Generations', action: () => { navigate('/results');   setProfileOpen(false) } },
                       ].map(item => (
@@ -377,7 +385,7 @@ export default function Navbar() {
                 onMouseEnter={e => e.currentTarget.style.color = '#f0ebe0'}
                 onMouseLeave={e => e.currentTarget.style.color = 'rgba(240,235,224,0.55)'}
               >Sign In</button>
-              <button onClick={handleSsoSignIn} style={{
+              <button onClick={handleGetStartedFree} style={{
                 padding: '9px 22px', marginLeft: 4,
                 background: 'linear-gradient(135deg, #d4a853 0%, #b8803a 100%)',
                 color: '#0e0c09', border: 'none', borderRadius: 100,
@@ -419,7 +427,7 @@ export default function Navbar() {
               ) : (
                 <>
                   <button onClick={handleSsoSignIn} style={{ padding: 12, background: 'transparent', border: '1px solid rgba(200,151,62,0.3)', borderRadius: 100, color: '#c8973e', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>Sign In</button>
-                  <button onClick={handleSsoSignIn} style={{ padding: 12, background: 'linear-gradient(135deg, #d4a853, #b8803a)', border: 'none', borderRadius: 100, color: '#0e0c09', fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>Get Started Free</button>
+                  <button onClick={handleGetStartedFree} style={{ padding: 12, background: 'linear-gradient(135deg, #d4a853, #b8803a)', border: 'none', borderRadius: 100, color: '#0e0c09', fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>Get Started Free</button>
                 </>
               )}
             </div>

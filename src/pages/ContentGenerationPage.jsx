@@ -21,12 +21,26 @@ const TEXT3  = 'rgba(240,235,224,0.32)'
 const GROQ   = import.meta.env.VITE_GROQ_API_KEY || ''
 
 const TABS = [
-  { key: 'blog',      label: 'Blog Article',   icon: <BookOpen size={15} />, color: '#6366f1' },
-  { key: 'landing',   label: 'Landing Page',   icon: <Globe size={15} />,    color: '#10b981' },
-  { key: 'newsletter',label: 'Newsletter',     icon: <Mail size={15} />,     color: '#f59e0b' },
+  { key: 'blog',       label: 'Blog Article', fullName: 'Blog Article Generator', desc: 'SEO-optimised blog posts with headlines, sections & meta',        icon: <BookOpen size={15} />, icon48: <BookOpen size={22} />, color: '#6366f1' },
+  { key: 'landing',    label: 'Landing Page', fullName: 'Landing Page Copy',      desc: 'Hero headline, benefits, testimonials, FAQ & final CTA',          icon: <Globe size={15} />,    icon48: <Globe size={22} />,    color: '#10b981' },
+  { key: 'newsletter', label: 'Newsletter',   fullName: 'Newsletter Generator',   desc: 'Ready-to-send emails — subject line, body sections & sign-off',   icon: <Mail size={15} />,     icon48: <Mail size={22} />,     color: '#f59e0b' },
 ]
 
 const TONES = ['Professional', 'Conversational', 'Bold', 'Inspirational', 'Playful', 'Authoritative']
+const ARTICLE_LENGTHS = [
+  { value: 'short',  label: 'Short  (~500 words)'   },
+  { value: 'medium', label: 'Medium (~1,000 words)'  },
+  { value: 'long',   label: 'Long   (~1,500 words)'  },
+]
+const NEWSLETTER_TYPES = [
+  'Weekly Digest',
+  'Product Promotion',
+  'Educational / Tips',
+  'Event Announcement',
+  'Welcome Email',
+  'Re-engagement',
+  'Company News',
+]
 const INDUSTRIES = ['SaaS / Tech', 'E-Commerce', 'Healthcare', 'Finance', 'Education', 'Real Estate', 'Marketing Agency', 'Retail', 'Other']
 const TARGET_AUDIENCES = [
   'Marketing Managers',
@@ -59,7 +73,14 @@ async function groqGenerate(prompt) {
   return data.choices?.[0]?.message?.content || ''
 }
 
-async function generateBlog({ topic, keywords, brand, audience, tone, industry }) {
+async function generateBlog({ topic, keywords, brand, audience, tone, industry, length }) {
+  const lengthGuide = {
+    short:  { sections: '2-3', wordsPerSection: '80-100',  readTime: '~3 min' },
+    medium: { sections: '4-5', wordsPerSection: '150-200', readTime: '~5 min' },
+    long:   { sections: '6-7', wordsPerSection: '200-250', readTime: '~8 min' },
+  }
+  const guide = lengthGuide[length] || lengthGuide.medium
+
   const prompt = `You are an expert SEO blog writer. Write a complete, high-quality blog article.
 
 Topic: ${topic}
@@ -68,13 +89,14 @@ Target Audience: ${audience || 'business professionals'}
 Tone: ${tone || 'Professional'}
 Industry: ${industry || 'general'}
 Focus Keywords: ${keywords || topic}
+Article Length: ${length || 'medium'} (${guide.sections} H2 sections, ~${guide.wordsPerSection} words each, estimated read time ${guide.readTime})
 
 Write a full blog article with:
 - A compelling, SEO-optimised headline (H1)
 - Meta title (under 60 chars)
 - Meta description (under 155 chars)
 - Introduction paragraph (hook the reader)
-- 4-5 H2 sections with body content (at least 100 words each)
+- ${guide.sections} H2 sections with body content (~${guide.wordsPerSection} words each)
 - Conclusion with CTA
 - Estimated read time
 
@@ -148,13 +170,13 @@ Return ONLY valid JSON:
   return JSON.parse(match[0])
 }
 
-async function generateNewsletter({ topic, audience, brand, tone, goal }) {
+async function generateNewsletter({ topic, audience, brand, tone, type }) {
   const prompt = `You are an expert email marketer. Write a complete newsletter email.
 
 Topic/Theme: ${topic}
 Brand: ${brand || 'Our Company'}
 Audience: ${audience || 'subscribers'}
-Email Goal: ${goal || 'educate and engage'}
+Newsletter Type: ${type || 'Educational / Tips'}
 Tone: ${tone || 'Professional'}
 
 Return ONLY valid JSON:
@@ -463,6 +485,7 @@ export default function ContentGenerationPage() {
   const [blogAudience, setBlogAudience] = useState('')
   const [blogTone, setBlogTone]         = useState('Professional')
   const [blogIndustry, setBlogIndustry] = useState('SaaS / Tech')
+  const [blogLength, setBlogLength]     = useState('medium')
 
   // Landing fields
   const [landProduct, setLandProduct]   = useState('')
@@ -477,7 +500,7 @@ export default function ContentGenerationPage() {
   const [nlAudience, setNlAudience]     = useState('')
   const [nlBrand, setNlBrand]           = useState('')
   const [nlTone, setNlTone]             = useState('Professional')
-  const [nlGoal, setNlGoal]             = useState('')
+  const [nlType, setNlType]             = useState('Educational / Tips')
 
   const handleGenerate = async () => {
     setError('')
@@ -486,7 +509,7 @@ export default function ContentGenerationPage() {
     try {
       if (tab === 'blog') {
         if (!blogTopic.trim()) { setError('Please enter a blog topic.'); setLoading(false); return }
-        const r = await generateBlog({ topic: blogTopic, keywords: blogKeywords, brand: blogBrand, audience: blogAudience, tone: blogTone, industry: blogIndustry })
+        const r = await generateBlog({ topic: blogTopic, keywords: blogKeywords, brand: blogBrand, audience: blogAudience, tone: blogTone, industry: blogIndustry, length: blogLength })
         setResult(r)
       } else if (tab === 'landing') {
         if (!landProduct.trim()) { setError('Please enter your product/service.'); setLoading(false); return }
@@ -494,7 +517,7 @@ export default function ContentGenerationPage() {
         setResult(r)
       } else {
         if (!nlTopic.trim()) { setError('Please enter a newsletter topic.'); setLoading(false); return }
-        const r = await generateNewsletter({ topic: nlTopic, audience: nlAudience, brand: nlBrand, tone: nlTone, goal: nlGoal })
+        const r = await generateNewsletter({ topic: nlTopic, audience: nlAudience, brand: nlBrand, tone: nlTone, type: nlType })
         setResult(r)
       }
     } catch (err) {
@@ -517,14 +540,12 @@ export default function ContentGenerationPage() {
 
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 8 }}>
-          <div style={{ width: 48, height: 48, borderRadius: 13, background: GDIM, border: `1px solid ${GBORDER}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <FileText size={22} color={GOLD} />
+          <div style={{ width: 48, height: 48, borderRadius: 13, background: `${currentTab.color}18`, border: `1px solid ${currentTab.color}35`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: currentTab.color, transition: 'all 0.2s' }}>
+            {currentTab.icon48}
           </div>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, letterSpacing: '-0.02em' }}>Content Generation</h1>
-            </div>
-            <p style={{ margin: '4px 0 0', fontSize: 13, color: TEXT2 }}>AI-powered long-form content — blogs, landing pages & newsletters</p>
+            <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, letterSpacing: '-0.02em' }}>{currentTab.fullName}</h1>
+            <p style={{ margin: '4px 0 0', fontSize: 13, color: TEXT2 }}>{currentTab.desc}</p>
           </div>
         </div>
 
@@ -578,11 +599,18 @@ export default function ContentGenerationPage() {
                     {TARGET_AUDIENCES.map(a => <option key={a} value={a}>{a}</option>)}
                   </select>
                 </Field>
-                <Field label="Tone">
-                  <select value={blogTone} onChange={e => setBlogTone(e.target.value)} style={selectStyle}>
-                    {TONES.map(t => <option key={t} value={t}>{t}</option>)}
-                  </select>
-                </Field>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <Field label="Tone">
+                    <select value={blogTone} onChange={e => setBlogTone(e.target.value)} style={selectStyle}>
+                      {TONES.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </Field>
+                  <Field label="Article Length">
+                    <select value={blogLength} onChange={e => setBlogLength(e.target.value)} style={selectStyle}>
+                      {ARTICLE_LENGTHS.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
+                    </select>
+                  </Field>
+                </div>
               </>
             )}
 
@@ -621,8 +649,10 @@ export default function ContentGenerationPage() {
                 <Field label="Newsletter Topic" required>
                   <input value={nlTopic} onChange={e => setNlTopic(e.target.value)} placeholder="e.g. 5 AI marketing trends you can't ignore this quarter" style={inputStyle} />
                 </Field>
-                <Field label="Email Goal">
-                  <input value={nlGoal} onChange={e => setNlGoal(e.target.value)} placeholder="e.g. drive webinar signups, educate subscribers" style={inputStyle} />
+                <Field label="Newsletter Type">
+                  <select value={nlType} onChange={e => setNlType(e.target.value)} style={selectStyle}>
+                    {NEWSLETTER_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
                 </Field>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <Field label="Brand Name">

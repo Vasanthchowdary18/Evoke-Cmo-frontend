@@ -6,7 +6,6 @@ import { signInWithCustomToken } from 'firebase/auth'
 import { getOrCreateUser } from './services/userService'
 import Landing from './pages/Landing.jsx'
 import SignIn from './pages/SignIn.jsx'
-import Onboarding from './pages/Onboarding.jsx'
 import CampaignForm from './pages/CampaignForm.jsx'
 import Tokens from './pages/Tokens.jsx'
 import Results from './pages/Results.jsx'
@@ -46,6 +45,10 @@ import AgentHub from './pages/AgentHub.jsx'
 import ContentGenerationPage from './pages/ContentGenerationPage.jsx'
 import CopywritingAgentPage from './pages/CopywritingAgentPage.jsx'
 import ExecutiveReportPage from './pages/ExecutiveReportPage.jsx'
+import CreativeAssetPage from './pages/CreativeAssetPage.jsx'
+import MarketingHealthPage from './pages/MarketingHealthPage.jsx'
+import DevResetPage from './pages/DevResetPage.jsx'
+import BrandProfilePage from './pages/BrandProfilePage.jsx'
 import Chatbot from './components/Chatbot.jsx'
 
 // Handles token returned from accounts.evokemarketplace.com after login
@@ -84,7 +87,7 @@ export default function App() {
       <Routes>
         <Route path="/"                  element={<Landing />} />
         <Route path="/signin"            element={<SignIn />} />
-        <Route path="/onboarding"        element={<Onboarding />} />
+        <Route path="/onboarding"        element={<Navigate to="/agents-hub" replace />} />
         <Route path="/dashboard"         element={<Navigate to="/agents-hub" replace />} />
         <Route path="/campaign/:type"    element={<CampaignForm />} />
         <Route path="/results"           element={<Results />} />
@@ -127,6 +130,10 @@ export default function App() {
         <Route path="/content-gen"           element={<ContentGenerationPage />} />
         <Route path="/copywriting"           element={<CopywritingAgentPage />} />
         <Route path="/executive-report"      element={<ExecutiveReportPage />} />
+        <Route path="/creative-asset"         element={<CreativeAssetPage />} />
+        <Route path="/health-score"           element={<MarketingHealthPage />} />
+        <Route path="/dev-reset"              element={<DevResetPage />} />
+        <Route path="/brand-profile"          element={<BrandProfilePage />} />
         <Route path="/privacy"            element={<Privacy />} />
         <Route path="/terms"              element={<Terms />} />
         <Route path="*"                  element={<Navigate to="/" replace />} />

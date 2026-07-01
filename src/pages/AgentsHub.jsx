@@ -3,20 +3,27 @@ import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   ArrowRight, Zap, TrendingUp, Target, BarChart2, Brain,
-  Rocket, Globe, Mail, Users, PieChart, Image, Film,
+  Rocket, Globe, Mail, Users, PieChart, Film,
   Calendar, Package, Search, FileText, Megaphone, Activity,
   CheckCircle2, AlertCircle, Play, Sparkles, ChevronRight,
   Link2, Coins, Bot, LayoutDashboard, Camera,
   Eye, Trash2, Clock, ChevronDown, ChevronUp, ArrowLeft,
   Shield, Code2, TrendingDown, DollarSign, Crown, Download, BookOpen,
   Inbox,
-  Share2,
+  Share2, Lock,
 } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
 import { useAuth } from '../hooks/useAuth.js'
+import { useUserPlan } from '../hooks/useUserPlan.js'
 import { redirectToLogin } from '../lib/authUtils'
 import { getOrCreateUser } from '../services/userService'
 import { getKnowledgeBase } from '../services/knowledgeBaseService.js'
+import { PLANS as PLAN_ORDER } from '../lib/planGate.js'
+import { getRecommendedActions } from '../lib/recommendations.jsx'
+import { buildCampaignPrefill } from '../lib/campaignPrefill.js'
+import UpgradeModal from '../components/UpgradeModal.jsx'
+import { doc, updateDoc, deleteField } from 'firebase/firestore'
+import { db } from '../firebase'
 
 /* ─── colour tokens ─── */
 const BG       = '#0e0c09'
@@ -81,138 +88,7 @@ function timeAgo(iso) {
   return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-/* ─── Recommended Actions based on user state ─── */
-function getRecommendedActions(connectedCount, campaigns, tokenBalance) {
-  const actions = []
-
-  actions.push({
-    priority: 0,
-    icon: <BookOpen size={18} />,
-    title: 'Set Up Brand Knowledge Base',
-    desc: 'Your AI CMO needs to know your brand, goals and market before it can personalize any campaign.',
-    color: GOLD,
-    cta: 'Set Up Now',
-    path: '/brand-kb',
-    highlight: true,
-  })
-
-  if (connectedCount === 0) {
-    actions.push({
-      priority: 1,
-      icon: <Link2 size={18} />,
-      title: 'Connect Your Platforms',
-      desc: 'Link LinkedIn, Meta & Gmail so your CMO can publish campaigns automatically.',
-      color: '#10b981',
-      cta: 'Connect Now',
-      path: '/connect-accounts',
-    })
-  }
-
-  if (campaigns.length === 0) {
-    actions.push({
-      priority: 2,
-      icon: <Rocket size={18} />,
-      title: 'Launch Your First Campaign',
-      desc: 'Let EVOX CMO build a complete multi-channel marketing campaign for your brand.',
-      color: GOLD,
-      cta: 'Launch Campaign',
-      path: '/campaign-hub',
-    })
-  } else {
-    actions.push({
-      priority: 2,
-      icon: <BarChart2 size={18} />,
-      title: 'Review Analytics Report',
-      desc: 'Generate a performance report with KPIs, ROAS, and strategic recommendations.',
-      color: '#f59e0b',
-      cta: 'Generate Report',
-      path: '/campaign/analytics_report',
-    })
-  }
-
-  actions.push({
-    priority: 3,
-    icon: <Globe size={18} />,
-    title: 'Build LinkedIn Presence',
-    desc: 'Create a 30-day LinkedIn content calendar and professional post series.',
-    color: '#0a66c2',
-    cta: 'Start Strategy',
-    path: '/campaign/content_calendar',
-  })
-
-  actions.push({
-    priority: 4,
-    icon: <Target size={18} />,
-    title: 'Run Competitive Analysis',
-    desc: 'Understand your market position with SWOT, competitor ads, and pricing intel.',
-    color: '#a855f7',
-    cta: 'Analyse Now',
-    path: '/campaign/growth_strategy',
-  })
-
-  actions.push({
-    priority: 5,
-    icon: <Image size={18} />,
-    title: 'Generate Product Visuals',
-    desc: 'Turn one product image into lifestyle photos, 360° videos, and ad creatives.',
-    color: '#ec4899',
-    cta: 'Open Creative Studio',
-    path: '/products',
-  })
-
-  actions.push({
-    priority: 6,
-    icon: <TrendingUp size={18} />,
-    title: 'Analyse Current Trends',
-    desc: 'Get trending hashtags, content ideas, and competitor intelligence for your industry.',
-    color: '#ec4899',
-    cta: 'View Trends',
-    path: '/trends',
-  })
-
-  actions.push({
-    priority: 7,
-    icon: <Inbox size={18} />,
-    title: 'Check Social Inbox',
-    desc: 'View and reply to messages from LinkedIn, Instagram, Facebook, and WhatsApp.',
-    color: '#25d366',
-    cta: 'Open Inbox',
-    path: '/inbox',
-  })
-
-  actions.push({
-    priority: 8,
-    icon: <FileText size={18} />,
-    title: 'Generate Long-Form Content',
-    desc: 'AI-powered blog articles, landing page copy, and newsletters — SEO-ready in seconds.',
-    color: '#6366f1',
-    cta: 'Open Content Gen',
-    path: '/content-gen',
-  })
-
-  actions.push({
-    priority: 9,
-    icon: <Megaphone size={18} />,
-    title: 'Copywriting Agent',
-    desc: 'Create ad copy, taglines, brand voice, product names, and value propositions with AI.',
-    color: '#ec4899',
-    cta: 'Open Copywriting',
-    path: '/copywriting',
-  })
-
-  actions.push({
-    priority: 10,
-    icon: <BarChart2 size={18} />,
-    title: 'Executive Report',
-    desc: 'Generate a board-ready executive marketing report with ROI, ROAS, and strategic recommendations.',
-    color: GOLD,
-    cta: 'Generate Report',
-    path: '/executive-report',
-    highlight: true,
-  })
-
-  return actions.slice(0, 4)
-}
+/* Personalised agent suggestions based on brand KB — shared with BrandKnowledgeBase.jsx */
 
 export default function AgentsHub() {
   const navigate = useNavigate()
@@ -227,6 +103,10 @@ export default function AgentsHub() {
   const [showAllHistory,  setShowAllHistory]  = useState(false)
   const [activeTab,       setActiveTab]       = useState('overview')
   const [hasBrandKb,      setHasBrandKb]      = useState(false)
+  const [kb,              setKb]              = useState(null)
+  const [upgradeFor,      setUpgradeFor]      = useState(null)
+  const { plan: userPlan } = useUserPlan()
+
 
   useEffect(() => {
     const stored = JSON.parse(localStorage.getItem('evoke_campaigns') || '[]')
@@ -243,7 +123,10 @@ export default function AgentsHub() {
       const count = Object.values(accounts).filter(a => a?.connected).length
       setConnectedCount(count)
     }).catch(() => {})
-    getKnowledgeBase(user.uid).then(kb => setHasBrandKb(!!kb?.brandName)).catch(() => {})
+    getKnowledgeBase(user.uid).then(data => {
+      setKb(data)
+      setHasBrandKb(!!(data && Object.keys(data).length > 1))
+    }).catch(() => {})
   }, [user])
 
   const handleLaunchCMO = () => {
@@ -275,15 +158,57 @@ export default function AgentsHub() {
 
   const displayedHistory = showAllHistory ? campaigns : campaigns.slice(0, 5)
 
-  /* ── Marketing health score (computed) ── */
-  const healthScore = Math.min(100, Math.round(
-    (connectedCount / 11) * 40 +
-    Math.min(campaigns.length * 5, 30) +
-    ((tokenBalance ?? 0) > 0 ? 20 : 0) +
-    10
-  ))
+  const handleResetAccount = async () => {
+    if (!user) return
+    const confirmed = window.confirm('Reset your account to new user state?\n\nThis will clear:\n• Onboarding data\n• Brand Knowledge Base\n• Social account connections\n• Campaign history (local)\n\nThis cannot be undone.')
+    if (!confirmed) return
+    try {
+      await updateDoc(doc(db, 'users', user.uid), {
+        onboardingComplete: false,
+        onboardingData: deleteField(),
+        knowledgeBase: deleteField(),
+        socialAccounts: {
+          facebook:  { connected: false, pageId: '', pageAccessToken: '', pageName: '' },
+          instagram: { connected: false, businessAccountId: '', pageName: '' },
+          linkedin:  { connected: false, personUrn: '', accessToken: '', name: '' },
+          twitter:   { connected: false, accessToken: '', username: '', userId: '' },
+          whatsapp:  { connected: false, phoneNumberId: '', accessToken: '' },
+          gmail:     { connected: false, email: '' },
+        },
+      })
+      localStorage.clear()
+      sessionStorage.clear()
+      window.location.reload()
+    } catch (err) {
+      alert('Reset failed: ' + err.message)
+    }
+  }
 
-  const recommendedActions = getRecommendedActions(connectedCount, campaigns, tokenBalance)
+  /* ── Marketing health score — same formula as MarketingHealthPage ── */
+  // Profile(20) + BrandKB(20) + Social(20) + Campaigns(20) + Analytics(20)
+  const profileScore  = 20 // if they're logged in, onboarding is done
+  const kbScore       = hasBrandKb ? 20 : 0
+  const socialScore   = Math.min(Math.round((connectedCount / 6) * 20), 20)
+  const campaignScore = campaigns.length > 0 ? 20 : 0
+  const healthScore   = Math.min(100, profileScore + kbScore + socialScore + campaignScore)
+
+  const recommendedActions = getRecommendedActions(connectedCount, campaigns, tokenBalance, kb)
+
+  // If a recommendation needs a higher plan than the user has, prompt an upgrade
+  // instead of navigating straight into a feature they can't use yet.
+  const goToRecommendation = (action) => {
+    const required = action.planRequired || 'free'
+    if (PLAN_ORDER.indexOf(userPlan || 'free') < PLAN_ORDER.indexOf(required)) {
+      setUpgradeFor({ requiredPlan: required, featureTitle: action.title })
+      return
+    }
+    // Campaign forms auto-fill from the Brand Knowledge Base instead of opening blank.
+    if (action.path.startsWith('/campaign/')) {
+      navigate(action.path, { state: { prefill: buildCampaignPrefill(kb) } })
+      return
+    }
+    navigate(action.path)
+  }
 
   /* ── Org chart data ── */
   const level1 = [
@@ -363,68 +288,118 @@ export default function AgentsHub() {
         {activeTab === 'overview' && (
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
 
-            {/* Getting Started Steps */}
+            {/* Marketing Health Score — pinned at the top so it's the first thing users see */}
             {(() => {
-              const steps = [
-                { n: 1, title: 'Set Up Brand Knowledge Base', desc: 'Tell your AI CMO about your brand, goals, and target audience so every campaign is on-brand.', cta: hasBrandKb ? 'Update' : 'Set Up Now', path: '/brand-kb', color: GOLD, icon: <BookOpen size={18}/>, done: hasBrandKb },
-                { n: 2, title: 'Connect Your Platforms', desc: 'Link LinkedIn, Meta, Instagram, Gmail and more so your CMO can publish campaigns automatically.', cta: 'Connect Now', path: '/connect-accounts', color: '#10b981', icon: <Link2 size={18}/>, done: connectedCount > 0 },
-                { n: 3, title: 'Launch Your First Campaign', desc: 'Pick a campaign type — Event, Product, Growth Strategy, Content Calendar — and let EVOX build it.', cta: 'Launch Campaign', path: '/campaign-hub', color: '#3b82f6', icon: <Rocket size={18}/>, done: campaigns.length > 0 },
-                { n: 4, title: 'Review & Approve Content', desc: 'Check AI-generated content before it goes live. Edit, approve, or schedule from the queue.', cta: 'Open Queue', path: '/queue', color: '#a855f7', icon: <CheckCircle2 size={18}/>, done: false },
-                { n: 5, title: 'Track Your Analytics', desc: 'Monitor campaign performance, KPIs, ROAS and audience insights in your analytics dashboard.', cta: 'View Analytics', path: '/analytics', color: '#06b6d4', icon: <BarChart2 size={18}/>, done: false },
+              const healthMeta = healthScore >= 80
+                ? { label: 'Excellent',   color: '#10b981' }
+                : healthScore >= 50
+                ? { label: 'Good',        color: GOLD }
+                : healthScore > 0
+                ? { label: 'Needs Setup', color: '#f97316' }
+                : { label: 'Getting Started', color: '#ef4444' }
+
+              const breakdown = [
+                { label: 'Profile',    score: profileScore,  max: 20, color: GOLD },
+                { label: 'Brand KB',   score: kbScore,       max: 20, color: '#f59e0b' },
+                { label: 'Social',     score: socialScore,   max: 20, color: '#3b82f6' },
+                { label: 'Campaigns',  score: campaignScore, max: 20, color: '#10b981' },
               ]
+
               return (
-                <div style={{ marginBottom: 40 }}>
-                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', background: GDIM, border: `1px solid ${GBORDER}`, borderRadius: 100, fontSize: 11, fontWeight: 700, color: GOLD, letterSpacing: '0.06em', marginBottom: 16 }}>
-                    <Zap size={11}/> GETTING STARTED
+                <motion.div
+                  whileHover={{ y: -2 }}
+                  onClick={() => navigate('/health-score')}
+                  style={{
+                    marginBottom: 32, padding: '26px 28px', cursor: 'pointer',
+                    background: `linear-gradient(135deg, ${healthMeta.color}10, ${CARD})`,
+                    border: `1px solid ${healthMeta.color}35`, borderRadius: 20,
+                    display: 'flex', alignItems: 'center', gap: 28, flexWrap: 'wrap',
+                    transition: 'border-color 0.2s',
+                  }}
+                >
+                  <div style={{ width: 84, height: 84, borderRadius: '50%', flexShrink: 0, background: `${healthMeta.color}12`, border: `3px solid ${healthMeta.color}45`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
+                    <span style={{ fontSize: 24, fontWeight: 900, color: healthMeta.color, fontFamily: "'Syne','Inter',sans-serif", lineHeight: 1 }}>{healthScore}</span>
+                    <span style={{ fontSize: 9, color: TEXT3, fontWeight: 700 }}>/100</span>
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    {steps.map((step) => (
-                      <motion.div
-                        key={step.n}
-                        whileHover={{ x: 3 }}
-                        onClick={() => navigate(step.path)}
-                        style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px 20px', background: step.done ? 'rgba(16,185,129,0.04)' : CARD, border: `1px solid ${step.done ? 'rgba(16,185,129,0.2)' : BORDER}`, borderRadius: 14, cursor: 'pointer', transition: 'all 0.2s' }}
-                        onMouseEnter={e => { if (!step.done) { e.currentTarget.style.borderColor = step.color + '50'; e.currentTarget.style.background = step.color + '08' } }}
-                        onMouseLeave={e => { if (!step.done) { e.currentTarget.style.borderColor = BORDER; e.currentTarget.style.background = CARD } }}
-                      >
-                        {/* Step number / done check */}
-                        <div style={{ width: 36, height: 36, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: step.done ? 'rgba(16,185,129,0.15)' : step.color + '15', border: `2px solid ${step.done ? '#10b981' : step.color + '40'}`, color: step.done ? '#10b981' : step.color, fontSize: 13, fontWeight: 900 }}>
-                          {step.done ? <CheckCircle2 size={16}/> : step.n}
+
+                  <div style={{ flex: 1, minWidth: 220 }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 10px', background: `${healthMeta.color}15`, border: `1px solid ${healthMeta.color}40`, borderRadius: 100, fontSize: 10, fontWeight: 800, color: healthMeta.color, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
+                      <Activity size={11}/> Marketing Health Score
+                    </div>
+                    <div style={{ fontSize: 18, fontWeight: 800, color: TEXT, marginBottom: 10 }}>{healthMeta.label}</div>
+                    <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                      {breakdown.map(b => (
+                        <div key={b.label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <div style={{ width: 6, height: 6, borderRadius: '50%', background: b.score >= b.max ? b.color : 'rgba(255,255,255,0.15)' }}/>
+                          <span style={{ fontSize: 11, color: TEXT3, fontWeight: 600 }}>{b.label} {b.score}/{b.max}</span>
                         </div>
-                        {/* Icon */}
-                        <div style={{ width: 38, height: 38, borderRadius: 10, flexShrink: 0, background: step.color + '12', border: `1px solid ${step.color}25`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: step.done ? '#10b981' : step.color }}>
-                          {step.icon}
-                        </div>
-                        {/* Text */}
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 14, fontWeight: 700, color: step.done ? TEXT2 : TEXT, marginBottom: 2, textDecoration: step.done ? 'line-through' : 'none' }}>{step.title}</div>
-                          <div style={{ fontSize: 12, color: TEXT3, lineHeight: 1.5 }}>{step.desc}</div>
-                        </div>
-                        {/* CTA */}
-                        {!step.done && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700, color: step.color, flexShrink: 0 }}>
-                            {step.cta} <ChevronRight size={13}/>
-                          </div>
-                        )}
-                        {step.done && (
-                          <div style={{ fontSize: 11, fontWeight: 700, color: '#10b981', flexShrink: 0 }}>Done ✓</div>
-                        )}
-                      </motion.div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 18px', background: `${healthMeta.color}15`, border: `1px solid ${healthMeta.color}40`, borderRadius: 100, color: healthMeta.color, fontSize: 13, fontWeight: 700, flexShrink: 0 }}>
+                    View Full Report <ChevronRight size={14}/>
+                  </div>
+                </motion.div>
               )
             })()}
+
+            {/* Recommended For You — ranked agent/campaign suggestions from brand KB + health score gaps */}
+            {recommendedActions.length > 0 && (
+              <div style={{ marginBottom: 40 }}>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', background: GDIM, border: `1px solid ${GBORDER}`, borderRadius: 100, fontSize: 11, fontWeight: 700, color: GOLD, letterSpacing: '0.06em', marginBottom: 16 }}>
+                  <Sparkles size={11}/> RECOMMENDED FOR YOU
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
+                  {recommendedActions.map(a => {
+                    const locked = PLAN_ORDER.indexOf(userPlan || 'free') < PLAN_ORDER.indexOf(a.planRequired || 'free')
+                    return (
+                      <motion.div
+                        key={a.path}
+                        whileHover={{ y: -3 }}
+                        onClick={() => goToRecommendation(a)}
+                        style={{
+                          padding: '20px 18px', cursor: 'pointer', position: 'relative',
+                          background: a.highlight ? `${a.color}0a` : CARD,
+                          border: `1px solid ${a.highlight ? a.color + '45' : BORDER}`,
+                          borderRadius: 16, transition: 'border-color 0.2s',
+                        }}
+                      >
+                        {locked && (
+                          <div style={{ position: 'absolute', top: 14, right: 14, display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', background: 'rgba(255,255,255,0.05)', border: `1px solid ${BORDER}`, borderRadius: 100, fontSize: 9, fontWeight: 800, color: TEXT3, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                            <Lock size={9}/> {a.planRequired?.replace('package-', 'Pkg ').toUpperCase()}
+                          </div>
+                        )}
+                        <div style={{ width: 38, height: 38, borderRadius: 10, background: `${a.color}15`, border: `1px solid ${a.color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: a.color, marginBottom: 14 }}>
+                          {a.icon}
+                        </div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: TEXT, marginBottom: 6 }}>{a.title}</div>
+                        <div style={{ fontSize: 12, color: TEXT3, lineHeight: 1.5, marginBottom: 14 }}>{a.desc}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700, color: locked ? TEXT3 : a.color }}>
+                          {locked ? <><Lock size={11}/> Upgrade to unlock</> : <>{a.cta} <ChevronRight size={12}/></>}
+                        </div>
+                      </motion.div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {upgradeFor && (
+              <UpgradeModal
+                requiredPlan={upgradeFor.requiredPlan}
+                featureTitle={upgradeFor.featureTitle}
+                onClose={() => setUpgradeFor(null)}
+              />
+            )}
 
             {/* KPI Metrics Row */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, marginBottom: 40 }}>
               {[
-                { label: 'Marketing Health Score', value: `${healthScore}/100`, sub: healthScore >= 80 ? 'Excellent' : healthScore >= 50 ? 'Good' : 'Needs setup', color: healthScore >= 80 ? '#10b981' : healthScore >= 50 ? GOLD : '#ef4444', icon: <Activity size={16}/> },
                 { label: 'Campaigns Generated', value: campaigns.length.toString(), sub: campaigns.length > 0 ? 'campaigns launched' : 'Launch your first', color: GOLD, icon: <Rocket size={16}/> },
                 { label: 'Platforms Connected', value: `${connectedCount}/11`, sub: connectedCount > 0 ? 'platforms active' : 'None connected yet', color: connectedCount > 5 ? '#10b981' : connectedCount > 0 ? GOLD : '#64748b', icon: <Link2 size={16}/> },
-                { label: 'Campaign Tokens', value: tokenBalance !== null ? `${tokenBalance}` : '—', sub: (tokenBalance ?? 0) > 0 ? 'available to use' : 'Top up to continue', color: (tokenBalance ?? 0) > 0 ? '#10b981' : '#ef4444', icon: <Coins size={16}/> },
               ].map((metric, i) => (
-                <motion.div key={metric.label} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }} style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: '20px 22px' }}>
+                <motion.div key={metric.label} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }} onClick={() => metric.path && navigate(metric.path)} style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: '20px 22px', cursor: metric.path ? 'pointer' : 'default', transition: 'border-color 0.2s' }} onMouseEnter={e => { if (metric.path) e.currentTarget.style.borderColor = metric.color + '50' }} onMouseLeave={e => { if (metric.path) e.currentTarget.style.borderColor = BORDER }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                     <span style={{ fontSize: 11, fontWeight: 700, color: TEXT3, letterSpacing: '0.05em', textTransform: 'uppercase' }}>{metric.label}</span>
                     <div style={{ width: 32, height: 32, borderRadius: 9, background: `${metric.color}12`, border: `1px solid ${metric.color}25`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: metric.color }}>{metric.icon}</div>
@@ -435,21 +410,6 @@ export default function AgentsHub() {
               ))}
             </div>
 
-            {/* Recommended Actions */}
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', background: GDIM, border: `1px solid ${GBORDER}`, borderRadius: 100, fontSize: 11, fontWeight: 700, color: GOLD, letterSpacing: '0.06em', marginBottom: 14 }}>
-              <Sparkles size={11}/> RECOMMENDED FOR YOU
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 14 }}>
-              {recommendedActions.map((action, i) => (
-                <motion.div key={i} whileHover={{ y: -2, boxShadow: `0 8px 24px ${action.color}18` }} onClick={() => navigate(action.path)} style={{ background: CARD, border: `1px solid ${action.highlight ? action.color + '50' : BORDER}`, borderRadius: 14, padding: '18px 20px', cursor: 'pointer', transition: 'all 0.2s', position: 'relative', overflow: 'hidden' }}>
-                  {action.highlight && <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, ${action.color}, ${action.color}80)` }} />}
-                  <div style={{ width: 36, height: 36, borderRadius: 10, marginBottom: 12, background: `${action.color}18`, border: `1px solid ${action.color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: action.color }}>{action.icon}</div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: TEXT, marginBottom: 6 }}>{action.title}</div>
-                  <div style={{ fontSize: 12, color: TEXT2, lineHeight: 1.55, marginBottom: 14 }}>{action.desc}</div>
-                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700, color: action.color }}>{action.cta} <ChevronRight size={13}/></div>
-                </motion.div>
-              ))}
-            </div>
           </motion.div>
         )}
 
@@ -586,7 +546,7 @@ export default function AgentsHub() {
               ].map(t => (
                 t.download
                   ? <a key={t.label} href={t.path} download style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', background: `${t.color}10`, border: `1px solid ${t.color}30`, borderRadius: 10, color: t.color, fontSize: 12, fontWeight: 700, textDecoration: 'none', fontFamily: 'inherit' }}>{t.icon} {t.label}</a>
-                  : <button key={t.label} onClick={() => navigate(t.path)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', background: `${t.color}10`, border: `1px solid ${t.color}30`, borderRadius: 10, color: t.color, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>{t.icon} {t.label}</button>
+                  : <button key={t.label} onClick={() => navigate(t.path, t.path === '/brand-kb' ? { state: { edit: true } } : undefined)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', background: `${t.color}10`, border: `1px solid ${t.color}30`, borderRadius: 10, color: t.color, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>{t.icon} {t.label}</button>
               ))}
             </div>
           </motion.div>
@@ -638,7 +598,7 @@ export default function AgentsHub() {
                   Top Up Tokens
                 </button>
               </div>
-              <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: '20px 22px' }}>
+              <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: '20px 22px', marginBottom: 20 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: TEXT, marginBottom: 14 }}>How tokens work</div>
                 {['Each campaign generation uses 1 token', 'Image generation uses 1–3 tokens per image', 'Video generation uses 5–10 tokens per video', 'Unused tokens roll over each month'].map((line, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: i < 3 ? 10 : 0 }}>
@@ -646,6 +606,57 @@ export default function AgentsHub() {
                     <span style={{ fontSize: 13, color: TEXT2 }}>{line}</span>
                   </div>
                 ))}
+              </div>
+
+              {/* ── Dev: Reset to new user ── */}
+              <div style={{ background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.18)', borderRadius: 16, padding: '18px 20px' }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'rgba(239,68,68,0.7)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>Dev Testing</div>
+                <div style={{ fontSize: 12, color: TEXT3, marginBottom: 14, lineHeight: 1.6 }}>
+                  Reset your account to a brand new user state — clears onboarding, brand KB, social connections and campaign history.
+                </div>
+                <button
+                  onClick={handleResetAccount}
+                  style={{
+                    padding: '10px 20px', background: 'rgba(239,68,68,0.1)',
+                    border: '1px solid rgba(239,68,68,0.35)', borderRadius: 9,
+                    color: '#ef4444', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                    fontFamily: 'inherit', transition: 'opacity .18s',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.opacity = '.75' }}
+                  onMouseLeave={e => { e.currentTarget.style.opacity = '1' }}
+                >
+                  Reset to New User
+                </button>
+              </div>
+
+              {/* ── Dev: Plan switcher ── */}
+              <div style={{ background: 'rgba(200,151,62,0.05)', border: '1px solid rgba(200,151,62,0.18)', borderRadius: 16, padding: '18px 20px' }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'rgba(200,151,62,0.7)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>Dev · Switch Plan</div>
+                <div style={{ fontSize: 12, color: TEXT3, marginBottom: 14, lineHeight: 1.6 }}>
+                  Simulate a different subscription plan to test locked/unlocked features.
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {[
+                    { key: 'free',      label: 'Free',      color: '#10b981' },
+                    { key: 'package-a', label: 'Pkg A',     color: '#3b82f6' },
+                    { key: 'package-b', label: 'Pkg B',     color: '#c8973e' },
+                    { key: 'package-c', label: 'Pkg C',     color: '#a855f7' },
+                  ].map(p => (
+                    <button key={p.key} onClick={async () => {
+                      if (!user) return
+                      await updateDoc(doc(db, 'users', user.uid), { userPlan: p.key })
+                      window.location.reload()
+                    }} style={{
+                      padding: '8px 16px', background: p.color + '15',
+                      border: `1px solid ${p.color}40`, borderRadius: 8,
+                      color: p.color, fontSize: 12, fontWeight: 700,
+                      cursor: 'pointer', fontFamily: 'inherit', transition: 'opacity .18s',
+                    }}
+                      onMouseEnter={e => { e.currentTarget.style.opacity = '.75' }}
+                      onMouseLeave={e => { e.currentTarget.style.opacity = '1' }}
+                    >{p.label}</button>
+                  ))}
+                </div>
               </div>
             </div>
           </motion.div>

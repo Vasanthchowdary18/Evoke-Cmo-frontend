@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Film, ArrowLeft, Loader2, Sparkles, Check, Copy,
@@ -27,24 +27,54 @@ const TEXT3   = 'rgba(240,235,224,0.32)'
 const GROQ_KEY = import.meta.env.VITE_GROQ_API_KEY || ''
 
 const VIDEO_TYPES = [
-  { key: 'promotional',  label: 'Promotional',       icon: <Megaphone size={20}/>,      desc: 'Brand awareness & offers',   color: '#c8973e' },
-  { key: 'product',      label: 'Product Video',      icon: <ShoppingBag size={20}/>,    desc: 'Showcase features & demos',  color: '#10b981' },
-  { key: 'reel',         label: 'Social Media Reel',  icon: <Instagram size={20}/>,      desc: '15–60 sec viral content',    color: '#e1306c' },
-  { key: 'advertising',  label: 'Advertising',        icon: <Zap size={20}/>,            desc: 'Paid ad creatives',          color: '#6366f1' },
-  { key: 'educational',  label: 'Educational',        icon: <GraduationCap size={20}/>,  desc: 'How-to & explainer videos',  color: '#3b82f6' },
-  { key: 'event',        label: 'Event Video',        icon: <Calendar size={20}/>,       desc: 'Event promos & recaps',      color: '#f59e0b' },
+  { key: 'promo',   label: 'Promo Video',       icon: <Play size={20}/>,        icon48: <Play size={22}/>,        desc: 'High-energy promotional video with motion, text overlays, and brand colours.', color: '#c8973e' },
+  { key: 'product', label: 'Product Showcase',  icon: <ShoppingBag size={20}/>, icon48: <ShoppingBag size={22}/>, desc: 'Clean product-focused video with close-ups, features, and CTA.',              color: '#10b981' },
+  { key: 'reel',    label: 'Social Reel',        icon: <Instagram size={20}/>,   icon48: <Instagram size={22}/>,   desc: 'Short-form vertical video for Instagram Reels, TikTok, and YouTube Shorts.',  color: '#e1306c' },
+  { key: 'ad',      label: 'Ad Creative Video',  icon: <Zap size={20}/>,         icon48: <Zap size={22}/>,         desc: 'Conversion-optimised video ad with hook, offer, and CTA for paid campaigns.', color: '#6366f1' },
+  { key: 'event',   label: 'Event Video',        icon: <Calendar size={20}/>,    icon48: <Calendar size={22}/>,    desc: 'Event highlight reel or promotional video for upcoming or past events.',      color: '#f59e0b' },
 ]
 
+const PROMO_PLATFORMS   = ['Instagram', 'Facebook', 'YouTube', 'TikTok', 'Display / Banner Ads', 'LinkedIn']
+const DEMO_STYLES       = ['Feature Walkthrough', 'Lifestyle / In-Use', 'Unboxing', 'Side-by-Side Comparison']
+const REEL_PLATFORMS    = ['Instagram Reels', 'TikTok', 'YouTube Shorts', 'Facebook Reels']
+const REEL_STYLES       = ['Tutorial / How-to', 'Trend / Challenge', 'Behind the Scenes', 'Testimonial', 'Product Demo', 'Viral Skit']
+const AD_PLATFORMS      = ['Meta Ads (Instagram / Facebook)', 'Google Ads', 'YouTube Ads', 'TikTok Ads', 'LinkedIn Ads']
+const FUNNEL_STAGES     = ['Awareness', 'Consideration', 'Conversion', 'Retargeting']
+const EVENT_TYPES       = ['Conference / Summit', 'Webinar / Online Event', 'Product Launch', 'Awards Ceremony', 'Workshop / Masterclass', 'Trade Show']
+
+const GOAL_LABEL = {
+  promo:   'Campaign Goal *',
+  product: 'Product Features to Highlight *',
+  reel:    'Hook / Concept *',
+  ad:      'Key Offer / CTA *',
+  event:   'Key Highlights / What to Feature *',
+}
+const GOAL_PLACEHOLDER = {
+  promo:   'e.g. Increase trial sign-ups, drive summer sale traffic',
+  product: 'e.g. Waterproof, 48h battery, premium materials, AI-powered',
+  reel:    'e.g. One weird trick that 10x-ed our leads in 30 days',
+  ad:      'e.g. 50% off today only - Book a free demo now',
+  event:   'e.g. Keynote speakers, product reveal, networking highlights',
+}
+
 async function generateVideoPackage(inputs) {
+  const typeDetails = {
+    promo:   `Key Offer / Promotion: ${inputs.offer || 'N/A'}\nPlatform: ${inputs.platform || 'Multi-platform'}`,
+    product: `Product Features: ${inputs.goal}\nDemo Style: ${inputs.demoStyle || 'Feature Walkthrough'}\nCTA Goal: ${inputs.ctaGoal || 'Learn More'}`,
+    reel:    `Hook / Concept: ${inputs.goal}\nPlatform: ${inputs.reelPlatform || 'Instagram Reels'}\nReel Style: ${inputs.contentStyle || 'Product Demo'}`,
+    ad:      `Key Offer / CTA: ${inputs.goal}\nAd Platform: ${inputs.adPlatform || 'Meta Ads'}\nFunnel Stage: ${inputs.funnelStage || 'Conversion'}`,
+    event:   `Event Name: ${inputs.eventName || inputs.brand}\nEvent Type: ${inputs.eventType || 'Event'}\nKey Highlights: ${inputs.goal}`,
+  }[inputs.videoType] || ''
+
   const prompt = `You are an expert video production strategist for digital marketing.
 
 Create a complete video production package for:
 - Brand/Product: ${inputs.brand}
 - Video Type: ${inputs.videoType}
-- Campaign Goal: ${inputs.goal}
 - Target Audience: ${inputs.audience}
 - Duration: ${inputs.duration}
 - Tone: ${inputs.tone}
+${typeDetails ? `- Type Details:\n${typeDetails}` : ''}
 
 Return ONLY valid JSON:
 {
@@ -116,10 +146,23 @@ const TARGET_AUDIENCES = ['Marketing Managers', 'CMOs & Marketing Leaders', 'Sma
 export default function VideoGenerationPage() {
   useRequireAuth()
   const navigate = useNavigate()
+  const { state: navState } = useLocation()
   const { user } = useAuth()
 
-  const [videoType, setVideoType] = useState('')
-  const [inputs, setInputs]       = useState({ brand: '', goal: '', audience: '', duration: '30 seconds', tone: 'Energetic' })
+  const [videoType, setVideoType] = useState(navState?.videoType || '')
+  const [inputs, setInputs]       = useState({
+    brand: '', goal: '', audience: '', duration: '30 seconds', tone: 'Energetic',
+    // promo
+    offer: '', platform: '',
+    // product
+    demoStyle: '', ctaGoal: '',
+    // reel
+    reelPlatform: '', contentStyle: '',
+    // ad
+    adPlatform: '', funnelStage: '',
+    // event
+    eventName: '', eventType: '',
+  })
   const [loading, setLoading]     = useState(false)
   const [result, setResult]       = useState(null)
   const [error, setError]         = useState('')
@@ -195,39 +238,74 @@ export default function VideoGenerationPage() {
 
         {/* Header */}
         <div style={{ marginBottom: 36 }}>
-          <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', color: TEXT3, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, marginBottom: 20, padding: 0 }}>
-            <ArrowLeft size={14} /> Back
+          <button onClick={() => navigate(navState?.from || -1)} style={{ background: 'none', border: 'none', color: TEXT3, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, marginBottom: 20, padding: 0 }}>
+            <ArrowLeft size={14} /> {navState?.fromLabel ? `Back to ${navState.fromLabel}` : 'Back'}
           </button>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 8 }}>
-            <div style={{ width: 44, height: 44, borderRadius: 12, background: GDIM, border: `1px solid ${GBORDER}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Film size={22} color={GOLD} />
-            </div>
-            <div>
-              <h1 style={{ margin: 0, fontSize: 24, fontWeight: 600 }}>Video Generation</h1>
-              <p style={{ margin: 0, fontSize: 13, color: TEXT2 }}>Fig. 17 · AI-powered video production package</p>
-            </div>
+            {(() => {
+              const vt = VIDEO_TYPES.find(t => t.key === videoType)
+              return vt ? (
+                <>
+                  <div style={{ width: 44, height: 44, borderRadius: 12, background: `${vt.color}18`, border: `1px solid ${vt.color}35`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: vt.color, transition: 'all 0.2s' }}>
+                    {vt.icon48}
+                  </div>
+                  <div>
+                    <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, letterSpacing: '-0.02em' }}>{vt.label}</h1>
+                    <p style={{ margin: 0, fontSize: 13, color: TEXT2 }}>{vt.desc}</p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div style={{ width: 44, height: 44, borderRadius: 12, background: GDIM, border: `1px solid ${GBORDER}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Film size={22} color={GOLD} />
+                  </div>
+                  <div>
+                    <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, letterSpacing: '-0.02em' }}>Video Generation</h1>
+                    <p style={{ margin: 0, fontSize: 13, color: TEXT2 }}>AI-powered video production package — select a type below</p>
+                  </div>
+                </>
+              )
+            })()}
           </div>
         </div>
 
         {/* Step 1 — Video Type Selector */}
-        <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: 24, marginBottom: 20 }}>
-          <h2 style={{ margin: '0 0 6px', fontSize: 15, fontWeight: 600 }}>Step 1 — Select video type</h2>
-          <p style={{ margin: '0 0 18px', fontSize: 13, color: TEXT2 }}>Choose the format that matches your campaign objective</p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10 }}>
-            {VIDEO_TYPES.map(vt => (
-              <button key={vt.key} onClick={() => setVideoType(vt.key)} style={{
-                background: videoType === vt.key ? GDIM : CARD2,
-                border: `1px solid ${videoType === vt.key ? GBORDER : BORDER}`,
-                borderRadius: 12, padding: '14px 16px', cursor: 'pointer', textAlign: 'left',
-                transition: 'all 0.15s',
-              }}>
-                <div style={{ color: videoType === vt.key ? GOLD : TEXT2, marginBottom: 8 }}>{vt.icon}</div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: videoType === vt.key ? TEXT : TEXT2, marginBottom: 3 }}>{vt.label}</div>
-                <div style={{ fontSize: 11, color: TEXT3 }}>{vt.desc}</div>
-              </button>
-            ))}
+        {videoType ? (
+          /* Collapsed — show selected type + change button */
+          <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: '14px 20px', marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ color: VIDEO_TYPES.find(t => t.key === videoType)?.color }}>
+                {VIDEO_TYPES.find(t => t.key === videoType)?.icon}
+              </div>
+              <div>
+                <div style={{ fontSize: 11, color: TEXT3, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>Video Type</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: TEXT }}>{VIDEO_TYPES.find(t => t.key === videoType)?.label}</div>
+              </div>
+            </div>
+            <button onClick={() => setVideoType('')} style={{ background: 'rgba(255,255,255,0.06)', border: `1px solid ${BORDER}`, borderRadius: 8, padding: '6px 14px', color: TEXT2, fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
+              Change
+            </button>
           </div>
-        </div>
+        ) : (
+          /* Expanded — full type picker */
+          <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: 24, marginBottom: 20 }}>
+            <h2 style={{ margin: '0 0 6px', fontSize: 15, fontWeight: 600 }}>Step 1 — Select video type</h2>
+            <p style={{ margin: '0 0 18px', fontSize: 13, color: TEXT2 }}>Choose the format that matches your campaign objective</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10 }}>
+              {VIDEO_TYPES.map(vt => (
+                <button key={vt.key} onClick={() => setVideoType(vt.key)} style={{
+                  background: CARD2, border: `1px solid ${BORDER}`,
+                  borderRadius: 12, padding: '14px 16px', cursor: 'pointer', textAlign: 'left',
+                  transition: 'all 0.15s',
+                }}>
+                  <div style={{ color: vt.color, marginBottom: 8 }}>{vt.icon}</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: TEXT, marginBottom: 3 }}>{vt.label}</div>
+                  <div style={{ fontSize: 11, color: TEXT3 }}>{vt.desc}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Step 2 — Inputs */}
         <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: 24, marginBottom: 20 }}>
@@ -238,24 +316,109 @@ export default function VideoGenerationPage() {
               <input style={inputStyle} placeholder="e.g. EvoX AI Platform" {...inp('brand')} />
             </div>
             <div>
-              <label style={label}>Campaign goal *</label>
-              <input style={inputStyle} placeholder="e.g. Increase trial sign-ups by 30%" {...inp('goal')} />
+              <label style={label}>{GOAL_LABEL[videoType] || 'Campaign Goal *'}</label>
+              <input style={inputStyle} placeholder={GOAL_PLACEHOLDER[videoType] || 'e.g. Increase trial sign-ups by 30%'} {...inp('goal')} />
             </div>
+
+            {/* ── Promo-specific ── */}
+            {videoType === 'promo' && <>
+              <div>
+                <label style={label}>Key Offer / Promotion</label>
+                <input style={inputStyle} placeholder="e.g. 50% off, Free trial, New arrival" {...inp('offer')} />
+              </div>
+              <div>
+                <label style={label}>Platform</label>
+                <select style={selectStyle} {...inp('platform')}>
+                  <option value="">Select platform...</option>
+                  {PROMO_PLATFORMS.map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
+              </div>
+            </>}
+
+            {/* ── Product-specific ── */}
+            {videoType === 'product' && <>
+              <div>
+                <label style={label}>CTA Goal</label>
+                <select style={selectStyle} {...inp('ctaGoal')}>
+                  <option value="">Select CTA...</option>
+                  {['Buy Now', 'Learn More', 'Get a Demo', 'Shop the Collection', 'Try for Free', 'Visit Website'].map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={label}>Demo Style</label>
+                <select style={selectStyle} {...inp('demoStyle')}>
+                  <option value="">Select demo style...</option>
+                  {DEMO_STYLES.map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+              </div>
+            </>}
+
+            {/* ── Reel-specific ── */}
+            {videoType === 'reel' && <>
+              <div>
+                <label style={label}>Platform</label>
+                <select style={selectStyle} {...inp('reelPlatform')}>
+                  <option value="">Select platform...</option>
+                  {REEL_PLATFORMS.map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={label}>Reel Style / Format</label>
+                <select style={selectStyle} {...inp('contentStyle')}>
+                  <option value="">Select reel style...</option>
+                  {REEL_STYLES.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+            </>}
+
+            {/* ── Ad-specific ── */}
+            {videoType === 'ad' && <>
+              <div>
+                <label style={label}>Ad Platform</label>
+                <select style={selectStyle} {...inp('adPlatform')}>
+                  <option value="">Select ad platform...</option>
+                  {AD_PLATFORMS.map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={label}>Funnel Stage</label>
+                <select style={selectStyle} {...inp('funnelStage')}>
+                  <option value="">Select funnel stage...</option>
+                  {FUNNEL_STAGES.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+            </>}
+
+            {/* ── Event-specific ── */}
+            {videoType === 'event' && <>
+              <div>
+                <label style={label}>Event Name *</label>
+                <input style={inputStyle} placeholder="e.g. EvoX Summit 2025" {...inp('eventName')} />
+              </div>
+              <div>
+                <label style={label}>Event Type</label>
+                <select style={selectStyle} {...inp('eventType')}>
+                  <option value="">Select event type...</option>
+                  {EVENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+            </>}
+
             <div>
-              <label style={label}>Target audience</label>
+              <label style={label}>Target Audience</label>
               <select style={selectStyle} value={inputs.audience} onChange={e => setInputs(p => ({ ...p, audience: e.target.value }))}>
                 <option value="">Select target audience...</option>
                 {TARGET_AUDIENCES.map(a => <option key={a} value={a}>{a}</option>)}
               </select>
             </div>
             <div>
-              <label style={label}>Video duration</label>
+              <label style={label}>Video Duration</label>
               <select style={selectStyle} value={inputs.duration} onChange={e => setInputs(p => ({ ...p, duration: e.target.value }))}>
                 {DURATIONS.map(d => <option key={d} value={d}>{d}</option>)}
               </select>
             </div>
             <div style={{ gridColumn: '1 / -1' }}>
-              <label style={label}>Tone & style</label>
+              <label style={label}>Tone & Style</label>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {TONES.map(t => (
                   <button key={t} onClick={() => setInputs(p => ({ ...p, tone: t }))} style={{

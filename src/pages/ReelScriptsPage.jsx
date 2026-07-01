@@ -277,7 +277,6 @@ export default function ReelScriptsPage() {
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <h1 style={{ fontSize: 22, fontWeight: 900, color: TEXT, margin: 0, letterSpacing: '-0.02em' }}>Reel & Video Scripts</h1>
-              <span style={{ fontSize: 9, fontWeight: 800, padding: '3px 8px', borderRadius: 6, background: 'rgba(200,151,62,0.15)', color: GOLD, border: '1px solid rgba(200,151,62,0.3)' }}>PACKAGE B</span>
             </div>
             <p style={{ fontSize: 13, color: TEXT2, margin: '4px 0 0' }}>
               AI-generated scripts with hook, body, CTA, on-screen text cues & visual direction.

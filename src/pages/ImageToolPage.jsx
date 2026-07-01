@@ -296,7 +296,7 @@ export default function ImageToolPage() {
         r.readAsDataURL(file)
       })
       const form = new FormData()
-      form.append('key', import.meta.env.VITE_IMGBB_API_KEY || '5bd861d246cfae2342a0b898282ab18e')
+      form.append('key', import.meta.env.VITE_IMGBB_API_KEY || '')
       form.append('image', base64)
       const res = await fetch('https://api.imgbb.com/1/upload', { method: 'POST', body: form })
       const data = await res.json()
@@ -396,8 +396,8 @@ export default function ImageToolPage() {
 
           {/* ── Top bar: back btn + title ── */}
           <div style={{ padding: '14px 24px', borderBottom: '1px solid rgba(255,255,255,0.07)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 20 }}>
-            <button onClick={() => navigate(navState?.from || '/products')} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: TEXT2, fontSize: 13, cursor: 'pointer', padding: 0, flexShrink: 0 }}>
-              <ArrowLeft size={14} /> {navState?.from === '/package-a' ? 'Back to Package A' : 'Back to Tools'}
+            <button onClick={() => navigate(navState?.from || '/hub/creative')} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: TEXT2, fontSize: 13, cursor: 'pointer', padding: 0, flexShrink: 0 }}>
+              <ArrowLeft size={14} /> {navState?.fromLabel ? `Back to ${navState.fromLabel}` : navState?.from === '/package-a' ? 'Back to Package A' : 'Back to Creative Assets'}
             </button>
             <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.08)' }} />
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>

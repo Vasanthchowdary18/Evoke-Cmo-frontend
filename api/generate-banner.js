@@ -18,7 +18,7 @@ export default async function handler(req) {
   }
 
   try {
-    const { prompt, provider = 'gemini' } = await req.json()
+    const { prompt, provider = 'gemini', size = '1024x1024' } = await req.json()
     if (!prompt) {
       return new Response(
         JSON.stringify({ error: 'Prompt is required' }),
@@ -28,7 +28,7 @@ export default async function handler(req) {
 
     let imageData
     if (provider === 'dalle') {
-      imageData = await generateWithDalle(prompt)
+      imageData = await generateWithDalle(prompt, size)
     } else {
       imageData = await generateWithGemini(prompt)
     }
@@ -46,11 +46,14 @@ export default async function handler(req) {
 }
 
 // ── GPT Image 2 Implementation ──
-async function generateWithDalle(prompt) {
+async function generateWithDalle(prompt, size = '1024x1024') {
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) {
     throw new Error('OpenAI API key not configured. Add OPENAI_API_KEY to your .env file.')
   }
+
+  const validSizes = ['1024x1024', '1536x1024', '1024x1536']
+  const safeSize = validSizes.includes(size) ? size : '1024x1024'
 
   const res = await fetch('https://api.openai.com/v1/images/generations', {
     method: 'POST',
@@ -62,7 +65,7 @@ async function generateWithDalle(prompt) {
       model: 'gpt-image-1',
       prompt: prompt,
       n: 1,
-      size: '1536x1024',
+      size: safeSize,
       quality: 'high',
     }),
   })
@@ -75,13 +78,13 @@ async function generateWithDalle(prompt) {
   const data = await res.json()
   const base64Image = data.data?.[0]?.b64_json
   if (!base64Image) {
-    throw new Error('GPT Image 2 returned no image data')
+    throw new Error('gpt-image-1 returned no image data')
   }
 
   return {
     base64Image,
     mimeType: 'image/png',
-    provider: 'gpt-image-2',
+    provider: 'gpt-image-1',
   }
 }
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Zap, ArrowLeft, CheckCircle2, AlertCircle, Loader2,
@@ -106,6 +106,7 @@ function StatusChip({ ok, label }) {
 
 export default function MetaAdsBoost() {
   const navigate  = useNavigate()
+  const { state: navState } = useLocation()
   const { user } = useRequireAuth()
 
   /* ── connection state ── */
@@ -275,11 +276,11 @@ export default function MetaAdsBoost() {
 
         {/* ── Header ── */}
         <div style={{ marginBottom: 36 }}>
-          <button onClick={() => navigate('/dashboard')}
+          <button onClick={() => navigate(navState?.from || '/hub/creative')}
             style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: TEXT3, fontSize: 13, cursor: 'pointer', padding: 0, marginBottom: 20 }}
             onMouseEnter={e => e.currentTarget.style.color = GOLD}
             onMouseLeave={e => e.currentTarget.style.color = TEXT3}>
-            <ArrowLeft size={14} /> Back to Dashboard
+            <ArrowLeft size={14} /> {navState?.fromLabel ? `Back to ${navState.fromLabel}` : 'Back to Creative Assets'}
           </button>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>

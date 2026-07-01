@@ -456,13 +456,20 @@ Post Date: ${form.postDate || "ASAP"}`
 }`,
       content_calendar: `{
   "campaignName": "${form.name}",
-  "executiveSummary": "2-sentence content strategy: brand position and core message${form.toneOfVoice ? ` (${form.toneOfVoice} tone)` : ""}",
-  "growthOpportunities": "3 content channels with estimated reach (one line each)",
-  "gtmPlan": "4-week content plan: Week 1-4 key actions (one line per week)",
-  "revenueProjection": "Q1-Q4 content ROI milestones",
-  "partnershipIdeas": "3 content collaboration ideas",
-  "expansionRoadmap": "Q1-Q4 content expansion goals",
-  "competitorGaps": "3 content gaps competitors miss"
+  "executiveSummary": "2-sentence content strategy${form.toneOfVoice ? ` (${form.toneOfVoice} tone)` : ""}",
+  "weeklyPlan": "Week 1: [theme+action]. Week 2: [theme+action]. Week 3: [theme+action]. Week 4: [theme+action].",
+  "contentGaps": "3 content gaps competitors miss (one line each)"${(form.contentTypes || []).includes("Instagram Posts") ? `,
+  "instagramPost1": "Instagram caption 40 words + 3 hashtags",
+  "instagramPost2": "Instagram caption 40 words + 3 hashtags"` : ""}${(form.contentTypes || []).includes("LinkedIn Posts") ? `,
+  "linkedinPost1": "LinkedIn post 60 words: hook + insight + CTA"` : ""}${(form.contentTypes || []).includes("Facebook Posts") ? `,
+  "facebookPost1": "Facebook post 50 words: hook + story + CTA"` : ""}${(form.contentTypes || []).includes("Reels / Short Videos") ? `,
+  "reelScript1": "Reel: Hook (1 line) | Content (2 lines) | CTA (1 line)"` : ""}${(form.contentTypes || []).includes("X / Twitter Posts") ? `,
+  "twitterPost1": "Tweet under 200 chars + 2 hashtags",
+  "twitterPost2": "Tweet under 200 chars + 2 hashtags"` : ""}${(form.contentTypes || []).includes("YouTube Shorts") ? `,
+  "youtubeIdea1": "YouTube Short: Title | Hook | Key point | CTA"` : ""}${(form.contentTypes || []).includes("Stories") ? `,
+  "storyIdea1": "Story: visual concept + text overlay + CTA (2 lines)"` : ""}${(form.contentTypes || []).includes("Blog / Articles") ? `,
+  "blogTitle1": "SEO blog title",
+  "blogOutline1": "3 H2 headings for that blog post"` : ""}
 }`,
       seo_blog: `{
   "campaignName": "${form.name}",
@@ -1091,6 +1098,10 @@ export default function CampaignForm() {
   const navigate  = useNavigate();
   const location  = useLocation();
   const backPath  = location.state?.from;
+  // Fall back to saved campaignMeta from sessionStorage when no explicit prefill is passed
+  const _statePrefill = location.state?.prefill || null;
+  const _savedMeta = (() => { try { const r = sessionStorage.getItem('campaignMeta'); return r ? JSON.parse(r) : null } catch { return null } })()
+  const prefill = _statePrefill || _savedMeta || null;
   const { user: authUser } = useAuth();
   // Free-trial users have no membership type ID. Show the social-connect panel
   // only for paid Package A members — leave the free-trial flow untouched.
@@ -1459,23 +1470,23 @@ export default function CampaignForm() {
   ];
 
   const [form, setForm] = useState({
-    name: "",
-    description: "",
+    name: prefill?.name || "",
+    description: prefill?.description || "",
     imageFile: null,
     imagePreview: null,
     date: "",
     time: "",
-    location: "",
+    location: prefill?.location || "",
     eventLocations: [],
     eventUrl: "",
-    website: "",
+    website: prefill?.website || "",
     price: "",
-    targetAudience: [],
+    targetAudience: Array.isArray(prefill?.targetAudience) ? prefill.targetAudience : [],
     goal: "",
-    goalType: "",
+    goalType: prefill?.goalType || "",
     endDate: "",
     eventUrlMode: "manual",
-    brandName: "",
+    brandName: prefill?.brandName || "",
     contactName: "",
     contactEmail: "",
     contactPhone: "",
@@ -1487,12 +1498,12 @@ export default function CampaignForm() {
     emailRecipients: "",
     // New fields for extended CMO types
     competitorUrl: "",
-    industry: "",
-    budget: "",
+    industry: prefill?.industry || "",
+    budget: prefill?.budget || "",
     keywords: "",
     reportPeriod: "",
     funnelStage: "",
-    toneOfVoice: "",
+    toneOfVoice: prefill?.toneOfVoice || "",
     socialPlatforms: [],
     contentTypes: [],
     postingFrequency: "",
@@ -1719,6 +1730,43 @@ export default function CampaignForm() {
     }, 600)
   }, [navigate, backPath, loadConnectedAccounts])
 
+  // Directly triggers OAuth for a platform — skips the connect-accounts intermediate page
+  const connectDirectly = useCallback((platformKey) => {
+    // Save return path so user can come back after connecting
+    sessionStorage.setItem('connectReturnPath', window.location.pathname + window.location.search)
+    const origin = window.location.origin
+    switch (platformKey) {
+      case 'linkedin': {
+        const clientId = import.meta.env.VITE_LINKEDIN_CLIENT_ID || '86xauinshp202e'
+        const params = new URLSearchParams({
+          response_type: 'code',
+          client_id: clientId,
+          redirect_uri: origin + '/connect-accounts',
+          scope: 'openid profile email w_member_social',
+          state: 'linkedin_connect',
+        })
+        window.location.href = `https://www.linkedin.com/oauth/v2/authorization?${params}`
+        break
+      }
+      case 'facebook':
+      case 'instagram': {
+        const metaAppId = import.meta.env.VITE_META_APP_ID || '1587533479009417'
+        const params = new URLSearchParams({
+          client_id: metaAppId,
+          redirect_uri: origin + '/connect-accounts',
+          scope: 'pages_manage_posts,pages_read_engagement,instagram_basic,instagram_content_publish,pages_show_list',
+          response_type: 'code',
+          state: 'facebook_connect',
+        })
+        window.location.href = `https://www.facebook.com/v18.0/dialog/oauth?${params}`
+        break
+      }
+      default:
+        // For other platforms fall back to the popup
+        openConnectPopup(platformKey)
+    }
+  }, [openConnectPopup])
+
   const handleSubmit = async () => {
     setSubmitError("");
     const needsBrandName = ["product", "brand", "brand_strategy"].includes(type);
@@ -1938,7 +1986,17 @@ export default function CampaignForm() {
         mediaType: payload.mediaType || "image",
       }));
       sessionStorage.setItem("campaignType", type);
-      sessionStorage.setItem("campaignMeta", JSON.stringify({ name: form.name, brandName: form.brandName }));
+      sessionStorage.setItem("campaignMeta", JSON.stringify({
+        name:        form.name,
+        brandName:   form.brandName,
+        industry:    form.industry,
+        website:     form.website,
+        budget:      form.budget,
+        location:    form.location,
+        goalType:    form.goalType,
+        description: form.description,
+        toneOfVoice: form.toneOfVoice,
+      }));
       sessionStorage.setItem("campaignDays", String(isAdTool ? 1 : (form.campaignDays || 7)));
       sessionStorage.setItem("dailySchedule", JSON.stringify(dailySchedule));
       sessionStorage.setItem("webhookStatus", "idle");
@@ -2369,6 +2427,57 @@ export default function CampaignForm() {
                   <option key={v} value={v} style={{ background: "#1c1a13", color: v ? "#f0ebe0" : "rgba(240,235,224,0.4)" }}>{v || "Select posting frequency..."}</option>
                 ))}
               </select>
+
+              <div style={s.divider} />
+              <p style={s.sectionTitle}>Where to Post</p>
+              <p style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginTop: -8, marginBottom: 12 }}>
+                Select which connected accounts your content calendar will post to
+              </p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", marginBottom: 4 }}>
+                {PLATFORM_OPTIONS.filter(p => ["instagram","facebook","linkedin","tiktok"].includes(p.key)).map((p) => {
+                  const active = form.platforms.includes(p.key)
+                  const accountKey = p.key
+                  const isConnected = connectedAccounts[accountKey]?.connected
+                  return (
+                    <button
+                      key={p.key}
+                      type="button"
+                      onClick={() => {
+                        if (!isConnected) {
+                          connectDirectly(p.key)
+                        } else {
+                          togglePlatform(p.key)
+                        }
+                      }}
+                      title={isConnected ? (active ? `Remove ${p.label}` : `Add ${p.label}`) : `Connect ${p.label} to enable`}
+                      style={{
+                        display: "flex", flexDirection: "column", alignItems: "center",
+                        gap: "4px", padding: "10px 14px", minWidth: "80px",
+                        background: active && isConnected ? `${p.color}18` : "rgba(255,255,255,0.03)",
+                        border: `1px solid ${active && isConnected ? p.color + "55" : "rgba(255,255,255,0.1)"}`,
+                        borderRadius: "12px", cursor: "pointer",
+                        opacity: !isConnected ? 0.55 : 1,
+                        transition: "all 0.15s", position: "relative",
+                        fontFamily: "inherit",
+                      }}
+                    >
+                      {isConnected && (
+                        <span style={{ position: "absolute", top: 5, right: 5, width: 7, height: 7, borderRadius: "50%", background: "#10b981", boxShadow: "0 0 4px #10b981" }} />
+                      )}
+                      <span style={{ fontSize: "13px", fontWeight: 700, color: active && isConnected ? p.color : "rgba(255,255,255,0.7)" }}>
+                        {active && isConnected && <Check size={10} style={{ display: "inline", marginRight: 3 }} />}
+                        {p.label}
+                      </span>
+                      <span style={{ fontSize: "9px", fontWeight: 600, color: isConnected ? "#10b981" : "#f59e0b", letterSpacing: "0.03em" }}>
+                        {isConnected ? "Connected" : "Tap to connect"}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+              <p style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginTop: 6 }}>
+                Green dot = connected · Dim = not connected yet · <span style={{ color: "#c8973e", cursor: "pointer" }} onClick={() => { sessionStorage.setItem('connectReturnPath', window.location.pathname + window.location.search); navigate("/connect-accounts"); }}>Connect accounts →</span>
+              </p>
             </>
           )}
           {EXEC_TYPES.includes(type) && (
@@ -2593,10 +2702,135 @@ export default function CampaignForm() {
             </>
           )}
 
+          {type === "influencer" && (
+            <>
+              <label style={s.label}>Campaign Type <span style={s.req}>*</span></label>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {["Sponsored Post","Product Review / Unboxing","Brand Ambassador","Giveaway / Contest","Event Coverage","Press Release & Media Pitch","Affiliate Campaign","Co-created Content"].map((opt) => {
+                  const active = (form.influencerCampaignType || []).includes(opt);
+                  return (
+                    <button key={opt} type="button" onClick={() => {
+                      const curr = form.influencerCampaignType || [];
+                      set("influencerCampaignType", active ? curr.filter(v => v !== opt) : [...curr, opt]);
+                    }} style={{ padding: "7px 14px", borderRadius: 20, fontSize: 12, fontWeight: 500, cursor: "pointer", fontFamily: "inherit", border: `1px solid ${active ? "#ec4899" : "rgba(255,255,255,0.15)"}`, background: active ? "rgba(236,72,153,0.15)" : "rgba(255,255,255,0.04)", color: active ? "#f9a8d4" : "rgba(255,255,255,0.6)", transition: "all 0.15s" }}>
+                      {opt}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <label style={s.label}>Influencer Tier <span style={s.req}>*</span></label>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {[
+                  { label: "Nano", sub: "1K – 10K" },
+                  { label: "Micro", sub: "10K – 100K" },
+                  { label: "Macro", sub: "100K – 1M" },
+                  { label: "Celebrity", sub: "1M+" },
+                  { label: "Mix of Tiers", sub: "" },
+                ].map(({ label: opt, sub }) => {
+                  const active = (form.influencerTier || []).includes(opt);
+                  return (
+                    <button key={opt} type="button" onClick={() => {
+                      const curr = form.influencerTier || [];
+                      set("influencerTier", active ? curr.filter(v => v !== opt) : [...curr, opt]);
+                    }} style={{ padding: "9px 18px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", border: `1px solid ${active ? "#ec4899" : "rgba(255,255,255,0.15)"}`, background: active ? "rgba(236,72,153,0.15)" : "rgba(255,255,255,0.04)", color: active ? "#f9a8d4" : "rgba(255,255,255,0.6)", transition: "all 0.15s" }}>
+                      {opt}{sub ? <span style={{ fontSize: 10, opacity: 0.7, marginLeft: 5 }}>{sub}</span> : null}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <label style={s.label}>Platform Focus <span style={s.req}>*</span></label>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {[
+                  { label: "Instagram", color: "#e1306c" },
+                  { label: "TikTok", color: "#f0ebe0" },
+                  { label: "YouTube", color: "#ff0000" },
+                  { label: "LinkedIn", color: "#0a66c2" },
+                  { label: "Pinterest", color: "#e60023" },
+                  { label: "X / Twitter", color: "#1da1f2" },
+                  { label: "Facebook", color: "#1877f2" },
+                  { label: "Podcast", color: "#8b5cf6" },
+                ].map(({ label: opt, color }) => {
+                  const active = (form.influencerPlatforms || []).includes(opt);
+                  return (
+                    <button key={opt} type="button" onClick={() => {
+                      const curr = form.influencerPlatforms || [];
+                      set("influencerPlatforms", active ? curr.filter(v => v !== opt) : [...curr, opt]);
+                    }} style={{ padding: "7px 14px", borderRadius: 20, fontSize: 12, fontWeight: 500, cursor: "pointer", fontFamily: "inherit", border: `1px solid ${active ? color : "rgba(255,255,255,0.15)"}`, background: active ? color + "22" : "rgba(255,255,255,0.04)", color: active ? color : "rgba(255,255,255,0.6)", transition: "all 0.15s" }}>
+                      {opt}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <label style={s.label}>Number of Influencers <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 12, fontWeight: 400 }}>(optional)</span></label>
+              <select value={form.influencerCount || ""} onChange={(e) => set("influencerCount", e.target.value)} style={{ ...s.input, cursor: "pointer", colorScheme: "dark" }}>
+                {["","1 – 3","4 – 10","10 – 25","25 – 50","50+","Not decided yet"].map((v) => (
+                  <option key={v} value={v} style={{ background: "#1c1a13", color: v ? "#f0ebe0" : "rgba(240,235,224,0.4)" }}>{v || "Select number of influencers..."}</option>
+                ))}
+              </select>
+
+              <label style={s.label}>Influencer Budget Range <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 12, fontWeight: 400 }}>(optional)</span></label>
+              <select value={form.influencerBudget || ""} onChange={(e) => set("influencerBudget", e.target.value)} style={{ ...s.input, cursor: "pointer", colorScheme: "dark" }}>
+                {["","Under $500","$500 – $2,000","$2,000 – $10,000","$10,000 – $50,000","$50,000+","Product / Gifting Only"].map((v) => (
+                  <option key={v} value={v} style={{ background: "#1c1a13", color: v ? "#f0ebe0" : "rgba(240,235,224,0.4)" }}>{v || "Select budget range..."}</option>
+                ))}
+              </select>
+
+              <label style={s.label}>Key Message / Talking Points <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 12, fontWeight: 400 }}>(optional)</span></label>
+              <textarea value={form.influencerKeyMessage || ""} onChange={(e) => set("influencerKeyMessage", e.target.value)} placeholder="e.g. Highlight our sustainability story, showcase the unboxing experience, emphasise the limited-time offer..." style={{ ...s.textarea, minHeight: "90px" }} />
+            </>
+          )}
+
+          {type === "email_drip" && (
+            <>
+              <label style={s.label}>Email Series Type <span style={s.req}>*</span></label>
+              <select value={form.emailSeriesType || ""} onChange={(e) => set("emailSeriesType", e.target.value)} style={{ ...s.input, cursor: "pointer", colorScheme: "dark" }}>
+                {["","Welcome Series","Nurture Sequence","Abandoned Cart Recovery","Re-engagement Campaign","Onboarding Sequence","Promotional / Sales","Post-Purchase Follow-up","Lead Magnet Follow-up"].map((v) => (
+                  <option key={v} value={v} style={{ background: "#1c1a13", color: v ? "#f0ebe0" : "rgba(240,235,224,0.4)" }}>{v || "Select email series type..."}</option>
+                ))}
+              </select>
+
+              <label style={s.label}>Number of Emails <span style={s.req}>*</span></label>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {["3 Emails","5 Emails","7 Emails","10 Emails","14 Emails"].map((opt) => {
+                  const active = form.emailCount === opt;
+                  return (
+                    <button key={opt} type="button" onClick={() => set("emailCount", opt)}
+                      style={{ padding: "9px 20px", borderRadius: 20, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", border: `1px solid ${active ? "#8b5cf6" : "rgba(255,255,255,0.15)"}`, background: active ? "rgba(139,92,246,0.18)" : "rgba(255,255,255,0.04)", color: active ? "#c4b5fd" : "rgba(255,255,255,0.6)", transition: "all 0.15s" }}>
+                      {opt}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <label style={s.label}>Sending Frequency <span style={s.req}>*</span></label>
+              <select value={form.emailFrequency || ""} onChange={(e) => set("emailFrequency", e.target.value)} style={{ ...s.input, cursor: "pointer", colorScheme: "dark" }}>
+                {["","Daily","Every 2 Days","Every 3 Days","Weekly","Bi-weekly"].map((v) => (
+                  <option key={v} value={v} style={{ background: "#1c1a13", color: v ? "#f0ebe0" : "rgba(240,235,224,0.4)" }}>{v || "Select sending frequency..."}</option>
+                ))}
+              </select>
+
+              <label style={s.label}>Email Tone <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 12, fontWeight: 400 }}>(optional)</span></label>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {["Professional","Friendly & Conversational","Urgent & Direct","Inspiring & Motivational","Educational","Storytelling"].map((opt) => {
+                  const active = form.emailTone === opt;
+                  return (
+                    <button key={opt} type="button" onClick={() => set("emailTone", opt)}
+                      style={{ padding: "7px 14px", borderRadius: 20, fontSize: 12, fontWeight: 500, cursor: "pointer", fontFamily: "inherit", border: `1px solid ${active ? "#8b5cf6" : "rgba(255,255,255,0.15)"}`, background: active ? "rgba(139,92,246,0.18)" : "rgba(255,255,255,0.04)", color: active ? "#c4b5fd" : "rgba(255,255,255,0.6)", transition: "all 0.15s" }}>
+                      {opt}
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
           {(type === "event" || type === "event_full") && (
             <>
               {/* ── Unified Date & Time box ── */}
-              <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.10)", borderRadius: 14, padding: "16px 20px" }}>
+              <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.10)", borderRadius: 14, padding: "20px 24px", marginTop: 24 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 24, flexWrap: "wrap" }}>
 
                   {/* DATE — native calendar picker */}
@@ -3075,8 +3309,9 @@ export default function CampaignForm() {
           )}
 
           {type !== "analytics_report" && type !== "competitive_intel" && (
-          <label style={s.label}>
-            Target Audience <span style={s.req}>*</span>
+          <label style={{ ...s.label, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span>Target Audience <span style={s.req}>*</span></span>
+            {prefill?.targetAudience?.length > 0 && <span style={{ fontSize: 10, fontWeight: 700, color: '#c8973e', background: 'rgba(200,151,62,0.12)', border: '1px solid rgba(200,151,62,0.3)', borderRadius: 100, padding: '1px 7px', letterSpacing: '0.04em' }}>✓ Pre-filled</span>}
           </label>
           )}
           {type !== "analytics_report" && type !== "competitive_intel" && (
@@ -3164,13 +3399,16 @@ export default function CampaignForm() {
 
           {type !== "ads_creation" && type !== "ads_manager" && type !== "target_audience" && (
             <>
-              <label style={s.label}>
-                {type === "competitive_intel" ? "Intel Objective"
-                  : type === "analytics_report" ? "Report Purpose"
-                  : type === "funnel_cro" ? "Optimization Goal"
-                  : type === "sales_enablement" ? "Sales Goal"
-                  : "Campaign Goal"}{" "}
-                <span style={s.req}>*</span>
+              <label style={{ ...s.label, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span>
+                  {type === "competitive_intel" ? "Intel Objective"
+                    : type === "analytics_report" ? "Report Purpose"
+                    : type === "funnel_cro" ? "Optimization Goal"
+                    : type === "sales_enablement" ? "Sales Goal"
+                    : "Campaign Goal"}{" "}
+                  <span style={s.req}>*</span>
+                </span>
+                {prefill?.goalType && <span style={{ fontSize: 10, fontWeight: 700, color: '#c8973e', background: 'rgba(200,151,62,0.12)', border: '1px solid rgba(200,151,62,0.3)', borderRadius: 100, padding: '1px 7px', letterSpacing: '0.04em' }}>✓ Pre-filled</span>}
               </label>
               <select
                 value={form.goalType}
@@ -3203,8 +3441,9 @@ export default function CampaignForm() {
 
           {type !== "event" && type !== "growth_strategy" && type !== "growth_agent" && type !== "content_calendar" && (
             <>
-              <label style={s.label}>
+              <label style={{ ...s.label, display: 'flex', alignItems: 'center', gap: 8 }}>
                 Brand Name <span style={s.req}>*</span>
+                {prefill?.brandName && <span style={{ fontSize: 10, fontWeight: 700, color: '#c8973e', background: 'rgba(200,151,62,0.12)', border: '1px solid rgba(200,151,62,0.3)', borderRadius: 100, padding: '1px 7px', letterSpacing: '0.04em' }}>✓ Pre-filled</span>}
               </label>
               <input
                 value={form.brandName}
@@ -3511,8 +3750,8 @@ export default function CampaignForm() {
             </div>
           </div>
 
-          <label style={s.label}>Platforms to Post</label>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", marginTop: "4px" }}>
+          {type !== "email_drip" && type !== "influencer" && <label style={s.label}>Platforms to Post</label>}
+          {type !== "email_drip" && type !== "influencer" && <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", marginTop: "4px" }}>
             {PLATFORM_OPTIONS.map((p) => {
               const active = form.platforms.includes(p.key);
               // Map platform key to connected accounts key
@@ -3554,10 +3793,12 @@ export default function CampaignForm() {
                 </button>
               );
             })}
-          </div>
+          </div>}
+          {type !== "email_drip" && type !== "influencer" && (
           <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.3)", marginTop: "6px" }}>
             Green dot = connected. Tap an unconnected platform to link your account.
           </p>
+          )}
 
             </>
           )} {/* end type !== "growth_strategy" publishing settings */}

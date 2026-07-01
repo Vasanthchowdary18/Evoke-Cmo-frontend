@@ -22,44 +22,101 @@ const TEXT2  = 'rgba(240,235,224,0.55)'
 const TEXT3  = 'rgba(240,235,224,0.28)'
 const BORDER = 'rgba(255,255,255,0.08)'
 
-const ALL_AGENTS = [
-  // ── Included from Package A ──
-  { id: 'strategy',      name: 'Strategy Agent',      sub: 'Define goals & GTM',                icon: <Target size={17}/>,        path: '/campaign/growth_strategy', tag: 'PKG A', color: '#c8973e' },
-  { id: 'growth',        name: 'Growth Agent',         sub: 'Get clients & leads',               icon: <TrendingUp size={17}/>,    path: '/campaign/growth_agent',    tag: 'PKG A', color: '#c8973e' },
-  { id: 'content',       name: 'Content Agent',        sub: 'Brand & content plan',              icon: <Layers size={17}/>,        path: '/campaign/content_calendar',tag: 'PKG A', color: '#c8973e' },
-  { id: 'image-angles',  name: 'Image to Angles',      sub: 'Multi-angle product shots',         icon: <Image size={17}/>,         path: '/image-angles',             tag: 'PKG A', color: '#10b981' },
-  { id: 'lifestyle-img', name: 'Lifestyle Images',     sub: 'On-brand scene photography',        icon: <Camera size={17}/>,        path: '/image-lifestyle',          tag: 'PKG A', color: '#ec4899' },
-  { id: 'banner',        name: 'Banner Creation',      sub: 'Ad-ready static banners',           icon: <LayoutTemplate size={17}/>,path: null,                        tag: 'PKG A', color: '#a855f7', soon: true },
-  { id: 'social',        name: 'Post to Social',       sub: 'Schedule & publish',                icon: <Share2 size={17}/>,        path: '/connect-accounts',         tag: 'PKG A', color: '#3b82f6' },
-  { id: 'mktg-strategy', name: 'Marketing Strategy',  sub: 'Annual, quarterly & monthly plans', icon: <TrendingUp size={17}/>,    path: '/strategy',                 tag: 'PKG A', color: '#c8973e' },
-  { id: 'brand-kb',      name: 'Brand Knowledge Base', sub: 'Brand assets, voice & guidelines',  icon: <BookOpen size={17}/>,     path: '/brand-kb',                 tag: 'PKG A', color: '#f59e0b' },
-  { id: 'analytics',     name: 'Analytics Report',     sub: 'Performance metrics & insights',    icon: <BarChart2 size={17}/>,    path: '/analytics',                tag: 'PKG A', color: '#3b82f6' },
-  { id: 'email-drip',    name: 'Email Drip',           sub: 'Automated email sequences',         icon: <Mail size={17}/>,         path: '/campaign/email_drip',      tag: 'PKG A', color: '#10b981' },
-  // ── Included from Package B ──
-  { id: 'lifestyle-video',  name: 'Lifestyle Video Generator', sub: 'AI video prompts + scene planning',      icon: <Video size={17}/>,        path: '/image-lifestyle',          tag: 'PKG B', color: '#ec4899' },
-  { id: '360-video',        name: '360° Product Video',        sub: 'Product rotation + feature highlights',  icon: <RotateCcw size={17}/>,    path: '/image-360',                tag: 'PKG B', color: '#a855f7' },
-  { id: 'content-calendar', name: '30-Day Content Calendar',   sub: 'Auto-generated multi-platform plan',     icon: <CalendarDays size={17}/>, path: '/campaign/content_calendar',tag: 'PKG B', color: '#3b82f6' },
-  { id: 'reel-scripts',     name: 'Reel & Video Scripts',      sub: 'Short-form scripts for Reels & Shorts',  icon: <Film size={17}/>,         path: '/reel-scripts',             tag: 'PKG B', color: '#f97316' },
-  { id: 'caption-suite',    name: 'Caption & Hashtag Suite',   sub: 'Captions, CTAs, hashtags per platform',  icon: <Hash size={17}/>,         path: '/caption-suite',            tag: 'PKG B', color: '#10b981' },
-  { id: 'video-gen',        name: 'Video Generation',          sub: 'AI video production package',            icon: <Film size={17}/>,         path: '/video-gen',                tag: 'PKG B', color: '#ef4444' },
-  { id: 'trend-analysis',  name: 'Trend Analysis',            sub: 'Market & content trends',                icon: <TrendingUp size={17}/>,   path: '/trends',                   tag: 'PKG B', color: '#f97316' },
-  { id: 'influencer-pr',   name: 'Influencer & PR',           sub: 'Influencer outreach & press',            icon: <Users size={17}/>,        path: '/campaign/influencer_pr',   tag: 'PKG B', color: '#a855f7' },
-  { id: 'audience-bld',    name: 'Audience Builder',          sub: 'Precision audience segmentation',        icon: <Target size={17}/>,       path: '/audience-builder',         tag: 'PKG B', color: '#10b981' },
-  // ── Package C (this tier) ──
-  { id: '3d-images',       name: '3D Images',                 sub: 'Premium product renders',                icon: <Box size={17}/>,         path: '/image-3d',                 tag: 'PACKAGE C', color: '#a855f7', popular: true },
-  { id: 'ads-creation',    name: 'Ads Creation',              sub: 'Conversion-optimised creatives',         icon: <Megaphone size={17}/>,   path: '/campaign/ads_creation',    tag: 'PACKAGE C', color: '#f97316' },
-  { id: 'ads-manager',     name: 'Ads Manager Connect',       sub: 'FB & Google campaigns',                  icon: <BarChart2 size={17}/>,   path: '/connect-accounts',         tag: 'PACKAGE C', color: '#3b82f6' },
-  { id: 'target-audience', name: 'Target Audience Selection', sub: 'Precision segmentation',                 icon: <Users size={17}/>,       path: '/campaign/target_audience', tag: 'PACKAGE C', color: '#10b981' },
-  { id: 'deploy-ads',      name: 'Deploy Ads',                sub: 'Full campaign launch & management',      icon: <Rocket size={17}/>,      path: '/overview/deploy_ads',      tag: 'PACKAGE C', color: '#ec4899', soon: true, preview: true },
-  { id: 'brand-gov',       name: 'Brand Governance',         sub: 'Conformance review & audit log',         icon: <Shield size={17}/>,      path: '/brand-governance',         tag: 'PACKAGE C', color: '#6366f1' },
-  { id: 'execution',       name: 'Marketing Execution',      sub: 'Channel router & campaign launch',       icon: <Rocket size={17}/>,      path: '/execution',                tag: 'PACKAGE C', color: '#10b981' },
-  { id: 'seo-blog',        name: 'SEO & Blog',               sub: 'SEO-optimised articles & blog content',  icon: <BookOpen size={17}/>,    path: '/campaign/seo_blog',        tag: 'PACKAGE C', color: '#10b981' },
-  { id: 'paid-ads',        name: 'Paid Advertising',         sub: 'Meta & Google ad campaigns',             icon: <Megaphone size={17}/>,   path: '/meta-ads-boost',           tag: 'PACKAGE C', color: '#f59e0b' },
-  { id: 'geo-targeting',   name: 'GEO Targeting',            sub: 'Location-based audience targeting',      icon: <Globe size={17}/>,       path: '/campaign/geo_targeting',   tag: 'PACKAGE C', color: '#3b82f6' },
-  { id: 'crm',             name: 'CRM & Lifecycle',          sub: 'Customer pipeline & lifecycle flows',    icon: <Heart size={17}/>,       path: '/crm',                      tag: 'PACKAGE C', color: '#ec4899' },
-  { id: 'team-mgmt',       name: 'Team Management',          sub: 'Roles, tasks & collaboration tools',     icon: <Users size={17}/>,       path: '/team',                     tag: 'PACKAGE C', color: '#6366f1' },
-  { id: 'partner-sharing', name: 'Partner Sharing',          sub: 'Share campaigns with partners & clients',icon: <Share2 size={17}/>,      path: '/partner-sharing',          tag: 'PACKAGE C', color: '#25d366' },
+/* ─── Agents grouped by functional segment (Package C = A + B + C tools) ─── */
+const SEGMENTS = [
+  {
+    key: 'strategy',
+    label: 'Strategy & Planning',
+    color: '#c8973e',
+    agents: [
+      { id: 'strategy',      name: 'Strategy Agent',      sub: 'Define goals & GTM',                icon: <Target size={17}/>,      path: '/campaign/growth_strategy', color: '#c8973e', popular: true },
+      { id: 'growth',        name: 'Growth Agent',         sub: 'Get clients & leads',               icon: <TrendingUp size={17}/>,  path: '/campaign/growth_agent',    color: '#f97316' },
+      { id: 'mktg-strategy', name: 'Marketing Strategy',  sub: 'Annual, quarterly & monthly plans', icon: <BarChart2 size={17}/>,   path: '/strategy',                 color: '#c8973e' },
+    ],
+  },
+  {
+    key: 'content',
+    label: 'Content Generation',
+    color: '#10b981',
+    agents: [
+      { id: 'content',          name: 'Content Agent',           sub: 'Brand & content plan',                   icon: <Layers size={17}/>,       path: '/campaign/content_calendar', color: '#10b981' },
+      { id: 'brand-kb',         name: 'Brand Knowledge Base',    sub: 'Brand voice & guidelines',               icon: <BookOpen size={17}/>,     path: '/brand-kb',                  color: '#f59e0b' },
+      { id: 'email-drip',       name: 'Email Drip',              sub: 'Automated email sequences',              icon: <Mail size={17}/>,         path: '/campaign/email_drip',       color: '#8b5cf6' },
+      { id: 'caption-suite',    name: 'Caption & Hashtag Suite', sub: 'Captions, CTAs & hashtags per platform', icon: <Hash size={17}/>,         path: '/caption-suite',             color: '#10b981' },
+      { id: 'reel-scripts',     name: 'Reel & Video Scripts',    sub: 'Short-form scripts for Reels & Shorts',  icon: <Film size={17}/>,         path: '/reel-scripts',              color: '#f97316' },
+      { id: 'content-calendar', name: '30-Day Content Calendar', sub: 'Auto-generated multi-platform plan',     icon: <CalendarDays size={17}/>, path: '/campaign/content_calendar', color: '#3b82f6' },
+      { id: 'seo-blog',         name: 'SEO & Blog',              sub: 'SEO-optimised articles & blog content',  icon: <BookOpen size={17}/>,     path: '/campaign/seo_blog',         color: '#10b981' },
+    ],
+  },
+  {
+    key: 'creative',
+    label: 'Creative Assets',
+    color: '#ec4899',
+    agents: [
+      { id: 'creative-asset',  name: 'Creative Asset Generator',  sub: 'Images, graphics & display ads',       icon: <Megaphone size={17}/>,     path: '/creative-asset',  color: '#ec4899' },
+      { id: 'image-angles',    name: 'Image to Angles',            sub: 'Multi-angle product shots',            icon: <Image size={17}/>,         path: '/image-angles',    color: '#f97316' },
+      { id: 'lifestyle-img',   name: 'Lifestyle Images',           sub: 'On-brand scene photography',           icon: <Camera size={17}/>,        path: '/image-lifestyle', color: '#ec4899' },
+      { id: 'lifestyle-video', name: 'Lifestyle Video Generator',  sub: 'AI video prompts + scene planning',    icon: <Video size={17}/>,         path: '/image-lifestyle', color: '#ec4899' },
+      { id: '360-video',       name: '360° Product Video',         sub: 'Product rotation + feature highlights',icon: <RotateCcw size={17}/>,     path: '/image-360',       color: '#a855f7' },
+      { id: '3d-images',       name: '3D Images',                  sub: 'Premium photorealistic product renders',icon: <Box size={17}/>,          path: '/image-3d',        color: '#a855f7', popular: true },
+      { id: 'ads-creation',    name: 'Ads Creation',               sub: 'Conversion-optimised creatives',       icon: <Megaphone size={17}/>,     path: '/campaign/ads_creation', color: '#f97316' },
+      { id: 'banner',          name: 'Banner Creation',            sub: 'Ad-ready static banners',              icon: <LayoutTemplate size={17}/>,path: null,               color: '#a855f7', soon: true },
+    ],
+  },
+  {
+    key: 'video',
+    label: 'Video Generation',
+    color: '#ef4444',
+    agents: [
+      { id: 'video-gen', name: 'Video Generation', sub: 'Promo, product, reel, ad & event videos', icon: <Film size={17}/>, path: '/video-gen', color: '#ef4444' },
+    ],
+  },
+  {
+    key: 'audience',
+    label: 'Audience Intelligence',
+    color: '#a855f7',
+    agents: [
+      { id: 'trend-analysis',  name: 'Trend Analysis',            sub: 'Market & content trends',                icon: <TrendingUp size={17}/>, path: '/trends',                   color: '#f97316' },
+      { id: 'audience-bld',    name: 'Audience Builder',          sub: 'Precision audience segmentation',        icon: <Target size={17}/>,    path: '/audience-builder',         color: '#a855f7' },
+      { id: 'influencer-pr',   name: 'Influencer & PR',           sub: 'Influencer outreach & press',            icon: <Users size={17}/>,     path: '/campaign/influencer_pr',   color: '#ec4899' },
+      { id: 'target-audience', name: 'Target Audience Selection', sub: 'Precision segmentation for paid ads',    icon: <Users size={17}/>,     path: '/campaign/target_audience', color: '#10b981' },
+      { id: 'geo-targeting',   name: 'GEO Targeting',             sub: 'Location-based audience targeting',      icon: <Globe size={17}/>,     path: '/campaign/geo_targeting',   color: '#3b82f6' },
+      { id: 'crm',             name: 'CRM & Lifecycle',           sub: 'Customer pipeline & lifecycle flows',    icon: <Heart size={17}/>,     path: '/crm',                      color: '#ec4899' },
+    ],
+  },
+  {
+    key: 'governance',
+    label: 'Brand Governance',
+    color: '#6366f1',
+    agents: [
+      { id: 'brand-gov', name: 'Brand Governance', sub: 'Conformance review & audit log', icon: <Shield size={17}/>, path: '/brand-governance', color: '#6366f1' },
+    ],
+  },
+  {
+    key: 'paid',
+    label: 'Paid Advertising',
+    color: '#f59e0b',
+    agents: [
+      { id: 'paid-ads',    name: 'Paid Advertising',   sub: 'Meta & Google ad campaigns',         icon: <Megaphone size={17}/>, path: '/meta-ads-boost',    color: '#f59e0b' },
+      { id: 'ads-manager', name: 'Ads Manager Connect', sub: 'FB & Google campaign management',   icon: <BarChart2 size={17}/>, path: '/connect-accounts',  color: '#3b82f6' },
+      { id: 'deploy-ads',  name: 'Deploy Ads',          sub: 'Full campaign launch & management', icon: <Rocket size={17}/>,   path: '/overview/deploy_ads',color: '#ec4899', soon: true },
+    ],
+  },
+  {
+    key: 'execution',
+    label: 'Execution & Analytics',
+    color: '#3b82f6',
+    agents: [
+      { id: 'execution',       name: 'Marketing Execution', sub: '7-channel campaign launch',          icon: <Rocket size={17}/>,  path: '/execution',      color: '#84cc16' },
+      { id: 'social',          name: 'Post to Social',      sub: 'Schedule & publish',                 icon: <Share2 size={17}/>,  path: '/post-content',   color: '#3b82f6' },
+      { id: 'analytics',       name: 'Analytics Report',    sub: 'Performance metrics & insights',     icon: <BarChart2 size={17}/>,path: '/analytics',     color: '#06b6d4' },
+      { id: 'team-mgmt',       name: 'Team Management',     sub: 'Roles, tasks & collaboration tools', icon: <Users size={17}/>,   path: '/team',           color: '#6366f1' },
+      { id: 'partner-sharing', name: 'Partner Sharing',     sub: 'Share campaigns with partners',      icon: <Share2 size={17}/>,  path: '/partner-sharing',color: '#25d366' },
+    ],
+  },
 ]
+
+const ALL_AGENTS = SEGMENTS.flatMap(s => s.agents)
 
 const PLATFORMS = [
   {
@@ -194,9 +251,9 @@ export default function PackageCPage() {
   const [loadingAccts, setLoadingAccts]   = useState(true)
   const [disconnecting, setDisconnecting] = useState({})
   const [sidebarOpen, setSidebarOpen]     = useState(true)
-  const [expandedPkgs, setExpandedPkgs]   = useState(['c']) // only Package C open by default
+  const [expandedSegs, setExpandedSegs]   = useState(['strategy'])
 
-  const togglePkg = (key) => setExpandedPkgs(prev =>
+  const toggleSeg = (key) => setExpandedSegs(prev =>
     prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
   )
 
@@ -213,7 +270,7 @@ export default function PackageCPage() {
   const handleLaunch = (agent) => {
     if (!agent.path) return
     if (agent.soon && !agent.preview) return
-    if (user) navigate(agent.path, { state: { from: '/package-c' } })
+    if (user) navigate(agent.path, { state: { from: '/package-c', ...(agent.path === '/brand-kb' ? { edit: true } : {}) } })
     else redirectToLogin(window.location.origin + agent.path)
   }
 
@@ -281,45 +338,40 @@ export default function PackageCPage() {
                 </div>
 
                 <h2 style={{ fontSize: 15, fontWeight: 900, color: TEXT, marginBottom: 3, letterSpacing: '-0.02em' }}>
-                  Paid Ads & Deployment
+                  AI Agents
                 </h2>
                 <p style={{ fontSize: 11, color: TEXT3, marginBottom: 18, lineHeight: 1.5 }}>
-                  Select a tool to launch
+                  {ALL_AGENTS.length} agents · Package C
                 </p>
 
-                {[
-                  { key: 'a', label: 'Package A', color: '#c8973e', agents: ALL_AGENTS.filter(a => a.tag === 'PKG A') },
-                  { key: 'b', label: 'Package B', color: '#3b82f6', agents: ALL_AGENTS.filter(a => a.tag === 'PKG B') },
-                  { key: 'c', label: 'Package C', color: '#a855f7', agents: ALL_AGENTS.filter(a => a.tag === 'PACKAGE C') },
-                ].map(pkg => {
-                  const isOpen = expandedPkgs.includes(pkg.key)
+                {SEGMENTS.map(seg => {
+                  const isOpen = expandedSegs.includes(seg.key)
                   return (
-                    <div key={pkg.key} style={{ marginBottom: 6 }}>
-                      {/* Accordion header */}
+                    <div key={seg.key} style={{ marginBottom: 6 }}>
                       <button
-                        onClick={() => togglePkg(pkg.key)}
+                        onClick={() => toggleSeg(seg.key)}
                         style={{
                           width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                           padding: '8px 10px', borderRadius: 10, cursor: 'pointer',
-                          background: isOpen ? `${pkg.color}14` : 'rgba(255,255,255,0.04)',
-                          border: `1px solid ${isOpen ? pkg.color + '35' : 'rgba(255,255,255,0.07)'}`,
+                          background: isOpen ? `${seg.color}14` : 'rgba(255,255,255,0.04)',
+                          border: `1px solid ${isOpen ? seg.color + '35' : 'rgba(255,255,255,0.07)'}`,
                           marginBottom: 2, transition: 'all 0.18s',
                         }}
                         onMouseEnter={e => { if (!isOpen) e.currentTarget.style.background = 'rgba(255,255,255,0.07)' }}
                         onMouseLeave={e => { if (!isOpen) e.currentTarget.style.background = 'rgba(255,255,255,0.04)' }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <div style={{ width: 8, height: 8, borderRadius: '50%', background: pkg.color, flexShrink: 0 }} />
-                          <span style={{ fontSize: 11, fontWeight: 800, color: isOpen ? pkg.color : 'rgba(240,235,224,0.55)', letterSpacing: '0.04em' }}>
-                            {pkg.label}
+                          <div style={{ width: 8, height: 8, borderRadius: '50%', background: seg.color, flexShrink: 0 }} />
+                          <span style={{ fontSize: 11, fontWeight: 800, color: isOpen ? seg.color : 'rgba(240,235,224,0.55)', letterSpacing: '0.04em' }}>
+                            {seg.label}
                           </span>
                           <span style={{ fontSize: 9, color: 'rgba(240,235,224,0.28)', fontWeight: 600 }}>
-                            {pkg.agents.length} tools
+                            {seg.agents.length}
                           </span>
                         </div>
                         <svg
                           width="12" height="12" viewBox="0 0 24 24" fill="none"
-                          stroke={isOpen ? pkg.color : 'rgba(240,235,224,0.3)'}
+                          stroke={isOpen ? seg.color : 'rgba(240,235,224,0.3)'}
                           strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
                           style={{ transition: 'transform 0.2s', transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink: 0 }}
                         >
@@ -327,7 +379,6 @@ export default function PackageCPage() {
                         </svg>
                       </button>
 
-                      {/* Tool rows */}
                       <AnimatePresence initial={false}>
                         {isOpen && (
                           <motion.div
@@ -335,9 +386,9 @@ export default function PackageCPage() {
                             animate={{ height: 'auto', opacity: 1 }}
                             exit={{ height: 0, opacity: 0 }}
                             transition={{ duration: 0.22, ease: 'easeInOut' }}
-                            style={{ overflow: 'hidden', borderLeft: `2px solid ${pkg.color}30`, marginLeft: 4 }}
+                            style={{ overflow: 'hidden', borderLeft: `2px solid ${seg.color}30`, marginLeft: 4 }}
                           >
-                            {pkg.agents.map(agent => (
+                            {seg.agents.map(agent => (
                               <AgentRow
                                 key={agent.id}
                                 agent={agent}

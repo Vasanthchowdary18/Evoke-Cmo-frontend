@@ -9,6 +9,7 @@ import {
   Mail,
   MessageSquare,
   Check,
+  CheckCircle,
   X,
   Loader2,
   AlertCircle,
@@ -283,6 +284,10 @@ export default function ConnectAccounts() {
   // navState.from is set on direct navigate; sessionStorage survives OAuth full-page redirects
   const returnTo = navState?.from || sessionStorage.getItem('connectReturnTo');
   const fromPackageA = returnTo === '/package-a' || returnTo === '/products';
+  // Brand KB setup flow — connects Brand Profile → Connect Platforms → Campaign Hub
+  const isKbFlow = navState?.from === '/brand-profile' || sessionStorage.getItem('kbSetupFlow') === '1';
+  if (isKbFlow) sessionStorage.setItem('kbSetupFlow', '1'); // persist across OAuth redirects
+
   // CMO setup flow — navigate to selected plan page after connecting
   const isCmoSetup = new URLSearchParams(location.search).get('setup') === 'cmo' ||
     sessionStorage.getItem('cmoSetup') === '1';
@@ -1019,6 +1024,30 @@ export default function ConnectAccounts() {
       <div
         style={{ maxWidth: 820, margin: "0 auto", padding: "108px 24px 80px" }}
       >
+        {/* KB Setup flow progress banner */}
+        {isKbFlow && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+            style={{ marginBottom: 24, padding: '14px 20px', background: 'rgba(200,151,62,0.07)', border: '1px solid rgba(200,151,62,0.22)', borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {['Brand Profile', 'Connect Platforms', 'Launch Campaign'].map((s, i) => (
+                  <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 100, background: i === 1 ? 'rgba(200,151,62,0.18)' : i === 0 ? 'rgba(16,185,129,0.12)' : 'rgba(255,255,255,0.04)', border: `1px solid ${i === 1 ? 'rgba(200,151,62,0.4)' : i === 0 ? 'rgba(16,185,129,0.3)' : 'rgba(255,255,255,0.08)'}`, color: i === 1 ? '#c8973e' : i === 0 ? '#10b981' : 'rgba(240,235,224,0.35)' }}>
+                      {i === 0 ? '✓ ' : ''}{s}
+                    </span>
+                    {i < 2 && <span style={{ fontSize: 11, color: 'rgba(240,235,224,0.25)' }}>→</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
+            <button onClick={() => { sessionStorage.removeItem('kbSetupFlow'); navigate('/agents-hub') }} style={{ background: 'none', border: 'none', color: 'rgba(240,235,224,0.35)', cursor: 'pointer', fontSize: 12 }}>
+              Exit setup
+            </button>
+          </motion.div>
+        )}
+
         {/* Back button — only when coming from another page */}
         {fromPackageA && (
           <button
@@ -1037,6 +1066,28 @@ export default function ConnectAccounts() {
 
 
         {/* Header */}
+        {/* Back to Campaign banner — shown when user arrived from campaign form via direct OAuth */}
+        {sessionStorage.getItem('connectReturnPath') && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            style={{ marginBottom: 20, padding: '12px 18px', background: 'rgba(200,151,62,0.08)', border: '1px solid rgba(200,151,62,0.25)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <CheckCircle size={16} color="#c8973e" />
+              <p style={{ margin: 0, fontSize: 13, color: 'rgba(255,255,255,0.75)' }}>
+                Connect your account below, then return to your campaign to continue.
+              </p>
+            </div>
+            <button
+              onClick={() => { const p = sessionStorage.getItem('connectReturnPath'); sessionStorage.removeItem('connectReturnPath'); navigate(p); }}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'rgba(200,151,62,0.15)', border: '1px solid rgba(200,151,62,0.35)', borderRadius: 9, color: '#c8973e', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
+            >
+              ← Back to Campaign
+            </button>
+          </motion.div>
+        )}
+
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -1767,6 +1818,11 @@ export default function ConnectAccounts() {
         >
           <button
             onClick={() => {
+              if (isKbFlow) {
+                sessionStorage.removeItem('kbSetupFlow');
+                navigate('/campaign-hub');
+                return;
+              }
               if (isCmoSetup) {
                 sessionStorage.removeItem('cmoSetup');
                 navigate(packageRoute);
@@ -1778,7 +1834,10 @@ export default function ConnectAccounts() {
               } else if (returnTo === '/post-content') {
                 navigate('/post-content', { state: { toolTitle: 'Post to Social', toolColor: '#c8973e' } });
               } else {
-                navigate(fromPackageA ? returnTo : '/agents-hub');
+                // Always return to wherever the user came from — only fall
+                // back to the health score dashboard when nothing set a
+                // return path at all.
+                navigate(returnTo || '/health-score');
               }
             }}
             style={{
@@ -1796,13 +1855,15 @@ export default function ConnectAccounts() {
             }}
           >
             <Zap size={16} />
-            {isCmoSetup
-              ? (connectedCount > 0 ? packageLabel : `Skip — ${packageLabel}`)
-              : fromPackageA
-                ? (connectedCount > 0
-                    ? 'Next: Create & Post Content'
-                    : `Skip — Back to ${returnTo === '/products' ? 'Products' : 'Package A'}`)
-                : (connectedCount > 0 ? 'Start Creating Campaigns' : 'Skip for now')
+            {isKbFlow
+              ? (connectedCount > 0 ? 'Next: Launch a Campaign' : 'Skip — Go to Campaign Hub')
+              : isCmoSetup
+                ? (connectedCount > 0 ? packageLabel : `Skip — ${packageLabel}`)
+                : fromPackageA
+                  ? (connectedCount > 0
+                      ? 'Next: Create & Post Content'
+                      : `Skip — Back to ${returnTo === '/products' ? 'Products' : 'Package A'}`)
+                  : (connectedCount > 0 ? 'Start Creating Campaigns' : 'Skip for now')
             }
             <ArrowRight size={16} />
           </button>

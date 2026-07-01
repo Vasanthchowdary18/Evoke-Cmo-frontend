@@ -148,93 +148,56 @@ export default defineConfig(({ mode }) => {
             req.on('data', chunk => { body += chunk })
             req.on('end', async () => {
               try {
-                const { prompt, provider = 'gemini' } = JSON.parse(body)
+                const { prompt, provider = 'dalle', size = '1024x1024' } = JSON.parse(body)
                 if (!prompt) {
                   res.writeHead(400)
                   res.end(JSON.stringify({ error: 'Prompt is required' }))
                   return
                 }
 
-                let imageData
-                if (provider === 'pollinations') {
-                  // Free image generation — no API key needed
-                  const encodedPrompt = encodeURIComponent(prompt)
-                  const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&model=flux&nologo=true&seed=${Date.now()}`
-                  const imgRes = await fetch(pollinationsUrl)
-                  if (!imgRes.ok) throw new Error(`Pollinations error ${imgRes.status}`)
-                  const buffer = await imgRes.arrayBuffer()
-                  const bytes = new Uint8Array(buffer)
-                  let binary = ''
-                  for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i])
-                  const base64Image = btoa(binary)
-                  imageData = { base64Image, mimeType: 'image/png', provider: 'pollinations' }
-
-                } else if (provider === 'dalle') {
-                  const openaiKey = env.OPENAI_API_KEY
-                  if (!openaiKey) {
-                    res.setHeader('Content-Type', 'application/json')
-                    res.writeHead(500)
-                    res.end(JSON.stringify({ error: 'OPENAI_API_KEY not configured' }))
-                    return
-                  }
-
-                  const dalleRes = await fetch('https://api.openai.com/v1/images/generations', {
-                    method: 'POST',
-                    headers: {
-                      'Content-Type': 'application/json',
-                      'Authorization': `Bearer ${openaiKey}`,
-                    },
-                    body: JSON.stringify({
-                      model: 'dall-e-3',
-                      prompt: prompt,
-                      n: 1,
-                      size: '1024x1024',
-                      quality: 'hd',
-                    }),
-                  })
-
-                  if (!dalleRes.ok) {
-                    const err = await dalleRes.json().catch(() => ({}))
-                    res.setHeader('Content-Type', 'application/json')
-                    res.writeHead(dalleRes.status)
-                    res.end(JSON.stringify({ error: err?.error?.message || `OpenAI error ${dalleRes.status}` }))
-                    return
-                  }
-
-                  const data = await dalleRes.json()
-                  const imageUrl = data.data?.[0]?.url
-                  if (!imageUrl) {
-                    res.writeHead(500)
-                    res.end(JSON.stringify({ error: 'DALL-E returned no image URL' }))
-                    return
-                  }
-
-                  const imgRes = await fetch(imageUrl)
-                  const buffer = await imgRes.arrayBuffer()
-                  const bytes = new Uint8Array(buffer)
-                  let binary = ''
-                  for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i])
-                  const base64Image = btoa(binary)
-
-                  imageData = {
-                    base64Image,
-                    mimeType: 'image/png',
-                    provider: 'dalle-3',
-                    revised_prompt: data.data?.[0]?.revised_prompt || prompt,
-                  }
-                } else {
-                  // Default: Pollinations (free, no API key)
-                  const encodedPrompt = encodeURIComponent(prompt)
-                  const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&model=flux&nologo=true&seed=${Date.now()}`
-                  const imgRes = await fetch(pollinationsUrl)
-                  if (!imgRes.ok) throw new Error(`Pollinations error ${imgRes.status}`)
-                  const buffer = await imgRes.arrayBuffer()
-                  const bytes = new Uint8Array(buffer)
-                  let binary = ''
-                  for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i])
-                  const base64Image = btoa(binary)
-                  imageData = { base64Image, mimeType: 'image/png', provider: 'pollinations' }
+                const openaiKey = env.OPENAI_API_KEY
+                if (!openaiKey) {
+                  res.setHeader('Content-Type', 'application/json')
+                  res.writeHead(500)
+                  res.end(JSON.stringify({ error: 'OPENAI_API_KEY not configured in .env' }))
+                  return
                 }
+
+                const validSizes = ['1024x1024', '1536x1024', '1024x1536']
+                const safeSize = validSizes.includes(size) ? size : '1024x1024'
+
+                const gptRes = await fetch('https://api.openai.com/v1/images/generations', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${openaiKey}`,
+                  },
+                  body: JSON.stringify({
+                    model: 'gpt-image-1',
+                    prompt: prompt,
+                    n: 1,
+                    size: safeSize,
+                    quality: 'high',
+                  }),
+                })
+
+                if (!gptRes.ok) {
+                  const err = await gptRes.json().catch(() => ({}))
+                  res.setHeader('Content-Type', 'application/json')
+                  res.writeHead(gptRes.status)
+                  res.end(JSON.stringify({ error: err?.error?.message || `OpenAI error ${gptRes.status}` }))
+                  return
+                }
+
+                const data = await gptRes.json()
+                const base64Image = data.data?.[0]?.b64_json
+                if (!base64Image) {
+                  res.writeHead(500)
+                  res.end(JSON.stringify({ error: 'gpt-image-1 returned no image data' }))
+                  return
+                }
+
+                let imageData = { base64Image, mimeType: 'image/png', provider: 'gpt-image-1' }
 
                 res.setHeader('Content-Type', 'application/json')
                 res.setHeader('Access-Control-Allow-Origin', '*')

@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   TrendingUp, Zap, Search, ArrowLeft, RefreshCw,
@@ -121,6 +121,7 @@ const CATEGORY_COLORS = {
 export default function TrendAnalysis() {
   useRequireAuth()
   const navigate = useNavigate()
+  const location = useLocation()
 
   const [industry, setIndustry]   = useState('Marketing & Advertising')
   const [selPlatforms, setSelPlat] = useState(['instagram', 'linkedin', 'tiktok'])
@@ -305,7 +306,17 @@ export default function TrendAnalysis() {
                         <ScoreBar score={t.score} color={i === 0 ? GOLD : '#6366f1'} />
                       </div>
                       <button
-                        onClick={() => navigate(`/campaign/content_calendar`)}
+                        onClick={() => navigate('/campaign-hub', {
+                          state: {
+                            prefill: {
+                              name: t.title,
+                              brandName: '',
+                              industry,
+                              goalType: 'Increase Brand Awareness',
+                              description: t.description,
+                            }
+                          }
+                        })}
                         style={{ padding: '7px 12px', background: GDIM, border: `1px solid ${GBORDER}`, borderRadius: 9, color: GOLD, fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}
                       >
                         Create →
@@ -361,7 +372,17 @@ export default function TrendAnalysis() {
                     <p style={{ fontSize: 12, color: GOLD, fontStyle: 'italic', margin: '0 0 8px', lineHeight: 1.5 }}>"{idea.hook}"</p>
                     <p style={{ fontSize: 12, color: TEXT2, margin: '0 0 14px', lineHeight: 1.5 }}>{idea.why}</p>
                     <button
-                      onClick={() => navigate('/campaign/content_calendar')}
+                      onClick={() => navigate('/campaign/content_calendar', {
+                        state: {
+                          prefill: {
+                            name: idea.title,
+                            brandName: '',
+                            industry,
+                            goalType: 'Increase Brand Awareness',
+                            description: idea.hook,
+                          }
+                        }
+                      })}
                       style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700, color: GOLD, background: 'none', border: `1px solid ${GBORDER}`, borderRadius: 8, padding: '6px 12px', cursor: 'pointer', fontFamily: 'inherit' }}
                     >
                       Use This Idea <ChevronRight size={12} />
@@ -406,6 +427,48 @@ export default function TrendAnalysis() {
                 ))}
               </div>
             )}
+            {/* Next Steps */}
+            <div style={{ marginTop: 32, padding: '22px 26px', background: 'rgba(200,151,62,0.06)', border: '1px solid rgba(200,151,62,0.2)', borderRadius: 18 }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: GOLD, letterSpacing: '0.08em', marginBottom: 5 }}>WHAT TO DO WITH THESE TRENDS</div>
+              <h3 style={{ fontSize: 16, fontWeight: 800, color: TEXT, margin: '0 0 18px' }}>Turn Trends Into Action</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 18 }}>
+                <div style={{ background: CARD, border: `1px solid rgba(99,102,241,0.25)`, borderRadius: 14, padding: '16px 18px' }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: '#818cf8', letterSpacing: '0.06em', marginBottom: 8 }}>STEP 1 — KNOW YOUR AUDIENCE</div>
+                  <p style={{ fontSize: 13, color: TEXT2, lineHeight: 1.6, margin: '0 0 14px' }}>
+                    Now that you know what's trending in <strong style={{ color: TEXT }}>{industry}</strong>, build precision audience segments to know exactly <em>who</em> to target with these trends.
+                  </p>
+                  <button
+                    onClick={() => navigate('/audience-builder', {
+                      state: { prefill: { industry, geo: region } }
+                    })}
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.35)', borderRadius: 9, color: '#818cf8', fontSize: 12, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}
+                  >
+                    <Users size={13} /> Build Audience Segments →
+                  </button>
+                </div>
+                <div style={{ background: CARD, border: `1px solid rgba(200,151,62,0.25)`, borderRadius: 14, padding: '16px 18px' }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: GOLD, letterSpacing: '0.06em', marginBottom: 8 }}>STEP 2 — LAUNCH A CAMPAIGN</div>
+                  <p style={{ fontSize: 13, color: TEXT2, lineHeight: 1.6, margin: '0 0 14px' }}>
+                    Use the <strong style={{ color: TEXT }}>#{1} trending topic</strong> — <em style={{ color: GOLD }}>{data?.topTrends?.[0]?.title}</em> — as the foundation of your next campaign brief.
+                  </p>
+                  <button
+                    onClick={() => navigate('/campaign-hub', {
+                      state: {
+                        prefill: {
+                          name: data?.topTrends?.[0]?.title || '',
+                          industry,
+                          goalType: 'Increase Brand Awareness',
+                          description: data?.topTrends?.[0]?.description || '',
+                        }
+                      }
+                    })}
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', background: `linear-gradient(135deg, ${GOLD}, #a87030)`, border: 'none', borderRadius: 9, color: '#0e0c09', fontSize: 12, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}
+                  >
+                    <Rocket size={13} /> Build Campaign Brief →
+                  </button>
+                </div>
+              </div>
+            </div>
           </motion.div>
         )}
 

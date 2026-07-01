@@ -1,31 +1,20 @@
 /**
  * crmService.js
- * Firestore data layer for the CRM module.
+ * Stores contacts as a field inside users/{uid} to avoid subcollection
+ * permission issues — same pattern as knowledgeBaseService.js.
  *
- * Schema — users/{uid}/contacts/{contactId}:
- *   name         string
- *   email        string
- *   company      string
- *   phone        string
- *   stage        'lead' | 'prospect' | 'customer' | 'retained'
- *   score        number  0-100  (auto-calculated)
- *   notes        string
- *   tags         string[]
- *   source       'manual' | 'campaign' | 'import'
- *   lastContact  timestamp | null
- *   createdAt    timestamp
+ * users/{uid}.crmContacts: Array of contact objects
  */
 
-import {
-  collection, doc, addDoc, updateDoc, deleteDoc,
-  getDocs, orderBy, query, serverTimestamp, Timestamp
-} from 'firebase/firestore'
+import { doc, getDoc, updateDoc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
 
-/* ── Lead score algorithm ──────────────────────────────────────────────────
-   Each contact is auto-scored 0-100 based on data completeness + stage.
-   Higher score = warmer / more valuable lead.
-*/
+const userRef = (uid) => doc(db, 'users', uid)
+
+function genId() {
+  return `c_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+}
+
 export function calcScore(contact) {
   let score = 0
   if (contact.email)   score += 20
@@ -38,27 +27,40 @@ export function calcScore(contact) {
 
   if (contact.lastContact) {
     const days = (Date.now() - new Date(contact.lastContact).getTime()) / 86400000
-    if (days <= 7)  score += 15
+    if (days <= 7)       score += 15
     else if (days <= 30) score += 8
   }
 
   return Math.min(score, 100)
 }
 
-function contactsRef(uid) {
-  return collection(db, 'users', uid, 'contacts')
+async function readContacts(uid) {
+  const snap = await getDoc(userRef(uid))
+  if (!snap.exists()) return []
+  return snap.data().crmContacts || []
 }
 
-/** Fetch all contacts for a user, sorted newest first. */
+async function writeContacts(uid, contacts) {
+  try {
+    await updateDoc(userRef(uid), { crmContacts: contacts })
+  } catch (e) {
+    if (e.code === 'not-found') {
+      await setDoc(userRef(uid), { crmContacts: contacts }, { merge: true })
+    } else {
+      throw e
+    }
+  }
+}
+
 export async function getContacts(uid) {
-  const q = query(contactsRef(uid), orderBy('createdAt', 'desc'))
-  const snap = await getDocs(q)
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+  const contacts = await readContacts(uid)
+  return [...contacts].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
 }
 
-/** Add a new contact. Score is auto-calculated before saving. */
 export async function addContact(uid, data) {
-  const payload = {
+  const contacts = await readContacts(uid)
+  const newContact = {
+    id:          genId(),
     name:        data.name?.trim()    || '',
     email:       data.email?.trim()   || '',
     company:     data.company?.trim() || '',
@@ -68,16 +70,16 @@ export async function addContact(uid, data) {
     tags:        data.tags            || [],
     source:      data.source          || 'manual',
     lastContact: data.lastContact     || null,
-    createdAt:   serverTimestamp(),
+    createdAt:   Date.now(),
   }
-  payload.score = calcScore(payload)
-  const ref = await addDoc(contactsRef(uid), payload)
-  return { id: ref.id, ...payload }
+  newContact.score = calcScore(newContact)
+  await writeContacts(uid, [newContact, ...contacts])
+  return newContact
 }
 
-/** Update an existing contact. Score recalculated on every save. */
 export async function updateContact(uid, contactId, data) {
-  const payload = {
+  const contacts = await readContacts(uid)
+  const updated = {
     name:        data.name?.trim()    || '',
     email:       data.email?.trim()   || '',
     company:     data.company?.trim() || '',
@@ -87,12 +89,13 @@ export async function updateContact(uid, contactId, data) {
     tags:        data.tags            || [],
     lastContact: data.lastContact     || null,
   }
-  payload.score = calcScore(payload)
-  await updateDoc(doc(db, 'users', uid, 'contacts', contactId), payload)
-  return { id: contactId, ...payload }
+  updated.score = calcScore(updated)
+  const next = contacts.map(c => c.id === contactId ? { ...c, ...updated } : c)
+  await writeContacts(uid, next)
+  return { id: contactId, ...updated }
 }
 
-/** Delete a contact permanently. */
 export async function deleteContact(uid, contactId) {
-  await deleteDoc(doc(db, 'users', uid, 'contacts', contactId))
+  const contacts = await readContacts(uid)
+  await writeContacts(uid, contacts.filter(c => c.id !== contactId))
 }
