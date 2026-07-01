@@ -296,7 +296,7 @@ export default function ImageToolPage() {
         r.readAsDataURL(file)
       })
       const form = new FormData()
-      form.append('key', import.meta.env.VITE_IMGBB_API_KEY || '5bd861d246cfae2342a0b898282ab18e')
+      form.append('key', import.meta.env.VITE_IMGBB_API_KEY || '')
       form.append('image', base64)
       const res = await fetch('https://api.imgbb.com/1/upload', { method: 'POST', body: form })
       const data = await res.json()
