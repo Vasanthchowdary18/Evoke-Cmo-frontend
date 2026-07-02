@@ -1,15 +1,22 @@
 import React, { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Building2, Target, Palette, Rocket, ChevronRight, ChevronLeft,
   Check, Loader2, Zap, Globe, Users, DollarSign, Megaphone,
-  Sparkles, AlertCircle, RefreshCw, BookOpen,
+  Sparkles, AlertCircle, RefreshCw, BookOpen, Activity,
+  Linkedin, Facebook, Instagram, Mail, MessageSquare,
+  CheckCircle2, Pencil, Lock,
 } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
 import { useRequireAuth } from '../hooks/useRequireAuth'
 import { useAuth } from '../hooks/useAuth.js'
+import { useUserPlan } from '../hooks/useUserPlan.js'
 import { getKnowledgeBase, saveKnowledgeBase } from '../services/knowledgeBaseService.js'
+import { getUserData } from '../services/userService'
+import { PLANS as PLAN_ORDER } from '../lib/planGate.js'
+import { getRecommendedActions } from '../lib/recommendations.jsx'
+import UpgradeModal from '../components/UpgradeModal.jsx'
 
 /* ── Design tokens ── */
 const BG      = '#0e0c09'
@@ -221,12 +228,20 @@ export default function BrandKnowledgeBase() {
   useRequireAuth()
   const { user } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+  const forceEdit = !!location.state?.edit
+  const { plan: userPlan } = useUserPlan()
 
   const [step, setStep]       = useState(0)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving]   = useState(false)
   const [saved, setSaved]     = useState(false)
   const [error, setError]     = useState('')
+  const [showCompletion, setShowCompletion] = useState(false)
+  const [healthScore, setHealthScore] = useState(20)
+  const [scoreBreakdown, setScoreBreakdown] = useState({ profile: 20, kb: 20, social: 0, campaigns: 0 })
+  const [socialAccounts, setSocialAccounts] = useState({})
+  const [upgradeFor, setUpgradeFor] = useState(null)
 
   const [form, setForm] = useState({
     // Step 0 — Business Identity
@@ -262,11 +277,34 @@ export default function BrandKnowledgeBase() {
     additionalNotes:   '',
   })
 
+  // Marketing Health Score preview: Profile(20) + Brand KB(20) + Social(20) + Campaigns(20)
+  function loadCompletionData(uid) {
+    getUserData(uid).then(data => {
+      const accounts = data?.socialAccounts || {}
+      setSocialAccounts(accounts)
+      const connected = Object.values(accounts).filter(a => a?.connected).length
+      const socialScore = Math.min(Math.round((connected / 6) * 20), 20)
+      let campaignScore = 0
+      try { campaignScore = (JSON.parse(localStorage.getItem('evoke_campaigns') || '[]').length > 0) ? 20 : 0 } catch {}
+      setScoreBreakdown({ profile: 20, kb: 20, social: socialScore, campaigns: campaignScore })
+      setHealthScore(20 + 20 + socialScore + campaignScore)
+    }).catch(() => {})
+  }
+
   useEffect(() => {
     if (!user?.uid) return
     getKnowledgeBase(user.uid).then(data => {
       if (data) setForm(f => ({ ...f, ...data }))
       setLoading(false)
+      // Brand profile is already set up — land on the "AI CMO is ready" dashboard
+      // instead of re-showing the wizard from step 0. Skip this when the user
+      // explicitly asked to edit (e.g. clicking "Update" on the brand profile card).
+      const isComplete = !!(data?.companyName && data?.industry && data?.primaryObjective)
+      if (isComplete && !forceEdit) {
+        setStep(STEPS.length - 1)
+        loadCompletionData(user.uid)
+        setShowCompletion(true)
+      }
     }).catch(() => setLoading(false))
   }, [user?.uid])
 
@@ -285,13 +323,221 @@ export default function BrandKnowledgeBase() {
       if (step < STEPS.length - 1) {
         setTimeout(() => { setStep(s => s + 1); setSaved(false) }, 600)
       } else {
-        setTimeout(() => navigate('/agents-hub'), 1200)
+        loadCompletionData(user.uid)
+        setTimeout(() => setShowCompletion(true), 600)
       }
     } catch {
       setError('Failed to save. Please try again.')
     } finally {
       setSaving(false)
     }
+  }
+
+  if (showCompletion) {
+    const healthColor = healthScore >= 80 ? '#10b981' : healthScore >= 50 ? GOLD : '#f97316'
+    const objectiveLabel = OBJECTIVE_OPTIONS.find(o => o.value === form.primaryObjective)?.label
+
+    const PLATFORMS = [
+      { key: 'linkedin',  label: 'LinkedIn',  icon: <Linkedin size={17} />,     color: '#0a66c2' },
+      { key: 'facebook',  label: 'Facebook',  icon: <Facebook size={17} />,     color: '#1877f2' },
+      { key: 'instagram', label: 'Instagram', icon: <Instagram size={17} />,    color: '#e1306c' },
+      { key: 'gmail',     label: 'Gmail',     icon: <Mail size={17} />,         color: '#ea4335' },
+      { key: 'whatsapp',  label: 'WhatsApp',  icon: <MessageSquare size={17} />, color: '#25d366' },
+    ]
+
+    const connectedForScore = Object.values(socialAccounts || {}).filter(a => a?.connected).length
+    let savedCampaigns = []
+    try { savedCampaigns = JSON.parse(localStorage.getItem('evoke_campaigns') || '[]') } catch {}
+    const recommendedActions = getRecommendedActions(connectedForScore, savedCampaigns, 0, form)
+
+    const goToRecommendation = (action) => {
+      const required = action.planRequired || 'free'
+      if (PLAN_ORDER.indexOf(userPlan || 'free') < PLAN_ORDER.indexOf(required)) {
+        setUpgradeFor({ requiredPlan: required, featureTitle: action.title })
+        return
+      }
+      navigate(action.path)
+    }
+
+    const SectionBadge = ({ children }) => (
+      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', background: 'rgba(200,151,62,0.1)', border: '1px solid rgba(200,151,62,0.25)', borderRadius: 100, fontSize: 11, fontWeight: 700, color: GOLD, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 14 }}>
+        {children}
+      </div>
+    )
+
+    return (
+      <div style={{ minHeight: '100vh', background: BG, color: TEXT, fontFamily: "'Inter',sans-serif" }}>
+        <Navbar />
+        <div style={{ maxWidth: 980, margin: '0 auto', padding: '90px 24px 80px' }}>
+
+          {/* Header */}
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} style={{ textAlign: 'center', marginBottom: 32 }}>
+            <div style={{
+              width: 64, height: 64, borderRadius: '50%',
+              background: 'linear-gradient(135deg,#d4a853,#b8803a)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              margin: '0 auto 18px', boxShadow: '0 0 40px rgba(200,151,62,0.3)',
+            }}>
+              <Check size={30} color="#0e0c09" strokeWidth={3} />
+            </div>
+            <h1 style={{ fontSize: 'clamp(22px,3.5vw,30px)', fontWeight: 900, fontFamily: "'Syne','Inter',sans-serif", letterSpacing: '-0.02em', margin: '0 0 8px' }}>
+              Your AI CMO is ready,{' '}
+              <span style={{ background: 'linear-gradient(135deg,#e8c47a,#c8973e)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
+                {form.companyName || 'let\'s go'}
+              </span>
+            </h1>
+            <p style={{ fontSize: 13, color: TEXT2, lineHeight: 1.7, margin: '0 auto', maxWidth: 520 }}>
+              Everything you need is on this one page — your score, brand profile, platform connections and campaign launcher.
+            </p>
+          </motion.div>
+
+          {/* ── Marketing Health Score ── */}
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} style={{ marginBottom: 32 }}>
+            <SectionBadge><Activity size={11} /> Marketing Health Score</SectionBadge>
+            <div style={{ background: `linear-gradient(135deg, ${healthColor}10, ${CARD})`, border: `1px solid ${healthColor}35`, borderRadius: 18, padding: '22px 24px', display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' }}>
+              <div style={{ width: 76, height: 76, borderRadius: '50%', flexShrink: 0, background: `${healthColor}12`, border: `3px solid ${healthColor}45`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{ fontSize: 22, fontWeight: 900, color: healthColor, fontFamily: "'Syne','Inter',sans-serif", lineHeight: 1 }}>{healthScore}</span>
+                <span style={{ fontSize: 9, color: TEXT3, fontWeight: 700 }}>/100</span>
+              </div>
+              <div style={{ flex: 1, minWidth: 220, display: 'flex', gap: 18, flexWrap: 'wrap' }}>
+                {[
+                  { label: 'Profile', score: scoreBreakdown.profile, color: GOLD },
+                  { label: 'Brand KB', score: scoreBreakdown.kb, color: '#f59e0b' },
+                  { label: 'Social', score: scoreBreakdown.social, color: '#3b82f6' },
+                  { label: 'Campaigns', score: scoreBreakdown.campaigns, color: '#10b981' },
+                ].map(b => (
+                  <div key={b.label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: b.score >= 20 ? b.color : 'rgba(255,255,255,0.15)' }} />
+                    <span style={{ fontSize: 12, color: TEXT2, fontWeight: 600 }}>{b.label} {b.score}/20</span>
+                  </div>
+                ))}
+              </div>
+              <button onClick={() => navigate('/health-score')} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '9px 16px', background: `${healthColor}15`, border: `1px solid ${healthColor}40`, borderRadius: 100, color: healthColor, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}>
+                Full Report <ChevronRight size={13} />
+              </button>
+            </div>
+          </motion.div>
+
+          {/* ── Brand Profile Summary ── */}
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} style={{ marginBottom: 32 }}>
+            <SectionBadge><Building2 size={11} /> Your Brand Profile</SectionBadge>
+            <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 18, padding: '20px 24px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 18 }}>
+                {[
+                  { label: 'Company', value: form.companyName },
+                  { label: 'Industry', value: INDUSTRY_OPTIONS.find(i => i.value === form.industry)?.label },
+                  { label: 'Audience', value: AUDIENCE_TYPE_OPTIONS.find(a => a.value === form.audienceType)?.label },
+                  { label: 'Tone of Voice', value: TONE_OPTIONS.find(t => t.value === form.toneOfVoice)?.label },
+                  { label: 'Objective', value: objectiveLabel },
+                  { label: 'Timeline', value: TIMELINE_OPTIONS.find(t => t.value === form.timeline)?.label },
+                  { label: 'Revenue Target', value: form.revenueTarget },
+                ].filter(f => f.value).map(f => (
+                  <div key={f.label}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: TEXT3, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 4 }}>{f.label}</div>
+                    <div style={{ fontSize: 13, color: TEXT, fontWeight: 600, textTransform: 'capitalize' }}>{f.value}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 18, paddingTop: 16, borderTop: `1px solid ${BORDER}` }}>
+                <button onClick={() => setShowCompletion(false)} style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'none', border: 'none', color: GOLD, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  <Pencil size={12} /> Edit Profile
+                </button>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* ── Connect Platforms ── */}
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} style={{ marginBottom: 32 }}>
+            <SectionBadge><Globe size={11} /> Connect Your Platforms</SectionBadge>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12 }}>
+              {PLATFORMS.map(p => {
+                const connected = !!socialAccounts?.[p.key]?.connected
+                return (
+                  <div key={p.key} style={{ background: CARD, border: `1px solid ${connected ? '#10b98140' : BORDER}`, borderRadius: 14, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ width: 34, height: 34, borderRadius: 9, flexShrink: 0, background: `${p.color}15`, border: `1px solid ${p.color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: p.color }}>
+                      {p.icon}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: TEXT }}>{p.label}</div>
+                      {connected ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#10b981', fontWeight: 700 }}>
+                          <CheckCircle2 size={11} /> Connected
+                        </div>
+                      ) : (
+                        <button onClick={() => navigate('/connect-accounts')} style={{ background: 'none', border: 'none', color: TEXT3, fontSize: 11, fontWeight: 700, cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>
+                          Connect →
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </motion.div>
+
+          {/* ── Recommended Agents — personalised to this brand profile ── */}
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }} style={{ marginBottom: 40 }}>
+            <SectionBadge><Sparkles size={11} /> Recommended For You</SectionBadge>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+              {recommendedActions.map(a => {
+                const locked = PLAN_ORDER.indexOf(userPlan || 'free') < PLAN_ORDER.indexOf(a.planRequired || 'free')
+                return (
+                  <motion.div
+                    key={a.path}
+                    whileHover={{ y: -3 }}
+                    onClick={() => goToRecommendation(a)}
+                    style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 14, padding: '16px 18px', cursor: 'pointer', position: 'relative', transition: 'border-color 0.2s' }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = a.color + '50' }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = BORDER }}
+                  >
+                    {locked && (
+                      <div style={{ position: 'absolute', top: 12, right: 12, display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', background: 'rgba(255,255,255,0.05)', border: `1px solid ${BORDER}`, borderRadius: 100, fontSize: 9, fontWeight: 800, color: TEXT3, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                        <Lock size={9} /> {a.planRequired?.replace('package-', 'Pkg ').toUpperCase()}
+                      </div>
+                    )}
+                    <div style={{ width: 34, height: 34, borderRadius: 9, background: `${a.color}15`, border: `1px solid ${a.color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: a.color, marginBottom: 10 }}>
+                      {a.icon}
+                    </div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: TEXT, marginBottom: 3 }}>{a.title}</div>
+                    <div style={{ fontSize: 11, color: TEXT3, lineHeight: 1.4, marginBottom: 10 }}>{a.desc}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color: locked ? TEXT3 : a.color }}>
+                      {locked ? <><Lock size={10} /> Upgrade to unlock</> : <>{a.cta} <ChevronRight size={11} /></>}
+                    </div>
+                  </motion.div>
+                )
+              })}
+            </div>
+          </motion.div>
+
+          {upgradeFor && (
+            <UpgradeModal
+              requiredPlan={upgradeFor.requiredPlan}
+              featureTitle={upgradeFor.featureTitle}
+              onClose={() => setUpgradeFor(null)}
+            />
+          )}
+
+          {/* Go to dashboard */}
+          <div style={{ textAlign: 'center' }}>
+            <button
+              onClick={() => navigate('/agents-hub')}
+              style={{
+                background: 'none', border: `1px solid rgba(255,255,255,0.1)`,
+                borderRadius: 100, padding: '11px 28px',
+                color: TEXT2, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                transition: 'all 0.18s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)'; e.currentTarget.style.color = TEXT }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = TEXT2 }}
+            >
+              Go to Dashboard →
+            </button>
+          </div>
+
+        </div>
+        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+      </div>
+    )
   }
 
   if (loading) return (
@@ -598,15 +844,13 @@ export default function BrandKnowledgeBase() {
 
         {/* Navigation buttons */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 20 }}>
-          <button onClick={() => setStep(s => Math.max(0, s - 1))}
+          <button onClick={() => step === 0 ? navigate(-1) : setStep(s => Math.max(0, s - 1))}
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
               background: 'transparent', border: `1px solid ${BORDER}`,
               borderRadius: 100, padding: '10px 20px', color: TEXT2,
-              fontSize: 13, cursor: step === 0 ? 'not-allowed' : 'pointer',
-              opacity: step === 0 ? 0.35 : 1, transition: 'all 0.2s',
-            }}
-            disabled={step === 0}>
+              fontSize: 13, cursor: 'pointer', transition: 'all 0.2s',
+            }}>
             <ChevronLeft size={15} /> Back
           </button>
 
