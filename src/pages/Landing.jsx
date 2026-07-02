@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence, useInView } from 'framer-motion'
-import { ArrowRight, Check, Star, Zap, TrendingUp, Target, Calendar, Search, Mail, Users, BarChart2, Briefcase, Megaphone, ShoppingCart, Sparkles, Activity, Lightbulb, DollarSign, Rocket, Image, Film, Monitor, Share2, Layers, Play } from 'lucide-react'
+import { ArrowRight, Check, Star, Zap, TrendingUp, Target, Calendar, Search, Mail, Users, BarChart2, Briefcase, Megaphone, ShoppingCart, Sparkles, Activity, Lightbulb, DollarSign, Rocket, Image, Film, Monitor, Share2, Layers, Play, BookOpen } from 'lucide-react'
 // OnboardingModal moved to AgentsHub — not triggered on landing page
 import Navbar from '../components/Navbar.jsx'
 import { useAuth } from '../hooks/useAuth.js'
@@ -133,6 +133,7 @@ const PLANS = [
     tagline: 'Start with strategy — no cost, no commitment',
     price: '$0', priceNote: 'No credit card required',
     features: [
+      { icon: <BookOpen size={13}/>, text: 'Brand Knowledge Base Setup — Your AI CMO', desc: 'Set up your brand profile — business identity, target audience, brand voice and goals — so your AI CMO understands your brand from day one and every recommendation is on-brand.' },
       { icon: <Target size={13}/>, text: 'Objective & Strategy Development', desc: 'EVOX CMO works with you to define clear, measurable marketing goals — whether that\'s lead generation, brand awareness, or revenue growth. It builds a full GTM strategy aligned to your business objectives.' },
       { icon: <Megaphone size={13}/>, text: 'New Leads / Client Retention Planning', desc: 'Get a custom plan for attracting new customers and keeping existing ones engaged. Includes outreach strategies, nurture sequences, and loyalty campaign frameworks tailored to your audience.' },
       { icon: <Layers size={13}/>, text: 'Content Creation Framework', desc: 'A structured content blueprint covering your brand voice, content pillars, post formats, and publishing cadence across all channels — so every piece of content works toward your goals.' },
@@ -1292,7 +1293,7 @@ export default function Landing() {
             Join hundreds of founders and marketers who replaced their expensive marketing teams with Evoke CMO.
           </p>
           <div style={{display:'flex',gap:14,justifyContent:'center',flexWrap:'wrap',marginBottom:20}}>
-            <button onClick={open} style={goldPill}
+            <button onClick={openAssessment} style={goldPill}
               onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 10px 32px rgba(200,151,62,0.45)'}}
               onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none'}}>
               Get Started Free <ArrowRight size={18}/>
