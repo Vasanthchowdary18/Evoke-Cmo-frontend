@@ -8,6 +8,7 @@ import {
   CheckCircle2, Facebook, Loader2, RotateCcw,
   Pencil, X, Instagram, TrendingUp, BarChart2,
   Globe, Rocket, Users, Download,
+  Link2, Film, LayoutDashboard, ArrowRight,
 } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
 import { getEvokeUserProfile } from '../lib/session'
@@ -480,18 +481,43 @@ function ImpactBars({ data }) {
 }
 
 // ── Parse "Phase 1 …", "Q1 …", "Week 1-2 …", "Month 1-3 …" into timeline steps ──
+const PHASE_TAG_RE = /^(Q\s*[1-4]|Quarter\s*\d|Phase\s*\d|Week\s*[\d\-–]+|Month\s*[\d\-–]+)\s*[:.—-]?\s*(.*)$/i
+const normalizeTag = (raw) => raw.replace(/quarter\s*/i, 'Q').replace(/\s+/g, ' ').replace(/^phase\s*/i, 'P').replace(/^week\s*/i, 'W').replace(/^month\s*/i, 'M').toUpperCase()
+// Strips a leading phase tag from a description so near-duplicate phases (the
+// same step written twice — once as a short tag, once as full prose further
+// down) compare equal instead of producing empty/duplicate timeline steps.
+const stripLeadingTag = (str) => str.replace(PHASE_TAG_RE, (full, tag, rest) => rest || full).toLowerCase().slice(0, 50)
+
 function parsePhases(text) {
   const str = safeStr(text)
   if (!str) return []
-  const out = []
-  for (const rawLine of str.split(/\n+/)) {
-    const line = rawLine.trim()
-    if (!line) continue
-    const m = line.match(/^(Q\s*[1-4]|Quarter\s*\d|Phase\s*\d|Week\s*[\d\-–]+|Month\s*[\d\-–]+)\s*[:.—-]?\s*(.+)/i)
-    if (m) {
-      const tag = m[1].replace(/quarter\s*/i, 'Q').replace(/\s+/g, ' ').replace(/^phase\s*/i, 'P').replace(/^week\s*/i, 'W').replace(/^month\s*/i, 'M').toUpperCase()
-      out.push({ tag, text: m[2].trim() })
+  const lines = str.split(/\n+/).map(l => l.trim()).filter(Boolean)
+  const raw = []
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(PHASE_TAG_RE)
+    if (!m) continue
+    const tag = normalizeTag(m[1])
+    let content = m[2].trim()
+    // Tag sits alone on its own line (e.g. "P1:") — pull the description
+    // from the next line instead of rendering an empty timeline step.
+    if (!content && i + 1 < lines.length) {
+      const next = lines[i + 1]
+      const nextMatch = next.match(PHASE_TAG_RE)
+      content = nextMatch ? nextMatch[2].trim() : next
+      i++
     }
+    if (content) raw.push({ tag, text: content })
+  }
+
+  // Drop phases whose description repeats one already captured — the same
+  // step is sometimes written twice by the AI (short tag list + full prose).
+  const seen = new Set()
+  const out = []
+  for (const p of raw) {
+    const key = stripLeadingTag(p.text)
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(p)
   }
   return out.slice(0, 6)
 }
@@ -1332,8 +1358,8 @@ export default function Results() {
         {isStrategy && (() => {
           const sections = [
             { key: 'executiveSummary',    value: executiveSummary,    icon: <Zap size={16}/>,        color: '#10b981', title: 'Executive Summary',          span: 'full' },
-            { key: 'growthOpportunities', value: growthOpportunities, icon: <TrendingUp size={16}/>, color: '#c8973e', title: 'Growth Opportunities',        span: 'half' },
-            { key: 'gtmPlan',             value: gtmPlan,             icon: <Rocket size={16}/>,     color: '#6366f1', title: 'Go-To-Market Plan',           span: 'half' },
+            { key: 'growthOpportunities', value: growthOpportunities, icon: <TrendingUp size={16}/>, color: '#c8973e', title: 'Growth Opportunities',        span: 'full' },
+            { key: 'gtmPlan',             value: gtmPlan,             icon: <Rocket size={16}/>,     color: '#6366f1', title: 'Go-To-Market Plan',           span: 'full' },
             { key: 'revenueProjection',   value: revenueProjection,   icon: <BarChart2 size={16}/>,  color: '#f59e0b', title: '12-Month Revenue Forecast',   span: 'full' },
             { key: 'partnershipIdeas',    value: partnershipIdeas,    icon: <Users size={16}/>,      color: '#0a66c2', title: 'Strategic Partnerships',      span: 'half' },
             { key: 'expansionRoadmap',    value: expansionRoadmap,    icon: <Globe size={16}/>,      color: '#14b8a6', title: 'Expansion Roadmap',           span: 'half' },
@@ -1393,6 +1419,67 @@ export default function Results() {
                 </div>
               ))}
             </div>
+          )
+        })()}
+
+        {/* ── Now, execute your strategy — bridge from report to real campaigns ── */}
+        {isStrategy && (() => {
+          const isCalendar = campaignType === 'content_calendar'
+          const strategyCards = isCalendar ? [
+            { icon: <Link2 size={17} />, color: '#10b981', title: 'Connect Social Accounts', desc: 'Link Instagram, Facebook, LinkedIn to auto-post', path: '/connect-accounts' },
+            { icon: <Mail size={17} />, color: '#7c3aed', title: 'Build Email Drip', desc: 'Add email sequences to complement your calendar', path: '/campaign/email_drip' },
+            { icon: <Film size={17} />, color: '#06b6d4', title: 'Generate Reel Scripts', desc: 'Create short-form video scripts from your plan', path: '/reel-scripts' },
+            { icon: <LayoutDashboard size={17} />, color: '#c8973e', title: 'Back to Dashboard', desc: 'Return to your AI CMO hub', path: '/agents-hub' },
+          ] : [
+            { icon: <Calendar size={17} />, color: '#c8973e', title: 'Launch Content Calendar', desc: 'Build a 30-day content plan from this strategy', path: '/campaign/content_calendar' },
+            { icon: <Mail size={17} />, color: '#7c3aed', title: 'Build Email Drip', desc: 'Create automated email sequences to convert leads', path: '/campaign/email_drip' },
+            { icon: <Film size={17} />, color: '#06b6d4', title: 'Generate Reel Scripts', desc: 'Turn your strategy into short-form video scripts', path: '/reel-scripts' },
+            { icon: <Users size={17} />, color: '#10b981', title: 'Build Your Audience', desc: 'Define and segment your target audience profiles', path: '/audience-builder' },
+          ]
+          return (
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}
+              style={{ marginTop: 28, background: '#161410', border: '1px solid rgba(200,151,62,0.2)', borderRadius: 18, overflow: 'hidden' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '18px 22px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(200,151,62,0.12)', border: '1px solid rgba(200,151,62,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#c8973e' }}>
+                  {isCalendar ? <Calendar size={17} /> : <Rocket size={17} />}
+                </div>
+                <div>
+                  <p style={{ fontWeight: 800, fontSize: 15, color: '#f0ebe0', margin: 0 }}>
+                    {isCalendar ? 'Start posting your content' : 'Now, execute your strategy'}
+                  </p>
+                  <p style={{ fontSize: 12, color: 'rgba(240,235,224,0.55)', margin: '2px 0 0 0' }}>
+                    {isCalendar
+                      ? 'Your content calendar is ready — connect platforms and start scheduling posts'
+                      : 'Turn this plan into real campaigns, one click at a time'}
+                  </p>
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '1px', background: 'rgba(255,255,255,0.05)' }}>
+                {strategyCards.map((card, i) => (
+                  <motion.button
+                    key={i}
+                    onClick={() => {
+                      if (card.path === '/connect-accounts') {
+                        try { sessionStorage.setItem('connectReturnTo', '/results') } catch {}
+                      }
+                      navigate(card.path, { state: { from: '/results' } })
+                    }}
+                    whileHover={{ background: 'rgba(200,151,62,0.05)' }}
+                    whileTap={{ scale: 0.98 }}
+                    style={{ display: 'flex', alignItems: 'flex-start', gap: 13, padding: '20px 20px', background: '#0e0c09', border: 'none', cursor: 'pointer', textAlign: 'left', width: '100%', borderTop: `3px solid ${card.color}` }}
+                  >
+                    <div style={{ width: 34, height: 34, borderRadius: 9, background: `${card.color}18`, border: `1px solid ${card.color}35`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: card.color, flexShrink: 0 }}>
+                      {card.icon}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontWeight: 700, fontSize: 13, color: '#f0ebe0', margin: '0 0 4px 0' }}>{card.title}</p>
+                      <p style={{ fontSize: 12, color: 'rgba(240,235,224,0.5)', margin: 0, lineHeight: 1.5 }}>{card.desc}</p>
+                    </div>
+                    <ArrowRight size={14} color="rgba(240,235,224,0.25)" style={{ flexShrink: 0, marginTop: 4 }} />
+                  </motion.button>
+                ))}
+              </div>
+            </motion.div>
           )
         })()}
 

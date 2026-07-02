@@ -1778,7 +1778,9 @@ export default function ConnectAccounts() {
               } else if (returnTo === '/post-content') {
                 navigate('/post-content', { state: { toolTitle: 'Post to Social', toolColor: '#c8973e' } });
               } else {
-                navigate(fromPackageA ? returnTo : '/agents-hub');
+                // Always return to wherever the user came from — only fall
+                // back to the dashboard when nothing set a return path at all.
+                navigate(returnTo || '/agents-hub');
               }
             }}
             style={{
