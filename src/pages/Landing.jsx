@@ -1721,7 +1721,7 @@ export default function Landing() {
 
                   <div style={{display:'flex',flexDirection:'column',gap:12,alignItems:'center'}}>
                     <button
-                      onClick={()=>{ setWizardOpen(false); const r = wizardPlan==='free'?'/free-plan':wizardPlan?`/${wizardPlan}`:'/agents-hub'; navigate(r) }}
+                      onClick={()=>{ setWizardOpen(false); navigate('/brand-kb') }}
                       style={{padding:'14px 40px',background:'linear-gradient(135deg,#d4a853,#b8803a)',border:'none',borderRadius:100,color:'#0e0c09',fontSize:15,fontWeight:800,cursor:'pointer',display:'inline-flex',alignItems:'center',gap:8,transition:'all 0.2s'}}
                       onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 8px 24px rgba(200,151,62,0.4)'}}
                       onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none'}}>
