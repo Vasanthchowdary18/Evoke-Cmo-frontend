@@ -43,6 +43,7 @@ import MarketingStrategyPage from './pages/MarketingStrategyPage.jsx'
 import MarketingExecutionPage from './pages/MarketingExecutionPage.jsx'
 import CampaignHub from './pages/CampaignHub.jsx'
 import AgentHub from './pages/AgentHub.jsx'
+import MarketingHealthPage from './pages/MarketingHealthPage.jsx'
 import Chatbot from './components/Chatbot.jsx'
 
 // Handles token returned from accounts.evokemarketplace.com after login
@@ -110,6 +111,7 @@ export default function App() {
         <Route path="/analytics"             element={<AnalyticsDashboard />} />
         <Route path="/crm"                   element={<CrmPage />} />
         <Route path="/brand-kb"              element={<BrandKnowledgeBase />} />
+        <Route path="/health-score"          element={<MarketingHealthPage />} />
         <Route path="/inbox"                 element={<SocialInbox />} />
         <Route path="/trends"                element={<TrendAnalysis />} />
         <Route path="/audience-builder"      element={<AudienceBuilder />} />
