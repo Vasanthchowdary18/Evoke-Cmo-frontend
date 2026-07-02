@@ -1091,6 +1091,7 @@ export default function CampaignForm() {
   const navigate  = useNavigate();
   const location  = useLocation();
   const backPath  = location.state?.from;
+  const prefill   = location.state?.prefill || null;
   const { user: authUser } = useAuth();
   // Free-trial users have no membership type ID. Show the social-connect panel
   // only for paid Package A members — leave the free-trial flow untouched.
@@ -1460,7 +1461,7 @@ export default function CampaignForm() {
 
   const [form, setForm] = useState({
     name: "",
-    description: "",
+    description: prefill?.description || "",
     imageFile: null,
     imagePreview: null,
     date: "",
@@ -1468,14 +1469,14 @@ export default function CampaignForm() {
     location: "",
     eventLocations: [],
     eventUrl: "",
-    website: "",
+    website: prefill?.website || "",
     price: "",
-    targetAudience: [],
+    targetAudience: Array.isArray(prefill?.targetAudience) ? prefill.targetAudience : [],
     goal: "",
-    goalType: "",
+    goalType: prefill?.goalType || "",
     endDate: "",
     eventUrlMode: "manual",
-    brandName: "",
+    brandName: prefill?.brandName || "",
     contactName: "",
     contactEmail: "",
     contactPhone: "",
@@ -1487,12 +1488,12 @@ export default function CampaignForm() {
     emailRecipients: "",
     // New fields for extended CMO types
     competitorUrl: "",
-    industry: "",
+    industry: prefill?.industry || "",
     budget: "",
     keywords: "",
     reportPeriod: "",
     funnelStage: "",
-    toneOfVoice: "",
+    toneOfVoice: prefill?.toneOfVoice || "",
     socialPlatforms: [],
     contentTypes: [],
     postingFrequency: "",
@@ -3103,8 +3104,9 @@ export default function CampaignForm() {
             </>
           )}
 
-          <label style={s.label}>
-            Target Audience <span style={s.req}>*</span>
+          <label style={{ ...s.label, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span>Target Audience <span style={s.req}>*</span></span>
+            {prefill?.targetAudience?.length > 0 && <span style={{ fontSize: 10, fontWeight: 700, color: '#c8973e', background: 'rgba(200,151,62,0.12)', border: '1px solid rgba(200,151,62,0.3)', borderRadius: 100, padding: '1px 7px', letterSpacing: '0.04em' }}>✓ Pre-filled</span>}
           </label>
           <div ref={audienceRef} style={{ position: "relative" }}>
             <button
@@ -3189,8 +3191,9 @@ export default function CampaignForm() {
 
           {type !== "ads_creation" && type !== "ads_manager" && type !== "target_audience" && (
             <>
-              <label style={s.label}>
-                Campaign Goal <span style={s.req}>*</span>
+              <label style={{ ...s.label, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span>Campaign Goal <span style={s.req}>*</span></span>
+                {prefill?.goalType && <span style={{ fontSize: 10, fontWeight: 700, color: '#c8973e', background: 'rgba(200,151,62,0.12)', border: '1px solid rgba(200,151,62,0.3)', borderRadius: 100, padding: '1px 7px', letterSpacing: '0.04em' }}>✓ Pre-filled</span>}
               </label>
               <select
                 value={form.goalType}
@@ -3226,8 +3229,9 @@ export default function CampaignForm() {
 
           {type !== "event" && type !== "growth_strategy" && type !== "growth_agent" && type !== "content_calendar" && (
             <>
-              <label style={s.label}>
-                Brand Name <span style={s.req}>*</span>
+              <label style={{ ...s.label, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span>Brand Name <span style={s.req}>*</span></span>
+                {prefill?.brandName && <span style={{ fontSize: 10, fontWeight: 700, color: '#c8973e', background: 'rgba(200,151,62,0.12)', border: '1px solid rgba(200,151,62,0.3)', borderRadius: 100, padding: '1px 7px', letterSpacing: '0.04em' }}>✓ Pre-filled</span>}
               </label>
               <input
                 value={form.brandName}
