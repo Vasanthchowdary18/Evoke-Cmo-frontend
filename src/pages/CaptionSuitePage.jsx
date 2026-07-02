@@ -1,8 +1,26 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Hash, ArrowLeft, ArrowRight, Loader2, Copy, Check, AlertCircle, Send } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
+import { useAuth } from '../hooks/useAuth.js'
+import { getKnowledgeBase } from '../services/knowledgeBaseService.js'
+
+const TONE_LABELS = {
+  professional:  'Professional',
+  friendly:      'Friendly & Warm',
+  bold:          'Bold & Confident',
+  playful:       'Playful & Fun',
+  inspirational: 'Inspirational',
+  luxurious:     'Luxurious & Premium',
+}
+
+const CHANNEL_TO_PLATFORM = {
+  social_organic: ['instagram', 'facebook'],
+  paid_social:    ['instagram', 'facebook'],
+  video:          ['youtube', 'tiktok'],
+  influencer:     ['instagram', 'tiktok'],
+}
 
 const BG    = '#0e0c09'
 const CARD  = '#1c1a13'
@@ -98,7 +116,8 @@ Return ONLY valid JSON (no markdown, no explanation) in this exact format:
 }
 
 export default function CaptionSuitePage() {
-  const navigate = useNavigate()
+  const navigate      = useNavigate()
+  const { user }      = useAuth()
 
   const [selectedPlatforms, setSelectedPlatforms] = useState([])
   const [contentType, setContentType] = useState('')
@@ -108,6 +127,24 @@ export default function CaptionSuitePage() {
   const [error, setError] = useState('')
   const [results, setResults] = useState(null)
   const [copied, setCopied] = useState({})
+
+  // Pre-fill from Brand KB
+  useEffect(() => {
+    if (!user?.uid) return
+    getKnowledgeBase(user.uid).then(kb => {
+      if (!kb) return
+      if (kb.toneOfVoice)    setTone(TONE_LABELS[kb.toneOfVoice] || kb.toneOfVoice)
+      if (kb.productService) setContext(kb.productService)
+      // Map priority channels → platforms
+      const channels = kb.priorityChannels || []
+      const mapped = new Set()
+      channels.forEach(ch => {
+        const plats = CHANNEL_TO_PLATFORM[ch] || []
+        plats.forEach(p => mapped.add(p))
+      })
+      if (mapped.size > 0) setSelectedPlatforms([...mapped])
+    }).catch(() => {})
+  }, [user?.uid])
 
   const togglePlatform = (key) =>
     setSelectedPlatforms(p => p.includes(key) ? p.filter(k => k !== key) : [...p, key])
@@ -186,10 +223,10 @@ export default function CaptionSuitePage() {
 
         {/* Back */}
         <button
-          onClick={() => navigate('/package-b')}
+          onClick={() => navigate(-1)}
           style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: TEXT3, fontSize: 13, cursor: 'pointer', marginBottom: 28, padding: 0, fontFamily: FONT }}
         >
-          <ArrowLeft size={14} /> Back to Package B
+          <ArrowLeft size={14} /> Back
         </button>
 
         {/* Header */}

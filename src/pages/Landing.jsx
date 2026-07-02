@@ -503,9 +503,9 @@ export default function Landing() {
   // after login instead of bouncing back to the landing page first.
   const goFreeStart = () => {
     if (user) {
-      navigate('/agents-hub')
+      navigate('/plans')
     } else {
-      redirectToLogin(window.location.origin + '/agents-hub')
+      redirectToLogin(window.location.origin + '/plans')
     }
   }
 
@@ -529,17 +529,7 @@ export default function Landing() {
 
   const startWizardWithPlan = (planKey) => {
     try { localStorage.setItem('evoke_selected_package', planKey) } catch {}
-    setWizardPlan(planKey)
-    if (wizardDone) {
-      setWizardPhase('ready')
-    } else {
-      setWizardPhase('questions')
-      setWizardStep(0)
-      setWizardAnswers({})
-      setOtherBgInput('')
-      setOtherBgSelected(false)
-    }
-    setWizardOpen(true)
+    navigate('/brand-kb')
   }
 
   /* Gold gradient text helper */
@@ -638,111 +628,6 @@ export default function Landing() {
       {/* ══════════════════════════════════════════════════
           CMO WORKFLOW PIPELINE + ASSESSMENT WIZARD
       ══════════════════════════════════════════════════ */}
-      <section id="cmo-assessment" style={{padding:'80px 40px',background:'#0a0908',overflow:'hidden',position:'relative'}}>
-        <div style={{maxWidth:1200,margin:'0 auto'}}>
-
-          {/* ── Static header (always visible) ── */}
-          <FadeIn style={{textAlign:'center',marginBottom:52}}>
-            <SBadge>The CMO Framework</SBadge>
-            <h2 style={{fontSize:'clamp(20px,3vw,38px)',fontWeight:800,letterSpacing:'-0.03em',lineHeight:1.2,fontFamily:"'Syne','Inter',sans-serif",color:TEXT,marginBottom:12}}>
-              From Objectives to <span style={goldGrad}>Optimization</span>
-            </h2>
-            <p style={{fontSize:15,color:TEXT2,maxWidth:500,margin:'0 auto',lineHeight:1.65}}>
-              Every EVOX engagement follows this proven C-suite framework — ensuring each dollar drives measurable outcomes.
-            </p>
-          </FadeIn>
-
-          {/* ── Framework steps — 2-row layout matching the design ── */}
-          <FadeIn style={{marginBottom:56}}>
-            <div style={{ maxWidth:1100, margin:'0 auto', overflowX:'auto', padding:'0 8px' }}>
-
-              {/* Row 1: Circles + Connectors */}
-              <div style={{ display:'flex', alignItems:'center' }}>
-                {WORKFLOW.map((step, i) => {
-                  const isActive = wizardOpen && !wizardDone && WIZARD_STEPS[wizardStep]?.frameworkIdx === i
-                  const isDone   = wizardOpen && (wizardDone || (WIZARD_STEPS[wizardStep]?.frameworkIdx ?? -1) > i)
-                  return (
-                    <React.Fragment key={`c-${step.label}`}>
-                      {/* Circle */}
-                      <div style={{ flex:1, display:'flex', justifyContent:'center' }}>
-                        <div style={{
-                          width:84, height:84, borderRadius:'50%', flexShrink:0,
-                          background: isActive
-                            ? 'linear-gradient(135deg,#d4a853,#b8803a)'
-                            : isDone
-                              ? 'rgba(200,151,62,0.2)'
-                              : '#17150f',
-                          border:`2px solid ${isActive || isDone ? GOLD : 'rgba(200,151,62,0.28)'}`,
-                          display:'flex', alignItems:'center', justifyContent:'center',
-                          color: isActive ? '#0e0c09' : GOLD,
-                          transition:'all 0.35s',
-                          boxShadow: isActive ? '0 0 32px rgba(200,151,62,0.45)' : 'none',
-                        }}>
-                          {isDone ? <Check size={24}/> : step.icon}
-                        </div>
-                      </div>
-                      {/* Connector: line + › */}
-                      {i < WORKFLOW.length - 1 && (
-                        <div style={{ flex:0.7, display:'flex', alignItems:'center', gap:0, minWidth:20 }}>
-                          <div style={{
-                            flex:1, height:1,
-                            background: isDone
-                              ? `linear-gradient(90deg,${GOLD},rgba(200,151,62,0.5))`
-                              : 'rgba(200,151,62,0.22)',
-                            transition:'background 0.3s',
-                          }}/>
-                          <span style={{
-                            fontSize:14, color: isDone ? GOLD : 'rgba(200,151,62,0.4)',
-                            flexShrink:0, lineHeight:1, transition:'color 0.3s',
-                            fontWeight:300,
-                          }}>›</span>
-                        </div>
-                      )}
-                    </React.Fragment>
-                  )
-                })}
-              </div>
-
-              {/* Row 2: Labels + Descriptions (spacers match connectors) */}
-              <div style={{ display:'flex', marginTop:20 }}>
-                {WORKFLOW.map((step, i) => {
-                  const isActive = wizardOpen && !wizardDone && WIZARD_STEPS[wizardStep]?.frameworkIdx === i
-                  return (
-                    <React.Fragment key={`l-${step.label}`}>
-                      <div style={{ flex:1, textAlign:'center', padding:'0 6px' }}>
-                        <div style={{
-                          fontSize:11, fontWeight:800, color: isActive ? GOLD : TEXT,
-                          letterSpacing:'0.07em', textTransform:'uppercase',
-                          marginBottom:6, transition:'color 0.3s',
-                        }}>{step.label}</div>
-                        <div style={{ fontSize:11, color:TEXT3, lineHeight:1.65, maxWidth:110, margin:'0 auto' }}>{step.desc}</div>
-                      </div>
-                      {/* Matching spacer for connector width */}
-                      {i < WORKFLOW.length - 1 && <div style={{ flex:0.7 }} />}
-                    </React.Fragment>
-                  )
-                })}
-              </div>
-
-            </div>
-          </FadeIn>
-
-          {/* ── Wizard CTA ── */}
-          <motion.div initial={{opacity:0,y:12}} animate={{opacity:1,y:0}} style={{textAlign:'center'}}>
-            <button
-              onClick={openAssessment}
-              style={{...goldPill,fontSize:15,padding:'14px 36px'}}
-              onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 10px 28px rgba(200,151,62,0.4)'}}
-              onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none'}}
-            >
-              Get Your Free CMO Assessment <ArrowRight size={16}/>
-            </button>
-            <p style={{marginTop:12,fontSize:12,color:TEXT3}}>7 quick questions · Takes under 2 minutes · No sign-up needed</p>
-          </motion.div>
-
-
-        </div>
-      </section>
 
       {/* ══════════════════════════════════════════════════
           VIDEO
@@ -1540,10 +1425,8 @@ export default function Landing() {
                         <p style={{fontSize:12,color:TEXT2,marginBottom:14,paddingBottom:14,borderBottom:`1px solid ${BORDER}`,lineHeight:1.55}}>{plan.tagline}</p>
                         {/* CTA button */}
                         <button onClick={()=>{
-                          setWizardPlan(plan.key)
                           try { localStorage.setItem('evoke_selected_package', plan.key) } catch {}
-                          setWizardPhase('questions')
-                          setWizardStep(0)
+                          navigate('/brand-kb')
                         }} style={{
                           width:'100%',padding:'11px',marginBottom:16,
                           background:plan.key==='free'?'linear-gradient(135deg,#d4a853,#b8803a)':plan.ctaDark?'linear-gradient(135deg,#d4a853,#b8803a)':'rgba(255,255,255,0.06)',

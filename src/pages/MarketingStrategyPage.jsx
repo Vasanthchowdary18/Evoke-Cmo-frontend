@@ -11,6 +11,7 @@ import Navbar from '../components/Navbar.jsx'
 import { useRequireAuth } from '../hooks/useRequireAuth'
 import { useAuth } from '../hooks/useAuth'
 import { saveContentItems, getContentItems } from '../services/contentService'
+import { getKnowledgeBase } from '../services/knowledgeBaseService.js'
 
 const BG      = '#0e0c09'
 const CARD    = '#1c1a13'
@@ -135,6 +136,55 @@ const INPUT_FIELDS = [
 
 const priorityColor = (p) => ({ high: '#10b981', medium: '#f59e0b', low: TEXT2 }[p] || TEXT2)
 
+const KB_INDUSTRY_MAP = {
+  digital_marketing: 'Marketing & Advertising',
+  tech_saas: 'Technology & SaaS',
+  ecommerce: 'E-commerce & Retail',
+  fashion: 'Fashion & Lifestyle',
+  food_beverage: 'Food & Beverage',
+  health_wellness: 'Health & Wellness',
+  finance_fintech: 'Finance & Fintech',
+  education: 'Education & EdTech',
+  real_estate: 'Real Estate',
+  media_entertainment: 'Events & Entertainment',
+  hospitality: 'Professional Services',
+  beauty: 'Fashion & Lifestyle',
+  automotive: 'Manufacturing',
+  agency: 'Professional Services',
+}
+
+const KB_GEO_MAP = {
+  india_tier1: 'India',
+  india_tier1_2: 'India',
+  india_all: 'India',
+  uae: 'Middle East & Africa (MEA)',
+  middle_east: 'Middle East & Africa (MEA)',
+  southeast_asia: 'Southeast Asia (SEA)',
+  usa: 'USA & Canada',
+  europe: 'Europe (EU)',
+  uk: 'UK & Ireland',
+  australia: 'Australia & New Zealand',
+  global: 'Global',
+}
+
+const KB_REVENUE_LABELS = {
+  '10k_mo': '$10,000 / mo', '25k_mo': '$25,000 / mo', '50k_mo': '$50,000 / mo',
+  '100k_mo': '$100,000 / mo', '250k_arr': '$250K ARR', '500k_arr': '$500K ARR',
+  '1m_arr': '$1M ARR', '5m_arr': '$5M ARR', '10m_arr': '$10M ARR',
+}
+
+function mapKbDemographics(audienceType, ageRange) {
+  if (audienceType === 'b2b') {
+    return ['35_44','45_54','55_plus'].includes(ageRange) ? 'B2B — Enterprise / C-Suite' : 'B2B — SMBs & Startups'
+  }
+  if (audienceType === 'b2c' || audienceType === 'd2c') {
+    if (['13_17','18_24'].includes(ageRange)) return 'B2C — Gen Z (18–28)'
+    if (['35_44','45_54','55_plus'].includes(ageRange)) return 'B2C — Gen X (40–55)'
+    return 'B2C — Millennials (25–40)'
+  }
+  return ''
+}
+
 export default function MarketingStrategyPage() {
   useRequireAuth()
   const navigate = useNavigate()
@@ -161,6 +211,22 @@ export default function MarketingStrategyPage() {
   }
 
   useEffect(() => { loadHistory() }, [user?.uid])
+
+  useEffect(() => {
+    if (!user?.uid) return
+    getKnowledgeBase(user.uid).then(kb => {
+      if (!kb) return
+      setInputs(prev => ({
+        ...prev,
+        industry:      prev.industry      || KB_INDUSTRY_MAP[kb.industry]        || '',
+        product:       prev.product       || kb.productService                   || '',
+        geoMarket:     prev.geoMarket     || KB_GEO_MAP[kb.geographicFocus]      || '',
+        competitor:    prev.competitor    || kb.competitor1                      || '',
+        revenueTarget: prev.revenueTarget || KB_REVENUE_LABELS[kb.revenueTarget] || '',
+        demographics:  prev.demographics  || mapKbDemographics(kb.audienceType, kb.ageRange) || '',
+      }))
+    }).catch(() => {})
+  }, [user?.uid])
 
   const handleGenerate = async () => {
     if (!ready) return

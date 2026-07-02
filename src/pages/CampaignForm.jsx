@@ -35,6 +35,7 @@ import { getEvokeUserProfile } from "../lib/session";
 import { profileToUser } from "../lib/authUtils";
 import { getUserData } from "../services/userService";
 import { useAuth } from "../hooks/useAuth.js";
+import { getKnowledgeBase } from "../services/knowledgeBaseService.js";
 import { buildEventSlug, saveEventPage, downloadEventHtml } from "../services/eventService";
 
 const CLOUDINARY_CLOUD = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "dxbn3vyig";
@@ -485,19 +486,18 @@ Post Date: ${form.postDate || "ASAP"}`
 }`,
       email_drip: `{
   "campaignName": "${form.name}",
-  "email1Subject": "Email 1 subject (Welcome)",
-  "email1Body": "Email 1 body - welcome and value (60 words)",
-  "email2Subject": "Email 2 subject (Education)",
-  "email2Body": "Email 2 body - educate and build trust (60 words)",
-  "email3Subject": "Email 3 subject (Social Proof)",
-  "email3Body": "Email 3 body - social proof (60 words)",
-  "email4Subject": "Email 4 subject (Offer)",
-  "email4Body": "Email 4 body - offer with urgency (60 words)",
-  "email5Subject": "Email 5 subject (Final CTA)",
-  "email5Body": "Email 5 body - final call to action (60 words)",
-  "segmentStrategy": "1-sentence segmentation strategy",
-  "linkedinPost": "50-word LinkedIn post with hashtags",
-  "campaignCalendar": "${form.campaignDays||7}-day action schedule",
+  "email1Subject": "Email 1 subject",
+  "email1Body": "Email 1 (50 words): opening hook + core value promise",
+  "email2Subject": "Email 2 subject",
+  "email2Body": "Email 2 (50 words): educate, build trust",
+  "email3Subject": "Email 3 subject",
+  "email3Body": "Email 3 (50 words): social proof or case study",
+  "email4Subject": "Email 4 subject",
+  "email4Body": "Email 4 (50 words): offer with urgency",
+  "email5Subject": "Email 5 subject",
+  "email5Body": "Email 5 (50 words): final CTA",
+  "sendSchedule": "Best days/times to send each of the ${form.campaignDays||5} emails",
+  "segmentStrategy": "1-sentence audience segmentation tip",
   "positioningStatement": "1-sentence value proposition"
 }`,
       influencer: `{
@@ -1606,6 +1606,63 @@ export default function CampaignForm() {
 
   const set = (key, val) => setForm((p) => ({ ...p, [key]: val }));
 
+  // ── Brand KB auto-fill ──────────────────────────────────────
+  const CF_INDUSTRY_MAP = {
+    digital_marketing: 'Marketing & Advertising', tech_saas: 'Technology / SaaS',
+    ecommerce: 'E-commerce / Retail', fashion: 'Fashion & Apparel',
+    food_beverage: 'Food & Beverage', health_wellness: 'Healthcare / Wellness',
+    finance_fintech: 'Finance / Fintech', education: 'Education / EdTech',
+    real_estate: 'Real Estate', media_entertainment: 'Media & Entertainment',
+    hospitality: 'Travel & Hospitality', beauty: 'Fashion & Apparel',
+    automotive: 'Manufacturing', ngo_nonprofit: 'Non-profit / NGO',
+    agency: 'Marketing & Advertising',
+  }
+  const CF_GEO_MAP = {
+    india_tier1: 'India', india_tier1_2: 'India', india_all: 'India',
+    uae: 'Middle East', middle_east: 'Middle East', southeast_asia: 'Southeast Asia',
+    usa: 'United States', europe: 'Europe', uk: 'United Kingdom',
+    australia: 'Australia / New Zealand', global: 'Global',
+  }
+  const CF_BUDGET_MAP = {
+    under_1k: 'Under ₹50,000 / $500', '1k_5k': '₹2L–₹5L / $2,000–$5,000',
+    '5k_15k': '₹5L–₹15L / $5,000–$15,000', '15k_50k': '₹15L–₹50L / $15,000–$50,000',
+    above_50k: 'Above ₹50L / $50,000+',
+  }
+
+  // For email drip, only email platform is relevant
+  useEffect(() => {
+    if (type === 'email_drip') set('platforms', ['email'])
+  }, [type])
+
+  useEffect(() => {
+    if (!authUser?.uid) return
+    getKnowledgeBase(authUser.uid).then(kb => {
+      if (!kb) return
+      setForm(prev => {
+        const updated = { ...prev }
+        if (!prev.name      && kb.companyName)          updated.name = kb.companyName
+        if (!prev.brandName && kb.companyName)          updated.brandName = kb.companyName
+        if (!prev.website   && kb.website)              updated.website = kb.website
+        if (!prev.industry  && kb.industry)             updated.industry = CF_INDUSTRY_MAP[kb.industry] || ''
+        if (!prev.location  && kb.geographicFocus)      updated.location = CF_GEO_MAP[kb.geographicFocus] || ''
+        if (!prev.budget    && kb.marketingBudget)      updated.budget = CF_BUDGET_MAP[kb.marketingBudget] || ''
+        if (!prev.toneOfVoice && kb.toneOfVoice)        updated.toneOfVoice = kb.toneOfVoice
+        if (!prev.description && kb.productService) {
+          const goals = (kb.primaryObjectives || []).join(', ')
+          updated.description = kb.productService + (goals ? `. Goals: ${goals}` : '')
+        }
+        if (prev.targetAudience.length === 0 && kb.audienceType) {
+          const aud = []
+          if (kb.audienceType === 'b2b') aud.push('Professionals / B2B')
+          else if (kb.audienceType === 'b2c') aud.push('Millennials (25-40)')
+          else if (kb.audienceType === 'd2c') aud.push('Millennials (25-40)')
+          if (aud.length) updated.targetAudience = aud
+        }
+        return updated
+      })
+    }).catch(() => {})
+  }, [authUser?.uid])
+
   const handleImageFile = (file) => {
     if (!file) return;
     set("imageFile", file);
@@ -1770,15 +1827,22 @@ export default function CampaignForm() {
       }
       const combinedGoal = [form.goalType, form.goal].filter(Boolean).join(' — ');
       let campaignData;
-      for (let attempt = 1; attempt <= 2; attempt++) {
+      for (let attempt = 1; attempt <= 3; attempt++) {
         try {
           campaignData = await generateCampaignContent({ ...form, goal: combinedGoal || form.goal }, type, form.campaignDays);
           break;
         } catch (err) {
-          if (attempt < 2 && (err.message?.includes("parse") || err.message?.includes("JSON") || err.message?.includes("returned no JSON"))) {
-            console.warn(`[CampaignForm] Attempt ${attempt} failed, retrying in 2s…`, err.message);
-            setLoadingPhase("generating");
-            await new Promise(r => setTimeout(r, 2000));
+          const isRateLimit = err.message?.includes("rate limit") || err.message?.includes("429")
+          const isParseErr  = err.message?.includes("parse") || err.message?.includes("JSON") || err.message?.includes("returned no JSON")
+          if (attempt < 3 && isRateLimit) {
+            setSubmitError(`Rate limit hit — retrying in 15 seconds… (attempt ${attempt}/3)`)
+            await new Promise(r => setTimeout(r, 15000))
+            setSubmitError('')
+            setLoadingPhase("generating")
+          } else if (attempt < 3 && isParseErr) {
+            console.warn(`[CampaignForm] Attempt ${attempt} failed, retrying in 2s…`, err.message)
+            setLoadingPhase("generating")
+            await new Promise(r => setTimeout(r, 2000))
           } else {
             throw err;
           }
@@ -3200,7 +3264,12 @@ export default function CampaignForm() {
                 onChange={(e) => set("goalType", e.target.value)}
                 style={{ ...s.input, cursor: "pointer", colorScheme: "dark", marginBottom: "8px" }}
               >
-                {[
+                {(type === "email_drip" ? [
+                  "", "Drive Sales / Conversions", "Generate Leads",
+                  "Re-engage Existing Customers", "Onboard New Users",
+                  "Build Brand Authority", "Promote an Event",
+                  "Upsell / Cross-sell", "Other",
+                ] : [
                   "",
                   type === "event" || type === "event_full" ? "Drive Event Registrations / Attendance" : null,
                   "Increase Brand Awareness",
@@ -3212,7 +3281,7 @@ export default function CampaignForm() {
                   "Re-engage Existing Customers",
                   "Boost Website Traffic",
                   "Other",
-                ].filter(v => v !== null).map((v) => (
+                ].filter(v => v !== null)).map((v) => (
                   <option key={v} value={v} style={{ background: "#1c1a13", color: v ? "#f0ebe0" : "rgba(240,235,224,0.4)" }}>
                     {v || "Select campaign goal..."}
                   </option>
@@ -3239,6 +3308,45 @@ export default function CampaignForm() {
                 placeholder="Your brand or company name"
                 style={s.input}
               />
+            </>
+          )}
+
+          {/* ── Email Drip: sequence type + email count ── */}
+          {type === "email_drip" && (
+            <>
+              <label style={s.label}>Email Sequence Type <span style={s.req}>*</span></label>
+              <select
+                value={form.funnelStage || ""}
+                onChange={(e) => set("funnelStage", e.target.value)}
+                style={{ ...s.input, cursor: "pointer", colorScheme: "dark" }}
+              >
+                {[
+                  "", "Onboarding / Welcome Series", "Lead Nurturing",
+                  "Sales / Conversion", "Re-engagement",
+                  "Post-Purchase / Upsell", "Cart Abandonment Recovery",
+                  "Educational / Drip Content", "Event Promotion",
+                ].map((v) => (
+                  <option key={v} value={v} style={{ background: "#1c1a13", color: v ? "#f0ebe0" : "rgba(240,235,224,0.4)" }}>
+                    {v || "Select sequence type..."}
+                  </option>
+                ))}
+              </select>
+
+              <label style={s.label}>Number of Emails</label>
+              <select
+                value={form.campaignDays || 5}
+                onChange={(e) => set("campaignDays", parseInt(e.target.value))}
+                style={{ ...s.input, cursor: "pointer", colorScheme: "dark" }}
+              >
+                {[
+                  { v: 3, l: "3 Emails" },
+                  { v: 5, l: "5 Emails (Recommended)" },
+                  { v: 7, l: "7 Emails" },
+                  { v: 10, l: "10 Emails" },
+                ].map(({ v, l }) => (
+                  <option key={v} value={v} style={{ background: "#1c1a13", color: "#f0ebe0" }}>{l}</option>
+                ))}
+              </select>
             </>
           )}
 
@@ -3445,7 +3553,7 @@ export default function CampaignForm() {
 
 
           {/* Publishing Settings — hidden for strategy/growth/calendar, all executive/CMO module types, and Package C ad types */}
-          {type !== "growth_strategy" && type !== "growth_agent" && type !== "content_calendar" && type !== "ads_creation" && type !== "ads_manager" && type !== "target_audience" && !EXEC_TYPES.includes(type) && (
+          {type !== "growth_strategy" && type !== "growth_agent" && type !== "content_calendar" && type !== "ads_creation" && type !== "ads_manager" && type !== "target_audience" && type !== "email_drip" && !EXEC_TYPES.includes(type) && (
             <>
           <div style={s.divider} />
           <p style={s.sectionTitle}>Publishing Settings</p>

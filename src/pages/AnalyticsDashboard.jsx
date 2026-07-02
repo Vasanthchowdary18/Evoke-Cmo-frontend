@@ -6,7 +6,7 @@ import {
   Brain, Activity, PieChart, Briefcase, Store, Rocket,
   Target, BookOpen, ChevronRight, Instagram, MessageSquare,
   CheckCircle, MousePointer, Eye, DollarSign, Percent, Award,
-  Sparkles, TrendingUp, Plus, Users,
+  Sparkles, TrendingUp, Plus, Users, ThumbsUp, Share2, Heart,
 } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
 import { useRequireAuth } from '../hooks/useRequireAuth'
@@ -165,6 +165,32 @@ export default function AnalyticsDashboard() {
   const [gadsAccount, setGadsAccount] = useState(null)
   const [gadsMetrics, setGadsMetrics] = useState(null)
   const [gadsLoading, setGadsLoading] = useState(false)
+  const [fbInsights, setFbInsights]   = useState(null)
+  const [fbPosts, setFbPosts]         = useState([])
+  const [fbLoading, setFbLoading]     = useState(false)
+
+  const loadFacebookInsights = async (pageId, pageAccessToken) => {
+    if (!pageId || !pageAccessToken) return
+    setFbLoading(true)
+    try {
+      const [insightsRes, postsRes] = await Promise.all([
+        fetch(`https://graph.facebook.com/v21.0/${pageId}/insights?metric=page_impressions,page_engaged_users,page_post_engagements,page_fan_count&period=week&access_token=${pageAccessToken}`),
+        fetch(`https://graph.facebook.com/v21.0/${pageId}/posts?fields=id,message,created_time,likes.summary(true),comments.summary(true),shares&limit=5&access_token=${pageAccessToken}`),
+      ])
+      const insightsData = await insightsRes.json()
+      const postsData    = await postsRes.json()
+      if (insightsData.data) {
+        const metrics = {}
+        insightsData.data.forEach(m => {
+          const latest = m.values?.[m.values.length - 1]?.value
+          metrics[m.name] = typeof latest === 'number' ? latest : 0
+        })
+        setFbInsights(metrics)
+      }
+      if (postsData.data) setFbPosts(postsData.data)
+    } catch (e) { console.error('Facebook insights error', e) }
+    finally { setFbLoading(false) }
+  }
 
   const loadGoogleAds = async (uid) => {
     if (!uid) return
@@ -187,7 +213,7 @@ export default function AnalyticsDashboard() {
       const data = await getOrCreateUser(user.uid, user.displayName, user.email)
       setUserData(data)
     } catch (e) { console.error('Failed to load user data', e) }
-    const stored = JSON.parse(localStorage.getItem('evoke_campaigns') || '[]')
+    const stored = JSON.parse(localStorage.getItem(`evoke_campaigns_${user.uid}`) || '[]')
     setCampaigns(stored)
     setLastRefresh(new Date())
     setLoading(false)
@@ -195,6 +221,12 @@ export default function AnalyticsDashboard() {
 
   useEffect(() => { if (authReady && user) loadData() }, [authReady, user])
   useEffect(() => { if (authUser) loadGoogleAds(authUser.uid) }, [authUser])
+  useEffect(() => {
+    const fb = userData?.socialAccounts?.facebook
+    if (fb?.connected && fb.pageId && fb.pageAccessToken) {
+      loadFacebookInsights(fb.pageId, fb.pageAccessToken)
+    }
+  }, [userData])
 
   if (!authReady || loading) return (
     <div style={{ minHeight: '100vh', background: BG, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -445,6 +477,89 @@ export default function AnalyticsDashboard() {
                 ))}
               </div>
             ) : null}
+          </div>
+        )}
+
+        {/* ── Facebook Page Insights ── */}
+        {(userData?.socialAccounts?.facebook?.connected || fbLoading) && (
+          <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 14, padding: '20px', marginBottom: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="#1877f2"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+              <span style={{ fontSize: 13, fontWeight: 700, color: TEXT }}>Facebook Page Insights</span>
+              {userData?.socialAccounts?.facebook?.pageName && (
+                <span style={{ fontSize: 11, color: '#1877f2', background: 'rgba(24,119,242,0.1)', border: '1px solid rgba(24,119,242,0.2)', padding: '2px 8px', borderRadius: 100 }}>
+                  {userData.socialAccounts.facebook.pageName}
+                </span>
+              )}
+              <span style={{ marginLeft: 'auto', fontSize: 12, color: TEXT3 }}>Last 7 days</span>
+            </div>
+
+            {fbLoading ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: TEXT3, fontSize: 13 }}>
+                <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Loading page insights…
+              </div>
+            ) : fbInsights ? (
+              <>
+                {/* Metrics row */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10, marginBottom: 20 }}>
+                  {[
+                    { label: 'Page Reach',       value: (fbInsights.page_impressions ?? 0).toLocaleString(),      icon: <Eye size={14} />,      color: '#1877f2' },
+                    { label: 'Engaged Users',     value: (fbInsights.page_engaged_users ?? 0).toLocaleString(),    icon: <Users size={14} />,    color: '#22d3ee' },
+                    { label: 'Post Engagements',  value: (fbInsights.page_post_engagements ?? 0).toLocaleString(), icon: <ThumbsUp size={14} />, color: '#10b981' },
+                    { label: 'Page Fans',         value: (fbInsights.page_fan_count ?? 0).toLocaleString(),        icon: <Heart size={14} />,    color: '#ec4899' },
+                  ].map(m => (
+                    <div key={m.label} style={{ background: CARD2, border: `1px solid ${BORDER}`, borderRadius: 10, padding: '12px 14px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, color: m.color }}>
+                        {m.icon}
+                        <span style={{ fontSize: 10, fontWeight: 700, color: TEXT3, letterSpacing: '0.05em' }}>{m.label.toUpperCase()}</span>
+                      </div>
+                      <div style={{ fontSize: 20, fontWeight: 800, color: TEXT }}>{m.value}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Recent posts */}
+                {fbPosts.length > 0 && (
+                  <>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: TEXT3, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>
+                      Recent Posts
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                      {fbPosts.map((post, i) => (
+                        <div key={post.id} style={{
+                          display: 'flex', alignItems: 'center', gap: 14, padding: '10px 8px',
+                          borderBottom: i < fbPosts.length - 1 ? `1px solid ${BORDER}` : 'none',
+                        }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 12, color: TEXT, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {post.message ? post.message.slice(0, 80) + (post.message.length > 80 ? '…' : '') : '(No caption)'}
+                            </div>
+                            <div style={{ fontSize: 11, color: TEXT3, marginTop: 3 }}>
+                              {timeAgo(post.created_time)}
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', gap: 14, flexShrink: 0 }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#1877f2', fontWeight: 700 }}>
+                              <ThumbsUp size={12} /> {post.likes?.summary?.total_count ?? 0}
+                            </span>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: TEXT2, fontWeight: 700 }}>
+                              <MessageSquare size={12} /> {post.comments?.summary?.total_count ?? 0}
+                            </span>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#10b981', fontWeight: 700 }}>
+                              <Share2 size={12} /> {post.shares?.count ?? 0}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </>
+            ) : (
+              <div style={{ textAlign: 'center', padding: '20px 0', color: TEXT3, fontSize: 13 }}>
+                No insights data available yet — ensure your Page has recent activity.
+              </div>
+            )}
           </div>
         )}
 

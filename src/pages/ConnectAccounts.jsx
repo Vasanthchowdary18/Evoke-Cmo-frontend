@@ -1339,6 +1339,35 @@ export default function ConnectAccounts() {
                       >
                         <Check size={13} /> Always Enabled
                       </span>
+                    ) : p.key === "eventbrite" && connected ? (
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <button
+                          onClick={() => navigate("/eventbrite-post")}
+                          style={{
+                            display: "flex", alignItems: "center", gap: 6,
+                            padding: "8px 14px", background: "rgba(240,85,55,0.15)",
+                            border: "1px solid rgba(240,85,55,0.35)", borderRadius: 10,
+                            color: "#F05537", fontSize: 13, fontWeight: 700, cursor: "pointer",
+                          }}
+                        >
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.5 14H7.5v-2h9v2zm0-4H7.5v-2h9v2zm0-4H7.5V6h9v2z"/>
+                          </svg>
+                          Post Event
+                        </button>
+                        <button
+                          onClick={() => disconnect(p.key)}
+                          disabled={isLoading}
+                          style={{
+                            display: "flex", alignItems: "center", gap: 6,
+                            padding: "8px 12px", background: "rgba(239,68,68,0.08)",
+                            border: "1px solid rgba(239,68,68,0.2)", borderRadius: 10,
+                            color: "#ef4444", fontSize: 13, fontWeight: 600, cursor: "pointer",
+                          }}
+                        >
+                          {isLoading ? <Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} /> : <Unlink size={13} />}
+                        </button>
+                      </div>
                     ) : connected ? (
                       <button
                         onClick={() => disconnect(p.key)}

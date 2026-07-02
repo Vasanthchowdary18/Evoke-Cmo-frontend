@@ -92,8 +92,7 @@ export default function PlansPage() {
 
   const handlePlan = (key) => {
     try { localStorage.setItem('evoke_selected_package', key) } catch {}
-    // Bypass token purchase — go straight to connect social accounts
-    navigate('/connect-accounts?setup=cmo')
+    navigate('/brand-kb')
   }
 
   return (

@@ -9,6 +9,24 @@ import {
 
 const getProfileServer = () => null;
 
+const isLocalhost =
+  typeof window !== "undefined" &&
+  (window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1");
+
+const DEV_PROFILE = isLocalhost
+  ? {
+      email: "vasanthchowadry35@gmail.com",
+      firstName: "Vasanth",
+      lastName: "chowdary",
+      fullName: "Vasanth chowdary",
+      custID: 260417001,
+      role: 4,
+      token: null,
+      walletAddress: null,
+    }
+  : null;
+
 export function useEvokeSession() {
   const profile = useSyncExternalStore(
     subscribeSession,
@@ -36,11 +54,13 @@ export function useEvokeSession() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bootstrapTried]);
 
-  const status = profile
+  const effectiveProfile = profile ?? (bootstrapTried ? DEV_PROFILE : null);
+
+  const status = effectiveProfile
     ? "authenticated"
     : bootstrapTried
       ? "unauthenticated"
       : "loading";
 
-  return { profile, status };
+  return { profile: effectiveProfile, status };
 }

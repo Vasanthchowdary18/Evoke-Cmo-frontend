@@ -56,6 +56,22 @@ function ScoreGauge({ score, animated }) {
         transform={`rotate(135 ${cx} ${cy})`}
         style={{ transition: 'stroke-dasharray 1.3s cubic-bezier(.4,0,.2,1)' }}
       />
+      {/* score number */}
+      <text
+        x={cx} y={cy - 6} textAnchor="middle" dominantBaseline="middle"
+        fill={col} fontSize="28" fontWeight="800"
+        fontFamily="'Syne','Inter',sans-serif"
+        style={{ transition: 'fill 1.3s' }}
+      >
+        {score}
+      </text>
+      <text
+        x={cx} y={cy + 18} textAnchor="middle" dominantBaseline="middle"
+        fill="rgba(240,235,224,0.35)" fontSize="11" fontWeight="600"
+        fontFamily="'Inter',sans-serif"
+      >
+        /100
+      </text>
     </svg>
   )
 }
@@ -240,7 +256,7 @@ function CategoryCard({ cat, onAction }) {
 
 /* ── main page ── */
 export default function MarketingHealthPage() {
-  const { user }   = useAuth()
+  const { user, status } = useAuth()
   const navigate   = useNavigate()
   const [loading, setLoading]     = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -249,6 +265,7 @@ export default function MarketingHealthPage() {
   const [animated, setAnimated]   = useState(false)
 
   const loadData = (isRefresh = false) => {
+    if (status === 'loading') return
     if (!user) { navigate('/signin'); return }
     if (isRefresh) { setRefreshing(true); setAnimated(false) }
     Promise.all([getUserData(user.uid), getKnowledgeBase(user.uid)])
@@ -263,7 +280,7 @@ export default function MarketingHealthPage() {
       .catch(() => { setLoading(false); setRefreshing(false) })
   }
 
-  useEffect(() => { loadData() }, [user])
+  useEffect(() => { loadData() }, [user, status])
 
   const { label: sLabel, color: sColor } = scoreLabel(total)
   const actionItems = categories.filter(c => !c.locked && c.action && c.score < c.max)
@@ -384,8 +401,8 @@ export default function MarketingHealthPage() {
           ))}
         </div>
 
-        {/* what to fix next */}
-        {actionItems.length > 0 && (
+        {/* what to fix next — removed per user request */}
+        {false && actionItems.length > 0 && (
           <div style={{
             background: CARD, border: `1px solid ${BORDER}`, borderRadius: 18,
             padding: '22px 24px', marginBottom: 28,
@@ -439,46 +456,6 @@ export default function MarketingHealthPage() {
           </div>
         )}
 
-        {/* upgrade CTA */}
-        <div style={{
-          background: 'linear-gradient(160deg,#221d10,#1c1a13)', border: `1px solid ${GBORDER}`,
-          borderRadius: 20, padding: '32px 30px', textAlign: 'center',
-        }}>
-          <div style={{
-            width: 48, height: 48, borderRadius: 14, margin: '0 auto 16px',
-            background: 'rgba(200,151,62,0.15)', border: `1px solid ${GBORDER}`,
-            display: 'flex', alignItems: 'center', justifyContent: 'center', color: GOLD,
-          }}>
-            <Zap size={22} />
-          </div>
-          <h3 style={{ fontSize: 20, fontWeight: 900, fontFamily: "'Syne','Inter',sans-serif", margin: '0 0 8px' }}>
-            Unlock your full marketing potential
-          </h3>
-          <p style={{ fontSize: 13, color: TEXT2, maxWidth: 440, margin: '0 auto 20px', lineHeight: 1.6 }}>
-            Upgrade to launch AI campaigns, generate content at scale, track analytics, and push your score to 100.
-          </p>
-          <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <button
-              onClick={() => navigate('/plans')}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 8, padding: '12px 26px',
-                background: 'linear-gradient(135deg,#d4a853,#b8803a)', border: 'none',
-                borderRadius: 12, color: '#0e0c09', fontSize: 14, fontWeight: 800, cursor: 'pointer',
-              }}
-            >
-              View Plans <ArrowRight size={15} />
-            </button>
-            <button
-              onClick={() => navigate('/agents-hub')}
-              style={{
-                padding: '12px 26px', background: 'transparent', border: `1px solid ${BORDER}`,
-                borderRadius: 12, color: TEXT2, fontSize: 14, fontWeight: 700, cursor: 'pointer',
-              }}
-            >
-              Back to Hub
-            </button>
-          </div>
-        </div>
       </div>
 
       <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>

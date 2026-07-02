@@ -103,9 +103,11 @@ export default function AgentsHub() {
   const { plan: userPlan } = useUserPlan()
 
   useEffect(() => {
-    const stored = JSON.parse(localStorage.getItem('evoke_campaigns') || '[]')
+    if (!user) return
+    const key = `evoke_campaigns_${user.uid}`
+    const stored = JSON.parse(localStorage.getItem(key) || '[]')
     setCampaigns(stored)
-  }, [])
+  }, [user])
 
   useEffect(() => {
     if (!user) return
@@ -147,7 +149,7 @@ export default function AgentsHub() {
   const deleteCampaign = (id) => {
     const updated = campaigns.filter(c => c.id !== id)
     setCampaigns(updated)
-    localStorage.setItem('evoke_campaigns', JSON.stringify(updated))
+    if (user) localStorage.setItem(`evoke_campaigns_${user.uid}`, JSON.stringify(updated))
   }
 
   const displayedHistory = showAllHistory ? campaigns : campaigns.slice(0, 5)
@@ -283,45 +285,6 @@ export default function AgentsHub() {
                 <TrendingUp size={13} /> Trends
               </button>
               <button
-                onClick={() => navigate('/audience-builder')}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 6,
-                  padding: '9px 18px',
-                  background: 'rgba(139,92,246,0.08)',
-                  border: '1px solid rgba(139,92,246,0.25)',
-                  borderRadius: 10, color: '#8b5cf6',
-                  fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-                }}
-              >
-                <Users size={13} /> Audiences
-              </button>
-              <button
-                onClick={() => navigate('/team')}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 6,
-                  padding: '9px 18px',
-                  background: 'rgba(99,102,241,0.08)',
-                  border: '1px solid rgba(99,102,241,0.25)',
-                  borderRadius: 10, color: '#6366f1',
-                  fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-                }}
-              >
-                <Users size={13} /> Team
-              </button>
-              <button
-                onClick={() => navigate('/partner-sharing')}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 6,
-                  padding: '9px 18px',
-                  background: 'rgba(20,184,166,0.08)',
-                  border: '1px solid rgba(20,184,166,0.25)',
-                  borderRadius: 10, color: '#14b8a6',
-                  fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-                }}
-              >
-                <Share2 size={13} /> Partners
-              </button>
-              <button
                 onClick={() => navigate('/strategy')}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 6,
@@ -335,33 +298,7 @@ export default function AgentsHub() {
                 <TrendingUp size={13} /> Strategy
               </button>
               <button
-                onClick={() => navigate('/video-gen')}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 6,
-                  padding: '9px 18px',
-                  background: 'rgba(239,68,68,0.08)',
-                  border: '1px solid rgba(239,68,68,0.25)',
-                  borderRadius: 10, color: '#ef4444',
-                  fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-                }}
-              >
-                <Film size={13} /> Video Gen
-              </button>
-              <button
-                onClick={() => navigate('/brand-governance')}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 6,
-                  padding: '9px 18px',
-                  background: 'rgba(99,102,241,0.08)',
-                  border: '1px solid rgba(99,102,241,0.25)',
-                  borderRadius: 10, color: '#6366f1',
-                  fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-                }}
-              >
-                <Shield size={13} /> Brand Gov
-              </button>
-              <button
-                onClick={() => navigate('/execution')}
+                onClick={() => navigate('/kpi-recommendations')}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 6,
                   padding: '9px 18px',
@@ -371,27 +308,88 @@ export default function AgentsHub() {
                   fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
                 }}
               >
-                <Rocket size={13} /> Execution
+                <BarChart2 size={13} /> KPIs
               </button>
-              <a
-                href="/EVOX-CMO-Gap-Analysis.docx"
-                download="EVOX-CMO-Gap-Analysis.docx"
+              <button
+                onClick={() => navigate('/brand-kb')}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 6,
                   padding: '9px 18px',
-                  background: 'rgba(99,102,241,0.12)',
-                  border: '1px solid rgba(99,102,241,0.3)',
-                  borderRadius: 10, color: '#6366f1',
-                  fontSize: 12, fontWeight: 700, cursor: 'pointer',
-                  fontFamily: 'inherit', textDecoration: 'none',
+                  background: 'rgba(139,92,246,0.08)',
+                  border: '1px solid rgba(139,92,246,0.25)',
+                  borderRadius: 10, color: '#8b5cf6',
+                  fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
                 }}
               >
-                <Download size={13} />
-                Gap Analysis
-              </a>
+                <BookOpen size={13} /> Brand KB
+              </button>
             </div>
           </div>
         </motion.div>
+
+        {/* ═══ CMO Setup Required — shown to new users before Brand KB is filled ═══ */}
+        {!hasBrandKb && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45 }}
+            style={{
+              marginBottom: 32, borderRadius: 20, overflow: 'hidden',
+              border: `1px solid rgba(200,151,62,0.4)`,
+              background: 'linear-gradient(135deg, rgba(200,151,62,0.10) 0%, rgba(14,12,9,0.95) 60%)',
+            }}
+          >
+            {/* Top bar */}
+            <div style={{ background: 'linear-gradient(135deg,#d4a853,#b8803a)', padding: '10px 28px', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Zap size={14} color="#0e0c09" fill="#0e0c09" />
+              <span style={{ fontSize: 11, fontWeight: 800, color: '#0e0c09', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                CMO Setup Required · Step 1 of 2
+              </span>
+            </div>
+
+            <div style={{ padding: '28px 32px', display: 'flex', gap: 32, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+              {/* Left: message */}
+              <div style={{ flex: 1, minWidth: 260 }}>
+                <h2 style={{ fontSize: 'clamp(18px,2.5vw,24px)', fontWeight: 900, fontFamily: "'Syne','Inter',sans-serif", margin: '0 0 8px', letterSpacing: '-0.02em', color: TEXT }}>
+                  Set up your <span style={goldGrad}>Brand Profile</span> first
+                </h2>
+                <p style={{ fontSize: 13, color: TEXT2, lineHeight: 1.7, margin: '0 0 22px', maxWidth: 420 }}>
+                  Your AI CMO needs to know your brand before it can generate personalised campaigns, recommend the right agents, and build your growth strategy.
+                </p>
+                <button
+                  onClick={() => navigate('/brand-kb')}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 8,
+                    padding: '13px 28px',
+                    background: 'linear-gradient(135deg,#d4a853,#b8803a)',
+                    border: 'none', borderRadius: 12, color: '#0e0c09',
+                    fontSize: 14, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit',
+                    boxShadow: '0 6px 24px rgba(200,151,62,0.4)',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 10px 30px rgba(200,151,62,0.5)' }}
+                  onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 6px 24px rgba(200,151,62,0.4)' }}
+                >
+                  <BookOpen size={16} /> Set Up Brand Profile <ArrowRight size={15} />
+                </button>
+              </div>
+
+              {/* Right: 4 steps */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, minWidth: 260 }}>
+                {[
+                  { n: 1, label: 'Business Identity',   desc: 'Company, industry, what you sell', color: GOLD },
+                  { n: 2, label: 'Market Intelligence', desc: 'Your audience & competitors',       color: '#6366f1' },
+                  { n: 3, label: 'Brand Identity',      desc: 'Colors, tone of voice, tagline',   color: '#ec4899' },
+                  { n: 4, label: 'Business Goals',      desc: 'Objectives, timeline, revenue',    color: '#10b981' },
+                ].map(s => (
+                  <div key={s.n} style={{ padding: '14px 16px', background: 'rgba(255,255,255,0.03)', border: `1px solid ${s.color}25`, borderRadius: 12 }}>
+                    <div style={{ width: 24, height: 24, borderRadius: '50%', background: `${s.color}18`, border: `1px solid ${s.color}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: s.color, marginBottom: 8 }}>{s.n}</div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: TEXT, marginBottom: 3 }}>{s.label}</div>
+                    <div style={{ fontSize: 11, color: TEXT3, lineHeight: 1.4 }}>{s.desc}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
 
         {/* ═══ Marketing Health Score — pinned at the top ═══ */}
         {(() => {
@@ -451,11 +449,60 @@ export default function AgentsHub() {
           )
         })()}
 
+        {/* ═══ Personalized CMO Banner — shown after Brand KB setup ═══ */}
+        {hasBrandKb && kb && (
+          <motion.div
+            initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.07 }}
+            style={{
+              marginBottom: 28, padding: '24px 28px',
+              background: 'linear-gradient(135deg, rgba(200,151,62,0.10), rgba(200,151,62,0.04))',
+              border: `1px solid ${GBORDER}`, borderRadius: 20,
+              display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap',
+            }}
+          >
+            <div style={{
+              width: 52, height: 52, borderRadius: '50%', flexShrink: 0,
+              background: 'linear-gradient(135deg,#d4a853,#b8803a)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 0 24px rgba(200,151,62,0.3)',
+            }}>
+              <Brain size={24} color="#0e0c09" />
+            </div>
+            <div style={{ flex: 1, minWidth: 220 }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: GOLD, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 5 }}>
+                Your AI CMO · Brand Setup Complete
+              </div>
+              <div style={{ fontSize: 16, fontWeight: 800, color: TEXT, marginBottom: 4, fontFamily: "'Syne','Inter',sans-serif" }}>
+                {kb.companyName
+                  ? <>CMO is ready for <span style={goldGrad}>{kb.companyName}</span></>
+                  : 'Your brand profile is ready'}
+              </div>
+              <p style={{ fontSize: 13, color: TEXT2, margin: 0, lineHeight: 1.6 }}>
+                {kb.industry
+                  ? `Based on your ${(kb.industry || '').replace(/_/g,' ')} brand, your CMO has identified the top growth opportunities below. Launch an agent to start growing.`
+                  : 'Your CMO has reviewed your brand and identified the best agents to help you grow. Launch one below to get started.'}
+              </p>
+            </div>
+            <button
+              onClick={() => navigate('/brand-kb')}
+              style={{
+                padding: '9px 18px', background: GDIM, border: `1px solid ${GBORDER}`,
+                borderRadius: 10, color: GOLD, fontSize: 12, fontWeight: 700,
+                cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0,
+              }}
+            >
+              <BookOpen size={13} style={{ marginRight: 6, verticalAlign: 'middle' }} />
+              Edit Brand Profile
+            </button>
+          </motion.div>
+        )}
+
         {/* ═══ Recommended For You — ranked agent/campaign suggestions ═══ */}
         {recommendedActions.length > 0 && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.08 }} style={{ marginBottom: 40 }}>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', background: GDIM, border: `1px solid ${GBORDER}`, borderRadius: 100, fontSize: 11, fontWeight: 700, color: GOLD, letterSpacing: '0.06em', marginBottom: 16 }}>
-              <Sparkles size={11}/> RECOMMENDED FOR YOU
+              <Sparkles size={11}/> {hasBrandKb ? 'YOUR CMO RECOMMENDS' : 'RECOMMENDED FOR YOU'}
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
               {recommendedActions.map(a => {
@@ -571,63 +618,6 @@ export default function AgentsHub() {
           ))}
         </motion.div>
 
-        {/* ═══ SECTION: Recommended Actions ═══ */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.3 }}
-          style={{ marginBottom: 48 }}
-        >
-          <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            padding: '4px 12px', background: GDIM, border: `1px solid ${GBORDER}`,
-            borderRadius: 100, fontSize: 11, fontWeight: 700, color: GOLD, letterSpacing: '0.06em', marginBottom: 14,
-          }}>
-            <Zap size={11} /> NEXT STEPS
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 14 }}>
-            {recommendedActions.map((action, i) => (
-              <motion.div
-                key={i}
-                whileHover={{ y: -2, boxShadow: `0 8px 24px ${action.color}18` }}
-                onClick={() => navigate(action.path)}
-                style={{
-                  background: CARD,
-                  border: `1px solid ${action.highlight ? action.color + '50' : BORDER}`,
-                  borderRadius: 14, padding: '18px 20px', cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  position: 'relative', overflow: 'hidden',
-                }}
-              >
-                {action.highlight && (
-                  <div style={{
-                    position: 'absolute', top: 0, left: 0, right: 0, height: 2,
-                    background: `linear-gradient(90deg, ${action.color}, ${action.color}80)`,
-                  }} />
-                )}
-                <div style={{
-                  width: 36, height: 36, borderRadius: 10, marginBottom: 12,
-                  background: `${action.color}18`, border: `1px solid ${action.color}30`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  color: action.color,
-                }}>
-                  {action.icon}
-                </div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: TEXT, marginBottom: 6 }}>
-                  {action.title}
-                </div>
-                <div style={{ fontSize: 12, color: TEXT2, lineHeight: 1.55, marginBottom: 14 }}>
-                  {action.desc}
-                </div>
-                <div style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 5,
-                  fontSize: 12, fontWeight: 700, color: action.color,
-                }}>
-                  {action.cta} <ChevronRight size={13} />
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
 
         {/* ═══ SECTION 5: Campaign History ═══ */}
         <motion.div
