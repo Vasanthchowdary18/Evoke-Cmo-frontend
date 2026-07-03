@@ -1,8 +1,10 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Film, ArrowLeft, ArrowRight, Loader2, Copy, Check, AlertCircle, Download } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
+import { useAuth } from '../hooks/useAuth'
+import { getKnowledgeBase } from '../services/knowledgeBaseService.js'
 
 const BG     = '#0e0c09'
 const CARD   = '#1c1a13'
@@ -32,7 +34,6 @@ const SCRIPT_TYPES = [
 ]
 
 const DURATIONS = ['15 seconds', '30 seconds', '45 seconds', '60 seconds']
-const TARGET_AUDIENCES = ['Marketing Managers', 'CMOs & Marketing Leaders', 'Small Business Owners', 'Startup Founders', 'E-Commerce Brands', 'B2B Decision Makers', 'Sales Professionals', 'Product Managers', 'Entrepreneurs', 'Enterprise Teams', 'Agency Clients', 'General Consumers']
 
 async function generateScriptForPlatform({ platformKey, scriptType, context, audience, duration }) {
   const apiKey = import.meta.env.VITE_GROQ_API_KEY || ''
@@ -114,8 +115,9 @@ function copyText(text, key, setCopied) {
 
 export default function ReelScriptsPage() {
   const navigate = useNavigate()
+  const { user } = useAuth()
 
-  const [platforms, setPlatforms]   = useState([])       // ← multi-select array
+  const [platforms, setPlatforms]   = useState([])
   const [scriptType, setScriptType] = useState('')
   const [context, setContext]       = useState('')
   const [audience, setAudience]     = useState('')
@@ -126,6 +128,19 @@ export default function ReelScriptsPage() {
   const [results, setResults]       = useState({})       // keyed by platform key
   const [copied, setCopied]         = useState({})
   const [activeTab, setActiveTab]   = useState('')
+
+  useEffect(() => {
+    if (!user?.uid) return
+    getKnowledgeBase(user.uid).then(kb => {
+      if (!kb) return
+      if (kb.productService) setContext(c => c || kb.productService)
+      const audParts = []
+      if (kb.audienceType === 'b2b') audParts.push('B2B businesses')
+      else if (kb.audienceType === 'b2c' || kb.audienceType === 'd2c') audParts.push('consumers')
+      if (kb.targetAudience) audParts.push(kb.targetAudience)
+      if (audParts.length) setAudience(a => a || audParts.join(', '))
+    }).catch(() => {})
+  }, [user?.uid])
 
   const togglePlatform = (key) => {
     setPlatforms(prev =>
@@ -263,10 +278,10 @@ export default function ReelScriptsPage() {
 
         {/* Back */}
         <button
-          onClick={() => navigate('/hub/content')}
+          onClick={() => navigate(-1)}
           style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: TEXT3, fontSize: 13, cursor: 'pointer', marginBottom: 28, padding: 0, fontFamily: FONT }}
         >
-          <ArrowLeft size={14} /> Back to Content Generation
+          <ArrowLeft size={14} /> Back
         </button>
 
         {/* Header */}
@@ -361,10 +376,12 @@ export default function ReelScriptsPage() {
             Target Audience
             <span style={{ color: TEXT3, fontWeight: 400, marginLeft: 6 }}>(optional)</span>
           </label>
-          <select value={audience} onChange={e => setAudience(e.target.value)} style={s.select}>
-            <option value="">Select target audience...</option>
-            {TARGET_AUDIENCES.map(a => <option key={a} value={a}>{a}</option>)}
-          </select>
+          <input
+            value={audience}
+            onChange={e => setAudience(e.target.value)}
+            placeholder="e.g. Young professionals aged 25–35, fitness enthusiasts, startup founders..."
+            style={s.input}
+          />
         </div>
 
         {/* ── Error ── */}

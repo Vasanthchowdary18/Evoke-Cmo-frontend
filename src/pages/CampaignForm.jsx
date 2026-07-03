@@ -35,6 +35,7 @@ import { getEvokeUserProfile } from "../lib/session";
 import { profileToUser } from "../lib/authUtils";
 import { getUserData } from "../services/userService";
 import { useAuth } from "../hooks/useAuth.js";
+import { getKnowledgeBase } from "../services/knowledgeBaseService.js";
 import { buildEventSlug, saveEventPage, downloadEventHtml } from "../services/eventService";
 
 const CLOUDINARY_CLOUD = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "dxbn3vyig";
@@ -485,19 +486,18 @@ Post Date: ${form.postDate || "ASAP"}`
 }`,
       email_drip: `{
   "campaignName": "${form.name}",
-  "email1Subject": "Email 1 subject (Welcome)",
-  "email1Body": "Email 1 body - welcome and value (60 words)",
-  "email2Subject": "Email 2 subject (Education)",
-  "email2Body": "Email 2 body - educate and build trust (60 words)",
-  "email3Subject": "Email 3 subject (Social Proof)",
-  "email3Body": "Email 3 body - social proof (60 words)",
-  "email4Subject": "Email 4 subject (Offer)",
-  "email4Body": "Email 4 body - offer with urgency (60 words)",
-  "email5Subject": "Email 5 subject (Final CTA)",
-  "email5Body": "Email 5 body - final call to action (60 words)",
-  "segmentStrategy": "1-sentence segmentation strategy",
-  "linkedinPost": "50-word LinkedIn post with hashtags",
-  "campaignCalendar": "${form.campaignDays||7}-day action schedule",
+  "email1Subject": "Email 1 subject",
+  "email1Body": "Email 1 (50 words): opening hook + core value promise",
+  "email2Subject": "Email 2 subject",
+  "email2Body": "Email 2 (50 words): educate, build trust",
+  "email3Subject": "Email 3 subject",
+  "email3Body": "Email 3 (50 words): social proof or case study",
+  "email4Subject": "Email 4 subject",
+  "email4Body": "Email 4 (50 words): offer with urgency",
+  "email5Subject": "Email 5 subject",
+  "email5Body": "Email 5 (50 words): final CTA",
+  "sendSchedule": "Best days/times to send each of the ${form.campaignDays||5} emails",
+  "segmentStrategy": "1-sentence audience segmentation tip",
   "positioningStatement": "1-sentence value proposition"
 }`,
       influencer: `{
@@ -1085,12 +1085,99 @@ const campaignMeta = {
   },
 };
 
+const CURRENCIES = [
+  { value: 'USD', label: '$ USD' },
+  { value: 'INR', label: '₹ INR' },
+  { value: 'EUR', label: '€ EUR' },
+  { value: 'GBP', label: '£ GBP' },
+  { value: 'AED', label: 'AED' },
+  { value: 'AUD', label: 'A$ AUD' },
+  { value: 'CAD', label: 'C$ CAD' },
+  { value: 'SGD', label: 'S$ SGD' },
+  { value: 'FREE', label: 'Free' },
+]
+
+function PriceCurrencyField({ currency, amount, onCurrencyChange, onAmountChange, inputStyle }) {
+  const [open, setOpen] = React.useState(false)
+  const ref = React.useRef(null)
+  const selected = CURRENCIES.find(c => c.value === currency) || CURRENCIES[0]
+  const isFree = currency === 'FREE'
+
+  React.useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  return (
+    <div style={{ display: 'flex', gap: 8 }}>
+      <div ref={ref} style={{ position: 'relative', flexShrink: 0 }}>
+        <button
+          type="button"
+          onClick={() => setOpen(o => !o)}
+          style={{
+            ...inputStyle,
+            width: 'auto',
+            minWidth: 100,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 8,
+            padding: '12px 14px',
+            userSelect: 'none',
+          }}
+        >
+          <span>{selected.label}</span>
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ opacity: 0.5, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>
+            <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
+        {open && (
+          <div className="price-currency-dropdown" style={{
+            position: 'absolute', top: 'calc(100% + 4px)', left: 0, zIndex: 99999,
+            background: '#1c1a13', border: '1px solid rgba(255,255,255,0.12)',
+            borderRadius: 12, overflow: 'hidden', minWidth: 130,
+            boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
+          }}>
+            {CURRENCIES.map(c => (
+              <div
+                key={c.value}
+                onClick={() => { onCurrencyChange(c.value); setOpen(false) }}
+                style={{
+                  padding: '10px 16px', fontSize: 14, fontWeight: 500,
+                  color: c.value === currency ? '#f97316' : '#f0ebe0',
+                  background: c.value === currency ? 'rgba(249,115,22,0.1)' : 'transparent',
+                  cursor: 'pointer', transition: 'background 0.12s',
+                  borderBottom: '1px solid rgba(255,255,255,0.05)',
+                }}
+                onMouseEnter={e => { if (c.value !== currency) e.currentTarget.style.background = 'rgba(255,255,255,0.05)' }}
+                onMouseLeave={e => { if (c.value !== currency) e.currentTarget.style.background = 'transparent' }}
+              >
+                {c.label}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      <input
+        value={isFree ? '' : amount}
+        onChange={e => onAmountChange(e.target.value)}
+        placeholder={isFree ? 'Free' : 'Enter amount'}
+        disabled={isFree}
+        style={{ ...inputStyle, flex: 1, opacity: isFree ? 0.4 : 1 }}
+      />
+    </div>
+  )
+}
+
 // â"€â"€â"€ Main CampaignForm component â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 export default function CampaignForm() {
   const { type } = useParams();
   const navigate  = useNavigate();
   const location  = useLocation();
   const backPath  = location.state?.from;
+  const prefill   = location.state?.prefill || null;
   const { user: authUser } = useAuth();
   // Free-trial users have no membership type ID. Show the social-connect panel
   // only for paid Package A members — leave the free-trial flow untouched.
@@ -1460,7 +1547,7 @@ export default function CampaignForm() {
 
   const [form, setForm] = useState({
     name: "",
-    description: "",
+    description: prefill?.description || "",
     imageFile: null,
     imagePreview: null,
     date: "",
@@ -1468,14 +1555,14 @@ export default function CampaignForm() {
     location: "",
     eventLocations: [],
     eventUrl: "",
-    website: "",
+    website: prefill?.website || "",
     price: "",
-    targetAudience: [],
+    targetAudience: Array.isArray(prefill?.targetAudience) ? prefill.targetAudience : [],
     goal: "",
-    goalType: "",
+    goalType: prefill?.goalType || "",
     endDate: "",
     eventUrlMode: "manual",
-    brandName: "",
+    brandName: prefill?.brandName || "",
     contactName: "",
     contactEmail: "",
     contactPhone: "",
@@ -1487,16 +1574,17 @@ export default function CampaignForm() {
     emailRecipients: "",
     // New fields for extended CMO types
     competitorUrl: "",
-    industry: "",
+    industry: prefill?.industry || "",
     budget: "",
     keywords: "",
     reportPeriod: "",
     funnelStage: "",
-    toneOfVoice: "",
+    toneOfVoice: prefill?.toneOfVoice || "",
     socialPlatforms: [],
     contentTypes: [],
     postingFrequency: "",
   });
+  const [kbLoaded, setKbLoaded] = useState(false);
   const [connectedAccounts, setConnectedAccounts] = useState({});
   const [audienceOpen, setAudienceOpen] = useState(false);
   const [locationOpen, setLocationOpen] = useState(false);
@@ -1604,6 +1692,78 @@ export default function CampaignForm() {
   ];
 
   const set = (key, val) => setForm((p) => ({ ...p, [key]: val }));
+
+  // ── Brand KB auto-fill ──────────────────────────────────────
+  const CF_INDUSTRY_MAP = {
+    digital_marketing: 'Marketing & Advertising', tech_saas: 'Technology / SaaS',
+    ecommerce: 'E-commerce / Retail', fashion: 'Fashion & Apparel',
+    food_beverage: 'Food & Beverage', health_wellness: 'Healthcare / Wellness',
+    finance_fintech: 'Finance / Fintech', education: 'Education / EdTech',
+    real_estate: 'Real Estate', media_entertainment: 'Media & Entertainment',
+    hospitality: 'Travel & Hospitality', beauty: 'Fashion & Apparel',
+    automotive: 'Manufacturing', ngo_nonprofit: 'Non-profit / NGO',
+    agency: 'Marketing & Advertising',
+  }
+  const CF_GEO_MAP = {
+    india_tier1: 'India', india_tier1_2: 'India', india_all: 'India',
+    uae: 'Middle East', middle_east: 'Middle East', southeast_asia: 'Southeast Asia',
+    usa: 'United States', europe: 'Europe', uk: 'United Kingdom',
+    australia: 'Australia / New Zealand', global: 'Global',
+  }
+  const CF_BUDGET_MAP = {
+    under_1k: 'Under ₹50,000 / $500', '1k_5k': '₹2L–₹5L / $2,000–$5,000',
+    '5k_15k': '₹5L–₹15L / $5,000–$15,000', '15k_50k': '₹15L–₹50L / $15,000–$50,000',
+    above_50k: 'Above ₹50L / $50,000+',
+  }
+
+  // For email drip, only email platform is relevant
+  useEffect(() => {
+    if (type === 'email_drip') set('platforms', ['email'])
+  }, [type])
+
+  useEffect(() => {
+    if (!authUser?.uid) return
+    getKnowledgeBase(authUser.uid).then(kb => {
+      if (!kb) return
+      setForm(prev => {
+        const updated = { ...prev }
+        // For product campaigns, don't pre-fill name — user must enter the specific product
+        if (!prev.name && kb.companyName && type !== 'product') updated.name = kb.companyName
+        if (!prev.brandName && kb.companyName)          updated.brandName = kb.companyName
+        if (!prev.website   && kb.website)              updated.website = kb.website
+        if (!prev.industry  && kb.industry)             updated.industry = CF_INDUSTRY_MAP[kb.industry] || ''
+        if (!prev.location  && kb.geographicFocus)      updated.location = CF_GEO_MAP[kb.geographicFocus] || ''
+        if (!prev.budget    && kb.marketingBudget)      updated.budget = CF_BUDGET_MAP[kb.marketingBudget] || ''
+        if (!prev.toneOfVoice && kb.toneOfVoice)        updated.toneOfVoice = kb.toneOfVoice
+        if (!prev.description && kb.productService) {
+          const goals = (kb.primaryObjectives || []).join(', ')
+          updated.description = kb.productService + (goals ? `. Goals: ${goals}` : '')
+        }
+        if (prev.targetAudience.length === 0 && kb.audienceType) {
+          const aud = []
+          if (kb.audienceType === 'b2b') aud.push('Professionals / B2B')
+          else if (kb.audienceType === 'b2c') aud.push('Millennials (25-40)')
+          else if (kb.audienceType === 'd2c') aud.push('Millennials (25-40)')
+          if (aud.length) updated.targetAudience = aud
+        }
+        if (!prev.goalType && kb.primaryObjectives?.length) {
+          const GOAL_MAP = {
+            brand_awareness: 'Increase Brand Awareness',
+            lead_generation: 'Generate Leads',
+            sales_conversion: 'Drive Sales / Conversions',
+            community_growth: 'Grow Community / Following',
+            product_launch: 'Launch New Product / Event',
+            website_traffic: 'Boost Website Traffic',
+          }
+          updated.goalType = GOAL_MAP[kb.primaryObjectives[0]] || 'Drive Sales / Conversions'
+        } else if (!prev.goalType) {
+          updated.goalType = 'Drive Sales / Conversions'
+        }
+        return updated
+      })
+      setKbLoaded(true)
+    }).catch(() => {})
+  }, [authUser?.uid])
 
   const handleImageFile = (file) => {
     if (!file) return;
@@ -1723,9 +1883,10 @@ export default function CampaignForm() {
     setSubmitError("");
     const needsBrandName = ["product", "brand", "brand_strategy"].includes(type);
     if (!form.name.trim()) return setSubmitError("Please enter a name.");
+    if (!form.description.trim()) return setSubmitError("Please enter a description.");
     if (!form.goal.trim() && !form.goalType && type !== "ads_creation" && type !== "ads_manager" && type !== "target_audience") return setSubmitError("Please select or describe a campaign goal.");
     if (needsBrandName && !form.brandName.trim()) return setSubmitError("Please enter a brand name.");
-    if (form.targetAudience.length === 0 && type !== "analytics_report" && type !== "competitive_intel") return setSubmitError("Please select at least one target audience.");
+    if (form.targetAudience.length === 0) return setSubmitError("Please select at least one target audience.");
 
     setLoading(true);
     setLoadingPhase("generating");
@@ -1768,15 +1929,22 @@ export default function CampaignForm() {
       }
       const combinedGoal = [form.goalType, form.goal].filter(Boolean).join(' — ');
       let campaignData;
-      for (let attempt = 1; attempt <= 2; attempt++) {
+      for (let attempt = 1; attempt <= 3; attempt++) {
         try {
           campaignData = await generateCampaignContent({ ...form, goal: combinedGoal || form.goal }, type, form.campaignDays);
           break;
         } catch (err) {
-          if (attempt < 2 && (err.message?.includes("parse") || err.message?.includes("JSON") || err.message?.includes("returned no JSON"))) {
-            console.warn(`[CampaignForm] Attempt ${attempt} failed, retrying in 2s…`, err.message);
-            setLoadingPhase("generating");
-            await new Promise(r => setTimeout(r, 2000));
+          const isRateLimit = err.message?.includes("rate limit") || err.message?.includes("429")
+          const isParseErr  = err.message?.includes("parse") || err.message?.includes("JSON") || err.message?.includes("returned no JSON")
+          if (attempt < 3 && isRateLimit) {
+            setSubmitError(`Rate limit hit — retrying in 15 seconds… (attempt ${attempt}/3)`)
+            await new Promise(r => setTimeout(r, 15000))
+            setSubmitError('')
+            setLoadingPhase("generating")
+          } else if (attempt < 3 && isParseErr) {
+            console.warn(`[CampaignForm] Attempt ${attempt} failed, retrying in 2s…`, err.message)
+            setLoadingPhase("generating")
+            await new Promise(r => setTimeout(r, 2000))
           } else {
             throw err;
           }
@@ -2181,7 +2349,112 @@ export default function CampaignForm() {
           </p>
         </motion.div>
 
-        <motion.div
+        {/* ── Social Accounts connect panel — Package A agents only ── */}
+        {fromPackageA && (() => {
+          const ICONS = {
+            instagram: (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <defs><linearGradient id="cfIg" x1="0" y1="24" x2="24" y2="0">
+                  <stop offset="0%" stopColor="#f58529"/><stop offset="50%" stopColor="#dd2a7b"/><stop offset="100%" stopColor="#8134af"/>
+                </linearGradient></defs>
+                <rect x="2" y="2" width="20" height="20" rx="6" stroke="url(#cfIg)" strokeWidth="2" fill="none"/>
+                <circle cx="12" cy="12" r="4" stroke="url(#cfIg)" strokeWidth="2" fill="none"/>
+                <circle cx="17.5" cy="6.5" r="1.2" fill="#dd2a7b"/>
+              </svg>
+            ),
+            facebook: (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="#1877f2"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+            ),
+            linkedin: (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="#0a66c2"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+            ),
+            whatsapp: (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="#25d366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
+            ),
+            gmail: (
+              <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#4caf50" d="M45 16.2l-5 2.75-5 4.75L35 40h7c1.657 0 3-1.343 3-3V16.2z"/><path fill="#1e88e5" d="M3 16.2l3.614 1.71L13 23.7V40H6c-1.657 0-3-1.343-3-3V16.2z"/><polygon fill="#e53935" points="35,11.2 24,19.45 13,11.2 12,17 13,23.7 24,31.95 35,23.7 36,17"/><path fill="#c62828" d="M3 12.298V16.2l10 7.5V11.2L9.876 8.859C9.132 8.301 8.228 8 7.298 8 4.924 8 3 9.924 3 12.298z"/><path fill="#fbc02d" d="M45 12.298V16.2l-10 7.5V11.2l3.124-2.341C38.868 8.301 39.772 8 40.702 8 43.076 8 45 9.924 45 12.298z"/></svg>
+            ),
+            tiktok: (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="#ffffff"><path d="M16.6 5.82c-1.01-.66-1.74-1.7-1.97-2.91-.05-.26-.08-.53-.08-.81h-3.45v13.36c0 1.63-1.32 2.96-2.96 2.96-.49 0-.95-.12-1.36-.33-.93-.48-1.57-1.45-1.57-2.58 0-1.6 1.3-2.9 2.9-2.9.31 0 .6.05.88.14V9.4a6.4 6.4 0 0 0-.88-.06A6.36 6.36 0 0 0 1.75 15.7a6.36 6.36 0 0 0 6.36 6.36 6.36 6.36 0 0 0 6.36-6.36V8.58a8.18 8.18 0 0 0 4.77 1.52V6.65c-.94 0-1.86-.3-2.64-.83z"/></svg>
+            ),
+          }
+          const SOCIALS = [
+            { key: 'instagram', label: 'Instagram', color: '#dd2a7b' },
+            { key: 'facebook',  label: 'Facebook',  color: '#1877f2' },
+            { key: 'linkedin',  label: 'LinkedIn',  color: '#0a66c2' },
+            { key: 'tiktok',    label: 'TikTok',    color: '#69c9d0' },
+            { key: 'whatsapp',  label: 'WhatsApp',  color: '#25d366', alwaysOn: true },
+            { key: 'gmail',     label: 'Gmail',     color: '#ea4335' },
+          ]
+          const connectedCount = SOCIALS.filter(p => p.alwaysOn || connectedAccounts[p.key]?.connected).length
+          const goConnect = () => navigate('/connect-accounts', { state: { from: backPath } })
+          return (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05 }}
+              style={{ ...s.card, padding: "22px 24px", marginBottom: "20px" }}
+            >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 10 }}>
+                <div>
+                  <p style={{ ...s.sectionTitle, marginBottom: 4 }}>Social Accounts</p>
+                  <p style={{ fontSize: 12, color: "rgba(255,255,255,0.45)" }}>
+                    {connectedCount} of {SOCIALS.length} connected · we'll auto-post to these when you generate
+                  </p>
+                </div>
+                <button
+                  onClick={goConnect}
+                  style={{ fontSize: 12, fontWeight: 700, color: meta.color, background: `${meta.color}15`, border: `1px solid ${meta.color}35`, borderRadius: 9, padding: "7px 14px", cursor: "pointer", fontFamily: FONT }}
+                >
+                  Manage
+                </button>
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                {SOCIALS.map(p => {
+                  const isConnected = p.alwaysOn || connectedAccounts[p.key]?.connected
+                  const acct = connectedAccounts[p.key]
+                  const label = acct?.name || acct?.pageName || acct?.username || acct?.email
+                  // Whole card is clickable: connected → Manage, unconnected → Connect
+                  return (
+                    <div
+                      key={p.key}
+                      onClick={goConnect}
+                      title={isConnected ? `Manage ${p.label}` : `Connect ${p.label}`}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 11, padding: "11px 14px",
+                        background: isConnected ? `${p.color}12` : "rgba(255,255,255,0.03)",
+                        border: `1px solid ${isConnected ? p.color + "40" : "rgba(255,255,255,0.1)"}`,
+                        borderRadius: 12, minWidth: 168, flex: "1 1 168px", cursor: "pointer",
+                        transition: "all 0.15s",
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = p.color; e.currentTarget.style.background = `${p.color}1a` }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = isConnected ? p.color + "40" : "rgba(255,255,255,0.1)"; e.currentTarget.style.background = isConnected ? `${p.color}12` : "rgba(255,255,255,0.03)" }}
+                    >
+                      <div style={{ flexShrink: 0, width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", opacity: isConnected ? 1 : 0.55 }}>
+                        {ICONS[p.key]}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>{p.label}</div>
+                        <div style={{ fontSize: 10, color: isConnected ? "#10b981" : "rgba(255,255,255,0.35)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 600 }}>
+                          {p.alwaysOn ? "Always on ✓" : isConnected ? (label ? label : "Connected ✓") : "Not connected"}
+                        </div>
+                      </div>
+                      {isConnected ? (
+                        <span style={{ width: 9, height: 9, borderRadius: "50%", background: "#10b981", flexShrink: 0, boxShadow: "0 0 6px #10b981" }} />
+                      ) : (
+                        <span style={{ fontSize: 11, fontWeight: 700, color: p.color, background: `${p.color}15`, border: `1px solid ${p.color}35`, borderRadius: 7, padding: "5px 11px", flexShrink: 0 }}>
+                          Connect
+                        </span>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </motion.div>
+          )
+        })()}
+
+<motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
@@ -2199,12 +2472,22 @@ export default function CampaignForm() {
             style={s.input}
           />
 
+          <label style={s.label}>
+            {descLabel} <span style={s.req}>*</span>
+          </label>
+          <textarea
+            value={form.description}
+            onChange={(e) => set("description", e.target.value)}
+            placeholder="Describe in detail..."
+            style={s.textarea}
+          />
+
           {/* â"€â"€ Type-specific extra fields â"€â"€ */}
           {type === "ads_creation" && (
             <>
               <label style={s.label}>Ad Budget <span style={s.req}>*</span></label>
               <select value={form.budget || ""} onChange={(e) => set("budget", e.target.value)} style={{ ...s.input, cursor: "pointer", colorScheme: "dark" }}>
-                {["","Under $50","$50–$200","$200–$500","$500–$1,500","$1,500–$5,000","Above $5,000"].map(v => (
+                {["","Under ₹5,000 / $50","₹5,000–₹20,000 / $50–$200","₹20,000–₹50,000 / $200–$500","₹50,000–₹1.5L / $500–$1,500","₹1.5L–₹5L / $1,500–$5,000","Above ₹5L / $5,000+"].map(v => (
                   <option key={v} value={v} style={{ background: "#1c1a13", color: v ? "#f0ebe0" : "rgba(240,235,224,0.4)" }}>{v || "Select ad budget..."}</option>
                 ))}
               </select>
@@ -2279,28 +2562,10 @@ export default function CampaignForm() {
 
           {type === "competitive_intel" && (
             <>
-              <label style={s.label}>Competitor Name(s) <span style={s.req}>*</span></label>
-              <input value={form.competitorName || ""} onChange={(e) => set("competitorName", e.target.value)} placeholder="e.g. HubSpot, Salesforce, Mailchimp" style={s.input} />
-
               <label style={s.label}>Competitor Website URL</label>
               <input value={form.competitorUrl} onChange={(e) => set("competitorUrl", e.target.value)} placeholder="https://competitor.com" style={s.input} />
-
               <label style={s.label}>Industry / Niche <span style={s.req}>*</span></label>
               <input value={form.industry} onChange={(e) => set("industry", e.target.value)} placeholder="e.g. SaaS, E-commerce, Events" style={s.input} />
-
-              <label style={s.label}>Your Unique Value vs Competitor</label>
-              <textarea value={form.uniqueValue || ""} onChange={(e) => set("uniqueValue", e.target.value)} placeholder="e.g. We offer 3x faster onboarding and lower pricing than competitors..." rows={2} style={{ ...s.input, resize: "vertical", minHeight: 70 }} />
-
-              <label style={s.label}>Aspects to Analyse <span style={s.req}>*</span></label>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                {["Pricing & Packaging","Product Features","Marketing & Messaging","Social Media Presence","SEO & Content","Paid Advertising","Customer Reviews","Brand Positioning"].map((aspect) => {
-                  const sel = (form.intelAspects || []).includes(aspect);
-                  return (
-                    <button key={aspect} type="button" onClick={() => { const cur = form.intelAspects || []; set("intelAspects", sel ? cur.filter(a => a !== aspect) : [...cur, aspect]); }}
-                      style={{ padding: "8px 14px", borderRadius: 10, cursor: "pointer", fontSize: 12, fontWeight: 600, fontFamily: "inherit", background: sel ? "rgba(245,158,11,0.14)" : "rgba(255,255,255,0.04)", border: `1.5px solid ${sel ? "#f59e0b" : "rgba(255,255,255,0.12)"}`, color: sel ? "#f59e0b" : "rgba(255,255,255,0.55)", transition: "all 0.15s" }}>{aspect}</button>
-                  );
-                })}
-              </div>
             </>
           )}
 
@@ -2384,7 +2649,7 @@ export default function CampaignForm() {
                 <>
                   <label style={s.label}>Monthly Budget (optional)</label>
                   <select value={form.budget || ""} onChange={(e) => set("budget", e.target.value)} style={{ ...s.input, cursor: "pointer", colorScheme: "dark" }}>
-                    {["","Under $500","$500–$2,000","$2,000–$5,000","$5,000–$15,000","$15,000–$50,000","Above $50,000"].map((v) => (
+                    {["","Under ₹50,000 / $500","₹50,000–₹2L / $500–$2,000","₹2L–₹5L / $2,000–$5,000","₹5L–₹15L / $5,000–$15,000","₹15L–₹50L / $15,000–$50,000","Above ₹50L / $50,000+"].map((v) => (
                       <option key={v} value={v} style={{ background: "#1c1a13", color: v ? "#f0ebe0" : "rgba(240,235,224,0.4)" }}>{v || "Select budget range..."}</option>
                     ))}
                   </select>
@@ -2415,50 +2680,12 @@ export default function CampaignForm() {
                 ))}
               </select>
 
-              {type !== "analytics_report" && (
-                <>
-                  <label style={s.label}>Monthly Marketing Budget (optional)</label>
-                  <select value={form.budget || ""} onChange={(e) => set("budget", e.target.value)} style={{ ...s.input, cursor: "pointer", colorScheme: "dark" }}>
-                    {["","Under $500","$500–$2,000","$2,000–$5,000","$5,000–$15,000","$15,000–$50,000","Above $50,000"].map((v) => (
-                      <option key={v} value={v} style={{ background: "#1c1a13", color: v ? "#f0ebe0" : "rgba(240,235,224,0.4)" }}>{v || "Select budget range..."}</option>
-                    ))}
-                  </select>
-                </>
-              )}
-
-              {/* Analytics-specific extra fields */}
-              {type === "analytics_report" && (
-                <>
-                  <label style={s.label}>Channels to Analyse <span style={s.req}>*</span></label>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                    {["Social Media","Email Marketing","Paid Ads (Google/Meta)","SEO / Organic","Content / Blog","Influencer","All Channels"].map((ch) => {
-                      const sel = (form.analyseChannels || []).includes(ch);
-                      return (
-                        <button key={ch} type="button" onClick={() => { const cur = form.analyseChannels || []; set("analyseChannels", sel ? cur.filter(c => c !== ch) : [...cur, ch]); }}
-                          style={{ padding: "8px 14px", borderRadius: 10, cursor: "pointer", fontSize: 12, fontWeight: 600, fontFamily: "inherit", background: sel ? "rgba(249,115,22,0.14)" : "rgba(255,255,255,0.04)", border: `1.5px solid ${sel ? "#f97316" : "rgba(255,255,255,0.12)"}`, color: sel ? "#f97316" : "rgba(255,255,255,0.55)", transition: "all 0.15s" }}>{ch}</button>
-                      );
-                    })}
-                  </div>
-
-                  <label style={{ ...s.label, marginTop: 16 }}>Key Metrics to Focus On</label>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                    {["ROAS","CTR","Conversion Rate","Cost per Lead","Reach / Impressions","Engagement Rate","Revenue / Sales","Churn Rate"].map((m) => {
-                      const sel = (form.keyMetrics || []).includes(m);
-                      return (
-                        <button key={m} type="button" onClick={() => { const cur = form.keyMetrics || []; set("keyMetrics", sel ? cur.filter(c => c !== m) : [...cur, m]); }}
-                          style={{ padding: "8px 14px", borderRadius: 10, cursor: "pointer", fontSize: 12, fontWeight: 600, fontFamily: "inherit", background: sel ? "rgba(249,115,22,0.14)" : "rgba(255,255,255,0.04)", border: `1.5px solid ${sel ? "#f97316" : "rgba(255,255,255,0.12)"}`, color: sel ? "#f97316" : "rgba(255,255,255,0.55)", transition: "all 0.15s" }}>{m}</button>
-                      );
-                    })}
-                  </div>
-
-                  <label style={{ ...s.label, marginTop: 16 }}>Report Format</label>
-                  <select value={form.reportFormat || ""} onChange={(e) => set("reportFormat", e.target.value)} style={{ ...s.input, cursor: "pointer", colorScheme: "dark" }}>
-                    {["","Executive Summary (1-page)", "Detailed Report (full breakdown)","Board / Investor Presentation","Client-Facing Report","Internal Team Review"].map((v) => (
-                      <option key={v} value={v} style={{ background: "#1c1a13", color: v ? "#f0ebe0" : "rgba(240,235,224,0.4)" }}>{v || "Select report format..."}</option>
-                    ))}
-                  </select>
-                </>
-              )}
+              <label style={s.label}>Monthly Marketing Budget (optional)</label>
+              <select value={form.budget || ""} onChange={(e) => set("budget", e.target.value)} style={{ ...s.input, cursor: "pointer", colorScheme: "dark" }}>
+                {["","Under ₹50,000 / $500","₹50,000–₹2L / $500–$2,000","₹2L–₹5L / $2,000–$5,000","₹5L–₹15L / $5,000–$15,000","₹15L–₹50L / $15,000–$50,000","Above ₹50L / $50,000+"].map((v) => (
+                  <option key={v} value={v} style={{ background: "#1c1a13", color: v ? "#f0ebe0" : "rgba(240,235,224,0.4)" }}>{v || "Select budget range..."}</option>
+                ))}
+              </select>
             </>
           )}
 
@@ -2512,6 +2739,95 @@ export default function CampaignForm() {
             </>
           )}
 
+          {/* ── Social Platforms — Package A free agents (strategy / growth / content) ── */}
+          {(type === "growth_strategy" || type === "growth_agent" || type === "content_calendar") && (
+            <>
+              <label style={s.label}>
+                Social Platforms to Target
+                <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 12, fontWeight: 400 }}> (select your connected accounts)</span>
+              </label>
+              {(() => {
+                const PLAT_ICONS = {
+                  linkedin: <svg width="18" height="18" viewBox="0 0 24 24" fill="#0a66c2"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>,
+                  instagram: <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><defs><linearGradient id="cfSel" x1="0" y1="24" x2="24" y2="0"><stop offset="0%" stopColor="#f58529"/><stop offset="50%" stopColor="#dd2a7b"/><stop offset="100%" stopColor="#8134af"/></linearGradient></defs><rect x="2" y="2" width="20" height="20" rx="6" stroke="url(#cfSel)" strokeWidth="2" fill="none"/><circle cx="12" cy="12" r="4" stroke="url(#cfSel)" strokeWidth="2" fill="none"/><circle cx="17.5" cy="6.5" r="1.2" fill="#dd2a7b"/></svg>,
+                  facebook: <svg width="18" height="18" viewBox="0 0 24 24" fill="#1877f2"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>,
+                  whatsapp: <svg width="18" height="18" viewBox="0 0 24 24" fill="#25d366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884"/></svg>,
+                  gmail: <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#4caf50" d="M45 16.2l-5 2.75-5 4.75L35 40h7c1.657 0 3-1.343 3-3V16.2z"/><path fill="#1e88e5" d="M3 16.2l3.614 1.71L13 23.7V40H6c-1.657 0-3-1.343-3-3V16.2z"/><polygon fill="#e53935" points="35,11.2 24,19.45 13,11.2 12,17 13,23.7 24,31.95 35,23.7 36,17"/><path fill="#c62828" d="M3 12.298V16.2l10 7.5V11.2L9.876 8.859C9.132 8.301 8.228 8 7.298 8 4.924 8 3 9.924 3 12.298z"/><path fill="#fbc02d" d="M45 12.298V16.2l-10 7.5V11.2l3.124-2.341C38.868 8.301 39.772 8 40.702 8 43.076 8 45 9.924 45 12.298z"/></svg>,
+                  tiktok: <svg width="18" height="18" viewBox="0 0 24 24" fill="#ffffff"><path d="M16.6 5.82c-1.01-.66-1.74-1.7-1.97-2.91-.05-.26-.08-.53-.08-.81h-3.45v13.36c0 1.63-1.32 2.96-2.96 2.96-.49 0-.95-.12-1.36-.33-.93-.48-1.57-1.45-1.57-2.58 0-1.6 1.3-2.9 2.9-2.9.31 0 .6.05.88.14V9.4a6.4 6.4 0 0 0-.88-.06A6.36 6.36 0 0 0 1.75 15.7a6.36 6.36 0 0 0 6.36 6.36 6.36 6.36 0 0 0 6.36-6.36V8.58a8.18 8.18 0 0 0 4.77 1.52V6.65c-.94 0-1.86-.3-2.64-.83z"/></svg>,
+                }
+                const PLAT = [
+                  { key: 'linkedin',  label: 'LinkedIn',  color: '#0a66c2' },
+                  { key: 'instagram', label: 'Instagram', color: '#dd2a7b' },
+                  { key: 'facebook',  label: 'Facebook',  color: '#1877f2' },
+                  { key: 'tiktok',    label: 'TikTok',    color: '#000000' },
+                  { key: 'whatsapp',  label: 'WhatsApp',  color: '#25d366' },
+                  { key: 'gmail',     label: 'Gmail',     color: '#ea4335' },
+                ]
+                const connected = PLAT.filter(p => connectedAccounts[p.key]?.connected || p.key === 'whatsapp')
+                const unconnected = PLAT.filter(p => !connectedAccounts[p.key]?.connected && p.key !== 'whatsapp')
+                const toggle = (key) => {
+                  const cur = form.socialPlatforms || []
+                  set('socialPlatforms', cur.includes(key) ? cur.filter(k => k !== key) : [...cur, key])
+                }
+                return (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 8 }}>
+                    {connected.map(p => {
+                      const sel = (form.socialPlatforms || []).includes(p.key)
+                      return (
+                        <button key={p.key} type="button" onClick={() => toggle(p.key)} title={`${p.label} — connected`} style={{
+                          position: 'relative',
+                          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+                          width: 76, padding: '12px 6px 8px',
+                          background: sel ? `${p.color}20` : 'rgba(255,255,255,0.04)',
+                          border: `1.5px solid ${sel ? p.color : 'rgba(255,255,255,0.12)'}`,
+                          borderRadius: 14, cursor: 'pointer', transition: 'all 0.15s',
+                        }}>
+                          {/* selected check badge */}
+                          {sel && (
+                            <span style={{ position: 'absolute', top: -6, right: -6, width: 18, height: 18, borderRadius: '50%', background: p.color, border: '2px solid #1c1a13', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <Check size={10} color="#fff" strokeWidth={3} />
+                            </span>
+                          )}
+                          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            {PLAT_ICONS[p.key]}
+                            {/* green online dot */}
+                            <span style={{ position: 'absolute', bottom: -2, right: -5, width: 9, height: 9, borderRadius: '50%', background: '#10b981', border: '2px solid #1c1a13', boxShadow: '0 0 5px #10b981' }} />
+                          </div>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: sel ? p.color : 'rgba(255,255,255,0.75)' }}>{p.label}</span>
+                          <span style={{ fontSize: 9, fontWeight: 700, color: '#10b981', letterSpacing: '0.03em' }}>● Connected</span>
+                        </button>
+                      )
+                    })}
+                    {unconnected.map(p => (
+                      <button
+                        key={p.key}
+                        type="button"
+                        onClick={() => openConnectPopup(p.key)}
+                        title={`${p.label} — not connected, click to connect`}
+                        style={{
+                          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+                          width: 76, padding: '12px 6px 8px',
+                          background: 'rgba(255,255,255,0.02)',
+                          border: '1px dashed rgba(255,255,255,0.14)',
+                          borderRadius: 14, cursor: 'pointer', transition: 'all 0.15s',
+                        }}
+                      >
+                        <div style={{ filter: 'grayscale(1)', opacity: 0.45, display: 'flex' }}>
+                          {PLAT_ICONS[p.key]}
+                        </div>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.4)' }}>{p.label}</span>
+                        <span style={{ fontSize: 9, fontWeight: 700, color: '#f59e0b', letterSpacing: '0.03em' }}>+ Connect</span>
+                      </button>
+                    ))}
+                  </div>
+                )
+              })()}
+              <p style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginTop: -2, marginBottom: 4 }}>
+                Tap a connected platform to target it. Faded icons aren't connected yet.
+              </p>
+            </>
+          )}
+
           {type === "seo_blog" && (
             <>
               <label style={s.label}>Primary Keyword <span style={s.req}>*</span></label>
@@ -2537,59 +2853,6 @@ export default function CampaignForm() {
                 <option value="retention">Retention & Upsell</option>
                 <option value="full">Full Funnel Audit</option>
               </select>
-
-              <label style={s.label}>Current Conversion Rate <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 12, fontWeight: 400 }}>(optional)</span></label>
-              <input value={form.conversionRate || ""} onChange={(e) => set("conversionRate", e.target.value)} placeholder="e.g. 1.5% — or 'Not tracking yet'" style={s.input} />
-
-              <label style={s.label}>Monthly Website Traffic <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 12, fontWeight: 400 }}>(optional)</span></label>
-              <select value={form.monthlyTraffic || ""} onChange={(e) => set("monthlyTraffic", e.target.value)} style={{ ...s.input, cursor: "pointer", colorScheme: "dark" }}>
-                {["","Under 1,000","1,000 – 5,000","5,000 – 20,000","20,000 – 100,000","100,000 – 500,000","500,000+"].map((v) => (
-                  <option key={v} value={v} style={{ background: "#1c1a13", color: v ? "#f0ebe0" : "rgba(240,235,224,0.4)" }}>{v || "Select traffic range..."}</option>
-                ))}
-              </select>
-
-              <label style={s.label}>Biggest Drop-off Point</label>
-              <select value={form.dropOffPoint || ""} onChange={(e) => set("dropOffPoint", e.target.value)} style={{ ...s.input, cursor: "pointer", colorScheme: "dark" }}>
-                {["","Landing page (visitors bounce immediately)","Product/pricing page (no add to cart)","Checkout (cart abandonment)","Email sign-up form","Demo / booking page","Post-sign-up (low activation)","Not sure"].map((v) => (
-                  <option key={v} value={v} style={{ background: "#1c1a13", color: v ? "#f0ebe0" : "rgba(240,235,224,0.4)" }}>{v || "Select drop-off point..."}</option>
-                ))}
-              </select>
-            </>
-          )}
-
-          {type === "sales_enablement" && (
-            <>
-              <label style={s.label}>Sales Stage Being Targeted</label>
-              <select value={form.salesStage || ""} onChange={(e) => set("salesStage", e.target.value)} style={{ ...s.input, cursor: "pointer", colorScheme: "dark" }}>
-                {["","Prospecting / Awareness","Initial Outreach / Cold Contact","Discovery Call / Qualification","Proposal / Demo","Negotiation / Objection Handling","Closing","Post-Sale / Retention & Upsell"].map((v) => (
-                  <option key={v} value={v} style={{ background: "#1c1a13", color: v ? "#f0ebe0" : "rgba(240,235,224,0.4)" }}>{v || "Select sales stage..."}</option>
-                ))}
-              </select>
-
-              <label style={s.label}>Key Objections to Handle <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 12, fontWeight: 400 }}>(optional)</span></label>
-              <textarea value={form.salesObjections || ""} onChange={(e) => set("salesObjections", e.target.value)} placeholder="e.g. 'Too expensive', 'Already using a competitor', 'Not the right time'..." style={{ ...s.textarea, minHeight: "90px" }} />
-
-              <label style={s.label}>Average Deal / Contract Value <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 12, fontWeight: 400 }}>(optional)</span></label>
-              <select value={form.dealValue || ""} onChange={(e) => set("dealValue", e.target.value)} style={{ ...s.input, cursor: "pointer", colorScheme: "dark" }}>
-                {["","Under $500","$500 – $2,000","$2,000 – $10,000","$10,000 – $50,000","$50,000 – $200,000","$200,000+","Not sure"].map((v) => (
-                  <option key={v} value={v} style={{ background: "#1c1a13", color: v ? "#f0ebe0" : "rgba(240,235,224,0.4)" }}>{v || "Select deal value range..."}</option>
-                ))}
-              </select>
-
-              <label style={s.label}>Sales Collateral Needed</label>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                {["Sales Deck / Pitch Deck","One-Pager / Brochure","Case Studies","Battle Card (vs Competitors)","Email Sequences","Proposal Template","Demo Script","FAQ / Objection Handling Sheet"].map((opt) => {
-                  const active = (form.salesCollateral || []).includes(opt);
-                  return (
-                    <button key={opt} type="button" onClick={() => {
-                      const curr = form.salesCollateral || [];
-                      set("salesCollateral", active ? curr.filter(v => v !== opt) : [...curr, opt]);
-                    }} style={{ padding: "7px 14px", borderRadius: 20, fontSize: 12, fontWeight: 500, cursor: "pointer", fontFamily: "inherit", border: `1px solid ${active ? "#6366f1" : "rgba(255,255,255,0.15)"}`, background: active ? "rgba(99,102,241,0.18)" : "rgba(255,255,255,0.04)", color: active ? "#a5b4fc" : "rgba(255,255,255,0.6)", transition: "all 0.15s" }}>
-                      {opt}
-                    </button>
-                  );
-                })}
-              </div>
             </>
           )}
 
@@ -2949,73 +3212,6 @@ export default function CampaignForm() {
             </>
           )}
 
-          {/* ── ELEVATE-ONLY premium fields (event_full only) ── */}
-          {type === "event_full" && (
-            <>
-              {/* Divider */}
-              <div style={{ margin: "24px 0 20px", display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{ flex: 1, height: 1, background: "rgba(200,151,62,0.2)" }} />
-                <span style={{ fontSize: 11, fontWeight: 700, color: "#c8973e", letterSpacing: "0.12em", textTransform: "uppercase" }}>ELEVATE — Premium Details</span>
-                <div style={{ flex: 1, height: 1, background: "rgba(200,151,62,0.2)" }} />
-              </div>
-
-              {/* Venue */}
-              <label style={s.label}>Venue Name <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 12, fontWeight: 400 }}>(optional)</span></label>
-              <input value={form.venueName || ""} onChange={(e) => set("venueName", e.target.value)} placeholder="e.g. Dubai World Trade Centre, The Ritz-Carlton" style={s.input} />
-
-              {/* Expected Attendance */}
-              <label style={s.label}>Expected Attendance <span style={s.req}>*</span></label>
-              <select value={form.expectedAttendance || ""} onChange={(e) => set("expectedAttendance", e.target.value)} style={{ ...s.input, cursor: "pointer", colorScheme: "dark" }}>
-                {["", "Under 50", "50 – 200", "200 – 500", "500 – 1,000", "1,000 – 5,000", "5,000 – 20,000", "20,000+"].map((v) => (
-                  <option key={v} value={v} style={{ background: "#1c1a13", color: v ? "#f0ebe0" : "rgba(240,235,224,0.4)" }}>{v || "Select expected attendance..."}</option>
-                ))}
-              </select>
-
-              {/* Number of Days */}
-              <label style={s.label}>Event Duration</label>
-              <select value={form.eventDuration || ""} onChange={(e) => set("eventDuration", e.target.value)} style={{ ...s.input, cursor: "pointer", colorScheme: "dark" }}>
-                {["", "Half day (< 4 hrs)", "Full day (1 day)", "2 days", "3 days", "4 days", "5+ days", "Multi-week / Ongoing"].map((v) => (
-                  <option key={v} value={v} style={{ background: "#1c1a13", color: v ? "#f0ebe0" : "rgba(240,235,224,0.4)" }}>{v || "Select duration..."}</option>
-                ))}
-              </select>
-
-              {/* Ticket Type */}
-              <label style={s.label}>Ticket / Entry Type <span style={s.req}>*</span></label>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                {["Free Entry", "Paid — Single Tier", "Paid — Multi Tier (Early Bird / VIP)", "Invite Only", "Hybrid (Free + Paid VIP)"].map((v) => {
-                  const sel = form.ticketType === v;
-                  return (
-                    <button key={v} type="button" onClick={() => set("ticketType", sel ? "" : v)} style={{ padding: "8px 16px", borderRadius: 10, cursor: "pointer", fontSize: 12, fontWeight: 600, fontFamily: "inherit", background: sel ? "rgba(200,151,62,0.15)" : "rgba(255,255,255,0.04)", border: `1.5px solid ${sel ? "#c8973e" : "rgba(255,255,255,0.12)"}`, color: sel ? "#c8973e" : "rgba(255,255,255,0.55)", transition: "all 0.15s" }}>{v}</button>
-                  );
-                })}
-              </div>
-
-              {/* Speakers / Performers */}
-              <label style={{ ...s.label, marginTop: 16 }}>Speakers / Performers</label>
-              <select value={form.speakerCount || ""} onChange={(e) => set("speakerCount", e.target.value)} style={{ ...s.input, cursor: "pointer", colorScheme: "dark" }}>
-                {["", "None", "1 – 3", "4 – 10", "10 – 25", "25+", "Multiple stages / tracks"].map((v) => (
-                  <option key={v} value={v} style={{ background: "#1c1a13", color: v ? "#f0ebe0" : "rgba(240,235,224,0.4)" }}>{v || "Select number of speakers..."}</option>
-                ))}
-              </select>
-
-              {/* Sponsorship */}
-              <label style={s.label}>Sponsorship Packages</label>
-              <select value={form.sponsorshipTiers || ""} onChange={(e) => set("sponsorshipTiers", e.target.value)} style={{ ...s.input, cursor: "pointer", colorScheme: "dark" }}>
-                {["", "No sponsorship", "Presenting Sponsor only", "Gold / Silver / Bronze tiers", "Custom packages", "Community / Media partners only"].map((v) => (
-                  <option key={v} value={v} style={{ background: "#1c1a13", color: v ? "#f0ebe0" : "rgba(240,235,224,0.4)" }}>{v || "Select sponsorship model..."}</option>
-                ))}
-              </select>
-
-              {/* Post-event goal */}
-              <label style={s.label}>Post-Event Follow-Up Goal</label>
-              <select value={form.postEventGoal || ""} onChange={(e) => set("postEventGoal", e.target.value)} style={{ ...s.input, cursor: "pointer", colorScheme: "dark" }}>
-                {["", "Drive on-demand recording views", "Convert attendees to customers", "Build media & PR coverage", "Grow email / social following", "Collect testimonials & case studies", "Launch next event / series", "No specific post-event goal"].map((v) => (
-                  <option key={v} value={v} style={{ background: "#1c1a13", color: v ? "#f0ebe0" : "rgba(240,235,224,0.4)" }}>{v || "Select post-event goal..."}</option>
-                ))}
-              </select>
-            </>
-          )}
-
           {(type === "product" || type === "brand") && (
             <>
               <label style={s.label}>
@@ -3051,7 +3247,7 @@ export default function CampaignForm() {
             </>
           )}
 
-          {type !== "event" && type !== "growth_strategy" && type !== "growth_agent" && type !== "content_calendar" && type !== "ads_creation" && type !== "ads_manager" && type !== "target_audience" && type !== "email_drip" && type !== "influencer" && type !== "analytics_report" && type !== "competitive_intel" && type !== "funnel_cro" && type !== "sales_enablement" && !EXEC_TYPES.includes(type) && (
+          {type !== "event" && type !== "growth_strategy" && type !== "growth_agent" && type !== "content_calendar" && type !== "ads_creation" && type !== "ads_manager" && type !== "target_audience" && type !== "email_drip" && type !== "influencer" && type !== "analytics_report" && !EXEC_TYPES.includes(type) && (
             <>
               <label style={s.label}>
                 Price / Pricing Info{" "}
@@ -3065,21 +3261,20 @@ export default function CampaignForm() {
                   (optional)
                 </span>
               </label>
-              <input
-                value={form.price}
-                onChange={(e) => set("price", e.target.value)}
-                placeholder="e.g. Rs.1,999 / $29.99 / Free"
-                style={s.input}
+              <PriceCurrencyField
+                currency={form.priceCurrency || 'USD'}
+                amount={form.price}
+                onCurrencyChange={(v) => set('priceCurrency', v)}
+                onAmountChange={(v) => set('price', v)}
+                inputStyle={s.input}
               />
             </>
           )}
 
-          {type !== "analytics_report" && type !== "competitive_intel" && (
-          <label style={s.label}>
-            Target Audience <span style={s.req}>*</span>
+          <label style={{ ...s.label, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span>Target Audience <span style={s.req}>*</span></span>
+            {prefill?.targetAudience?.length > 0 && <span style={{ fontSize: 10, fontWeight: 700, color: '#c8973e', background: 'rgba(200,151,62,0.12)', border: '1px solid rgba(200,151,62,0.3)', borderRadius: 100, padding: '1px 7px', letterSpacing: '0.04em' }}>✓ Pre-filled</span>}
           </label>
-          )}
-          {type !== "analytics_report" && type !== "competitive_intel" && (
           <div ref={audienceRef} style={{ position: "relative" }}>
             <button
               onClick={() => setAudienceOpen((v) => !v)}
@@ -3160,51 +3355,57 @@ export default function CampaignForm() {
               )}
             </AnimatePresence>
           </div>
-          )}
 
           {type !== "ads_creation" && type !== "ads_manager" && type !== "target_audience" && (
             <>
-              <label style={s.label}>
-                {type === "competitive_intel" ? "Intel Objective"
-                  : type === "analytics_report" ? "Report Purpose"
-                  : type === "funnel_cro" ? "Optimization Goal"
-                  : type === "sales_enablement" ? "Sales Goal"
-                  : "Campaign Goal"}{" "}
-                <span style={s.req}>*</span>
+              <label style={{ ...s.label, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span>Campaign Goal <span style={s.req}>*</span></span>
+                {prefill?.goalType && <span style={{ fontSize: 10, fontWeight: 700, color: '#c8973e', background: 'rgba(200,151,62,0.12)', border: '1px solid rgba(200,151,62,0.3)', borderRadius: 100, padding: '1px 7px', letterSpacing: '0.04em' }}>✓ Pre-filled</span>}
               </label>
               <select
                 value={form.goalType}
                 onChange={(e) => set("goalType", e.target.value)}
                 style={{ ...s.input, cursor: "pointer", colorScheme: "dark", marginBottom: "8px" }}
               >
-                {(type === "competitive_intel"
-                  ? ["", "Identify Competitor Weaknesses", "Benchmark Pricing Strategy", "Analyse Competitor Content", "Track Market Positioning", "Find Untapped Market Gaps", "Improve Our Value Proposition", "Other"]
-                  : type === "analytics_report"
-                  ? ["", "Monthly Performance Review", "Quarterly Business Review (QBR)", "Campaign Post-Mortem", "Channel ROI Analysis", "Executive Summary Report", "Annual Marketing Audit", "Custom Period Report", "Other"]
-                  : type === "funnel_cro"
-                  ? ["", "Increase Landing Page Conversion Rate", "Reduce Cart Abandonment", "Improve Email Click-Through", "Optimise Lead Magnet Sign-ups", "Boost Demo / Trial Requests", "Lower Cost Per Acquisition", "Other"]
-                  : type === "sales_enablement"
-                  ? ["", "Shorten Sales Cycle", "Improve Lead-to-Close Rate", "Equip Team with Sales Collateral", "Handle Common Objections", "Increase Average Deal Value", "Expand Into New Market Segment", "Other"]
-                  : ["", type === "event" || type === "event_full" ? "Drive Event Registrations / Attendance" : null, "Increase Brand Awareness", "Generate Leads", "Drive Sales / Conversions", "Grow Community / Following", "Build Brand Authority", "Launch New Product / Event", "Re-engage Existing Customers", "Boost Website Traffic", "Other"].filter(v => v !== null)
-                ).map((v) => (
+                {(type === "email_drip" ? [
+                  "", "Drive Sales / Conversions", "Generate Leads",
+                  "Re-engage Existing Customers", "Onboard New Users",
+                  "Build Brand Authority", "Promote an Event",
+                  "Upsell / Cross-sell", "Other",
+                ] : [
+                  "",
+                  type === "event" || type === "event_full" ? "Drive Event Registrations / Attendance" : null,
+                  "Increase Brand Awareness",
+                  "Generate Leads",
+                  "Drive Sales / Conversions",
+                  "Grow Community / Following",
+                  "Build Brand Authority",
+                  "Launch New Product / Event",
+                  "Re-engage Existing Customers",
+                  "Boost Website Traffic",
+                  "Other",
+                ].filter(v => v !== null)).map((v) => (
                   <option key={v} value={v} style={{ background: "#1c1a13", color: v ? "#f0ebe0" : "rgba(240,235,224,0.4)" }}>
-                    {v || `Select ${type === "competitive_intel" ? "intel objective" : type === "analytics_report" ? "report purpose" : type === "funnel_cro" ? "optimization goal" : type === "sales_enablement" ? "sales goal" : "campaign goal"}...`}
+                    {v || "Select campaign goal..."}
                   </option>
                 ))}
               </select>
-              <textarea
-                value={form.goal}
-                onChange={(e) => set("goal", e.target.value)}
-                placeholder="Describe your goal in more detail... (optional)"
-                style={{ ...s.textarea, minHeight: "80px" }}
-              />
+              {type !== 'product' && (
+                <textarea
+                  value={form.goal}
+                  onChange={(e) => set("goal", e.target.value)}
+                  placeholder="Describe your goal in more detail... (optional)"
+                  style={{ ...s.textarea, minHeight: "80px" }}
+                />
+              )}
             </>
           )}
 
-          {type !== "event" && type !== "growth_strategy" && type !== "growth_agent" && type !== "content_calendar" && (
+          {type !== "event" && type !== "growth_strategy" && type !== "growth_agent" && type !== "content_calendar" && type !== "product" && (
             <>
-              <label style={s.label}>
-                Brand Name <span style={s.req}>*</span>
+              <label style={{ ...s.label, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span>Brand Name <span style={s.req}>*</span></span>
+                {prefill?.brandName && <span style={{ fontSize: 10, fontWeight: 700, color: '#c8973e', background: 'rgba(200,151,62,0.12)', border: '1px solid rgba(200,151,62,0.3)', borderRadius: 100, padding: '1px 7px', letterSpacing: '0.04em' }}>✓ Pre-filled</span>}
               </label>
               <input
                 value={form.brandName}
@@ -3212,6 +3413,45 @@ export default function CampaignForm() {
                 placeholder="Your brand or company name"
                 style={s.input}
               />
+            </>
+          )}
+
+          {/* ── Email Drip: sequence type + email count ── */}
+          {type === "email_drip" && (
+            <>
+              <label style={s.label}>Email Sequence Type <span style={s.req}>*</span></label>
+              <select
+                value={form.funnelStage || ""}
+                onChange={(e) => set("funnelStage", e.target.value)}
+                style={{ ...s.input, cursor: "pointer", colorScheme: "dark" }}
+              >
+                {[
+                  "", "Onboarding / Welcome Series", "Lead Nurturing",
+                  "Sales / Conversion", "Re-engagement",
+                  "Post-Purchase / Upsell", "Cart Abandonment Recovery",
+                  "Educational / Drip Content", "Event Promotion",
+                ].map((v) => (
+                  <option key={v} value={v} style={{ background: "#1c1a13", color: v ? "#f0ebe0" : "rgba(240,235,224,0.4)" }}>
+                    {v || "Select sequence type..."}
+                  </option>
+                ))}
+              </select>
+
+              <label style={s.label}>Number of Emails</label>
+              <select
+                value={form.campaignDays || 5}
+                onChange={(e) => set("campaignDays", parseInt(e.target.value))}
+                style={{ ...s.input, cursor: "pointer", colorScheme: "dark" }}
+              >
+                {[
+                  { v: 3, l: "3 Emails" },
+                  { v: 5, l: "5 Emails (Recommended)" },
+                  { v: 7, l: "7 Emails" },
+                  { v: 10, l: "10 Emails" },
+                ].map(({ v, l }) => (
+                  <option key={v} value={v} style={{ background: "#1c1a13", color: "#f0ebe0" }}>{l}</option>
+                ))}
+              </select>
             </>
           )}
 
@@ -3418,7 +3658,7 @@ export default function CampaignForm() {
 
 
           {/* Publishing Settings — hidden for strategy/growth/calendar, all executive/CMO module types, and Package C ad types */}
-          {type !== "growth_strategy" && type !== "growth_agent" && type !== "content_calendar" && type !== "ads_creation" && type !== "ads_manager" && type !== "target_audience" && !EXEC_TYPES.includes(type) && (
+          {type !== "growth_strategy" && type !== "growth_agent" && type !== "content_calendar" && type !== "ads_creation" && type !== "ads_manager" && type !== "target_audience" && type !== "email_drip" && !EXEC_TYPES.includes(type) && (
             <>
           <div style={s.divider} />
           <p style={s.sectionTitle}>Publishing Settings</p>

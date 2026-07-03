@@ -9,11 +9,12 @@ import {
 
 const getProfileServer = () => null;
 
-// localhost only — never runs on Vercel/production
-const isLocalhost = typeof window !== "undefined" &&
-  (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+const isLocalhost =
+  typeof window !== "undefined" &&
+  (window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1");
 
-const DEV_USER = isLocalhost
+const DEV_PROFILE = isLocalhost
   ? {
       email: "vasanthchowadry35@gmail.com",
       firstName: "Vasanth",
@@ -34,11 +35,6 @@ export function useEvokeSession() {
   );
   const [bootstrapTried, setBootstrapTried] = useState(false);
 
-  // Skip real auth on localhost
-  if (DEV_USER) {
-    return { profile: DEV_USER, status: "authenticated" };
-  }
-
   useEffect(() => {
     if (bootstrapTried) return;
     let cancelled = false;
@@ -58,11 +54,13 @@ export function useEvokeSession() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bootstrapTried]);
 
-  const status = profile
+  const effectiveProfile = profile ?? (bootstrapTried ? DEV_PROFILE : null);
+
+  const status = effectiveProfile
     ? "authenticated"
     : bootstrapTried
       ? "unauthenticated"
       : "loading";
 
-  return { profile, status };
+  return { profile: effectiveProfile, status };
 }

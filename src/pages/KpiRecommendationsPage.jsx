@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -7,6 +7,8 @@ import {
   Instagram, Linkedin, Facebook, Hash, Youtube, Twitter,
 } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
+import { useAuth } from '../hooks/useAuth'
+import { getKnowledgeBase } from '../services/knowledgeBaseService.js'
 
 /* ── brand palette ─────────────────────────────────────── */
 const BG    = '#0e0c09'
@@ -228,8 +230,50 @@ function exportCSV(data, formData) {
 /* ══════════════════════════════════════════════════════════
    COMPONENT
 ══════════════════════════════════════════════════════════ */
+const KB_INDUSTRY_KPI = {
+  digital_marketing: 'Marketing & Advertising Agency',
+  tech_saas: 'SaaS / Software',
+  ecommerce: 'E-commerce / Retail',
+  fashion: 'Fashion & Apparel',
+  food_beverage: 'Food & Beverage',
+  health_wellness: 'Health & Wellness / Fitness',
+  finance_fintech: 'Finance & Fintech',
+  education: 'Education & Online Courses',
+  real_estate: 'Real Estate',
+  media_entertainment: 'Entertainment & Media',
+  beauty: 'Beauty & Skincare',
+  hospitality: 'Travel & Hospitality',
+  automotive: 'Automotive',
+  agency: 'Marketing & Advertising Agency',
+}
+
+const KB_OBJECTIVE_GOAL = {
+  increase_revenue: 'Sales / Conversions',
+  generate_leads: 'Lead Generation',
+  brand_awareness: 'Brand Awareness',
+  launch_product: 'Product Launch',
+  grow_social: 'Community Growth',
+  retain_customers: 'Customer Retention',
+}
+
+const KB_BUDGET_KPI = {
+  under_1k: 'Under $500/month',
+  '1k_5k': '$1,000 – $3,000/month',
+  '5k_15k': '$5,000 – $10,000/month',
+  '15k_50k': '$10,000+/month',
+  above_50k: '$10,000+/month',
+}
+
+const KB_CHANNEL_PLATFORM = {
+  social_organic: ['instagram', 'facebook'],
+  paid_social: ['instagram', 'facebook'],
+  influencer: ['instagram', 'tiktok'],
+  video: ['youtube', 'tiktok'],
+}
+
 export default function KpiRecommendationsPage() {
   const navigate = useNavigate()
+  const { user } = useAuth()
 
   /* form state */
   const [brandName,  setBrandName]  = useState('')
@@ -238,6 +282,29 @@ export default function KpiRecommendationsPage() {
   const [platforms,  setPlatforms]  = useState([])
   const [industry,   setIndustry]   = useState('')
   const [audience,   setAudience]   = useState('')
+
+  useEffect(() => {
+    if (!user?.uid) return
+    getKnowledgeBase(user.uid).then(kb => {
+      if (!kb) return
+      if (kb.companyName) setBrandName(n => n || kb.companyName)
+      if (kb.industry)    setIndustry(i => i || (KB_INDUSTRY_KPI[kb.industry] || ''))
+      if (kb.marketingBudget) setBudget(b => b || (KB_BUDGET_KPI[kb.marketingBudget] || ''))
+      const objectives = kb.primaryObjectives || (kb.primaryObjective ? [kb.primaryObjective] : [])
+      if (objectives.length && !goal) setGoal(KB_OBJECTIVE_GOAL[objectives[0]] || '')
+      const channels = kb.priorityChannels || []
+      if (channels.length) {
+        const mapped = new Set()
+        channels.forEach(ch => { (KB_CHANNEL_PLATFORM[ch] || []).forEach(p => mapped.add(p)) })
+        if (mapped.size) setPlatforms(prev => prev.length ? prev : [...mapped])
+      }
+      const audParts = []
+      if (kb.audienceType === 'b2b') audParts.push('B2B Decision Makers')
+      else if (kb.audienceType === 'b2c') audParts.push('Consumers')
+      if (kb.targetAudience) audParts.push(kb.targetAudience)
+      if (audParts.length) setAudience(a => a || audParts.join(', '))
+    }).catch(() => {})
+  }, [user?.uid])
 
   /* ui state */
   const [loading,    setLoading]    = useState(false)
@@ -429,8 +496,8 @@ export default function KpiRecommendationsPage() {
       <Navbar />
       <div style={s.inner}>
         {/* back */}
-        <button style={s.back} onClick={() => navigate('/package-b')}>
-          <ArrowLeft size={14} /> Back to Agents
+        <button style={s.back} onClick={() => navigate(-1)}>
+          <ArrowLeft size={14} /> Back
         </button>
 
         {/* header */}

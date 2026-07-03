@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import JourneyFooter from '../components/JourneyFooter.jsx'
 import {
   Film, ArrowLeft, Loader2, Sparkles, Check, Copy,
   Play, Mic, MonitorPlay, Clapperboard, ShoppingBag,
@@ -446,14 +447,24 @@ export default function VideoGenerationPage() {
                           </div>
                         ))}
                       </div>
-                      {result.brandConformance.status === 'approved' && (
-                        <div style={{ marginTop: 16, textAlign: 'center' }}>
-                          <div style={{ fontSize: 13, color: TEXT2, marginBottom: 10 }}>Ready for publishing queue</div>
+                      <div style={{ marginTop: 16, display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+                        <button
+                          onClick={() => navigate('/brand-governance', {
+                            state: {
+                              contentPrefill: `Video: ${result.title}\n\nHook: ${result.hook}\n\nScript Intro: ${result.script?.intro}\n\nCTA: ${result.script?.cta}`,
+                              contentType: 'Video Script',
+                            }
+                          })}
+                          style={{ background: 'rgba(200,151,62,0.12)', border: `1px solid ${GBORDER}`, borderRadius: 10, padding: '10px 22px', fontSize: 14, fontWeight: 700, cursor: 'pointer', color: GOLD, display: 'inline-flex', alignItems: 'center', gap: 8 }}
+                        >
+                          <Shield size={15} /> Send for Brand Review
+                        </button>
+                        {result.brandConformance.status === 'approved' && (
                           <button onClick={() => navigate('/queue')} style={{ background: GOLD, color: '#0e0c09', border: 'none', borderRadius: 10, padding: '10px 28px', fontSize: 14, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                             Send to Approval Queue <ChevronRight size={15} />
                           </button>
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -492,6 +503,7 @@ export default function VideoGenerationPage() {
           </div>
         )}
       </div>
+      <JourneyFooter currentPath="/video-gen" />
       <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
     </div>
   )

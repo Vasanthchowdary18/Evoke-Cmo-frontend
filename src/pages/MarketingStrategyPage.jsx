@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   TrendingUp, ArrowLeft, Loader2, Sparkles, Copy, Check,
@@ -11,6 +11,7 @@ import Navbar from '../components/Navbar.jsx'
 import { useRequireAuth } from '../hooks/useRequireAuth'
 import { useAuth } from '../hooks/useAuth'
 import { saveContentItems, getContentItems } from '../services/contentService'
+import { getKnowledgeBase } from '../services/knowledgeBaseService.js'
 
 const BG      = '#0e0c09'
 const CARD    = '#1c1a13'
@@ -49,16 +50,6 @@ const DEMOGRAPHICS = [
   'B2C — Gen Z (18–28)', 'B2C — Millennials (25–40)', 'B2C — Gen X (40–55)',
   'D2C — Health & Wellness', 'D2C — Fashion & Lifestyle',
   'Professionals (35–55)', 'Small Business Owners',
-]
-
-const REVENUE_TARGETS = [
-  'Under $10K',
-  '$10K – $50K',
-  '$50K – $100K',
-  '$100K – $500K',
-  '$500K – $2.5M',
-  '$2.5M – $10M',
-  '$10M+',
 ]
 
 async function generateStrategy(inputs) {
@@ -120,19 +111,15 @@ Return ONLY valid JSON:
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${GROQ_KEY}` },
     body: JSON.stringify({
       model: 'llama-3.3-70b-versatile',
-      messages: [
-        { role: 'system', content: 'You are an expert CMO AI. Respond ONLY with valid JSON — no markdown, no explanation, no extra text.' },
-        { role: 'user', content: prompt }
-      ],
+      messages: [{ role: 'user', content: prompt }],
       temperature: 0.6,
-      max_tokens: 4000,
+      max_tokens: 2500,
     }),
   })
   if (!res.ok) throw new Error(`Groq ${res.status}`)
   const data = await res.json()
   const raw = data.choices?.[0]?.message?.content || ''
-  const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
-  const match = cleaned.match(/\{[\s\S]*\}/)
+  const match = raw.match(/\{[\s\S]*\}/)
   if (!match) throw new Error('No JSON')
   return JSON.parse(match[0])
 }
@@ -143,15 +130,65 @@ const INPUT_FIELDS = [
   { key: 'pricing',       label: 'Pricing Model',       icon: <DollarSign size={14}/>, placeholder: 'Select pricing model...',  type: 'select', options: PRICING_MODELS },
   { key: 'geoMarket',     label: 'Geographic Market',   icon: <MapPin size={14}/>,     placeholder: 'Select market...',         type: 'select', options: GEO_MARKETS },
   { key: 'competitor',    label: 'Main Competitor',     icon: <Target size={14}/>,     placeholder: 'e.g. HubSpot, Salesforce', type: 'text' },
-  { key: 'revenueTarget', label: 'Revenue Target',      icon: <BarChart2 size={14}/>,  placeholder: 'Select revenue target...',  type: 'select', options: REVENUE_TARGETS },
+  { key: 'revenueTarget', label: 'Revenue Target',      icon: <BarChart2 size={14}/>,  placeholder: 'e.g. ₹5Cr ARR, $1M MRR',  type: 'text' },
   { key: 'demographics',  label: 'Target Demographics', icon: <Users size={14}/>,      placeholder: 'Select demographics...',   type: 'select', options: DEMOGRAPHICS },
 ]
 
 const priorityColor = (p) => ({ high: '#10b981', medium: '#f59e0b', low: TEXT2 }[p] || TEXT2)
 
+const KB_INDUSTRY_MAP = {
+  digital_marketing: 'Marketing & Advertising',
+  tech_saas: 'Technology & SaaS',
+  ecommerce: 'E-commerce & Retail',
+  fashion: 'Fashion & Lifestyle',
+  food_beverage: 'Food & Beverage',
+  health_wellness: 'Health & Wellness',
+  finance_fintech: 'Finance & Fintech',
+  education: 'Education & EdTech',
+  real_estate: 'Real Estate',
+  media_entertainment: 'Events & Entertainment',
+  hospitality: 'Professional Services',
+  beauty: 'Fashion & Lifestyle',
+  automotive: 'Manufacturing',
+  agency: 'Professional Services',
+}
+
+const KB_GEO_MAP = {
+  india_tier1: 'India',
+  india_tier1_2: 'India',
+  india_all: 'India',
+  uae: 'Middle East & Africa (MEA)',
+  middle_east: 'Middle East & Africa (MEA)',
+  southeast_asia: 'Southeast Asia (SEA)',
+  usa: 'USA & Canada',
+  europe: 'Europe (EU)',
+  uk: 'UK & Ireland',
+  australia: 'Australia & New Zealand',
+  global: 'Global',
+}
+
+const KB_REVENUE_LABELS = {
+  '10k_mo': '$10,000 / mo', '25k_mo': '$25,000 / mo', '50k_mo': '$50,000 / mo',
+  '100k_mo': '$100,000 / mo', '250k_arr': '$250K ARR', '500k_arr': '$500K ARR',
+  '1m_arr': '$1M ARR', '5m_arr': '$5M ARR', '10m_arr': '$10M ARR',
+}
+
+function mapKbDemographics(audienceType, ageRange) {
+  if (audienceType === 'b2b') {
+    return ['35_44','45_54','55_plus'].includes(ageRange) ? 'B2B — Enterprise / C-Suite' : 'B2B — SMBs & Startups'
+  }
+  if (audienceType === 'b2c' || audienceType === 'd2c') {
+    if (['13_17','18_24'].includes(ageRange)) return 'B2C — Gen Z (18–28)'
+    if (['35_44','45_54','55_plus'].includes(ageRange)) return 'B2C — Gen X (40–55)'
+    return 'B2C — Millennials (25–40)'
+  }
+  return ''
+}
+
 export default function MarketingStrategyPage() {
   useRequireAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const { user } = useAuth()
 
   const [inputs, setInputs] = useState({ industry: '', product: '', pricing: '', geoMarket: '', competitor: '', revenueTarget: '', demographics: '' })
@@ -162,6 +199,8 @@ export default function MarketingStrategyPage() {
   const [activeTab, setActiveTab] = useState('annual')
   const [savedDocId, setSavedDocId] = useState(null)
   const [history, setHistory]   = useState([])
+  const [kbLoaded, setKbLoaded] = useState(false)
+  const [showForm, setShowForm] = useState(false)
 
   const set = (k, v) => setInputs(p => ({ ...p, [k]: v }))
   const ready = inputs.industry && inputs.product && inputs.revenueTarget
@@ -175,6 +214,30 @@ export default function MarketingStrategyPage() {
   }
 
   useEffect(() => { loadHistory() }, [user?.uid])
+
+  useEffect(() => {
+    if (!user?.uid) return
+    getKnowledgeBase(user.uid).then(kb => {
+      if (!kb) return
+      setInputs(prev => ({
+        ...prev,
+        industry:      prev.industry      || KB_INDUSTRY_MAP[kb.industry]        || '',
+        product:       prev.product       || kb.productService                   || '',
+        geoMarket:     prev.geoMarket     || KB_GEO_MAP[kb.geographicFocus]      || '',
+        competitor:    prev.competitor    || kb.competitor1                      || '',
+        revenueTarget: prev.revenueTarget || KB_REVENUE_LABELS[kb.revenueTarget] || '',
+        demographics:  prev.demographics  || mapKbDemographics(kb.audienceType, kb.ageRange) || '',
+      }))
+      if (kb.productService || kb.industry) setKbLoaded(true)
+    }).catch(() => {})
+  }, [user?.uid])
+
+  // Auto-generate when arriving from another CMO step (e.g. Audience Builder)
+  useEffect(() => {
+    if (kbLoaded && location.state?.autoGenerate && !result && !loading) {
+      handleGenerate()
+    }
+  }, [kbLoaded]) // eslint-disable-line
 
   const handleGenerate = async () => {
     if (!ready) return
@@ -207,66 +270,6 @@ export default function MarketingStrategyPage() {
     navigator.clipboard.writeText(text).then(() => { setCopied(key); setTimeout(() => setCopied(''), 2000) })
   }
 
-  const downloadReport = () => {
-    if (!result) return
-    const r = result
-    const lines = [
-      '═══════════════════════════════════════════════════════════',
-      '                  MARKETING STRATEGY REPORT',
-      `  Product: ${inputs.product}  |  Industry: ${inputs.industry}`,
-      `  Market: ${inputs.geoMarket}  |  Revenue Target: ${inputs.revenueTarget}`,
-      '═══════════════════════════════════════════════════════════',
-      '',
-      '── EXECUTIVE SUMMARY ──────────────────────────────────────',
-      r.executiveSummary || '',
-      '',
-      '── ANNUAL PLAN ─────────────────────────────────────────────',
-      `Objective  : ${r.annualPlan?.objective || ''}`,
-      `Budget     : ${r.annualPlan?.budget || ''}`,
-      `Expected ROI: ${r.annualPlan?.expectedROI || ''}`,
-      `Top Channels: ${(r.annualPlan?.topChannels || []).join(', ')}`,
-      '',
-      'Key Initiatives:',
-      ...(r.annualPlan?.keyInitiatives || []).map((i, n) => `  ${n + 1}. ${i}`),
-      '',
-      '── QUARTERLY PLAN ──────────────────────────────────────────',
-      ...(r.quarterlyPlan || []).flatMap(q => [
-        `${q.quarter} — ${q.focus}  |  Budget: ${q.budget}  |  KPI: ${q.kpi}`,
-        ...(q.activities || []).map(a => `  • ${a}`),
-        '',
-      ]),
-      '── MONTHLY CADENCE ─────────────────────────────────────────',
-      `Cadence        : ${r.monthlyPlan?.cadence || ''}`,
-      `Content Volume : ${r.monthlyPlan?.contentVolume || ''}`,
-      `Review Cycle   : ${r.monthlyPlan?.reviewCycle || ''}`,
-      '',
-      '── CAMPAIGN RECOMMENDATIONS ────────────────────────────────',
-      ...(r.campaignRecommendations || []).map(c =>
-        `• ${c.name}  [${c.type}]  Platform: ${c.platform}  Budget: ${c.budget}  Timeline: ${c.timeline}  Priority: ${c.priority}`
-      ),
-      '',
-      '── BUDGET RECOMMENDATIONS ──────────────────────────────────',
-      `Total Budget : ${r.budgetRecommendations?.totalBudget || ''}`,
-      `Contingency  : ${r.budgetRecommendations?.contingency || ''}`,
-      '',
-      ...(r.budgetRecommendations?.breakdown || []).map(b =>
-        `  ${b.channel.padEnd(30)} ${b.allocation.padEnd(6)}  ${b.rationale}`
-      ),
-      '',
-      '═══════════════════════════════════════════════════════════',
-      `  Generated by EVOX AI  |  ${new Date().toLocaleDateString()}`,
-      '═══════════════════════════════════════════════════════════',
-    ]
-    const text = lines.join('\n')
-    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `Marketing_Strategy_${inputs.product || 'Report'}_${new Date().toISOString().slice(0, 10)}.txt`
-    a.click()
-    URL.revokeObjectURL(url)
-  }
-
   const inputStyle = { width: '100%', background: CARD2, border: `1px solid ${BORDER}`, borderRadius: 10, color: TEXT, fontSize: 14, padding: '10px 14px', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }
   const tabBtn = (key) => ({ padding: '7px 16px', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer', border: 'none', background: activeTab === key ? GOLD : 'transparent', color: activeTab === key ? '#0e0c09' : TEXT2, transition: 'all 0.15s' })
 
@@ -286,32 +289,60 @@ export default function MarketingStrategyPage() {
             </div>
             <div>
               <h1 style={{ margin: 0, fontSize: 24, fontWeight: 600 }}>Marketing Strategy</h1>
-              <p style={{ margin: 0, fontSize: 13, color: TEXT2 }}>AI Marketing Strategy Agent — Annual, Quarterly & Monthly Plans</p>
+              <p style={{ margin: 0, fontSize: 13, color: TEXT2 }}>Fig. 12 · AI Marketing Strategy Agent — Annual, Quarterly & Monthly Plans</p>
             </div>
           </div>
         </div>
 
-        {/* Data Inputs */}
-        <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: 24, marginBottom: 20 }}>
-          <h2 style={{ margin: '0 0 6px', fontSize: 15, fontWeight: 600 }}>Business profile inputs</h2>
-          <p style={{ margin: '0 0 20px', fontSize: 13, color: TEXT2 }}>7 data points feed the Marketing Strategy Agent</p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            {INPUT_FIELDS.map(f => (
-              <div key={f.key}>
-                <label style={{ fontSize: 11, color: TEXT3, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 5, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 500 }}>
-                  <span style={{ color: TEXT3 }}>{f.icon}</span> {f.label} {(f.key === 'industry' || f.key === 'product' || f.key === 'revenueTarget') && <span style={{ color: GOLD }}>*</span>}
-                </label>
-                {f.type === 'select'
-                  ? <select value={inputs[f.key]} onChange={e => set(f.key, e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
-                      <option value="">{f.placeholder}</option>
-                      {(f.options || []).map(o => <option key={o} value={o}>{o}</option>)}
-                    </select>
-                  : <input value={inputs[f.key]} onChange={e => set(f.key, e.target.value)} placeholder={f.placeholder} style={inputStyle} />
-                }
+        {/* Data Inputs — collapsed summary when KB is loaded, expandable form */}
+        {kbLoaded && !showForm ? (
+          <div style={{ background: CARD, border: `1px solid rgba(16,185,129,0.3)`, borderRadius: 16, padding: '16px 20px', marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <CheckCircle2 size={18} color="#10b981" />
               </div>
-            ))}
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#10b981', marginBottom: 2 }}>Brand data loaded from your Brand KB</div>
+                <div style={{ fontSize: 12, color: TEXT3 }}>
+                  {[inputs.industry, inputs.product, inputs.geoMarket, inputs.revenueTarget].filter(Boolean).join(' · ')}
+                </div>
+              </div>
+            </div>
+            <button onClick={() => setShowForm(true)} style={{ background: 'none', border: `1px solid ${BORDER}`, borderRadius: 8, padding: '6px 14px', fontSize: 12, color: TEXT3, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
+              Edit inputs
+            </button>
           </div>
-        </div>
+        ) : (
+          <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: 24, marginBottom: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <div>
+                <h2 style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 600 }}>Business profile inputs</h2>
+                <p style={{ margin: 0, fontSize: 13, color: TEXT2 }}>Pre-filled from your Brand KB — adjust if needed</p>
+              </div>
+              {kbLoaded && (
+                <button onClick={() => setShowForm(false)} style={{ background: 'none', border: `1px solid ${BORDER}`, borderRadius: 8, padding: '6px 14px', fontSize: 12, color: TEXT3, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  Collapse
+                </button>
+              )}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              {INPUT_FIELDS.map(f => (
+                <div key={f.key}>
+                  <label style={{ fontSize: 11, color: TEXT3, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 5, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 500 }}>
+                    <span style={{ color: TEXT3 }}>{f.icon}</span> {f.label} {(f.key === 'industry' || f.key === 'product' || f.key === 'revenueTarget') && <span style={{ color: GOLD }}>*</span>}
+                  </label>
+                  {f.type === 'select'
+                    ? <select value={inputs[f.key]} onChange={e => set(f.key, e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
+                        <option value="">{f.placeholder}</option>
+                        {(f.options || []).map(o => <option key={o} value={o}>{o}</option>)}
+                      </select>
+                    : <input value={inputs[f.key]} onChange={e => set(f.key, e.target.value)} placeholder={f.placeholder} style={inputStyle} />
+                  }
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Generate button */}
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 28 }}>
@@ -509,13 +540,20 @@ export default function MarketingStrategyPage() {
                 </div>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'center', gap: 12, marginTop: 16 }}>
-                <button onClick={handleGenerate} style={{ background: 'none', border: `1px solid ${BORDER}`, borderRadius: 10, padding: '9px 22px', color: TEXT2, fontSize: 13, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 7 }}>
-                  <RefreshCw size={13} /> Regenerate Strategy
-                </button>
-                <button onClick={downloadReport} style={{ background: GDIM, border: `1px solid ${GBORDER}`, borderRadius: 10, padding: '9px 22px', color: GOLD, fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 7 }}>
-                  <Download size={13} /> Download Report
-                </button>
+              {/* Next Step CTA */}
+              <div style={{ background: 'rgba(249,115,22,0.06)', border: '2px solid rgba(249,115,22,0.3)', borderRadius: 16, padding: '20px 24px', marginTop: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: TEXT, marginBottom: 4 }}>Strategy ready — what's next?</div>
+                  <div style={{ fontSize: 13, color: TEXT2 }}>Take this strategy into Campaign Hub and create your first campaign.</div>
+                </div>
+                <div style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
+                  <button onClick={handleGenerate} style={{ background: 'none', border: `1px solid ${BORDER}`, borderRadius: 10, padding: '10px 18px', color: TEXT2, fontSize: 13, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'inherit' }}>
+                    <RefreshCw size={13} /> Regenerate
+                  </button>
+                  <button onClick={() => navigate('/campaign-hub')} style={{ padding: '10px 22px', background: '#f97316', border: 'none', borderRadius: 10, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit' }}>
+                    Next: Campaign Hub →
+                  </button>
+                </div>
               </div>
             </motion.div>
           )}

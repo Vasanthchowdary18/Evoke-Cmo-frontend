@@ -8,6 +8,7 @@ import {
   CheckCircle2, Facebook, Loader2, RotateCcw,
   Pencil, X, Instagram, TrendingUp, BarChart2,
   Globe, Rocket, Users, Download,
+  Link2, Film, LayoutDashboard, ArrowRight, ChevronRight,
 } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
 import { getEvokeUserProfile } from '../lib/session'
@@ -480,18 +481,43 @@ function ImpactBars({ data }) {
 }
 
 // ── Parse "Phase 1 …", "Q1 …", "Week 1-2 …", "Month 1-3 …" into timeline steps ──
+const PHASE_TAG_RE = /^(Q\s*[1-4]|Quarter\s*\d|Phase\s*\d|Week\s*[\d\-–]+|Month\s*[\d\-–]+)\s*[:.—-]?\s*(.*)$/i
+const normalizeTag = (raw) => raw.replace(/quarter\s*/i, 'Q').replace(/\s+/g, ' ').replace(/^phase\s*/i, 'P').replace(/^week\s*/i, 'W').replace(/^month\s*/i, 'M').toUpperCase()
+// Strips a leading phase tag from a description so near-duplicate phases (the
+// same step written twice — once as a short tag, once as full prose further
+// down) compare equal instead of producing empty/duplicate timeline steps.
+const stripLeadingTag = (str) => str.replace(PHASE_TAG_RE, (full, tag, rest) => rest || full).toLowerCase().slice(0, 50)
+
 function parsePhases(text) {
   const str = safeStr(text)
   if (!str) return []
-  const out = []
-  for (const rawLine of str.split(/\n+/)) {
-    const line = rawLine.trim()
-    if (!line) continue
-    const m = line.match(/^(Q\s*[1-4]|Quarter\s*\d|Phase\s*\d|Week\s*[\d\-–]+|Month\s*[\d\-–]+)\s*[:.—-]?\s*(.+)/i)
-    if (m) {
-      const tag = m[1].replace(/quarter\s*/i, 'Q').replace(/\s+/g, ' ').replace(/^phase\s*/i, 'P').replace(/^week\s*/i, 'W').replace(/^month\s*/i, 'M').toUpperCase()
-      out.push({ tag, text: m[2].trim() })
+  const lines = str.split(/\n+/).map(l => l.trim()).filter(Boolean)
+  const raw = []
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(PHASE_TAG_RE)
+    if (!m) continue
+    const tag = normalizeTag(m[1])
+    let content = m[2].trim()
+    // Tag sits alone on its own line (e.g. "P1:") — pull the description
+    // from the next line instead of rendering an empty timeline step.
+    if (!content && i + 1 < lines.length) {
+      const next = lines[i + 1]
+      const nextMatch = next.match(PHASE_TAG_RE)
+      content = nextMatch ? nextMatch[2].trim() : next
+      i++
     }
+    if (content) raw.push({ tag, text: content })
+  }
+
+  // Drop phases whose description repeats one already captured — the same
+  // step is sometimes written twice by the AI (short tag list + full prose).
+  const seen = new Set()
+  const out = []
+  for (const p of raw) {
+    const key = stripLeadingTag(p.text)
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(p)
   }
   return out.slice(0, 6)
 }
@@ -651,8 +677,10 @@ export default function Results() {
     const user = authUser || profileToUser(getEvokeUserProfile())
     if (!user) return
     getUserData(user.uid).then(data => {
-      if (data?.socialAccounts) setConnectedAccounts(data.socialAccounts)
-    }).catch(() => {})
+      setConnectedAccounts(data?.socialAccounts || {})
+    }).catch(() => {
+      setConnectedAccounts({})
+    })
     getGoogleAdsAccount(user.uid).then(acc => { if (acc) setGoogleAdsAccount(acc) }).catch(() => {})
   }
 
@@ -731,7 +759,8 @@ export default function Results() {
             status:   'completed',
             result:   flat,
           }
-          const existing = JSON.parse(localStorage.getItem('evoke_campaigns') || '[]')
+          const ck = authUser?.uid ? `evoke_campaigns_${authUser.uid}` : 'evoke_campaigns'
+          const existing = JSON.parse(localStorage.getItem(ck) || '[]')
           // Avoid exact duplicates (same name + type within last 90 seconds)
           const isDup = existing.some(c =>
             c.type === 'growth_strategy' &&
@@ -739,7 +768,7 @@ export default function Results() {
             Date.now() - new Date(c.date).getTime() < 90000
           )
           if (!isDup) {
-            localStorage.setItem('evoke_campaigns', JSON.stringify([newEntry, ...existing]))
+            localStorage.setItem(ck, JSON.stringify([newEntry, ...existing]))
           }
         } catch {}
       }
@@ -863,11 +892,12 @@ export default function Results() {
             const qi = queue.findIndex(q => q.campaignId === campaignId && q.day === day)
             if (qi !== -1) { queue[qi].posted = true; localStorage.setItem('evoke_pending_days', JSON.stringify(queue)) }
             // Update daysPosted in campaign history
-            const campaigns = JSON.parse(localStorage.getItem('evoke_campaigns') || '[]')
+            const ck2 = authUser?.uid ? `evoke_campaigns_${authUser.uid}` : 'evoke_campaigns'
+            const campaigns = JSON.parse(localStorage.getItem(ck2) || '[]')
             const ci = campaigns.findIndex(c => c.id === campaignId)
             if (ci !== -1) {
               campaigns[ci].daysPosted = [...new Set([...(campaigns[ci].daysPosted || [1]), day])]
-              localStorage.setItem('evoke_campaigns', JSON.stringify(campaigns))
+              localStorage.setItem(ck2, JSON.stringify(campaigns))
             }
           } catch (e) { console.warn(`Day ${day} post failed:`, e) }
         }, delayMs)
@@ -926,8 +956,9 @@ export default function Results() {
             result:         { ...result, ...editedContent },
             meta:           { name: payload.name || meta.name, brandName: payload.brandName || meta.brandName },
           }
-          const existing = JSON.parse(localStorage.getItem('evoke_campaigns') || '[]')
-          localStorage.setItem('evoke_campaigns', JSON.stringify([newCampaign, ...existing]))
+          const ck3 = authUser?.uid ? `evoke_campaigns_${authUser.uid}` : 'evoke_campaigns'
+          const existing = JSON.parse(localStorage.getItem(ck3) || '[]')
+          localStorage.setItem(ck3, JSON.stringify([newCampaign, ...existing]))
 
           // ── Schedule remaining days (2…N) ──
           if (totalDays > 1) {
@@ -1115,6 +1146,8 @@ export default function Results() {
   const partnershipIdeas   = r.partnershipIdeas   || r.partnership_ideas   || ''
   const expansionRoadmap   = r.expansionRoadmap   || r.expansion_roadmap   || ''
   const competitorGaps     = r.competitorGaps     || r.competitor_gaps     || ''
+  const sendSchedule       = r.sendSchedule       || ''
+  const segmentStrategy    = r.segmentStrategy    || ''
 
   // ── Ordered strategy sections (used by the report download + cards) ──
   const strategySections = [
@@ -1257,15 +1290,15 @@ export default function Results() {
           </div>
         </motion.div>
 
-        {/* Posting status — hidden for strategy (no social posting) */}
+        {/* Posting status — hidden for strategy and email drip (no social posting) */}
         <AnimatePresence>
-          {!isStrategy && launched && (
+          {!isStrategy && !isEmailDrip && launched && (
             <PostingStatusBanner postingStatus={postingStatus} selectedPlatforms={selectedPlatforms} connectedAccounts={connectedAccounts} onRetry={handleLaunch} />
           )}
         </AnimatePresence>
 
-        {/* Launch Banner (before launch) — hidden for strategy */}
-        {!isStrategy && !launched && (
+        {/* Launch Banner (before launch) — hidden for strategy and email drip */}
+        {!isStrategy && !isEmailDrip && !launched && (
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
@@ -1332,8 +1365,8 @@ export default function Results() {
         {isStrategy && (() => {
           const sections = [
             { key: 'executiveSummary',    value: executiveSummary,    icon: <Zap size={16}/>,        color: '#10b981', title: 'Executive Summary',          span: 'full' },
-            { key: 'growthOpportunities', value: growthOpportunities, icon: <TrendingUp size={16}/>, color: '#c8973e', title: 'Growth Opportunities',        span: 'half' },
-            { key: 'gtmPlan',             value: gtmPlan,             icon: <Rocket size={16}/>,     color: '#6366f1', title: 'Go-To-Market Plan',           span: 'half' },
+            { key: 'growthOpportunities', value: growthOpportunities, icon: <TrendingUp size={16}/>, color: '#c8973e', title: 'Growth Opportunities',        span: 'full' },
+            { key: 'gtmPlan',             value: gtmPlan,             icon: <Rocket size={16}/>,     color: '#6366f1', title: 'Go-To-Market Plan',           span: 'full' },
             { key: 'revenueProjection',   value: revenueProjection,   icon: <BarChart2 size={16}/>,  color: '#f59e0b', title: '12-Month Revenue Forecast',   span: 'full' },
             { key: 'partnershipIdeas',    value: partnershipIdeas,    icon: <Users size={16}/>,      color: '#0a66c2', title: 'Strategic Partnerships',      span: 'half' },
             { key: 'expansionRoadmap',    value: expansionRoadmap,    icon: <Globe size={16}/>,      color: '#14b8a6', title: 'Expansion Roadmap',           span: 'half' },
@@ -1393,6 +1426,67 @@ export default function Results() {
                 </div>
               ))}
             </div>
+          )
+        })()}
+
+        {/* ── Now, execute your strategy — bridge from report to real campaigns ── */}
+        {isStrategy && (() => {
+          const isCalendar = campaignType === 'content_calendar'
+          const strategyCards = isCalendar ? [
+            { icon: <Link2 size={17} />, color: '#10b981', title: 'Connect Social Accounts', desc: 'Link Instagram, Facebook, LinkedIn to auto-post', path: '/connect-accounts' },
+            { icon: <Mail size={17} />, color: '#7c3aed', title: 'Build Email Drip', desc: 'Add email sequences to complement your calendar', path: '/campaign/email_drip' },
+            { icon: <Film size={17} />, color: '#06b6d4', title: 'Generate Reel Scripts', desc: 'Create short-form video scripts from your plan', path: '/reel-scripts' },
+            { icon: <LayoutDashboard size={17} />, color: '#c8973e', title: 'Back to Dashboard', desc: 'Return to your AI CMO hub', path: '/agents-hub' },
+          ] : [
+            { icon: <Calendar size={17} />, color: '#c8973e', title: 'Launch Content Calendar', desc: 'Build a 30-day content plan from this strategy', path: '/campaign/content_calendar' },
+            { icon: <Mail size={17} />, color: '#7c3aed', title: 'Build Email Drip', desc: 'Create automated email sequences to convert leads', path: '/campaign/email_drip' },
+            { icon: <Film size={17} />, color: '#06b6d4', title: 'Generate Reel Scripts', desc: 'Turn your strategy into short-form video scripts', path: '/reel-scripts' },
+            { icon: <Users size={17} />, color: '#10b981', title: 'Build Your Audience', desc: 'Define and segment your target audience profiles', path: '/audience-builder' },
+          ]
+          return (
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}
+              style={{ marginTop: 28, background: '#161410', border: '1px solid rgba(200,151,62,0.2)', borderRadius: 18, overflow: 'hidden' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '18px 22px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(200,151,62,0.12)', border: '1px solid rgba(200,151,62,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#c8973e' }}>
+                  {isCalendar ? <Calendar size={17} /> : <Rocket size={17} />}
+                </div>
+                <div>
+                  <p style={{ fontWeight: 800, fontSize: 15, color: '#f0ebe0', margin: 0 }}>
+                    {isCalendar ? 'Start posting your content' : 'Now, execute your strategy'}
+                  </p>
+                  <p style={{ fontSize: 12, color: 'rgba(240,235,224,0.55)', margin: '2px 0 0 0' }}>
+                    {isCalendar
+                      ? 'Your content calendar is ready — connect platforms and start scheduling posts'
+                      : 'Turn this plan into real campaigns, one click at a time'}
+                  </p>
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '1px', background: 'rgba(255,255,255,0.05)' }}>
+                {strategyCards.map((card, i) => (
+                  <motion.button
+                    key={i}
+                    onClick={() => {
+                      if (card.path === '/connect-accounts') {
+                        try { sessionStorage.setItem('connectReturnTo', '/results') } catch {}
+                      }
+                      navigate(card.path, { state: { from: '/results' } })
+                    }}
+                    whileHover={{ background: 'rgba(200,151,62,0.05)' }}
+                    whileTap={{ scale: 0.98 }}
+                    style={{ display: 'flex', alignItems: 'flex-start', gap: 13, padding: '20px 20px', background: '#0e0c09', border: 'none', cursor: 'pointer', textAlign: 'left', width: '100%', borderTop: `3px solid ${card.color}` }}
+                  >
+                    <div style={{ width: 34, height: 34, borderRadius: 9, background: `${card.color}18`, border: `1px solid ${card.color}35`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: card.color, flexShrink: 0 }}>
+                      {card.icon}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontWeight: 700, fontSize: 13, color: '#f0ebe0', margin: '0 0 4px 0' }}>{card.title}</p>
+                      <p style={{ fontSize: 12, color: 'rgba(240,235,224,0.5)', margin: 0, lineHeight: 1.5 }}>{card.desc}</p>
+                    </div>
+                    <ArrowRight size={14} color="rgba(240,235,224,0.25)" style={{ flexShrink: 0, marginTop: 4 }} />
+                  </motion.button>
+                ))}
+              </div>
+            </motion.div>
           )
         })()}
 
@@ -1523,6 +1617,16 @@ export default function Results() {
                 )}
                 {email5Subject && (
                   <EmailCard emailSubject={email5Subject} emailBody={email5Body} editedContent={editedContent} setEditedContent={setEditedContent} copied={copied} copy={copy} delay={0.17} {...editProps} />
+                )}
+                {sendSchedule && (
+                  <ResultCard icon={<Calendar size={16} />} title="Send Schedule" color="#10b981" copyText={sendSchedule} copyId="sendSchedule" copied={copied} copy={copy} editKey="sendSchedule" editValue={editedContent.sendSchedule} delay={0.20} {...editProps}>
+                    <ContentText value={editedContent.sendSchedule || sendSchedule} />
+                  </ResultCard>
+                )}
+                {segmentStrategy && (
+                  <ResultCard icon={<Users size={16} />} title="Segmentation Strategy" color="#8b5cf6" copyText={segmentStrategy} copyId="segmentStrategy" copied={copied} copy={copy} editKey="segmentStrategy" editValue={editedContent.segmentStrategy} delay={0.22} {...editProps}>
+                    <ContentText value={editedContent.segmentStrategy || segmentStrategy} />
+                  </ResultCard>
                 )}
               </>
             ) : (
@@ -1816,10 +1920,11 @@ export default function Results() {
                               setGoogleAdsStatus('success')
                               // Track Google Ads launch in campaign history
                               try {
-                                const campaigns = JSON.parse(localStorage.getItem('evoke_campaigns') || '[]')
+                                const ck4 = authUser?.uid ? `evoke_campaigns_${authUser.uid}` : 'evoke_campaigns'
+                                const campaigns = JSON.parse(localStorage.getItem(ck4) || '[]')
                                 if (campaigns.length > 0) {
                                   campaigns[0].platforms = [...new Set([...(campaigns[0].platforms || []), 'google-ads'])]
-                                  localStorage.setItem('evoke_campaigns', JSON.stringify(campaigns))
+                                  localStorage.setItem(ck4, JSON.stringify(campaigns))
                                 }
                               } catch {}
                             } catch (e) {
@@ -1850,49 +1955,120 @@ export default function Results() {
           </motion.div>
         )}
 
+        {/* Email Drip — What's Next guide instead of launch */}
+        {isEmailDrip && (
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
+            style={{ marginTop: 32, background: '#0e0c09', border: '1px solid rgba(200,151,62,0.2)', borderRadius: 16, overflow: 'hidden' }}>
+            <div style={{ padding: '16px 22px', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Rocket size={14} style={{ color: '#c8973e' }} />
+              <span style={{ fontSize: 13, fontWeight: 800, color: '#c8973e', letterSpacing: '0.06em', textTransform: 'uppercase' }}>What's Next — Deploy Your Email Sequence</span>
+            </div>
+            {[
+              { step: 1, title: 'Copy & paste into your email tool', desc: 'Use the Copy buttons above to move each email into Mailchimp, Klaviyo, HubSpot, or any email platform.', color: '#10b981', primary: true },
+              { step: 2, title: 'Set up your automation trigger', desc: 'In your email tool, configure the trigger — e.g. new subscriber, form submission, or purchase — to start the drip sequence.', color: '#c8973e' },
+              { step: 3, title: 'Create social content to amplify', desc: 'Run supporting social posts on the same days as your emails for 3× higher conversion rates.', color: '#6366f1', path: '/campaign/product' },
+              { step: 4, title: 'Track opens, clicks & conversions', desc: 'Monitor performance and use KPI Recommendations to set targets for open rate, CTR, and conversions.', color: '#8b5cf6', path: '/kpi-recommendations' },
+            ].map((s, i) => (
+              <div key={i}
+                onClick={s.path ? () => navigate(s.path) : undefined}
+                style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: '16px 22px', borderBottom: i < 3 ? '1px solid rgba(255,255,255,0.05)' : 'none', cursor: s.path ? 'pointer' : 'default', background: s.primary ? 'rgba(16,185,129,0.05)' : 'transparent', transition: 'background 0.15s' }}
+                onMouseEnter={e => { if (s.path) e.currentTarget.style.background = `${s.color}10` }}
+                onMouseLeave={e => { e.currentTarget.style.background = s.primary ? 'rgba(16,185,129,0.05)' : 'transparent' }}
+              >
+                <div style={{ width: 32, height: 32, borderRadius: '50%', background: s.primary ? s.color : `${s.color}18`, border: `1px solid ${s.color}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, color: s.primary ? '#0e0c09' : s.color, flexShrink: 0 }}>
+                  {s.step}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#f0ebe0', marginBottom: 3, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {s.title}
+                    {s.primary && <span style={{ fontSize: 9, fontWeight: 800, padding: '2px 7px', borderRadius: 100, background: `${s.color}20`, color: s.color, border: `1px solid ${s.color}40`, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Do This First</span>}
+                  </div>
+                  <div style={{ fontSize: 12, color: 'rgba(240,235,224,0.45)', lineHeight: 1.45 }}>{s.desc}</div>
+                </div>
+                {s.path && <ChevronRight size={14} style={{ color: s.color, flexShrink: 0, marginTop: 8 }} />}
+              </div>
+            ))}
+          </motion.div>
+        )}
+
         {/* Bottom CTA — strategy fills the screen (no bottom CTA); campaigns get "Launch" */}
         {isStrategy ? null : (
           <>
             {/* Bottom Launch CTA */}
-            {!launched && (
-              <motion.div
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
-                style={{ marginTop: 32, padding: '24px 28px', background: '#fff', border: '1px solid rgba(124,58,237,0.2)', borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
-              >
-                <div>
-                  <p style={{ fontWeight: 700, fontSize: 16, color: '#0f172a', marginBottom: 4 }}>
-                    {campaignDays > 1 ? `Ready to launch your ${campaignDays}-day campaign?` : 'Ready to go live?'}
-                  </p>
-                  <p style={{ color: '#64748b', fontSize: 13 }}>
-                    {campaignDays > 1
-                      ? `n8n will auto-post unique content every day for ${campaignDays} days across all your connected platforms.`
-                      : 'All edits are saved. Click Launch to post across all your connected platforms.'}
-                  </p>
-                </div>
-                <motion.button
-                  onClick={handleLaunch}
-                  whileTap={{ scale: 0.97 }}
-                  whileHover={{ scale: 1.02 }}
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 28px', background: 'linear-gradient(135deg, #d4a853, #b8803a)', border: 'none', borderRadius: 12, color: 'white', fontSize: 15, fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap', boxShadow: '0 4px 24px rgba(200,151,62,0.3)' }}
+            {!isEmailDrip && !launched && (
+              <>
+                <motion.div
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
+                  style={{ marginTop: 32, padding: '24px 28px', background: '#fff', border: '1px solid rgba(124,58,237,0.2)', borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
                 >
-                  <Zap size={16} /> {campaignDays > 1 ? `Launch ${campaignDays}-Day Campaign` : 'Launch Campaign'}
-                </motion.button>
-              </motion.div>
+                  <div>
+                    <p style={{ fontWeight: 700, fontSize: 16, color: '#0f172a', marginBottom: 4 }}>
+                      {campaignDays > 1 ? `Ready to launch your ${campaignDays}-day campaign?` : 'Ready to go live?'}
+                    </p>
+                    <p style={{ color: '#64748b', fontSize: 13 }}>
+                      {campaignDays > 1
+                        ? `n8n will auto-post unique content every day for ${campaignDays} days across all your connected platforms.`
+                        : 'All edits are saved. Click Launch to post across all your connected platforms.'}
+                    </p>
+                  </div>
+                  <motion.button
+                    onClick={handleLaunch}
+                    whileTap={{ scale: 0.97 }}
+                    whileHover={{ scale: 1.02 }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 28px', background: 'linear-gradient(135deg, #d4a853, #b8803a)', border: 'none', borderRadius: 12, color: 'white', fontSize: 15, fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap', boxShadow: '0 4px 24px rgba(200,151,62,0.3)' }}
+                  >
+                    <Zap size={16} /> {campaignDays > 1 ? `Launch ${campaignDays}-Day Campaign` : 'Launch Campaign'}
+                  </motion.button>
+                </motion.div>
+
+                {/* What's next hint */}
+                <motion.div
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }}
+                  style={{ marginTop: 12, padding: '14px 20px', background: 'rgba(249,115,22,0.05)', border: '1px solid rgba(249,115,22,0.2)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <ChevronRight size={14} color="#f97316" />
+                    <span style={{ fontSize: 13, color: '#64748b' }}>
+                      <strong style={{ color: '#0f172a' }}>After launching</strong> — continue to Step 4: Audience Builder
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => navigate('/audience-builder')}
+                    style={{ fontSize: 12, fontWeight: 700, color: '#f97316', background: 'rgba(249,115,22,0.1)', border: '1px solid rgba(249,115,22,0.25)', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                  >
+                    Skip to Audience Builder →
+                  </button>
+                </motion.div>
+              </>
             )}
 
             {/* Success CTA */}
-            {launched && postingStatus === 'success' && (
+            {!isEmailDrip && launched && postingStatus === 'success' && (
               <motion.div
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
-                style={{ marginTop: 32, padding: '22px 26px', background: '#f0fdf4', border: '1px solid rgba(16,185,129,0.25)', borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}
+                initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+                style={{ marginTop: 32, padding: '22px 26px', background: 'linear-gradient(135deg, rgba(249,115,22,0.06) 0%, rgba(16,185,129,0.04) 100%)', border: '2px solid rgba(249,115,22,0.3)', borderRadius: 16 }}
               >
-                <div>
-                  <p style={{ fontWeight: 700, color: '#0f172a', marginBottom: 4 }}>Campaign launched successfully!</p>
-                  <p style={{ color: '#64748b', fontSize: 13 }}>Ready to create your next campaign?</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                  <CheckCircle2 size={18} color="#10b981" />
+                  <span style={{ fontWeight: 800, color: '#0f172a', fontSize: 15 }}>Campaign launched successfully!</span>
                 </div>
-                <button className="btn-primary" onClick={handleNewCampaign} style={{ whiteSpace: 'nowrap' }}>
-                  New Campaign <Zap size={16} />
-                </button>
+                <p style={{ color: '#64748b', fontSize: 13, marginBottom: 16 }}>
+                  Your campaign is live. Continue building your marketing system — next up is your Audience Builder.
+                </p>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  <button
+                    onClick={() => navigate('/audience-builder')}
+                    style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 24px', background: '#f97316', border: 'none', borderRadius: 10, color: '#fff', fontSize: 14, fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                  >
+                    Next: Audience Builder <ArrowRight size={15} />
+                  </button>
+                  <button
+                    onClick={handleNewCampaign}
+                    style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '11px 20px', background: 'none', border: '1px solid rgba(0,0,0,0.12)', borderRadius: 10, color: '#64748b', fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                  >
+                    New Campaign
+                  </button>
+                </div>
               </motion.div>
             )}
           </>
