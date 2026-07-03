@@ -677,8 +677,10 @@ export default function Results() {
     const user = authUser || profileToUser(getEvokeUserProfile())
     if (!user) return
     getUserData(user.uid).then(data => {
-      if (data?.socialAccounts) setConnectedAccounts(data.socialAccounts)
-    }).catch(() => {})
+      setConnectedAccounts(data?.socialAccounts || {})
+    }).catch(() => {
+      setConnectedAccounts({})
+    })
     getGoogleAdsAccount(user.uid).then(acc => { if (acc) setGoogleAdsAccount(acc) }).catch(() => {})
   }
 
@@ -1994,44 +1996,79 @@ export default function Results() {
           <>
             {/* Bottom Launch CTA */}
             {!isEmailDrip && !launched && (
-              <motion.div
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
-                style={{ marginTop: 32, padding: '24px 28px', background: '#fff', border: '1px solid rgba(124,58,237,0.2)', borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
-              >
-                <div>
-                  <p style={{ fontWeight: 700, fontSize: 16, color: '#0f172a', marginBottom: 4 }}>
-                    {campaignDays > 1 ? `Ready to launch your ${campaignDays}-day campaign?` : 'Ready to go live?'}
-                  </p>
-                  <p style={{ color: '#64748b', fontSize: 13 }}>
-                    {campaignDays > 1
-                      ? `n8n will auto-post unique content every day for ${campaignDays} days across all your connected platforms.`
-                      : 'All edits are saved. Click Launch to post across all your connected platforms.'}
-                  </p>
-                </div>
-                <motion.button
-                  onClick={handleLaunch}
-                  whileTap={{ scale: 0.97 }}
-                  whileHover={{ scale: 1.02 }}
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 28px', background: 'linear-gradient(135deg, #d4a853, #b8803a)', border: 'none', borderRadius: 12, color: 'white', fontSize: 15, fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap', boxShadow: '0 4px 24px rgba(200,151,62,0.3)' }}
+              <>
+                <motion.div
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
+                  style={{ marginTop: 32, padding: '24px 28px', background: '#fff', border: '1px solid rgba(124,58,237,0.2)', borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
                 >
-                  <Zap size={16} /> {campaignDays > 1 ? `Launch ${campaignDays}-Day Campaign` : 'Launch Campaign'}
-                </motion.button>
-              </motion.div>
+                  <div>
+                    <p style={{ fontWeight: 700, fontSize: 16, color: '#0f172a', marginBottom: 4 }}>
+                      {campaignDays > 1 ? `Ready to launch your ${campaignDays}-day campaign?` : 'Ready to go live?'}
+                    </p>
+                    <p style={{ color: '#64748b', fontSize: 13 }}>
+                      {campaignDays > 1
+                        ? `n8n will auto-post unique content every day for ${campaignDays} days across all your connected platforms.`
+                        : 'All edits are saved. Click Launch to post across all your connected platforms.'}
+                    </p>
+                  </div>
+                  <motion.button
+                    onClick={handleLaunch}
+                    whileTap={{ scale: 0.97 }}
+                    whileHover={{ scale: 1.02 }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 28px', background: 'linear-gradient(135deg, #d4a853, #b8803a)', border: 'none', borderRadius: 12, color: 'white', fontSize: 15, fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap', boxShadow: '0 4px 24px rgba(200,151,62,0.3)' }}
+                  >
+                    <Zap size={16} /> {campaignDays > 1 ? `Launch ${campaignDays}-Day Campaign` : 'Launch Campaign'}
+                  </motion.button>
+                </motion.div>
+
+                {/* What's next hint */}
+                <motion.div
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }}
+                  style={{ marginTop: 12, padding: '14px 20px', background: 'rgba(249,115,22,0.05)', border: '1px solid rgba(249,115,22,0.2)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <ChevronRight size={14} color="#f97316" />
+                    <span style={{ fontSize: 13, color: '#64748b' }}>
+                      <strong style={{ color: '#0f172a' }}>After launching</strong> — continue to Step 4: Audience Builder
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => navigate('/audience-builder')}
+                    style={{ fontSize: 12, fontWeight: 700, color: '#f97316', background: 'rgba(249,115,22,0.1)', border: '1px solid rgba(249,115,22,0.25)', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                  >
+                    Skip to Audience Builder →
+                  </button>
+                </motion.div>
+              </>
             )}
 
             {/* Success CTA */}
             {!isEmailDrip && launched && postingStatus === 'success' && (
               <motion.div
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
-                style={{ marginTop: 32, padding: '22px 26px', background: '#f0fdf4', border: '1px solid rgba(16,185,129,0.25)', borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}
+                initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+                style={{ marginTop: 32, padding: '22px 26px', background: 'linear-gradient(135deg, rgba(249,115,22,0.06) 0%, rgba(16,185,129,0.04) 100%)', border: '2px solid rgba(249,115,22,0.3)', borderRadius: 16 }}
               >
-                <div>
-                  <p style={{ fontWeight: 700, color: '#0f172a', marginBottom: 4 }}>Campaign launched successfully!</p>
-                  <p style={{ color: '#64748b', fontSize: 13 }}>Ready to create your next campaign?</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                  <CheckCircle2 size={18} color="#10b981" />
+                  <span style={{ fontWeight: 800, color: '#0f172a', fontSize: 15 }}>Campaign launched successfully!</span>
                 </div>
-                <button className="btn-primary" onClick={handleNewCampaign} style={{ whiteSpace: 'nowrap' }}>
-                  New Campaign <Zap size={16} />
-                </button>
+                <p style={{ color: '#64748b', fontSize: 13, marginBottom: 16 }}>
+                  Your campaign is live. Continue building your marketing system — next up is your Audience Builder.
+                </p>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  <button
+                    onClick={() => navigate('/audience-builder')}
+                    style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 24px', background: '#f97316', border: 'none', borderRadius: 10, color: '#fff', fontSize: 14, fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                  >
+                    Next: Audience Builder <ArrowRight size={15} />
+                  </button>
+                  <button
+                    onClick={handleNewCampaign}
+                    style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '11px 20px', background: 'none', border: '1px solid rgba(0,0,0,0.12)', borderRadius: 10, color: '#64748b', fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                  >
+                    New Campaign
+                  </button>
+                </div>
               </motion.div>
             )}
           </>

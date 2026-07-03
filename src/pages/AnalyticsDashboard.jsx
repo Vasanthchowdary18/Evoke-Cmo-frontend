@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import JourneyFooter from '../components/JourneyFooter.jsx'
 import {
   BarChart2, Zap, Link2, Calendar, Clock, ArrowRight,
   Loader2, RefreshCw, Package, Mail, Globe, Megaphone,
@@ -305,7 +306,7 @@ export default function AnalyticsDashboard() {
             }}>
               <RefreshCw size={13} /> Refresh
             </button>
-            <button onClick={() => navigate('/cmo')} style={{
+            <button onClick={() => navigate('/campaign-hub')} style={{
               display: 'flex', alignItems: 'center', gap: 6,
               padding: '8px 18px',
               background: CARD2, border: `1px solid ${BORDER}`,
@@ -570,7 +571,7 @@ export default function AnalyticsDashboard() {
             <span style={{ fontSize: 13, fontWeight: 700, color: TEXT }}>Recent Campaign Activity</span>
             <span style={{ marginLeft: 'auto', fontSize: 12, color: TEXT3 }}>{recentCampaigns.length} shown</span>
             {totalCampaigns > 8 && (
-              <button onClick={() => navigate('/cmo')} style={{
+              <button onClick={() => navigate('/campaign-hub')} style={{
                 display: 'flex', alignItems: 'center', gap: 4,
                 background: 'none', border: 'none', color: GOLD,
                 fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
@@ -583,7 +584,7 @@ export default function AnalyticsDashboard() {
           {recentCampaigns.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '36px 0', color: TEXT3, fontSize: 13 }}>
               No campaigns yet —{' '}
-              <span onClick={() => navigate('/cmo')} style={{ color: GOLD, cursor: 'pointer' }}>
+              <span onClick={() => navigate('/campaign-hub')} style={{ color: GOLD, cursor: 'pointer' }}>
                 launch your first campaign
               </span>
             </div>
@@ -707,6 +708,7 @@ export default function AnalyticsDashboard() {
         </div>
 
       </div>
+      <JourneyFooter currentPath="/analytics" />
       <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
     </div>
   )

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import JourneyFooter from '../components/JourneyFooter.jsx'
 import {
   Shield, ArrowLeft, Loader2, CheckCircle2, AlertCircle,
   XCircle, Eye, FileText, Palette, Type, Mic2, MessageSquare,
@@ -404,6 +405,7 @@ export default function BrandGovernancePage() {
         </div>
 
       </div>
+      <JourneyFooter currentPath="/brand-governance" />
       <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
     </div>
   )

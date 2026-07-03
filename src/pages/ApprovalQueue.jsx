@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import JourneyFooter from '../components/JourneyFooter.jsx'
 import {
   CheckCircle2, XCircle, Clock, Send, Pencil, X, Check,
   Linkedin, Instagram, Facebook, Mail, MessageSquare,
@@ -624,6 +625,7 @@ export default function ApprovalQueue() {
         )}
       </div>
 
+      <JourneyFooter currentPath="/queue" />
       <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
     </div>
   )

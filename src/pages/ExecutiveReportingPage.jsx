@@ -6,6 +6,7 @@ import {
   Zap, Shield, DollarSign, Brain, AlertTriangle, CheckCircle2,
   Activity, Clock, Target, ChevronRight, RefreshCw,
 } from 'lucide-react'
+import JourneyFooter from '../components/JourneyFooter.jsx'
 import Navbar from '../components/Navbar.jsx'
 import { useRequireAuth } from '../hooks/useRequireAuth'
 import { useAuth } from '../hooks/useAuth'
@@ -423,6 +424,7 @@ export default function ExecutiveReportingPage() {
         </div>
 
       </div>
+      <JourneyFooter currentPath="/executive-report" />
       <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
     </div>
   )

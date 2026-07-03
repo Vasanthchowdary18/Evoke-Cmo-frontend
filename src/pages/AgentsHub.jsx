@@ -323,6 +323,19 @@ export default function AgentsHub() {
               >
                 <BookOpen size={13} /> Brand KB
               </button>
+              <button
+                onClick={() => navigate('/executive-report')}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '9px 18px',
+                  background: GDIM,
+                  border: `1px solid ${GBORDER}`,
+                  borderRadius: 10, color: GOLD,
+                  fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                }}
+              >
+                <BarChart2 size={13} /> Executive Report
+              </button>
             </div>
           </div>
         </motion.div>
@@ -498,8 +511,75 @@ export default function AgentsHub() {
           </motion.div>
         )}
 
-        {/* ═══ Recommended For You — ranked agent/campaign suggestions ═══ */}
-        {recommendedActions.length > 0 && (
+        {/* ═══ Next Step / Recommendations ═══ */}
+        {hasBrandKb && campaigns.length === 0 ? (
+          /* ── FIRST-TIME USER: single prominent next-step hero ── */
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.08 }} style={{ marginBottom: 40 }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', background: GDIM, border: `1px solid ${GBORDER}`, borderRadius: 100, fontSize: 11, fontWeight: 700, color: GOLD, letterSpacing: '0.06em', marginBottom: 16 }}>
+              <Sparkles size={11}/> YOUR NEXT STEP
+            </div>
+
+            {/* Hero card */}
+            <motion.div
+              whileHover={{ y: -2 }}
+              onClick={() => navigate('/strategy')}
+              style={{ padding: '32px 36px', cursor: 'pointer', background: 'rgba(249,115,22,0.06)', border: '2px solid rgba(249,115,22,0.4)', borderRadius: 20, marginBottom: 20, position: 'relative', overflow: 'hidden' }}
+            >
+              <div style={{ position: 'absolute', top: 0, right: 0, width: 220, height: 220, background: 'radial-gradient(circle at 100% 0%, rgba(249,115,22,0.14), transparent 70%)', pointerEvents: 'none' }} />
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 22, flexWrap: 'wrap' }}>
+                <div style={{ width: 58, height: 58, borderRadius: 16, background: 'rgba(249,115,22,0.15)', border: '1px solid rgba(249,115,22,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f97316', flexShrink: 0 }}>
+                  <TrendingUp size={28}/>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#f97316', letterSpacing: '0.08em', marginBottom: 6, textTransform: 'uppercase' }}>Step 2 of 12 — Start Here</div>
+                  <h2 style={{ fontSize: 22, fontWeight: 900, color: TEXT, letterSpacing: '-0.02em', marginBottom: 10, lineHeight: 1.2 }}>Build Your Marketing Strategy</h2>
+                  <p style={{ fontSize: 14, color: TEXT2, lineHeight: 1.6, marginBottom: 20, maxWidth: 520 }}>
+                    Your EVOX AI CMO will generate a full Annual, Quarterly & Monthly marketing plan tailored to {kb?.companyName || 'your brand'} — campaigns, budget, KPIs and channels ready in seconds.
+                  </p>
+                  <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <button
+                      onClick={e => { e.stopPropagation(); navigate('/strategy') }}
+                      style={{ padding: '12px 28px', background: '#f97316', border: 'none', borderRadius: 12, color: '#fff', fontSize: 14, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', letterSpacing: '0.01em' }}
+                    >
+                      Build Your Strategy →
+                    </button>
+                    <span style={{ fontSize: 12, color: '#10b981', fontWeight: 600 }}>✓ Brand setup complete — ready to go</span>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Coming up — compact step chips */}
+            <div style={{ marginBottom: 8 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: TEXT3, letterSpacing: '0.06em', textTransform: 'uppercase' }}>After that</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              {[
+                { n: 3,  label: 'Campaign Hub',     path: '/campaign-hub' },
+                { n: 4,  label: 'Audience Builder', path: '/audience-builder' },
+                { n: 5,  label: 'Content',          path: '/caption-suite' },
+                { n: 6,  label: 'Creative Assets',  path: '/products' },
+                { n: 7,  label: 'Video',            path: '/video-gen' },
+                { n: 8,  label: 'Brand Review',     path: '/brand-governance' },
+                { n: 9,  label: 'Analytics',        path: '/analytics' },
+                { n: 10, label: 'Approval Queue',   path: '/queue' },
+                { n: 11, label: 'Post Content',     path: '/post-content' },
+                { n: 12, label: 'Exec Report',      path: '/executive-report' },
+              ].map((s, i, arr) => (
+                <React.Fragment key={s.path}>
+                  <button
+                    onClick={() => navigate(s.path)}
+                    style={{ padding: '5px 13px', background: CARD, border: `1px solid ${BORDER}`, borderRadius: 20, fontSize: 11, fontWeight: 600, color: TEXT3, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+                  >
+                    {s.n}. {s.label}
+                  </button>
+                  {i < arr.length - 1 && <ChevronRight size={10} color={TEXT3} />}
+                </React.Fragment>
+              ))}
+            </div>
+          </motion.div>
+        ) : recommendedActions.length > 0 ? (
+          /* ── RETURNING USER: full recommendations grid ── */
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.08 }} style={{ marginBottom: 40 }}>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', background: GDIM, border: `1px solid ${GBORDER}`, borderRadius: 100, fontSize: 11, fontWeight: 700, color: GOLD, letterSpacing: '0.06em', marginBottom: 16 }}>
               <Sparkles size={11}/> {hasBrandKb ? 'YOUR CMO RECOMMENDS' : 'RECOMMENDED FOR YOU'}
@@ -537,7 +617,7 @@ export default function AgentsHub() {
               })}
             </div>
           </motion.div>
-        )}
+        ) : null}
 
         {upgradeFor && (
           <UpgradeModal
@@ -547,12 +627,130 @@ export default function AgentsHub() {
           />
         )}
 
-        {/* ═══ SECTION 2: KPI Metrics Row ═══ */}
+        {/* ═══ PLAN TIERS SECTION — returning users only ═══ */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.09 }}
+          style={{ marginBottom: 40, display: campaigns.length > 0 ? 'block' : 'none' }}
+        >
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', background: GDIM, border: `1px solid ${GBORDER}`, borderRadius: 100, fontSize: 11, fontWeight: 700, color: GOLD, letterSpacing: '0.06em', marginBottom: 16 }}>
+            <Crown size={11} /> WHAT'S IN EACH PLAN
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+            {[
+              {
+                plan: 'free', label: 'Free', tag: 'ALWAYS ON', tagColor: '#10b981',
+                border: 'rgba(16,185,129,0.3)', accent: '#10b981',
+                features: [
+                  'Brand Knowledge Base',
+                  'Marketing Health Score',
+                  'Growth Strategy Agent',
+                  'Campaign Hub (all types)',
+                  'Caption Suite',
+                  'Audience Builder',
+                  'Analytics Dashboard',
+                  'Executive Report',
+                  'Connect Social Accounts',
+                ],
+                cta: null,
+              },
+              {
+                plan: 'package-a', label: 'Package A', tag: 'STARTER', tagColor: '#3b82f6',
+                border: 'rgba(59,130,246,0.3)', accent: '#3b82f6',
+                features: [
+                  'Everything in Free',
+                  'Multi-angle product photos',
+                  'Lifestyle & scene images',
+                  'Ad-ready static banners',
+                  'Managed social posting',
+                  'Image SEO & meta tags',
+                ],
+                cta: 'Upgrade to Starter',
+              },
+              {
+                plan: 'package-b', label: 'Package B', tag: 'POPULAR', tagColor: GOLD,
+                border: GBORDER, accent: GOLD,
+                features: [
+                  'Everything in Package A',
+                  'Lifestyle short-form video',
+                  '360° product video',
+                  'Full 30-day content calendar',
+                  'Influencer & PR briefs',
+                ],
+                cta: 'Upgrade to Popular',
+              },
+              {
+                plan: 'package-c', label: 'Package C', tag: 'PREMIUM', tagColor: '#a855f7',
+                border: 'rgba(168,85,247,0.3)', accent: '#a855f7',
+                features: [
+                  'Everything in Package B',
+                  '3D product renders',
+                  'Ad creatives (static + video)',
+                  'Meta Ads manager',
+                  'Google Ads manager',
+                  'Precision audience targeting',
+                  'Full campaign deploy',
+                ],
+                cta: 'Upgrade to Premium',
+              },
+            ].map(tier => {
+              const isCurrentPlan = (userPlan || 'free') === tier.plan
+              const isLocked = PLAN_ORDER.indexOf(userPlan || 'free') < PLAN_ORDER.indexOf(tier.plan)
+              return (
+                <div
+                  key={tier.plan}
+                  style={{
+                    background: isCurrentPlan ? `${tier.accent}08` : CARD,
+                    border: `1px solid ${isCurrentPlan ? tier.border : BORDER}`,
+                    borderRadius: 16, padding: '18px 16px',
+                    position: 'relative',
+                  }}
+                >
+                  {isCurrentPlan && (
+                    <div style={{ position: 'absolute', top: -10, left: 16, background: tier.accent, color: '#0e0c09', fontSize: 9, fontWeight: 800, padding: '2px 10px', borderRadius: 100, letterSpacing: '0.08em' }}>
+                      YOUR PLAN
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                    <span style={{ fontSize: 14, fontWeight: 800, color: TEXT }}>{tier.label}</span>
+                    <span style={{ fontSize: 9, fontWeight: 800, color: tier.tagColor, background: `${tier.tagColor}15`, border: `1px solid ${tier.tagColor}30`, borderRadius: 100, padding: '3px 9px', letterSpacing: '0.06em' }}>{tier.tag}</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
+                    {tier.features.map((f, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 7, fontSize: 12, color: isLocked && i > 0 ? TEXT3 : TEXT2, lineHeight: 1.4 }}>
+                        <span style={{ color: isLocked && i > 0 ? TEXT3 : tier.accent, flexShrink: 0, marginTop: 1, fontSize: 13 }}>
+                          {isLocked && i > 0 ? '○' : '✓'}
+                        </span>
+                        {f}
+                      </div>
+                    ))}
+                  </div>
+                  {isLocked && tier.cta && (
+                    <button
+                      onClick={() => setUpgradeFor({ requiredPlan: tier.plan, featureTitle: tier.label + ' features' })}
+                      style={{ width: '100%', padding: '9px', background: `${tier.accent}12`, border: `1px solid ${tier.accent}30`, borderRadius: 10, color: tier.accent, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+                    >
+                      {tier.cta} →
+                    </button>
+                  )}
+                  {isCurrentPlan && (
+                    <div style={{ fontSize: 11, color: tier.accent, fontWeight: 600, textAlign: 'center', padding: '6px 0' }}>
+                      ✓ Active
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </motion.div>
+
+        {/* ═══ SECTION 2: KPI Metrics Row — returning users only ═══ */}
         <motion.div
           initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
           style={{
-            display: 'grid',
+            display: campaigns.length > 0 ? 'grid' : 'none',
             gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
             gap: 14, marginBottom: 40,
           }}
@@ -619,11 +817,87 @@ export default function AgentsHub() {
         </motion.div>
 
 
-        {/* ═══ SECTION 5: Campaign History ═══ */}
+        {/* ═══ SECTION: Customer Journey Flow ═══ */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.3 }}
+          style={{ marginBottom: 48 }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
+            <div>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', background: GDIM, border: `1px solid ${GBORDER}`, borderRadius: 100, fontSize: 11, fontWeight: 700, color: GOLD, letterSpacing: '0.06em', marginBottom: 10 }}>
+                <Zap size={11} /> CUSTOMER JOURNEY FLOW
+              </div>
+              <h2 style={{ fontSize: 22, fontWeight: 900, letterSpacing: '-0.02em', color: TEXT, marginBottom: 4 }}>
+                10-Step Campaign Flow
+              </h2>
+              <p style={{ fontSize: 13, color: TEXT2 }}>Follow these steps in order — each agent builds on the previous one.</p>
+            </div>
+            <button
+              onClick={() => navigate('/executive-report')}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 18px', background: GDIM, border: `1px solid ${GBORDER}`, borderRadius: 10, color: GOLD, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+            >
+              <BarChart2 size={13} /> View Executive Report
+            </button>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {[
+              { step: 1, title: 'Business Objective',        desc: 'Define your revenue goal and business target',          path: '/brand-kb',          color: GOLD,      done: hasBrandKb },
+              { step: 2, title: 'Marketing Strategy Agent',  desc: 'AI creates annual, quarterly and monthly strategy',     path: '/strategy',          color: '#10b981',  done: campaigns.length > 0 },
+              { step: 3, title: 'Campaign Planning Agent',   desc: 'Build campaign brief, timeline, budget and KPIs',       path: '/campaign-hub',      color: '#3b82f6',  done: campaigns.length > 0 },
+              { step: 4, title: 'Audience Intelligence Agent', desc: 'Segment your audience and build lookalike profiles',  path: '/audience-builder',  color: '#a855f7',  done: false },
+              { step: 5, title: 'Content Generation Agent',  desc: 'Create social posts, blogs, newsletters and emails',    path: '/caption-suite',     color: '#ec4899',  done: false },
+              { step: 6, title: 'Creative Asset Agent',      desc: 'Generate banners, images and visual creatives',         path: '/products',          color: '#f59e0b',  done: false },
+              { step: 7, title: 'Video Generation Agent',    desc: 'Produce video scripts, scenes and brand review',        path: '/video-gen',         color: '#ef4444',  done: false },
+              { step: 8, title: 'Brand Governance Agent',    desc: 'Review all content for brand compliance',               path: '/brand-governance',  color: '#6366f1',  done: false },
+              { step: 9, title: 'Analytics Agent',           desc: 'Monitor campaign results and performance metrics',      path: '/analytics',         color: '#14b8a6',  done: false },
+              { step: 10, title: 'Executive Report',         desc: 'Full marketing performance summary and AI insights',    path: '/executive-report',  color: GOLD,       done: false },
+            ].map((item, i) => (
+              <motion.div
+                key={item.step}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.04 }}
+                onClick={() => navigate(item.path)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 16,
+                  background: item.done ? `${item.color}08` : CARD,
+                  border: `1px solid ${item.done ? item.color + '35' : BORDER}`,
+                  borderRadius: 14, padding: '14px 18px', cursor: 'pointer',
+                  transition: 'all 0.15s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = `${item.color}50`; e.currentTarget.style.background = `${item.color}10` }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = item.done ? `${item.color}35` : BORDER; e.currentTarget.style.background = item.done ? `${item.color}08` : CARD }}
+              >
+                {/* Step number */}
+                <div style={{ width: 36, height: 36, borderRadius: '50%', flexShrink: 0, background: item.done ? item.color : `${item.color}15`, border: `2px solid ${item.done ? item.color : item.color + '40'}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {item.done
+                    ? <CheckCircle2 size={16} color="#fff" />
+                    : <span style={{ fontSize: 12, fontWeight: 800, color: item.color }}>{item.step}</span>
+                  }
+                </div>
+
+                {/* Connector line */}
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: item.done ? TEXT : TEXT, marginBottom: 2 }}>
+                    {item.title}
+                    {item.done && <span style={{ fontSize: 11, fontWeight: 600, color: item.color, marginLeft: 8, background: `${item.color}15`, padding: '2px 8px', borderRadius: 20 }}>Done</span>}
+                  </div>
+                  <div style={{ fontSize: 12, color: TEXT3 }}>{item.desc}</div>
+                </div>
+
+                <ChevronRight size={16} color={TEXT3} style={{ flexShrink: 0 }} />
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* ═══ SECTION 5: Campaign History — returning users only ═══ */}
         <motion.div
           initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.4 }}
-          style={{ marginTop: 56 }}
+          style={{ marginTop: 56, display: campaigns.length > 0 ? 'block' : 'none' }}
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
             <div>

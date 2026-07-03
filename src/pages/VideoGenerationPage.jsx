@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import JourneyFooter from '../components/JourneyFooter.jsx'
 import {
   Film, ArrowLeft, Loader2, Sparkles, Check, Copy,
   Play, Mic, MonitorPlay, Clapperboard, ShoppingBag,
@@ -498,6 +499,7 @@ export default function VideoGenerationPage() {
           </div>
         )}
       </div>
+      <JourneyFooter currentPath="/video-gen" />
       <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
     </div>
   )

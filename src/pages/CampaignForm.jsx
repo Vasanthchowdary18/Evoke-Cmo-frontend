@@ -1085,6 +1085,92 @@ const campaignMeta = {
   },
 };
 
+const CURRENCIES = [
+  { value: 'USD', label: '$ USD' },
+  { value: 'INR', label: '₹ INR' },
+  { value: 'EUR', label: '€ EUR' },
+  { value: 'GBP', label: '£ GBP' },
+  { value: 'AED', label: 'AED' },
+  { value: 'AUD', label: 'A$ AUD' },
+  { value: 'CAD', label: 'C$ CAD' },
+  { value: 'SGD', label: 'S$ SGD' },
+  { value: 'FREE', label: 'Free' },
+]
+
+function PriceCurrencyField({ currency, amount, onCurrencyChange, onAmountChange, inputStyle }) {
+  const [open, setOpen] = React.useState(false)
+  const ref = React.useRef(null)
+  const selected = CURRENCIES.find(c => c.value === currency) || CURRENCIES[0]
+  const isFree = currency === 'FREE'
+
+  React.useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  return (
+    <div style={{ display: 'flex', gap: 8 }}>
+      <div ref={ref} style={{ position: 'relative', flexShrink: 0 }}>
+        <button
+          type="button"
+          onClick={() => setOpen(o => !o)}
+          style={{
+            ...inputStyle,
+            width: 'auto',
+            minWidth: 100,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 8,
+            padding: '12px 14px',
+            userSelect: 'none',
+          }}
+        >
+          <span>{selected.label}</span>
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ opacity: 0.5, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>
+            <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
+        {open && (
+          <div className="price-currency-dropdown" style={{
+            position: 'absolute', top: 'calc(100% + 4px)', left: 0, zIndex: 99999,
+            background: '#1c1a13', border: '1px solid rgba(255,255,255,0.12)',
+            borderRadius: 12, overflow: 'hidden', minWidth: 130,
+            boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
+          }}>
+            {CURRENCIES.map(c => (
+              <div
+                key={c.value}
+                onClick={() => { onCurrencyChange(c.value); setOpen(false) }}
+                style={{
+                  padding: '10px 16px', fontSize: 14, fontWeight: 500,
+                  color: c.value === currency ? '#f97316' : '#f0ebe0',
+                  background: c.value === currency ? 'rgba(249,115,22,0.1)' : 'transparent',
+                  cursor: 'pointer', transition: 'background 0.12s',
+                  borderBottom: '1px solid rgba(255,255,255,0.05)',
+                }}
+                onMouseEnter={e => { if (c.value !== currency) e.currentTarget.style.background = 'rgba(255,255,255,0.05)' }}
+                onMouseLeave={e => { if (c.value !== currency) e.currentTarget.style.background = 'transparent' }}
+              >
+                {c.label}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      <input
+        value={isFree ? '' : amount}
+        onChange={e => onAmountChange(e.target.value)}
+        placeholder={isFree ? 'Free' : 'Enter amount'}
+        disabled={isFree}
+        style={{ ...inputStyle, flex: 1, opacity: isFree ? 0.4 : 1 }}
+      />
+    </div>
+  )
+}
+
 // â"€â"€â"€ Main CampaignForm component â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 export default function CampaignForm() {
   const { type } = useParams();
@@ -1498,6 +1584,7 @@ export default function CampaignForm() {
     contentTypes: [],
     postingFrequency: "",
   });
+  const [kbLoaded, setKbLoaded] = useState(false);
   const [connectedAccounts, setConnectedAccounts] = useState({});
   const [audienceOpen, setAudienceOpen] = useState(false);
   const [locationOpen, setLocationOpen] = useState(false);
@@ -1640,7 +1727,8 @@ export default function CampaignForm() {
       if (!kb) return
       setForm(prev => {
         const updated = { ...prev }
-        if (!prev.name      && kb.companyName)          updated.name = kb.companyName
+        // For product campaigns, don't pre-fill name — user must enter the specific product
+        if (!prev.name && kb.companyName && type !== 'product') updated.name = kb.companyName
         if (!prev.brandName && kb.companyName)          updated.brandName = kb.companyName
         if (!prev.website   && kb.website)              updated.website = kb.website
         if (!prev.industry  && kb.industry)             updated.industry = CF_INDUSTRY_MAP[kb.industry] || ''
@@ -1658,8 +1746,22 @@ export default function CampaignForm() {
           else if (kb.audienceType === 'd2c') aud.push('Millennials (25-40)')
           if (aud.length) updated.targetAudience = aud
         }
+        if (!prev.goalType && kb.primaryObjectives?.length) {
+          const GOAL_MAP = {
+            brand_awareness: 'Increase Brand Awareness',
+            lead_generation: 'Generate Leads',
+            sales_conversion: 'Drive Sales / Conversions',
+            community_growth: 'Grow Community / Following',
+            product_launch: 'Launch New Product / Event',
+            website_traffic: 'Boost Website Traffic',
+          }
+          updated.goalType = GOAL_MAP[kb.primaryObjectives[0]] || 'Drive Sales / Conversions'
+        } else if (!prev.goalType) {
+          updated.goalType = 'Drive Sales / Conversions'
+        }
         return updated
       })
+      setKbLoaded(true)
     }).catch(() => {})
   }, [authUser?.uid])
 
@@ -2352,7 +2454,7 @@ export default function CampaignForm() {
           )
         })()}
 
-        <motion.div
+<motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
@@ -3159,11 +3261,12 @@ export default function CampaignForm() {
                   (optional)
                 </span>
               </label>
-              <input
-                value={form.price}
-                onChange={(e) => set("price", e.target.value)}
-                placeholder="e.g. Rs.1,999 / $29.99 / Free"
-                style={s.input}
+              <PriceCurrencyField
+                currency={form.priceCurrency || 'USD'}
+                amount={form.price}
+                onCurrencyChange={(v) => set('priceCurrency', v)}
+                onAmountChange={(v) => set('price', v)}
+                inputStyle={s.input}
               />
             </>
           )}
@@ -3287,16 +3390,18 @@ export default function CampaignForm() {
                   </option>
                 ))}
               </select>
-              <textarea
-                value={form.goal}
-                onChange={(e) => set("goal", e.target.value)}
-                placeholder="Describe your goal in more detail... (optional)"
-                style={{ ...s.textarea, minHeight: "80px" }}
-              />
+              {type !== 'product' && (
+                <textarea
+                  value={form.goal}
+                  onChange={(e) => set("goal", e.target.value)}
+                  placeholder="Describe your goal in more detail... (optional)"
+                  style={{ ...s.textarea, minHeight: "80px" }}
+                />
+              )}
             </>
           )}
 
-          {type !== "event" && type !== "growth_strategy" && type !== "growth_agent" && type !== "content_calendar" && (
+          {type !== "event" && type !== "growth_strategy" && type !== "growth_agent" && type !== "content_calendar" && type !== "product" && (
             <>
               <label style={{ ...s.label, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span>Brand Name <span style={s.req}>*</span></span>
