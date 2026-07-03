@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Hash, ArrowLeft, ArrowRight, Loader2, Copy, Check, AlertCircle, Send } from 'lucide-react'
+import { Hash, ArrowLeft, ArrowRight, Loader2, Copy, Check, AlertCircle, Send, ShoppingBag, Layout, Shield } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
 import { useAuth } from '../hooks/useAuth.js'
 import { getKnowledgeBase } from '../services/knowledgeBaseService.js'
@@ -115,9 +115,100 @@ Return ONLY valid JSON (no markdown, no explanation) in this exact format:
   return JSON.parse(fixed)
 }
 
+const MODES = [
+  { key: 'captions',    label: 'Social Captions',     icon: <Hash size={14}/> },
+  { key: 'product',     label: 'Product Description',  icon: <ShoppingBag size={14}/> },
+  { key: 'landing',     label: 'Landing Page',         icon: <Layout size={14}/> },
+]
+
+const PRODUCT_TONES = ['Professional', 'Casual', 'Persuasive']
+const LENGTHS = ['Short (50 words)', 'Medium (100 words)', 'Long (200 words)']
+
+async function generateProductDescription({ productName, features, audience, tone, length }) {
+  const wordCount = length.includes('50') ? 50 : length.includes('100') ? 100 : 200
+  const prompt = `You are an expert product copywriter. Write a product description.
+
+Product Name: ${productName}
+Key Features: ${features}
+Target Audience: ${audience}
+Tone: ${tone}
+Length: ~${wordCount} words
+
+Return ONLY valid JSON:
+{
+  "short": "~50 word description",
+  "medium": "~100 word description",
+  "long": "~200 word description"
+}`
+
+  const body = JSON.stringify({
+    model: 'llama-3.1-8b-instant',
+    messages: [
+      { role: 'system', content: 'You are an expert product copywriter. Always respond with only valid JSON.' },
+      { role: 'user', content: prompt },
+    ],
+    temperature: 0.75,
+    max_tokens: 1200,
+  })
+
+  const apiKey = import.meta.env.VITE_GROQ_API_KEY || ''
+  const res = apiKey
+    ? await fetch('https://api.groq.com/openai/v1/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` }, body })
+    : await fetch('/api/generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body })
+
+  if (!res.ok) throw new Error(`Generation failed (${res.status})`)
+  const data = await res.json()
+  const text = data.choices?.[0]?.message?.content || ''
+  const match = text.match(/```json\s*([\s\S]*?)```/) || text.match(/(\{[\s\S]*\})/)
+  if (!match) throw new Error('Could not parse AI response.')
+  return JSON.parse(match[1])
+}
+
+async function generateLandingPage({ goal, headline, benefits, cta, audience }) {
+  const prompt = `You are an expert landing page copywriter. Create full landing page copy.
+
+Campaign Goal: ${goal}
+Headline: ${headline}
+Key Benefits: ${benefits}
+CTA Text: ${cta}
+Target Audience: ${audience}
+
+Return ONLY valid JSON:
+{
+  "hero": { "headline": "...", "subheadline": "...", "cta": "..." },
+  "features": { "title": "...", "points": ["benefit 1", "benefit 2", "benefit 3"] },
+  "socialProof": { "title": "...", "placeholder": "Add testimonials or stats here" },
+  "ctaSection": { "headline": "...", "subtext": "...", "cta": "..." }
+}`
+
+  const body = JSON.stringify({
+    model: 'llama-3.1-8b-instant',
+    messages: [
+      { role: 'system', content: 'You are an expert landing page copywriter. Always respond with only valid JSON.' },
+      { role: 'user', content: prompt },
+    ],
+    temperature: 0.75,
+    max_tokens: 1200,
+  })
+
+  const apiKey = import.meta.env.VITE_GROQ_API_KEY || ''
+  const res = apiKey
+    ? await fetch('https://api.groq.com/openai/v1/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` }, body })
+    : await fetch('/api/generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body })
+
+  if (!res.ok) throw new Error(`Generation failed (${res.status})`)
+  const data = await res.json()
+  const text = data.choices?.[0]?.message?.content || ''
+  const match = text.match(/```json\s*([\s\S]*?)```/) || text.match(/(\{[\s\S]*\})/)
+  if (!match) throw new Error('Could not parse AI response.')
+  return JSON.parse(match[1])
+}
+
 export default function CaptionSuitePage() {
   const navigate      = useNavigate()
   const { user }      = useAuth()
+
+  const [mode, setMode] = useState('captions')
 
   const [selectedPlatforms, setSelectedPlatforms] = useState([])
   const [contentType, setContentType] = useState('')
@@ -127,6 +218,22 @@ export default function CaptionSuitePage() {
   const [error, setError] = useState('')
   const [results, setResults] = useState(null)
   const [copied, setCopied] = useState({})
+
+  // Product Description state
+  const [prodName, setProdName]       = useState('')
+  const [prodFeatures, setProdFeatures] = useState('')
+  const [prodAudience, setProdAudience] = useState('')
+  const [prodTone, setProdTone]       = useState('Professional')
+  const [prodLength, setProdLength]   = useState('Medium (100 words)')
+  const [prodResults, setProdResults] = useState(null)
+
+  // Landing Page state
+  const [lpGoal, setLpGoal]           = useState('')
+  const [lpHeadline, setLpHeadline]   = useState('')
+  const [lpBenefits, setLpBenefits]   = useState('')
+  const [lpCta, setLpCta]             = useState('')
+  const [lpAudience, setLpAudience]   = useState('')
+  const [lpResults, setLpResults]     = useState(null)
 
   // Pre-fill from Brand KB
   useEffect(() => {
@@ -236,16 +343,192 @@ export default function CaptionSuitePage() {
           </div>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <h1 style={{ fontSize: 22, fontWeight: 900, color: TEXT, margin: 0, letterSpacing: '-0.02em' }}>Caption & Hashtag Suite</h1>
+              <h1 style={{ fontSize: 22, fontWeight: 900, color: TEXT, margin: 0, letterSpacing: '-0.02em' }}>Content Generation Suite</h1>
               <span style={{ fontSize: 9, fontWeight: 800, padding: '3px 8px', borderRadius: 6, background: 'rgba(200,151,62,0.15)', color: GOLD, border: '1px solid rgba(200,151,62,0.3)' }}>PACKAGE B</span>
             </div>
             <p style={{ fontSize: 13, color: TEXT2, margin: '4px 0 0', lineHeight: 1.5 }}>
-              Generate platform-optimised captions, CTAs, and hashtag sets in seconds.
+              Generate captions, product descriptions, and landing page copy powered by AI.
             </p>
           </div>
         </div>
 
-        <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', margin: '24px 0' }} />
+        {/* Mode Switcher */}
+        <div style={{ display: 'flex', gap: 6, margin: '20px 0', background: 'rgba(255,255,255,0.04)', borderRadius: 12, padding: 5 }}>
+          {MODES.map(m => (
+            <button
+              key={m.key}
+              onClick={() => { setMode(m.key); setError(''); setResults(null); setProdResults(null); setLpResults(null) }}
+              style={{
+                flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                padding: '9px 0', borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                border: 'none', fontFamily: FONT, transition: 'all 0.15s',
+                background: mode === m.key ? GREEN : 'transparent',
+                color: mode === m.key ? '#fff' : TEXT3,
+              }}
+            >
+              {m.icon} {m.label}
+            </button>
+          ))}
+        </div>
+
+        <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', margin: '4px 0 24px' }} />
+
+        {/* ── PRODUCT DESCRIPTION MODE ── */}
+        {mode === 'product' && (
+          <div>
+            <div style={{ marginBottom: 18 }}>
+              <label style={s.label}>Product Name <span style={s.req}>*</span></label>
+              <input value={prodName} onChange={e => setProdName(e.target.value)} placeholder="e.g. EvoX AI Marketing Platform" style={s.input} />
+            </div>
+            <div style={{ marginBottom: 18 }}>
+              <label style={s.label}>Key Features <span style={s.req}>*</span></label>
+              <textarea value={prodFeatures} onChange={e => setProdFeatures(e.target.value)} placeholder="e.g. AI campaign builder, audience segmentation, real-time analytics, multi-channel publishing..." style={s.textarea} />
+            </div>
+            <div style={{ marginBottom: 18 }}>
+              <label style={s.label}>Target Audience</label>
+              <input value={prodAudience} onChange={e => setProdAudience(e.target.value)} placeholder="e.g. Marketing managers at SMBs, 28-45 years" style={s.input} />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 18 }}>
+              <div>
+                <label style={s.label}>Tone</label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {PRODUCT_TONES.map(t => (
+                    <button key={t} onClick={() => setProdTone(t)} style={{ flex: 1, padding: '9px 0', borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: 'pointer', border: `1.5px solid ${prodTone === t ? GREEN : 'rgba(255,255,255,0.1)'}`, background: prodTone === t ? `${GREEN}18` : 'rgba(255,255,255,0.04)', color: prodTone === t ? GREEN : TEXT3, fontFamily: FONT }}>
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label style={s.label}>Length</label>
+                <select value={prodLength} onChange={e => setProdLength(e.target.value)} style={s.select}>
+                  {LENGTHS.map(l => <option key={l} value={l} style={{ background: '#1c1a13', color: TEXT }}>{l}</option>)}
+                </select>
+              </div>
+            </div>
+            {error && <div style={{ padding: '12px 16px', background: 'rgba(239,68,68,0.1)', border: '1.5px solid rgba(239,68,68,0.4)', borderRadius: 10, color: '#fca5a5', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}><AlertCircle size={15} style={{ flexShrink: 0, color: '#f87171' }} />{error}</div>}
+            <button
+              onClick={async () => {
+                setError(''); if (!prodName.trim() || !prodFeatures.trim()) return setError('Product name and features are required.')
+                setLoading(true); setProdResults(null)
+                try { setProdResults(await generateProductDescription({ productName: prodName, features: prodFeatures, audience: prodAudience, tone: prodTone, length: prodLength })) }
+                catch (e) { setError(e.message || 'Generation failed.') }
+                setLoading(false)
+              }}
+              disabled={loading}
+              style={s.generateBtn}
+            >
+              {loading ? <><Loader2 size={17} style={{ animation: 'spin 1s linear infinite' }} /> Generating...</> : <>Generate Product Description <ArrowRight size={17} /></>}
+            </button>
+            <AnimatePresence>
+              {prodResults && (
+                <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} style={{ marginTop: 32 }}>
+                  <p style={{ fontSize: 10, fontWeight: 800, color: TEXT3, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 16 }}>Generated Descriptions</p>
+                  {['short', 'medium', 'long'].map((len, i) => (
+                    <div key={len} style={{ ...s.resultCard, borderLeft: `3px solid ${GREEN}` }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                        <span style={{ fontSize: 12, fontWeight: 800, color: GREEN, textTransform: 'uppercase' }}>{len} Version</span>
+                        <button onClick={() => { navigator.clipboard.writeText(prodResults[len]); setCopied(c => ({ ...c, [`prod-${len}`]: true })); setTimeout(() => setCopied(c => ({ ...c, [`prod-${len}`]: false })), 2000) }} style={s.copyBtn}>
+                          {copied[`prod-${len}`] ? <Check size={12} /> : <Copy size={12} />} {copied[`prod-${len}`] ? 'Copied!' : 'Copy'}
+                        </button>
+                      </div>
+                      <p style={{ fontSize: 14, color: TEXT, lineHeight: 1.7, margin: 0 }}>{prodResults[len]}</p>
+                    </div>
+                  ))}
+                  <button onClick={() => navigate('/brand-governance', { state: { contentPrefill: prodResults.medium, contentType: 'Product Description' } })} style={{ marginTop: 8, padding: '11px 24px', background: 'rgba(200,151,62,0.1)', border: `1px solid ${GOLD}35`, borderRadius: 10, color: GOLD, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: FONT, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                    <Shield size={14} /> Send for Brand Review
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
+
+        {/* ── LANDING PAGE MODE ── */}
+        {mode === 'landing' && (
+          <div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 18 }}>
+              <div>
+                <label style={s.label}>Campaign Goal <span style={s.req}>*</span></label>
+                <input value={lpGoal} onChange={e => setLpGoal(e.target.value)} placeholder="e.g. Increase trial sign-ups by 30%" style={s.input} />
+              </div>
+              <div>
+                <label style={s.label}>Headline <span style={s.req}>*</span></label>
+                <input value={lpHeadline} onChange={e => setLpHeadline(e.target.value)} placeholder="e.g. Your AI Marketing Team, Ready in 60 Seconds" style={s.input} />
+              </div>
+            </div>
+            <div style={{ marginBottom: 18 }}>
+              <label style={s.label}>Key Benefits (3 bullet points) <span style={s.req}>*</span></label>
+              <textarea value={lpBenefits} onChange={e => setLpBenefits(e.target.value)} placeholder="e.g.&#10;• 10x faster campaign creation&#10;• AI-powered audience targeting&#10;• Real-time performance analytics" style={{ ...s.textarea, minHeight: 90 }} />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 18 }}>
+              <div>
+                <label style={s.label}>CTA Button Text <span style={s.req}>*</span></label>
+                <input value={lpCta} onChange={e => setLpCta(e.target.value)} placeholder="e.g. Start Free Trial" style={s.input} />
+              </div>
+              <div>
+                <label style={s.label}>Target Audience</label>
+                <input value={lpAudience} onChange={e => setLpAudience(e.target.value)} placeholder="e.g. Marketing managers, SMB owners" style={s.input} />
+              </div>
+            </div>
+            {error && <div style={{ padding: '12px 16px', background: 'rgba(239,68,68,0.1)', border: '1.5px solid rgba(239,68,68,0.4)', borderRadius: 10, color: '#fca5a5', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}><AlertCircle size={15} style={{ flexShrink: 0, color: '#f87171' }} />{error}</div>}
+            <button
+              onClick={async () => {
+                setError(''); if (!lpGoal.trim() || !lpHeadline.trim() || !lpBenefits.trim() || !lpCta.trim()) return setError('Goal, headline, benefits, and CTA are required.')
+                setLoading(true); setLpResults(null)
+                try { setLpResults(await generateLandingPage({ goal: lpGoal, headline: lpHeadline, benefits: lpBenefits, cta: lpCta, audience: lpAudience })) }
+                catch (e) { setError(e.message || 'Generation failed.') }
+                setLoading(false)
+              }}
+              disabled={loading}
+              style={s.generateBtn}
+            >
+              {loading ? <><Loader2 size={17} style={{ animation: 'spin 1s linear infinite' }} /> Generating...</> : <>Generate Landing Page Copy <ArrowRight size={17} /></>}
+            </button>
+            <AnimatePresence>
+              {lpResults && (
+                <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} style={{ marginTop: 32 }}>
+                  <p style={{ fontSize: 10, fontWeight: 800, color: TEXT3, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 16 }}>Landing Page Copy</p>
+                  {[
+                    { key: 'hero',        label: 'Hero Section',      color: GREEN },
+                    { key: 'features',    label: 'Features Section',  color: '#6366f1' },
+                    { key: 'socialProof', label: 'Social Proof',      color: '#f59e0b' },
+                    { key: 'ctaSection',  label: 'CTA Section',       color: GOLD },
+                  ].map(sec => {
+                    const data = lpResults[sec.key]
+                    if (!data) return null
+                    const fullText = Object.values(data).flat().join('\n')
+                    return (
+                      <div key={sec.key} style={{ ...s.resultCard, borderLeft: `3px solid ${sec.color}` }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                          <span style={{ fontSize: 12, fontWeight: 800, color: sec.color, textTransform: 'uppercase' }}>{sec.label}</span>
+                          <button onClick={() => { navigator.clipboard.writeText(fullText); setCopied(c => ({ ...c, [sec.key]: true })); setTimeout(() => setCopied(c => ({ ...c, [sec.key]: false })), 2000) }} style={s.copyBtn}>
+                            {copied[sec.key] ? <Check size={12} /> : <Copy size={12} />} {copied[sec.key] ? 'Copied!' : 'Copy'}
+                          </button>
+                        </div>
+                        {Object.entries(data).map(([k, v]) => (
+                          <div key={k} style={{ marginBottom: 8 }}>
+                            <p style={{ fontSize: 10, fontWeight: 700, color: TEXT3, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 4 }}>{k}</p>
+                            {Array.isArray(v)
+                              ? <ul style={{ margin: 0, paddingLeft: 18 }}>{v.map((item, i) => <li key={i} style={{ fontSize: 13, color: TEXT, lineHeight: 1.7 }}>{item}</li>)}</ul>
+                              : <p style={{ fontSize: 14, color: TEXT, lineHeight: 1.7, margin: 0 }}>{v}</p>
+                            }
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  })}
+                  <button onClick={() => navigate('/brand-governance', { state: { contentPrefill: lpHeadline, contentType: 'Landing Page' } })} style={{ marginTop: 8, padding: '11px 24px', background: 'rgba(200,151,62,0.1)', border: `1px solid ${GOLD}35`, borderRadius: 10, color: GOLD, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: FONT, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                    <Shield size={14} /> Send for Brand Review
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
+
+        {/* ── CAPTIONS MODE ── */}
+        {mode === 'captions' && <div>
 
         {/* ── Platform selector ── */}
         <div style={{ marginBottom: 22 }}>
@@ -457,6 +740,9 @@ export default function CaptionSuitePage() {
         </AnimatePresence>
 
         <style>{`@keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }`}</style>
+
+        </div>} {/* end captions mode */}
+
       </div>
     </div>
   )

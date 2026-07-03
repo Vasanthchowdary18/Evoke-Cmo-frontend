@@ -47,6 +47,7 @@ import MarketingHealthPage from './pages/MarketingHealthPage.jsx'
 import BrandProfilePage from './pages/BrandProfilePage.jsx'
 import EventbritePost from './pages/EventbritePost.jsx'
 import DevResetPage from './pages/DevResetPage.jsx'
+import ExecutiveReportingPage from './pages/ExecutiveReportingPage.jsx'
 import Chatbot from './components/Chatbot.jsx'
 
 // Handles token returned from accounts.evokemarketplace.com after login
@@ -129,6 +130,7 @@ export default function App() {
         <Route path="/campaign-hub"          element={<CampaignHub />} />
         <Route path="/hub/:agent"            element={<AgentHub />} />
         <Route path="/dev-reset"             element={<DevResetPage />} />
+        <Route path="/executive-report"      element={<ExecutiveReportingPage />} />
         <Route path="/privacy"            element={<Privacy />} />
         <Route path="/terms"              element={<Terms />} />
         <Route path="*"                  element={<Navigate to="/" replace />} />

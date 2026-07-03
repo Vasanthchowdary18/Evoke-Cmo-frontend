@@ -319,11 +319,32 @@ export default function AudienceBuilder() {
             </div>
 
             {tab === 'segments' && (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(440px, 1fr))', gap: 16 }}>
-                <AudienceCard seg={data.primaryAudience}    label="PRIMARY AUDIENCE" />
-                <AudienceCard seg={data.secondaryAudience}  label="SECONDARY AUDIENCE" />
-                <AudienceCard seg={data.lookalikeSeed}      label="LOOKALIKE SEED" />
-                <AudienceCard seg={data.retargetingAudience}label="RETARGETING" />
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                  <p style={{ fontSize: 13, color: TEXT2, margin: 0 }}>4 audience segments built — ready to use in campaigns</p>
+                  <button
+                    onClick={() => navigate('/campaign-hub', {
+                      state: {
+                        audiencePrefill: {
+                          primary: data.primaryAudience?.name,
+                          lookalike: data.lookalikeSeed?.name,
+                          reach: data.primaryAudience?.size,
+                          geo: inputs.geo,
+                          goal: inputs.goal,
+                        }
+                      }
+                    })}
+                    style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 20px', background: `linear-gradient(135deg, ${GOLD}, #a87030)`, border: 'none', borderRadius: 10, color: '#0e0c09', fontSize: 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}
+                  >
+                    <Target size={14} /> Use in Campaign →
+                  </button>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(440px, 1fr))', gap: 16 }}>
+                  <AudienceCard seg={data.primaryAudience}    label="PRIMARY AUDIENCE" />
+                  <AudienceCard seg={data.secondaryAudience}  label="SECONDARY AUDIENCE" />
+                  <AudienceCard seg={data.lookalikeSeed}      label="LOOKALIKE AUDIENCE" />
+                  <AudienceCard seg={data.retargetingAudience}label="HIGH VALUE / RETARGETING" />
+                </div>
               </div>
             )}
 
