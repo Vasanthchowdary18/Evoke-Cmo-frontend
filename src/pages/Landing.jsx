@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence, useInView } from 'framer-motion'
-import { ArrowRight, Check, Star, Zap, TrendingUp, Target, Calendar, Search, Mail, Users, BarChart2, Briefcase, Megaphone, ShoppingCart, Sparkles, Activity, Lightbulb, DollarSign, Rocket, Image, Film, Monitor, Share2, Layers, Play } from 'lucide-react'
+import { ArrowRight, Check, Star, Zap, TrendingUp, Target, Calendar, Search, Mail, Users, BarChart2, Briefcase, Megaphone, ShoppingCart, Sparkles, Activity, Lightbulb, DollarSign, Rocket, Image, Film, Monitor, Share2, Layers, Play, BookOpen } from 'lucide-react'
 // OnboardingModal moved to AgentsHub — not triggered on landing page
 import Navbar from '../components/Navbar.jsx'
 import { useAuth } from '../hooks/useAuth.js'
@@ -133,6 +133,7 @@ const PLANS = [
     tagline: 'Start with strategy — no cost, no commitment',
     price: '$0', priceNote: 'No credit card required',
     features: [
+      { icon: <BookOpen size={13}/>, text: 'Brand Knowledge Base Setup — Your AI CMO', desc: 'Set up your brand profile — business identity, target audience, brand voice and goals — so your AI CMO understands your brand from day one and every recommendation is on-brand.' },
       { icon: <Target size={13}/>, text: 'Objective & Strategy Development', desc: 'EVOX CMO works with you to define clear, measurable marketing goals — whether that\'s lead generation, brand awareness, or revenue growth. It builds a full GTM strategy aligned to your business objectives.' },
       { icon: <Megaphone size={13}/>, text: 'New Leads / Client Retention Planning', desc: 'Get a custom plan for attracting new customers and keeping existing ones engaged. Includes outreach strategies, nurture sequences, and loyalty campaign frameworks tailored to your audience.' },
       { icon: <Layers size={13}/>, text: 'Content Creation Framework', desc: 'A structured content blueprint covering your brand voice, content pillars, post formats, and publishing cadence across all channels — so every piece of content works toward your goals.' },
@@ -502,9 +503,9 @@ export default function Landing() {
   // after login instead of bouncing back to the landing page first.
   const goFreeStart = () => {
     if (user) {
-      navigate('/agents-hub')
+      navigate('/plans')
     } else {
-      redirectToLogin(window.location.origin + '/agents-hub')
+      redirectToLogin(window.location.origin + '/plans')
     }
   }
 
@@ -528,17 +529,7 @@ export default function Landing() {
 
   const startWizardWithPlan = (planKey) => {
     try { localStorage.setItem('evoke_selected_package', planKey) } catch {}
-    setWizardPlan(planKey)
-    if (wizardDone) {
-      setWizardPhase('ready')
-    } else {
-      setWizardPhase('questions')
-      setWizardStep(0)
-      setWizardAnswers({})
-      setOtherBgInput('')
-      setOtherBgSelected(false)
-    }
-    setWizardOpen(true)
+    navigate('/brand-kb')
   }
 
   /* Gold gradient text helper */
@@ -637,111 +628,6 @@ export default function Landing() {
       {/* ══════════════════════════════════════════════════
           CMO WORKFLOW PIPELINE + ASSESSMENT WIZARD
       ══════════════════════════════════════════════════ */}
-      <section id="cmo-assessment" style={{padding:'80px 40px',background:'#0a0908',overflow:'hidden',position:'relative'}}>
-        <div style={{maxWidth:1200,margin:'0 auto'}}>
-
-          {/* ── Static header (always visible) ── */}
-          <FadeIn style={{textAlign:'center',marginBottom:52}}>
-            <SBadge>The CMO Framework</SBadge>
-            <h2 style={{fontSize:'clamp(20px,3vw,38px)',fontWeight:800,letterSpacing:'-0.03em',lineHeight:1.2,fontFamily:"'Syne','Inter',sans-serif",color:TEXT,marginBottom:12}}>
-              From Objectives to <span style={goldGrad}>Optimization</span>
-            </h2>
-            <p style={{fontSize:15,color:TEXT2,maxWidth:500,margin:'0 auto',lineHeight:1.65}}>
-              Every EVOX engagement follows this proven C-suite framework — ensuring each dollar drives measurable outcomes.
-            </p>
-          </FadeIn>
-
-          {/* ── Framework steps — 2-row layout matching the design ── */}
-          <FadeIn style={{marginBottom:56}}>
-            <div style={{ maxWidth:1100, margin:'0 auto', overflowX:'auto', padding:'0 8px' }}>
-
-              {/* Row 1: Circles + Connectors */}
-              <div style={{ display:'flex', alignItems:'center' }}>
-                {WORKFLOW.map((step, i) => {
-                  const isActive = wizardOpen && !wizardDone && WIZARD_STEPS[wizardStep]?.frameworkIdx === i
-                  const isDone   = wizardOpen && (wizardDone || (WIZARD_STEPS[wizardStep]?.frameworkIdx ?? -1) > i)
-                  return (
-                    <React.Fragment key={`c-${step.label}`}>
-                      {/* Circle */}
-                      <div style={{ flex:1, display:'flex', justifyContent:'center' }}>
-                        <div style={{
-                          width:84, height:84, borderRadius:'50%', flexShrink:0,
-                          background: isActive
-                            ? 'linear-gradient(135deg,#d4a853,#b8803a)'
-                            : isDone
-                              ? 'rgba(200,151,62,0.2)'
-                              : '#17150f',
-                          border:`2px solid ${isActive || isDone ? GOLD : 'rgba(200,151,62,0.28)'}`,
-                          display:'flex', alignItems:'center', justifyContent:'center',
-                          color: isActive ? '#0e0c09' : GOLD,
-                          transition:'all 0.35s',
-                          boxShadow: isActive ? '0 0 32px rgba(200,151,62,0.45)' : 'none',
-                        }}>
-                          {isDone ? <Check size={24}/> : step.icon}
-                        </div>
-                      </div>
-                      {/* Connector: line + › */}
-                      {i < WORKFLOW.length - 1 && (
-                        <div style={{ flex:0.7, display:'flex', alignItems:'center', gap:0, minWidth:20 }}>
-                          <div style={{
-                            flex:1, height:1,
-                            background: isDone
-                              ? `linear-gradient(90deg,${GOLD},rgba(200,151,62,0.5))`
-                              : 'rgba(200,151,62,0.22)',
-                            transition:'background 0.3s',
-                          }}/>
-                          <span style={{
-                            fontSize:14, color: isDone ? GOLD : 'rgba(200,151,62,0.4)',
-                            flexShrink:0, lineHeight:1, transition:'color 0.3s',
-                            fontWeight:300,
-                          }}>›</span>
-                        </div>
-                      )}
-                    </React.Fragment>
-                  )
-                })}
-              </div>
-
-              {/* Row 2: Labels + Descriptions (spacers match connectors) */}
-              <div style={{ display:'flex', marginTop:20 }}>
-                {WORKFLOW.map((step, i) => {
-                  const isActive = wizardOpen && !wizardDone && WIZARD_STEPS[wizardStep]?.frameworkIdx === i
-                  return (
-                    <React.Fragment key={`l-${step.label}`}>
-                      <div style={{ flex:1, textAlign:'center', padding:'0 6px' }}>
-                        <div style={{
-                          fontSize:11, fontWeight:800, color: isActive ? GOLD : TEXT,
-                          letterSpacing:'0.07em', textTransform:'uppercase',
-                          marginBottom:6, transition:'color 0.3s',
-                        }}>{step.label}</div>
-                        <div style={{ fontSize:11, color:TEXT3, lineHeight:1.65, maxWidth:110, margin:'0 auto' }}>{step.desc}</div>
-                      </div>
-                      {/* Matching spacer for connector width */}
-                      {i < WORKFLOW.length - 1 && <div style={{ flex:0.7 }} />}
-                    </React.Fragment>
-                  )
-                })}
-              </div>
-
-            </div>
-          </FadeIn>
-
-          {/* ── Wizard CTA ── */}
-          <motion.div initial={{opacity:0,y:12}} animate={{opacity:1,y:0}} style={{textAlign:'center'}}>
-            <button
-              onClick={openAssessment}
-              style={{...goldPill,fontSize:15,padding:'14px 36px'}}
-              onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 10px 28px rgba(200,151,62,0.4)'}}
-              onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none'}}
-            >
-              Get Your Free CMO Assessment <ArrowRight size={16}/>
-            </button>
-            <p style={{marginTop:12,fontSize:12,color:TEXT3}}>7 quick questions · Takes under 2 minutes · No sign-up needed</p>
-          </motion.div>
-
-
-        </div>
-      </section>
 
       {/* ══════════════════════════════════════════════════
           VIDEO
@@ -1292,7 +1178,7 @@ export default function Landing() {
             Join hundreds of founders and marketers who replaced their expensive marketing teams with Evoke CMO.
           </p>
           <div style={{display:'flex',gap:14,justifyContent:'center',flexWrap:'wrap',marginBottom:20}}>
-            <button onClick={open} style={goldPill}
+            <button onClick={openAssessment} style={goldPill}
               onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 10px 32px rgba(200,151,62,0.45)'}}
               onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none'}}>
               Get Started Free <ArrowRight size={18}/>
@@ -1539,10 +1425,8 @@ export default function Landing() {
                         <p style={{fontSize:12,color:TEXT2,marginBottom:14,paddingBottom:14,borderBottom:`1px solid ${BORDER}`,lineHeight:1.55}}>{plan.tagline}</p>
                         {/* CTA button */}
                         <button onClick={()=>{
-                          setWizardPlan(plan.key)
                           try { localStorage.setItem('evoke_selected_package', plan.key) } catch {}
-                          setWizardPhase('questions')
-                          setWizardStep(0)
+                          navigate('/brand-kb')
                         }} style={{
                           width:'100%',padding:'11px',marginBottom:16,
                           background:plan.key==='free'?'linear-gradient(135deg,#d4a853,#b8803a)':plan.ctaDark?'linear-gradient(135deg,#d4a853,#b8803a)':'rgba(255,255,255,0.06)',
@@ -1720,7 +1604,7 @@ export default function Landing() {
 
                   <div style={{display:'flex',flexDirection:'column',gap:12,alignItems:'center'}}>
                     <button
-                      onClick={()=>{ setWizardOpen(false); const r = wizardPlan==='free'?'/free-plan':wizardPlan?`/${wizardPlan}`:'/agents-hub'; navigate(r) }}
+                      onClick={()=>{ setWizardOpen(false); navigate('/brand-kb') }}
                       style={{padding:'14px 40px',background:'linear-gradient(135deg,#d4a853,#b8803a)',border:'none',borderRadius:100,color:'#0e0c09',fontSize:15,fontWeight:800,cursor:'pointer',display:'inline-flex',alignItems:'center',gap:8,transition:'all 0.2s'}}
                       onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 8px 24px rgba(200,151,62,0.4)'}}
                       onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none'}}>

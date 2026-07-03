@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import JourneyFooter from '../components/JourneyFooter.jsx'
 import {
   Shield, ArrowLeft, Loader2, CheckCircle2, AlertCircle,
   XCircle, Eye, FileText, Palette, Type, Mic2, MessageSquare,
@@ -103,11 +104,12 @@ const statusStyle = (s) => {
 
 export default function BrandGovernancePage() {
   useRequireAuth()
-  const navigate = useNavigate()
-  const { user } = useAuth()
+  const navigate  = useNavigate()
+  const location  = useLocation()
+  const { user }  = useAuth()
 
-  const [content, setContent]         = useState('')
-  const [contentType, setContentType] = useState('Social Post')
+  const [content, setContent]         = useState(location.state?.contentPrefill || '')
+  const [contentType, setContentType] = useState(location.state?.contentType || 'Social Post')
   const [brand, setBrand]             = useState('')
   const [loading, setLoading]         = useState(false)
   const [result, setResult]           = useState(null)
@@ -403,6 +405,7 @@ export default function BrandGovernancePage() {
         </div>
 
       </div>
+      <JourneyFooter currentPath="/brand-governance" />
       <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
     </div>
   )

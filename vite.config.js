@@ -248,6 +248,59 @@ export default defineConfig(({ mode }) => {
             })
           })
 
+          // ── /api/eventbrite → Eventbrite API proxy ─────────────────────────
+          server.middlewares.use('/api/eventbrite', (req, res) => {
+            if (req.method === 'OPTIONS') {
+              res.setHeader('Access-Control-Allow-Origin', '*')
+              res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
+              res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+              res.writeHead(204); res.end(); return
+            }
+            if (req.method !== 'POST') { res.writeHead(405); res.end('Method not allowed'); return }
+
+            let body = ''
+            req.on('data', chunk => { body += chunk })
+            req.on('end', async () => {
+              const reply = (status, data) => {
+                res.setHeader('Content-Type', 'application/json')
+                res.setHeader('Access-Control-Allow-Origin', '*')
+                res.writeHead(status)
+                res.end(JSON.stringify(data))
+              }
+
+              try {
+                const { action, accessToken, organizationId, eventId, event, venue, ticketClass } = JSON.parse(body)
+                if (!accessToken) { reply(400, { error: 'accessToken required' }); return }
+
+                const ebFetch = async (path, method = 'GET', payload = null) => {
+                  const r = await fetch(`https://www.eventbriteapi.com/v3${path}`, {
+                    method,
+                    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+                    ...(payload ? { body: JSON.stringify(payload) } : {}),
+                  })
+                  return { ok: r.ok, status: r.status, data: await r.json() }
+                }
+
+                let r
+                if (action === 'create_venue') {
+                  r = await ebFetch(`/organizations/${organizationId}/venues/`, 'POST', { venue })
+                } else if (action === 'create_event') {
+                  r = await ebFetch(`/organizations/${organizationId}/events/`, 'POST', { event })
+                } else if (action === 'create_ticket') {
+                  r = await ebFetch(`/events/${eventId}/ticket_classes/`, 'POST', { ticket_class: ticketClass })
+                } else if (action === 'publish_event') {
+                  r = await ebFetch(`/events/${eventId}/publish/`, 'POST')
+                } else {
+                  reply(400, { error: `Unknown action: ${action}` }); return
+                }
+
+                reply(r.status, r.data)
+              } catch (err) {
+                reply(500, { error: err.message })
+              }
+            })
+          })
+
           // ── /auth/facebook/callback → Facebook OAuth ────────────────────────
           server.middlewares.use('/auth/facebook/callback', (req, res) => {
             if (req.method !== 'GET') {

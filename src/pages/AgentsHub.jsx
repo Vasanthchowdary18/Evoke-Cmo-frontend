@@ -10,12 +10,18 @@ import {
   Eye, Trash2, Clock, ChevronDown, ChevronUp, ArrowLeft,
   Shield, Code2, TrendingDown, DollarSign, Crown, Download, BookOpen,
   Inbox,
-  Share2,
+  Share2, Lock,
 } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
 import { useAuth } from '../hooks/useAuth.js'
+import { useUserPlan } from '../hooks/useUserPlan.js'
 import { redirectToLogin } from '../lib/authUtils'
 import { getOrCreateUser } from '../services/userService'
+import { getKnowledgeBase } from '../services/knowledgeBaseService.js'
+import { PLANS as PLAN_ORDER } from '../lib/planGate.js'
+import { getRecommendedActions } from '../lib/recommendations.jsx'
+import { buildCampaignPrefill } from '../lib/campaignPrefill.js'
+import UpgradeModal from '../components/UpgradeModal.jsx'
 
 /* ─── colour tokens ─── */
 const BG       = '#0e0c09'
@@ -80,108 +86,6 @@ function timeAgo(iso) {
   return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-/* ─── Recommended Actions based on user state ─── */
-function getRecommendedActions(connectedCount, campaigns, tokenBalance) {
-  const actions = []
-
-  actions.push({
-    priority: 0,
-    icon: <BookOpen size={18} />,
-    title: 'Set Up Brand Knowledge Base',
-    desc: 'Your AI CMO needs to know your brand, goals and market before it can personalize any campaign.',
-    color: GOLD,
-    cta: 'Set Up Now',
-    path: '/brand-kb',
-    highlight: true,
-  })
-
-  if (connectedCount === 0) {
-    actions.push({
-      priority: 1,
-      icon: <Link2 size={18} />,
-      title: 'Connect Your Platforms',
-      desc: 'Link LinkedIn, Meta & Gmail so your CMO can publish campaigns automatically.',
-      color: '#10b981',
-      cta: 'Connect Now',
-      path: '/connect-accounts',
-    })
-  }
-
-  if (campaigns.length === 0) {
-    actions.push({
-      priority: 2,
-      icon: <Rocket size={18} />,
-      title: 'Launch Your First Campaign',
-      desc: 'Let EVOX CMO build a complete multi-channel marketing campaign for your brand.',
-      color: GOLD,
-      cta: 'Launch Campaign',
-      path: '/campaign-hub',
-    })
-  } else {
-    actions.push({
-      priority: 2,
-      icon: <BarChart2 size={18} />,
-      title: 'Review Analytics Report',
-      desc: 'Generate a performance report with KPIs, ROAS, and strategic recommendations.',
-      color: '#f59e0b',
-      cta: 'Generate Report',
-      path: '/campaign/analytics_report',
-    })
-  }
-
-  actions.push({
-    priority: 3,
-    icon: <Globe size={18} />,
-    title: 'Build LinkedIn Presence',
-    desc: 'Create a 30-day LinkedIn content calendar and professional post series.',
-    color: '#0a66c2',
-    cta: 'Start Strategy',
-    path: '/campaign/content_calendar',
-  })
-
-  actions.push({
-    priority: 4,
-    icon: <Target size={18} />,
-    title: 'Run Competitive Analysis',
-    desc: 'Understand your market position with SWOT, competitor ads, and pricing intel.',
-    color: '#a855f7',
-    cta: 'Analyse Now',
-    path: '/campaign/growth_strategy',
-  })
-
-  actions.push({
-    priority: 5,
-    icon: <Image size={18} />,
-    title: 'Generate Product Visuals',
-    desc: 'Turn one product image into lifestyle photos, 360° videos, and ad creatives.',
-    color: '#ec4899',
-    cta: 'Open Creative Studio',
-    path: '/products',
-  })
-
-  actions.push({
-    priority: 6,
-    icon: <TrendingUp size={18} />,
-    title: 'Analyse Current Trends',
-    desc: 'Get trending hashtags, content ideas, and competitor intelligence for your industry.',
-    color: '#ec4899',
-    cta: 'View Trends',
-    path: '/trends',
-  })
-
-  actions.push({
-    priority: 7,
-    icon: <Inbox size={18} />,
-    title: 'Check Social Inbox',
-    desc: 'View and reply to messages from LinkedIn, Instagram, Facebook, and WhatsApp.',
-    color: '#25d366',
-    cta: 'Open Inbox',
-    path: '/inbox',
-  })
-
-  return actions.slice(0, 4)
-}
-
 export default function AgentsHub() {
   const navigate = useNavigate()
   const { user } = useAuth()
@@ -193,11 +97,17 @@ export default function AgentsHub() {
   const [budget,          setBudget]          = useState('')
   const [deadline,        setDeadline]        = useState('')
   const [showAllHistory,  setShowAllHistory]  = useState(false)
+  const [hasBrandKb,      setHasBrandKb]      = useState(false)
+  const [kb,              setKb]              = useState(null)
+  const [upgradeFor,      setUpgradeFor]      = useState(null)
+  const { plan: userPlan } = useUserPlan()
 
   useEffect(() => {
-    const stored = JSON.parse(localStorage.getItem('evoke_campaigns') || '[]')
+    if (!user) return
+    const key = `evoke_campaigns_${user.uid}`
+    const stored = JSON.parse(localStorage.getItem(key) || '[]')
     setCampaigns(stored)
-  }, [])
+  }, [user])
 
   useEffect(() => {
     if (!user) return
@@ -208,6 +118,10 @@ export default function AgentsHub() {
       const accounts = data.socialAccounts || {}
       const count = Object.values(accounts).filter(a => a?.connected).length
       setConnectedCount(count)
+    }).catch(() => {})
+    getKnowledgeBase(user.uid).then(data => {
+      setKb(data)
+      setHasBrandKb(!!(data && Object.keys(data).length > 1))
     }).catch(() => {})
   }, [user])
 
@@ -235,20 +149,34 @@ export default function AgentsHub() {
   const deleteCampaign = (id) => {
     const updated = campaigns.filter(c => c.id !== id)
     setCampaigns(updated)
-    localStorage.setItem('evoke_campaigns', JSON.stringify(updated))
+    if (user) localStorage.setItem(`evoke_campaigns_${user.uid}`, JSON.stringify(updated))
   }
 
   const displayedHistory = showAllHistory ? campaigns : campaigns.slice(0, 5)
 
-  /* ── Marketing health score (computed) ── */
-  const healthScore = Math.min(100, Math.round(
-    (connectedCount / 11) * 40 +
-    Math.min(campaigns.length * 5, 30) +
-    ((tokenBalance ?? 0) > 0 ? 20 : 0) +
-    10
-  ))
+  /* ── Marketing health score — Profile(20) + Brand KB(20) + Social(20) + Campaigns(20) ── */
+  const profileScore  = 20 // logged in ⇒ onboarding counted done
+  const kbScore        = hasBrandKb ? 20 : 0
+  const socialScore   = Math.min(Math.round((connectedCount / 6) * 20), 20)
+  const campaignScore = campaigns.length > 0 ? 20 : 0
+  const healthScore   = Math.min(100, profileScore + kbScore + socialScore + campaignScore)
 
-  const recommendedActions = getRecommendedActions(connectedCount, campaigns, tokenBalance)
+  const recommendedActions = getRecommendedActions(connectedCount, campaigns, tokenBalance, kb)
+
+  // If a recommendation needs a higher plan than the user has, prompt an
+  // upgrade instead of navigating straight into a feature they can't use.
+  const goToRecommendation = (action) => {
+    const required = action.planRequired || 'free'
+    if (PLAN_ORDER.indexOf(userPlan || 'free') < PLAN_ORDER.indexOf(required)) {
+      setUpgradeFor({ requiredPlan: required, featureTitle: action.title })
+      return
+    }
+    if (action.path.startsWith('/campaign/')) {
+      navigate(action.path, { state: { prefill: buildCampaignPrefill(kb) } })
+      return
+    }
+    navigate(action.path)
+  }
 
   /* ── Org chart data ── */
   const level1 = [
@@ -357,45 +285,6 @@ export default function AgentsHub() {
                 <TrendingUp size={13} /> Trends
               </button>
               <button
-                onClick={() => navigate('/audience-builder')}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 6,
-                  padding: '9px 18px',
-                  background: 'rgba(139,92,246,0.08)',
-                  border: '1px solid rgba(139,92,246,0.25)',
-                  borderRadius: 10, color: '#8b5cf6',
-                  fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-                }}
-              >
-                <Users size={13} /> Audiences
-              </button>
-              <button
-                onClick={() => navigate('/team')}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 6,
-                  padding: '9px 18px',
-                  background: 'rgba(99,102,241,0.08)',
-                  border: '1px solid rgba(99,102,241,0.25)',
-                  borderRadius: 10, color: '#6366f1',
-                  fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-                }}
-              >
-                <Users size={13} /> Team
-              </button>
-              <button
-                onClick={() => navigate('/partner-sharing')}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 6,
-                  padding: '9px 18px',
-                  background: 'rgba(20,184,166,0.08)',
-                  border: '1px solid rgba(20,184,166,0.25)',
-                  borderRadius: 10, color: '#14b8a6',
-                  fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-                }}
-              >
-                <Share2 size={13} /> Partners
-              </button>
-              <button
                 onClick={() => navigate('/strategy')}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 6,
@@ -409,33 +298,7 @@ export default function AgentsHub() {
                 <TrendingUp size={13} /> Strategy
               </button>
               <button
-                onClick={() => navigate('/video-gen')}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 6,
-                  padding: '9px 18px',
-                  background: 'rgba(239,68,68,0.08)',
-                  border: '1px solid rgba(239,68,68,0.25)',
-                  borderRadius: 10, color: '#ef4444',
-                  fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-                }}
-              >
-                <Film size={13} /> Video Gen
-              </button>
-              <button
-                onClick={() => navigate('/brand-governance')}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 6,
-                  padding: '9px 18px',
-                  background: 'rgba(99,102,241,0.08)',
-                  border: '1px solid rgba(99,102,241,0.25)',
-                  borderRadius: 10, color: '#6366f1',
-                  fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-                }}
-              >
-                <Shield size={13} /> Brand Gov
-              </button>
-              <button
-                onClick={() => navigate('/execution')}
+                onClick={() => navigate('/kpi-recommendations')}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 6,
                   padding: '9px 18px',
@@ -445,34 +308,449 @@ export default function AgentsHub() {
                   fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
                 }}
               >
-                <Rocket size={13} /> Execution
+                <BarChart2 size={13} /> KPIs
               </button>
-              <a
-                href="/EVOX-CMO-Gap-Analysis.docx"
-                download="EVOX-CMO-Gap-Analysis.docx"
+              <button
+                onClick={() => navigate('/brand-kb')}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 6,
                   padding: '9px 18px',
-                  background: 'rgba(99,102,241,0.12)',
-                  border: '1px solid rgba(99,102,241,0.3)',
-                  borderRadius: 10, color: '#6366f1',
-                  fontSize: 12, fontWeight: 700, cursor: 'pointer',
-                  fontFamily: 'inherit', textDecoration: 'none',
+                  background: 'rgba(139,92,246,0.08)',
+                  border: '1px solid rgba(139,92,246,0.25)',
+                  borderRadius: 10, color: '#8b5cf6',
+                  fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
                 }}
               >
-                <Download size={13} />
-                Gap Analysis
-              </a>
+                <BookOpen size={13} /> Brand KB
+              </button>
+              <button
+                onClick={() => navigate('/executive-report')}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '9px 18px',
+                  background: GDIM,
+                  border: `1px solid ${GBORDER}`,
+                  borderRadius: 10, color: GOLD,
+                  fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                }}
+              >
+                <BarChart2 size={13} /> Executive Report
+              </button>
             </div>
           </div>
         </motion.div>
 
-        {/* ═══ SECTION 2: KPI Metrics Row ═══ */}
+        {/* ═══ CMO Setup Required — shown to new users before Brand KB is filled ═══ */}
+        {!hasBrandKb && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45 }}
+            style={{
+              marginBottom: 32, borderRadius: 20, overflow: 'hidden',
+              border: `1px solid rgba(200,151,62,0.4)`,
+              background: 'linear-gradient(135deg, rgba(200,151,62,0.10) 0%, rgba(14,12,9,0.95) 60%)',
+            }}
+          >
+            {/* Top bar */}
+            <div style={{ background: 'linear-gradient(135deg,#d4a853,#b8803a)', padding: '10px 28px', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Zap size={14} color="#0e0c09" fill="#0e0c09" />
+              <span style={{ fontSize: 11, fontWeight: 800, color: '#0e0c09', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                CMO Setup Required · Step 1 of 2
+              </span>
+            </div>
+
+            <div style={{ padding: '28px 32px', display: 'flex', gap: 32, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+              {/* Left: message */}
+              <div style={{ flex: 1, minWidth: 260 }}>
+                <h2 style={{ fontSize: 'clamp(18px,2.5vw,24px)', fontWeight: 900, fontFamily: "'Syne','Inter',sans-serif", margin: '0 0 8px', letterSpacing: '-0.02em', color: TEXT }}>
+                  Set up your <span style={goldGrad}>Brand Profile</span> first
+                </h2>
+                <p style={{ fontSize: 13, color: TEXT2, lineHeight: 1.7, margin: '0 0 22px', maxWidth: 420 }}>
+                  Your AI CMO needs to know your brand before it can generate personalised campaigns, recommend the right agents, and build your growth strategy.
+                </p>
+                <button
+                  onClick={() => navigate('/brand-kb')}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 8,
+                    padding: '13px 28px',
+                    background: 'linear-gradient(135deg,#d4a853,#b8803a)',
+                    border: 'none', borderRadius: 12, color: '#0e0c09',
+                    fontSize: 14, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit',
+                    boxShadow: '0 6px 24px rgba(200,151,62,0.4)',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 10px 30px rgba(200,151,62,0.5)' }}
+                  onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 6px 24px rgba(200,151,62,0.4)' }}
+                >
+                  <BookOpen size={16} /> Set Up Brand Profile <ArrowRight size={15} />
+                </button>
+              </div>
+
+              {/* Right: 4 steps */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, minWidth: 260 }}>
+                {[
+                  { n: 1, label: 'Business Identity',   desc: 'Company, industry, what you sell', color: GOLD },
+                  { n: 2, label: 'Market Intelligence', desc: 'Your audience & competitors',       color: '#6366f1' },
+                  { n: 3, label: 'Brand Identity',      desc: 'Colors, tone of voice, tagline',   color: '#ec4899' },
+                  { n: 4, label: 'Business Goals',      desc: 'Objectives, timeline, revenue',    color: '#10b981' },
+                ].map(s => (
+                  <div key={s.n} style={{ padding: '14px 16px', background: 'rgba(255,255,255,0.03)', border: `1px solid ${s.color}25`, borderRadius: 12 }}>
+                    <div style={{ width: 24, height: 24, borderRadius: '50%', background: `${s.color}18`, border: `1px solid ${s.color}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: s.color, marginBottom: 8 }}>{s.n}</div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: TEXT, marginBottom: 3 }}>{s.label}</div>
+                    <div style={{ fontSize: 11, color: TEXT3, lineHeight: 1.4 }}>{s.desc}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* ═══ Marketing Health Score — pinned at the top ═══ */}
+        {(() => {
+          const healthMeta = healthScore >= 80
+            ? { label: 'Excellent',   color: '#10b981' }
+            : healthScore >= 50
+            ? { label: 'Good',        color: GOLD }
+            : healthScore > 0
+            ? { label: 'Needs Setup', color: '#f97316' }
+            : { label: 'Getting Started', color: '#ef4444' }
+
+          const breakdown = [
+            { label: 'Profile',    score: profileScore,  max: 20, color: GOLD },
+            { label: 'Brand KB',   score: kbScore,        max: 20, color: '#f59e0b' },
+            { label: 'Social',     score: socialScore,    max: 20, color: '#3b82f6' },
+            { label: 'Campaigns',  score: campaignScore,  max: 20, color: '#10b981' },
+          ]
+
+          return (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.05 }}
+              whileHover={{ y: -2 }}
+              onClick={() => navigate('/health-score')}
+              style={{
+                marginBottom: 24, padding: '26px 28px', cursor: 'pointer',
+                background: `linear-gradient(135deg, ${healthMeta.color}10, ${CARD})`,
+                border: `1px solid ${healthMeta.color}35`, borderRadius: 20,
+                display: 'flex', alignItems: 'center', gap: 28, flexWrap: 'wrap',
+                transition: 'border-color 0.2s',
+              }}
+            >
+              <div style={{ width: 84, height: 84, borderRadius: '50%', flexShrink: 0, background: `${healthMeta.color}12`, border: `3px solid ${healthMeta.color}45`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
+                <span style={{ fontSize: 24, fontWeight: 900, color: healthMeta.color, fontFamily: "'Syne','Inter',sans-serif", lineHeight: 1 }}>{healthScore}</span>
+                <span style={{ fontSize: 9, color: TEXT3, fontWeight: 700 }}>/100</span>
+              </div>
+
+              <div style={{ flex: 1, minWidth: 220 }}>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 10px', background: `${healthMeta.color}15`, border: `1px solid ${healthMeta.color}40`, borderRadius: 100, fontSize: 10, fontWeight: 800, color: healthMeta.color, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
+                  <Activity size={11}/> Marketing Health Score
+                </div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: TEXT, marginBottom: 10 }}>{healthMeta.label}</div>
+                <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                  {breakdown.map(b => (
+                    <div key={b.label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <div style={{ width: 6, height: 6, borderRadius: '50%', background: b.score >= b.max ? b.color : 'rgba(255,255,255,0.15)' }}/>
+                      <span style={{ fontSize: 11, color: TEXT3, fontWeight: 600 }}>{b.label} {b.score}/{b.max}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 18px', background: `${healthMeta.color}15`, border: `1px solid ${healthMeta.color}40`, borderRadius: 100, color: healthMeta.color, fontSize: 13, fontWeight: 700, flexShrink: 0 }}>
+                View Full Report <ChevronRight size={14}/>
+              </div>
+            </motion.div>
+          )
+        })()}
+
+        {/* ═══ Personalized CMO Banner — shown after Brand KB setup ═══ */}
+        {hasBrandKb && kb && (
+          <motion.div
+            initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.07 }}
+            style={{
+              marginBottom: 28, padding: '24px 28px',
+              background: 'linear-gradient(135deg, rgba(200,151,62,0.10), rgba(200,151,62,0.04))',
+              border: `1px solid ${GBORDER}`, borderRadius: 20,
+              display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap',
+            }}
+          >
+            <div style={{
+              width: 52, height: 52, borderRadius: '50%', flexShrink: 0,
+              background: 'linear-gradient(135deg,#d4a853,#b8803a)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 0 24px rgba(200,151,62,0.3)',
+            }}>
+              <Brain size={24} color="#0e0c09" />
+            </div>
+            <div style={{ flex: 1, minWidth: 220 }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: GOLD, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 5 }}>
+                Your AI CMO · Brand Setup Complete
+              </div>
+              <div style={{ fontSize: 16, fontWeight: 800, color: TEXT, marginBottom: 4, fontFamily: "'Syne','Inter',sans-serif" }}>
+                {kb.companyName
+                  ? <>CMO is ready for <span style={goldGrad}>{kb.companyName}</span></>
+                  : 'Your brand profile is ready'}
+              </div>
+              <p style={{ fontSize: 13, color: TEXT2, margin: 0, lineHeight: 1.6 }}>
+                {kb.industry
+                  ? `Based on your ${(kb.industry || '').replace(/_/g,' ')} brand, your CMO has identified the top growth opportunities below. Launch an agent to start growing.`
+                  : 'Your CMO has reviewed your brand and identified the best agents to help you grow. Launch one below to get started.'}
+              </p>
+            </div>
+            <button
+              onClick={() => navigate('/brand-kb')}
+              style={{
+                padding: '9px 18px', background: GDIM, border: `1px solid ${GBORDER}`,
+                borderRadius: 10, color: GOLD, fontSize: 12, fontWeight: 700,
+                cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0,
+              }}
+            >
+              <BookOpen size={13} style={{ marginRight: 6, verticalAlign: 'middle' }} />
+              Edit Brand Profile
+            </button>
+          </motion.div>
+        )}
+
+        {/* ═══ Next Step / Recommendations ═══ */}
+        {hasBrandKb && campaigns.length === 0 ? (
+          /* ── FIRST-TIME USER: single prominent next-step hero ── */
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.08 }} style={{ marginBottom: 40 }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', background: GDIM, border: `1px solid ${GBORDER}`, borderRadius: 100, fontSize: 11, fontWeight: 700, color: GOLD, letterSpacing: '0.06em', marginBottom: 16 }}>
+              <Sparkles size={11}/> YOUR NEXT STEP
+            </div>
+
+            {/* Hero card */}
+            <motion.div
+              whileHover={{ y: -2 }}
+              onClick={() => navigate('/strategy')}
+              style={{ padding: '32px 36px', cursor: 'pointer', background: 'rgba(249,115,22,0.06)', border: '2px solid rgba(249,115,22,0.4)', borderRadius: 20, marginBottom: 20, position: 'relative', overflow: 'hidden' }}
+            >
+              <div style={{ position: 'absolute', top: 0, right: 0, width: 220, height: 220, background: 'radial-gradient(circle at 100% 0%, rgba(249,115,22,0.14), transparent 70%)', pointerEvents: 'none' }} />
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 22, flexWrap: 'wrap' }}>
+                <div style={{ width: 58, height: 58, borderRadius: 16, background: 'rgba(249,115,22,0.15)', border: '1px solid rgba(249,115,22,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f97316', flexShrink: 0 }}>
+                  <TrendingUp size={28}/>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#f97316', letterSpacing: '0.08em', marginBottom: 6, textTransform: 'uppercase' }}>Step 2 of 12 — Start Here</div>
+                  <h2 style={{ fontSize: 22, fontWeight: 900, color: TEXT, letterSpacing: '-0.02em', marginBottom: 10, lineHeight: 1.2 }}>Build Your Marketing Strategy</h2>
+                  <p style={{ fontSize: 14, color: TEXT2, lineHeight: 1.6, marginBottom: 20, maxWidth: 520 }}>
+                    Your EVOX AI CMO will generate a full Annual, Quarterly & Monthly marketing plan tailored to {kb?.companyName || 'your brand'} — campaigns, budget, KPIs and channels ready in seconds.
+                  </p>
+                  <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <button
+                      onClick={e => { e.stopPropagation(); navigate('/strategy') }}
+                      style={{ padding: '12px 28px', background: '#f97316', border: 'none', borderRadius: 12, color: '#fff', fontSize: 14, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', letterSpacing: '0.01em' }}
+                    >
+                      Build Your Strategy →
+                    </button>
+                    <span style={{ fontSize: 12, color: '#10b981', fontWeight: 600 }}>✓ Brand setup complete — ready to go</span>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Coming up — compact step chips */}
+            <div style={{ marginBottom: 8 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: TEXT3, letterSpacing: '0.06em', textTransform: 'uppercase' }}>After that</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              {[
+                { n: 3,  label: 'Campaign Hub',     path: '/campaign-hub' },
+                { n: 4,  label: 'Audience Builder', path: '/audience-builder' },
+                { n: 5,  label: 'Content',          path: '/caption-suite' },
+                { n: 6,  label: 'Creative Assets',  path: '/products' },
+                { n: 7,  label: 'Video',            path: '/video-gen' },
+                { n: 8,  label: 'Brand Review',     path: '/brand-governance' },
+                { n: 9,  label: 'Analytics',        path: '/analytics' },
+                { n: 10, label: 'Approval Queue',   path: '/queue' },
+                { n: 11, label: 'Post Content',     path: '/post-content' },
+                { n: 12, label: 'Exec Report',      path: '/executive-report' },
+              ].map((s, i, arr) => (
+                <React.Fragment key={s.path}>
+                  <button
+                    onClick={() => navigate(s.path)}
+                    style={{ padding: '5px 13px', background: CARD, border: `1px solid ${BORDER}`, borderRadius: 20, fontSize: 11, fontWeight: 600, color: TEXT3, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+                  >
+                    {s.n}. {s.label}
+                  </button>
+                  {i < arr.length - 1 && <ChevronRight size={10} color={TEXT3} />}
+                </React.Fragment>
+              ))}
+            </div>
+          </motion.div>
+        ) : recommendedActions.length > 0 ? (
+          /* ── RETURNING USER: full recommendations grid ── */
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.08 }} style={{ marginBottom: 40 }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', background: GDIM, border: `1px solid ${GBORDER}`, borderRadius: 100, fontSize: 11, fontWeight: 700, color: GOLD, letterSpacing: '0.06em', marginBottom: 16 }}>
+              <Sparkles size={11}/> {hasBrandKb ? 'YOUR CMO RECOMMENDS' : 'RECOMMENDED FOR YOU'}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
+              {recommendedActions.map(a => {
+                const locked = PLAN_ORDER.indexOf(userPlan || 'free') < PLAN_ORDER.indexOf(a.planRequired || 'free')
+                return (
+                  <motion.div
+                    key={a.path}
+                    whileHover={{ y: -3 }}
+                    onClick={() => goToRecommendation(a)}
+                    style={{
+                      padding: '20px 18px', cursor: 'pointer', position: 'relative',
+                      background: a.highlight ? `${a.color}0a` : CARD,
+                      border: `1px solid ${a.highlight ? a.color + '45' : BORDER}`,
+                      borderRadius: 16, transition: 'border-color 0.2s',
+                    }}
+                  >
+                    {locked && (
+                      <div style={{ position: 'absolute', top: 14, right: 14, display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', background: 'rgba(255,255,255,0.05)', border: `1px solid ${BORDER}`, borderRadius: 100, fontSize: 9, fontWeight: 800, color: TEXT3, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                        <Lock size={9}/> {a.planRequired?.replace('package-', 'Pkg ').toUpperCase()}
+                      </div>
+                    )}
+                    <div style={{ width: 38, height: 38, borderRadius: 10, background: `${a.color}15`, border: `1px solid ${a.color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: a.color, marginBottom: 14 }}>
+                      {a.icon}
+                    </div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: TEXT, marginBottom: 6 }}>{a.title}</div>
+                    <div style={{ fontSize: 12, color: TEXT3, lineHeight: 1.5, marginBottom: 14 }}>{a.desc}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700, color: locked ? TEXT3 : a.color }}>
+                      {locked ? <><Lock size={11}/> Upgrade to unlock</> : <>{a.cta} <ChevronRight size={12}/></>}
+                    </div>
+                  </motion.div>
+                )
+              })}
+            </div>
+          </motion.div>
+        ) : null}
+
+        {upgradeFor && (
+          <UpgradeModal
+            requiredPlan={upgradeFor.requiredPlan}
+            featureTitle={upgradeFor.featureTitle}
+            onClose={() => setUpgradeFor(null)}
+          />
+        )}
+
+        {/* ═══ PLAN TIERS SECTION — returning users only ═══ */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.09 }}
+          style={{ marginBottom: 40, display: campaigns.length > 0 ? 'block' : 'none' }}
+        >
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', background: GDIM, border: `1px solid ${GBORDER}`, borderRadius: 100, fontSize: 11, fontWeight: 700, color: GOLD, letterSpacing: '0.06em', marginBottom: 16 }}>
+            <Crown size={11} /> WHAT'S IN EACH PLAN
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+            {[
+              {
+                plan: 'free', label: 'Free', tag: 'ALWAYS ON', tagColor: '#10b981',
+                border: 'rgba(16,185,129,0.3)', accent: '#10b981',
+                features: [
+                  'Brand Knowledge Base',
+                  'Marketing Health Score',
+                  'Growth Strategy Agent',
+                  'Campaign Hub (all types)',
+                  'Caption Suite',
+                  'Audience Builder',
+                  'Analytics Dashboard',
+                  'Executive Report',
+                  'Connect Social Accounts',
+                ],
+                cta: null,
+              },
+              {
+                plan: 'package-a', label: 'Package A', tag: 'STARTER', tagColor: '#3b82f6',
+                border: 'rgba(59,130,246,0.3)', accent: '#3b82f6',
+                features: [
+                  'Everything in Free',
+                  'Multi-angle product photos',
+                  'Lifestyle & scene images',
+                  'Ad-ready static banners',
+                  'Managed social posting',
+                  'Image SEO & meta tags',
+                ],
+                cta: 'Upgrade to Starter',
+              },
+              {
+                plan: 'package-b', label: 'Package B', tag: 'POPULAR', tagColor: GOLD,
+                border: GBORDER, accent: GOLD,
+                features: [
+                  'Everything in Package A',
+                  'Lifestyle short-form video',
+                  '360° product video',
+                  'Full 30-day content calendar',
+                  'Influencer & PR briefs',
+                ],
+                cta: 'Upgrade to Popular',
+              },
+              {
+                plan: 'package-c', label: 'Package C', tag: 'PREMIUM', tagColor: '#a855f7',
+                border: 'rgba(168,85,247,0.3)', accent: '#a855f7',
+                features: [
+                  'Everything in Package B',
+                  '3D product renders',
+                  'Ad creatives (static + video)',
+                  'Meta Ads manager',
+                  'Google Ads manager',
+                  'Precision audience targeting',
+                  'Full campaign deploy',
+                ],
+                cta: 'Upgrade to Premium',
+              },
+            ].map(tier => {
+              const isCurrentPlan = (userPlan || 'free') === tier.plan
+              const isLocked = PLAN_ORDER.indexOf(userPlan || 'free') < PLAN_ORDER.indexOf(tier.plan)
+              return (
+                <div
+                  key={tier.plan}
+                  style={{
+                    background: isCurrentPlan ? `${tier.accent}08` : CARD,
+                    border: `1px solid ${isCurrentPlan ? tier.border : BORDER}`,
+                    borderRadius: 16, padding: '18px 16px',
+                    position: 'relative',
+                  }}
+                >
+                  {isCurrentPlan && (
+                    <div style={{ position: 'absolute', top: -10, left: 16, background: tier.accent, color: '#0e0c09', fontSize: 9, fontWeight: 800, padding: '2px 10px', borderRadius: 100, letterSpacing: '0.08em' }}>
+                      YOUR PLAN
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                    <span style={{ fontSize: 14, fontWeight: 800, color: TEXT }}>{tier.label}</span>
+                    <span style={{ fontSize: 9, fontWeight: 800, color: tier.tagColor, background: `${tier.tagColor}15`, border: `1px solid ${tier.tagColor}30`, borderRadius: 100, padding: '3px 9px', letterSpacing: '0.06em' }}>{tier.tag}</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
+                    {tier.features.map((f, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 7, fontSize: 12, color: isLocked && i > 0 ? TEXT3 : TEXT2, lineHeight: 1.4 }}>
+                        <span style={{ color: isLocked && i > 0 ? TEXT3 : tier.accent, flexShrink: 0, marginTop: 1, fontSize: 13 }}>
+                          {isLocked && i > 0 ? '○' : '✓'}
+                        </span>
+                        {f}
+                      </div>
+                    ))}
+                  </div>
+                  {isLocked && tier.cta && (
+                    <button
+                      onClick={() => setUpgradeFor({ requiredPlan: tier.plan, featureTitle: tier.label + ' features' })}
+                      style={{ width: '100%', padding: '9px', background: `${tier.accent}12`, border: `1px solid ${tier.accent}30`, borderRadius: 10, color: tier.accent, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+                    >
+                      {tier.cta} →
+                    </button>
+                  )}
+                  {isCurrentPlan && (
+                    <div style={{ fontSize: 11, color: tier.accent, fontWeight: 600, textAlign: 'center', padding: '6px 0' }}>
+                      ✓ Active
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </motion.div>
+
+        {/* ═══ SECTION 2: KPI Metrics Row — returning users only ═══ */}
         <motion.div
           initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
           style={{
-            display: 'grid',
+            display: campaigns.length > 0 ? 'grid' : 'none',
             gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
             gap: 14, marginBottom: 40,
           }}
@@ -538,69 +816,88 @@ export default function AgentsHub() {
           ))}
         </motion.div>
 
-        {/* ═══ SECTION: Recommended Actions ═══ */}
+
+        {/* ═══ SECTION: Customer Journey Flow ═══ */}
         <motion.div
           initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.3 }}
           style={{ marginBottom: 48 }}
         >
-          <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            padding: '4px 12px', background: GDIM, border: `1px solid ${GBORDER}`,
-            borderRadius: 100, fontSize: 11, fontWeight: 700, color: GOLD, letterSpacing: '0.06em', marginBottom: 14,
-          }}>
-            <Zap size={11} /> NEXT STEPS
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
+            <div>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', background: GDIM, border: `1px solid ${GBORDER}`, borderRadius: 100, fontSize: 11, fontWeight: 700, color: GOLD, letterSpacing: '0.06em', marginBottom: 10 }}>
+                <Zap size={11} /> CUSTOMER JOURNEY FLOW
+              </div>
+              <h2 style={{ fontSize: 22, fontWeight: 900, letterSpacing: '-0.02em', color: TEXT, marginBottom: 4 }}>
+                10-Step Campaign Flow
+              </h2>
+              <p style={{ fontSize: 13, color: TEXT2 }}>Follow these steps in order — each agent builds on the previous one.</p>
+            </div>
+            <button
+              onClick={() => navigate('/executive-report')}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 18px', background: GDIM, border: `1px solid ${GBORDER}`, borderRadius: 10, color: GOLD, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+            >
+              <BarChart2 size={13} /> View Executive Report
+            </button>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 14 }}>
-            {recommendedActions.map((action, i) => (
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {[
+              { step: 1, title: 'Business Objective',        desc: 'Define your revenue goal and business target',          path: '/brand-kb',          color: GOLD,      done: hasBrandKb },
+              { step: 2, title: 'Marketing Strategy Agent',  desc: 'AI creates annual, quarterly and monthly strategy',     path: '/strategy',          color: '#10b981',  done: campaigns.length > 0 },
+              { step: 3, title: 'Campaign Planning Agent',   desc: 'Build campaign brief, timeline, budget and KPIs',       path: '/campaign-hub',      color: '#3b82f6',  done: campaigns.length > 0 },
+              { step: 4, title: 'Audience Intelligence Agent', desc: 'Segment your audience and build lookalike profiles',  path: '/audience-builder',  color: '#a855f7',  done: false },
+              { step: 5, title: 'Content Generation Agent',  desc: 'Create social posts, blogs, newsletters and emails',    path: '/caption-suite',     color: '#ec4899',  done: false },
+              { step: 6, title: 'Creative Asset Agent',      desc: 'Generate banners, images and visual creatives',         path: '/products',          color: '#f59e0b',  done: false },
+              { step: 7, title: 'Video Generation Agent',    desc: 'Produce video scripts, scenes and brand review',        path: '/video-gen',         color: '#ef4444',  done: false },
+              { step: 8, title: 'Brand Governance Agent',    desc: 'Review all content for brand compliance',               path: '/brand-governance',  color: '#6366f1',  done: false },
+              { step: 9, title: 'Analytics Agent',           desc: 'Monitor campaign results and performance metrics',      path: '/analytics',         color: '#14b8a6',  done: false },
+              { step: 10, title: 'Executive Report',         desc: 'Full marketing performance summary and AI insights',    path: '/executive-report',  color: GOLD,       done: false },
+            ].map((item, i) => (
               <motion.div
-                key={i}
-                whileHover={{ y: -2, boxShadow: `0 8px 24px ${action.color}18` }}
-                onClick={() => navigate(action.path)}
+                key={item.step}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.04 }}
+                onClick={() => navigate(item.path)}
                 style={{
-                  background: CARD,
-                  border: `1px solid ${action.highlight ? action.color + '50' : BORDER}`,
-                  borderRadius: 14, padding: '18px 20px', cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  position: 'relative', overflow: 'hidden',
+                  display: 'flex', alignItems: 'center', gap: 16,
+                  background: item.done ? `${item.color}08` : CARD,
+                  border: `1px solid ${item.done ? item.color + '35' : BORDER}`,
+                  borderRadius: 14, padding: '14px 18px', cursor: 'pointer',
+                  transition: 'all 0.15s',
                 }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = `${item.color}50`; e.currentTarget.style.background = `${item.color}10` }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = item.done ? `${item.color}35` : BORDER; e.currentTarget.style.background = item.done ? `${item.color}08` : CARD }}
               >
-                {action.highlight && (
-                  <div style={{
-                    position: 'absolute', top: 0, left: 0, right: 0, height: 2,
-                    background: `linear-gradient(90deg, ${action.color}, ${action.color}80)`,
-                  }} />
-                )}
-                <div style={{
-                  width: 36, height: 36, borderRadius: 10, marginBottom: 12,
-                  background: `${action.color}18`, border: `1px solid ${action.color}30`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  color: action.color,
-                }}>
-                  {action.icon}
+                {/* Step number */}
+                <div style={{ width: 36, height: 36, borderRadius: '50%', flexShrink: 0, background: item.done ? item.color : `${item.color}15`, border: `2px solid ${item.done ? item.color : item.color + '40'}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {item.done
+                    ? <CheckCircle2 size={16} color="#fff" />
+                    : <span style={{ fontSize: 12, fontWeight: 800, color: item.color }}>{item.step}</span>
+                  }
                 </div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: TEXT, marginBottom: 6 }}>
-                  {action.title}
+
+                {/* Connector line */}
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: item.done ? TEXT : TEXT, marginBottom: 2 }}>
+                    {item.title}
+                    {item.done && <span style={{ fontSize: 11, fontWeight: 600, color: item.color, marginLeft: 8, background: `${item.color}15`, padding: '2px 8px', borderRadius: 20 }}>Done</span>}
+                  </div>
+                  <div style={{ fontSize: 12, color: TEXT3 }}>{item.desc}</div>
                 </div>
-                <div style={{ fontSize: 12, color: TEXT2, lineHeight: 1.55, marginBottom: 14 }}>
-                  {action.desc}
-                </div>
-                <div style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 5,
-                  fontSize: 12, fontWeight: 700, color: action.color,
-                }}>
-                  {action.cta} <ChevronRight size={13} />
-                </div>
+
+                <ChevronRight size={16} color={TEXT3} style={{ flexShrink: 0 }} />
               </motion.div>
             ))}
           </div>
         </motion.div>
 
-        {/* ═══ SECTION 5: Campaign History ═══ */}
+        {/* ═══ SECTION 5: Campaign History — returning users only ═══ */}
         <motion.div
           initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.4 }}
-          style={{ marginTop: 56 }}
+          style={{ marginTop: 56, display: campaigns.length > 0 ? 'block' : 'none' }}
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
             <div>

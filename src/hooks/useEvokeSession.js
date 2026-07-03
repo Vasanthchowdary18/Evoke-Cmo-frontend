@@ -9,21 +9,23 @@ import {
 
 const getProfileServer = () => null;
 
-// DEV ONLY — hardcoded local session, remove before production
-const DEV_USER =
-  window.location.hostname === "localhost"
-    ? {
-        email: "vasanthchowdary35@gmail.com",
-        firstName: "Vasanth",
-        lastName: "chowdary",
-        fullName: "Vasanth chowdary",
-        custID: 260417001,
-        role: 4,
-        token:
-          "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MjY4LCJyb2xlIjo0LCJjdXN0aWQiOjI2MDQxNzAwMSwiaWF0IjoxNzgxNzc2NjcyLCJleHAiOjE3ODE3ODM4NzJ9.4LGLH1L5T5LMWh0BB2CtKHUNb26g-SYPr4FX5DGTbv4",
-        walletAddress: "0x5114eAaC97602E33921A9d474ea70Ec181e8F4b6",
-      }
-    : null;
+const isLocalhost =
+  typeof window !== "undefined" &&
+  (window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1");
+
+const DEV_PROFILE = isLocalhost
+  ? {
+      email: "vasanthchowadry35@gmail.com",
+      firstName: "Vasanth",
+      lastName: "chowdary",
+      fullName: "Vasanth chowdary",
+      custID: 260417001,
+      role: 4,
+      token: null,
+      walletAddress: null,
+    }
+  : null;
 
 export function useEvokeSession() {
   const profile = useSyncExternalStore(
@@ -32,11 +34,6 @@ export function useEvokeSession() {
     getProfileServer,
   );
   const [bootstrapTried, setBootstrapTried] = useState(false);
-
-  //  Return hardcoded dev user instantly on localhost
-  if (DEV_USER) {
-    return { profile: DEV_USER, status: "authenticated" };
-  }
 
   useEffect(() => {
     if (bootstrapTried) return;
@@ -57,11 +54,13 @@ export function useEvokeSession() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bootstrapTried]);
 
-  const status = profile
+  const effectiveProfile = profile ?? (bootstrapTried ? DEV_PROFILE : null);
+
+  const status = effectiveProfile
     ? "authenticated"
     : bootstrapTried
       ? "unauthenticated"
       : "loading";
 
-  return { profile, status };
+  return { profile: effectiveProfile, status };
 }

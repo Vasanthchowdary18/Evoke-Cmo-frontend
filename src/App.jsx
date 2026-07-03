@@ -43,6 +43,11 @@ import MarketingStrategyPage from './pages/MarketingStrategyPage.jsx'
 import MarketingExecutionPage from './pages/MarketingExecutionPage.jsx'
 import CampaignHub from './pages/CampaignHub.jsx'
 import AgentHub from './pages/AgentHub.jsx'
+import MarketingHealthPage from './pages/MarketingHealthPage.jsx'
+import BrandProfilePage from './pages/BrandProfilePage.jsx'
+import EventbritePost from './pages/EventbritePost.jsx'
+import DevResetPage from './pages/DevResetPage.jsx'
+import ExecutiveReportingPage from './pages/ExecutiveReportingPage.jsx'
 import Chatbot from './components/Chatbot.jsx'
 
 // Handles token returned from accounts.evokemarketplace.com after login
@@ -110,6 +115,9 @@ export default function App() {
         <Route path="/analytics"             element={<AnalyticsDashboard />} />
         <Route path="/crm"                   element={<CrmPage />} />
         <Route path="/brand-kb"              element={<BrandKnowledgeBase />} />
+        <Route path="/health-score"          element={<MarketingHealthPage />} />
+        <Route path="/brand-profile"         element={<BrandProfilePage />} />
+        <Route path="/eventbrite-post"       element={<EventbritePost />} />
         <Route path="/inbox"                 element={<SocialInbox />} />
         <Route path="/trends"                element={<TrendAnalysis />} />
         <Route path="/audience-builder"      element={<AudienceBuilder />} />
@@ -121,6 +129,8 @@ export default function App() {
         <Route path="/execution"             element={<MarketingExecutionPage />} />
         <Route path="/campaign-hub"          element={<CampaignHub />} />
         <Route path="/hub/:agent"            element={<AgentHub />} />
+        <Route path="/dev-reset"             element={<DevResetPage />} />
+        <Route path="/executive-report"      element={<ExecutiveReportingPage />} />
         <Route path="/privacy"            element={<Privacy />} />
         <Route path="/terms"              element={<Terms />} />
         <Route path="*"                  element={<Navigate to="/" replace />} />
