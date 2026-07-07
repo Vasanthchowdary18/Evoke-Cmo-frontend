@@ -46,6 +46,15 @@ export async function getOrCreateUser(uid, displayName, email) {
   return snap.data()
 }
 
+/** Saves the chat onboarding answers (background/industry/goal). Does NOT mark onboardingComplete — that is set by SetupPage after brand setup. */
+export async function saveChatOnboardingData(uid, data) {
+  await updateDoc(doc(db, 'users', uid), {
+    chatOnboardingDone: true,
+    onboardingData: data,
+    chatOnboardingCompletedAt: serverTimestamp(),
+  })
+}
+
 /** Saves completed onboarding answers and marks onboarding as done. */
 export async function saveOnboardingData(uid, data) {
   await updateDoc(doc(db, 'users', uid), {

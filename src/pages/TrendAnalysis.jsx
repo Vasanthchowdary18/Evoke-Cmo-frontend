@@ -7,7 +7,7 @@ import {
   ChevronRight, Copy, Check, Loader2, Sparkles,
   BarChart2, Users, Calendar, BookOpen, ArrowUpRight,
 } from 'lucide-react'
-import Navbar from '../components/Navbar.jsx'
+import AppSidebar from '../components/AppSidebar.jsx'
 import { useRequireAuth } from '../hooks/useRequireAuth'
 
 const BG     = '#0e0c09'
@@ -160,8 +160,9 @@ export default function TrendAnalysis() {
 
   return (
     <div style={{ minHeight: '100vh', background: BG, color: TEXT, fontFamily: "'Inter',sans-serif" }}>
-      <Navbar />
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '88px 20px 60px' }}>
+      <AppSidebar />
+      <div style={{ marginLeft: 'var(--evox-sidebar-w, 220px)', transition: 'margin-left 0.22s' }}>
+      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '36px 28px 60px' }}>
 
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 28 }}>
@@ -426,6 +427,7 @@ export default function TrendAnalysis() {
         )}
       </div>
 
+      </div>
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
         select option { background: #1c1a13; color: #f0ebe0; }

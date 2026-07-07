@@ -38,7 +38,7 @@ import { useAuth } from "../hooks/useAuth.js";
 import { getKnowledgeBase } from "../services/knowledgeBaseService.js";
 import { buildEventSlug, saveEventPage, downloadEventHtml } from "../services/eventService";
 
-const CLOUDINARY_CLOUD = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "dxbn3vyig";
+const CLOUDINARY_CLOUD = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "";
 const CLOUDINARY_PRESET = "tiktok_videos"; // Unsigned preset in Cloudinary
 const WS_KEY  = import.meta.env.VITE_WAVESPEED_API_KEY || "";
 const GROQ_KEY = import.meta.env.VITE_GROQ_API_KEY || "";
@@ -292,7 +292,7 @@ async function uploadToImgBB(file) {
     reader.readAsDataURL(jpeg);
   });
   const fd = new FormData();
-  fd.append("key", "5bd861d246cfae2342a0b898282ab18e");
+  fd.append("key", import.meta.env.VITE_IMGBB_API_KEY || "");
   fd.append("image", base64);
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 30000);
@@ -3658,7 +3658,7 @@ export default function CampaignForm() {
 
 
           {/* Publishing Settings — hidden for strategy/growth/calendar, all executive/CMO module types, and Package C ad types */}
-          {type !== "growth_strategy" && type !== "growth_agent" && type !== "content_calendar" && type !== "ads_creation" && type !== "ads_manager" && type !== "target_audience" && type !== "email_drip" && !EXEC_TYPES.includes(type) && (
+          {type !== "growth_strategy" && type !== "growth_agent" && type !== "content_calendar" && type !== "ads_creation" && type !== "ads_manager" && type !== "target_audience" && type !== "email_drip" && type !== "analytics_report" && type !== "sales_enablement" && type !== "competitive_intel" && type !== "funnel_cro" && type !== "brand_strategy" && !EXEC_TYPES.includes(type) && (
             <>
           <div style={s.divider} />
           <p style={s.sectionTitle}>Publishing Settings</p>

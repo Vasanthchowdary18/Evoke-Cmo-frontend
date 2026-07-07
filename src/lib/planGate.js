@@ -83,23 +83,87 @@ export function upgradeLabel(featureKey) {
 
 export const PLAN_HIGHLIGHTS = {
   'package-a': [
+    'Caption Suite — all platforms',
+    'Reel & short-form scripts',
+    'Content generation & copywriting',
     'Multi-angle product photography',
     'Lifestyle & scene images',
-    'Ad-ready static banners',
-    'Managed social media posting',
+    'Image SEO optimisation',
+    'Video generation',
   ],
   'package-b': [
     'Everything in Package A',
-    'Lifestyle short-form video',
-    '360° product video',
-    'Full 30-day content calendar',
+    'Email Marketing Agent',
+    'SEO Agent — full audit & strategy',
+    'A/B Testing Framework',
+    'Audience Builder & Trend Analysis',
+    'CRM & lifecycle management',
+    'Connect & post to social accounts',
+    'Analytics dashboard & executive reports',
+    '3D product images',
   ],
   'package-c': [
     'Everything in Package B',
-    '3D product renders',
-    'Ad creatives (static + video)',
+    'Meta Ads Boost — paid ad creatives',
+    'Multi-channel execution (7 channels)',
     'Facebook & Google Ads manager',
     'Precision audience targeting',
-    'Full campaign deploy & management',
+    'Team management & partner sharing',
   ],
+}
+
+/*
+  Route-level plan requirements.
+  Used by PlanGate component in App.jsx.
+  'free' means open to all authenticated users.
+*/
+export const ROUTE_PLAN = {
+  // ── Free (all authenticated users) ──
+  '/agents-hub':            'free',
+  '/plans':                 'free',
+  '/free-plan':             'free',
+  '/package-a':             'free',
+  '/package-b':             'free',
+  '/package-c':             'free',
+  '/brand-profile':         'free',
+  '/brand-kb':              'free',
+  '/health-score':          'free',
+  '/strategy':              'free',
+  '/kpi-recommendations':   'free',
+
+  // ── Package A ──
+  '/caption-suite':         'package-a',
+  '/reel-scripts':          'package-a',
+  '/content-gen':           'package-a',
+  '/copywriting':           'package-a',
+  '/image-angles':          'package-a',
+  '/image-360':             'package-a',
+  '/image-lifestyle':       'package-a',
+  '/image-seo':             'package-a',
+  '/product-desc':          'package-a',
+  '/video-gen':             'package-a',
+
+  // ── Package B ──
+  '/email-marketing':       'package-b',
+  '/seo-agent':             'package-b',
+  '/ab-testing':            'package-b',
+  '/audience-builder':      'package-b',
+  '/trends':                'package-b',
+  '/crm':                   'package-b',
+  '/analytics':             'package-b',
+  '/executive-report':      'package-b',
+  '/executive-reporting':   'package-b',
+  '/campaign-hub':          'package-b',
+  '/queue':                 'package-b',
+  '/post-content':          'package-b',
+  '/connect-accounts':      'package-b',
+  '/inbox':                 'package-b',
+  '/brand-governance':      'package-b',
+  '/image-3d':              'package-b',
+
+  // ── Package C ──
+  '/meta-ads-boost':        'package-c',
+  '/execution':             'package-c',
+  '/team':                  'package-c',
+  '/partner-sharing':       'package-c',
 }

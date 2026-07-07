@@ -6,7 +6,7 @@ import {
   UserCheck, TrendingUp, Star, RefreshCw, FileText,
   CheckCircle, ArrowLeft
 } from 'lucide-react'
-import Navbar from '../components/Navbar.jsx'
+import AppSidebar from '../components/AppSidebar.jsx'
 import { useRequireAuth } from '../hooks/useRequireAuth'
 import {
   getContacts, addContact, updateContact, deleteContact, calcScore
@@ -430,9 +430,9 @@ export default function CrmPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: BG, color: '#f0ebe0', fontFamily: "'Inter',sans-serif" }}>
-      <Navbar />
-
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '100px 24px 64px' }}>
+      <AppSidebar />
+      <div style={{ marginLeft: 'var(--evox-sidebar-w, 220px)', transition: 'margin-left 0.22s' }}>
+      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '36px 24px 64px' }}>
 
         {/* ── Page header ── */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 32, flexWrap: 'wrap', gap: 12 }}>
@@ -686,6 +686,7 @@ export default function CrmPage() {
         />
       )}
 
+      </div>
       <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
     </div>
   )

@@ -14,7 +14,7 @@ export function useUserPlan() {
   useEffect(() => {
     if (!user?.uid) { setLoading(false); return }
     getUserData(user.uid).then(data => {
-      setPlan(data?.userPlan || 'free')
+      setPlan(data?.userPlan || data?.selectedPlan || 'free')
       setLoading(false)
     }).catch(() => setLoading(false))
   }, [user?.uid])

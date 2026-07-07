@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import JourneyFooter from '../components/JourneyFooter.jsx'
 import {
   Film, ArrowLeft, Loader2, Sparkles, Check, Copy,
   Play, Mic, MonitorPlay, Clapperboard, ShoppingBag,
@@ -9,7 +8,6 @@ import {
   ChevronRight, Download, Shield, RefreshCw, CheckCircle2,
   AlertCircle, Clock, Zap, History,
 } from 'lucide-react'
-import Navbar from '../components/Navbar.jsx'
 import { useRequireAuth } from '../hooks/useRequireAuth'
 import { useAuth } from '../hooks/useAuth'
 import { saveContentItems, getContentItems } from '../services/contentService'
@@ -25,7 +23,8 @@ const TEXT    = '#f0ebe0'
 const TEXT2   = 'rgba(240,235,224,0.55)'
 const TEXT3   = 'rgba(240,235,224,0.32)'
 
-const GROQ_KEY = import.meta.env.VITE_GROQ_API_KEY || ''
+const GROQ_KEY      = import.meta.env.VITE_GROQ_API_KEY      || ''
+const WAVESPEED_KEY = import.meta.env.VITE_WAVESPEED_API_KEY || ''
 
 const VIDEO_TYPES = [
   { key: 'promotional',  label: 'Promotional',       icon: <Megaphone size={20}/>,      desc: 'Brand awareness & offers',   color: '#c8973e' },
@@ -110,6 +109,30 @@ Return ONLY valid JSON:
   return JSON.parse(match[0])
 }
 
+async function generateActualVideo(prompt) {
+  const res = await fetch('https://api.wavespeed.ai/api/v2/wavespeed-ai/wan-t2v-480p', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${WAVESPEED_KEY}` },
+    body: JSON.stringify({ prompt, num_frames: 81, resolution: '480p' }),
+  })
+  if (!res.ok) throw new Error(`WaveSpeed ${res.status}`)
+  const init = await res.json()
+  const requestId = init?.data?.id
+  if (!requestId) throw new Error('No request ID')
+
+  for (let i = 0; i < 60; i++) {
+    await new Promise(r => setTimeout(r, 5000))
+    const poll = await fetch(`https://api.wavespeed.ai/api/v2/predictions/${requestId}/result`, {
+      headers: { Authorization: `Bearer ${WAVESPEED_KEY}` },
+    })
+    const pd = await poll.json()
+    const status = pd?.data?.status
+    if (status === 'completed') return pd?.data?.outputs?.[0]
+    if (status === 'failed') throw new Error('WaveSpeed generation failed')
+  }
+  throw new Error('Video generation timed out')
+}
+
 const DURATIONS = ['15 seconds', '30 seconds', '60 seconds', '90 seconds', '2 minutes', '3-5 minutes']
 const TONES     = ['Energetic', 'Professional', 'Friendly', 'Inspirational', 'Urgent', 'Cinematic']
 const TARGET_AUDIENCES = ['Marketing Managers', 'CMOs & Marketing Leaders', 'Small Business Owners', 'Startup Founders', 'E-Commerce Brands', 'B2B Decision Makers', 'Sales Professionals', 'Product Managers', 'Entrepreneurs', 'Enterprise Teams', 'Agency Clients', 'General Consumers']
@@ -128,6 +151,8 @@ export default function VideoGenerationPage() {
   const [activeTab, setActiveTab] = useState('script')
   const [savedDocId, setSavedDocId] = useState(null)
   const [history, setHistory]     = useState([])
+  const [videoUrl, setVideoUrl]       = useState(null)
+  const [videoLoading, setVideoLoading] = useState(false)
 
   const inp = (field) => ({ value: inputs[field], onChange: e => setInputs(p => ({ ...p, [field]: e.target.value })) })
 
@@ -147,6 +172,8 @@ export default function VideoGenerationPage() {
     setError('')
     setResult(null)
     setSavedDocId(null)
+    setVideoUrl(null)
+    setVideoLoading(false)
     try {
       const r = await generateVideoPackage({ ...inputs, videoType })
       setResult(r)
@@ -161,6 +188,13 @@ export default function VideoGenerationPage() {
         setSavedDocId(ids['output'] || null)
         loadHistory()
       } catch {}
+
+      // Generate actual video via WaveSpeed in background
+      setVideoLoading(true)
+      const vPrompt = `${r.title}. ${r.hook}. ${r.script?.intro} ${r.script?.body} ${inputs.brand} ${inputs.videoType} video, ${inputs.tone} tone, cinematic quality.`
+      generateActualVideo(vPrompt)
+        .then(url => { setVideoUrl(url); setVideoLoading(false) })
+        .catch(() => setVideoLoading(false))
     } catch (e) {
       setError('Generation failed. Please try again.')
     } finally {
@@ -191,8 +225,8 @@ export default function VideoGenerationPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: BG, color: TEXT, fontFamily: "'Inter', sans-serif" }}>
-      <Navbar />
-      <div style={{ maxWidth: 900, margin: '0 auto', padding: '100px 20px 60px' }}>
+      <div>
+      <div style={{ maxWidth: 900, margin: '0 auto', padding: '32px 28px 80px' }}>
 
         {/* Header */}
         <div style={{ marginBottom: 36 }}>
@@ -318,6 +352,45 @@ export default function VideoGenerationPage() {
                   </div>
                 </div>
               </div>
+
+              {/* Video Player */}
+              {(videoLoading || videoUrl) && (
+                <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, overflow: 'hidden', marginBottom: 16 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '14px 18px', borderBottom: `1px solid ${BORDER}` }}>
+                    <Play size={14} color={GOLD} />
+                    <span style={{ fontSize: 14, fontWeight: 600 }}>Generated Video</span>
+                    {videoLoading && (
+                      <span style={{ fontSize: 12, color: TEXT3, marginLeft: 4, display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} />
+                        Rendering video — this may take 1-2 minutes…
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ padding: '20px', display: 'flex', justifyContent: 'center', background: '#0a0906' }}>
+                    {videoLoading && !videoUrl && (
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, padding: '40px 0' }}>
+                        <div style={{ width: 48, height: 48, borderRadius: '50%', border: `3px solid ${GBORDER}`, borderTopColor: GOLD, animation: 'spin 1s linear infinite' }} />
+                        <span style={{ fontSize: 13, color: TEXT3 }}>EVOX AI is generating your video…</span>
+                      </div>
+                    )}
+                    {videoUrl && (
+                      <video
+                        src={videoUrl}
+                        controls
+                        autoPlay
+                        style={{ width: '100%', maxWidth: 720, borderRadius: 10, background: '#000' }}
+                      />
+                    )}
+                  </div>
+                  {videoUrl && (
+                    <div style={{ padding: '10px 18px 14px', display: 'flex', justifyContent: 'flex-end' }}>
+                      <a href={videoUrl} download target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: GDIM, border: `1px solid ${GBORDER}`, borderRadius: 8, padding: '7px 14px', fontSize: 12, color: GOLD, fontWeight: 600, textDecoration: 'none', cursor: 'pointer' }}>
+                        <Download size={13} /> Download Video
+                      </a>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Tabs */}
               <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, overflow: 'hidden' }}>
@@ -503,7 +576,7 @@ export default function VideoGenerationPage() {
           </div>
         )}
       </div>
-      <JourneyFooter currentPath="/video-gen" />
+      </div>
       <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
     </div>
   )

@@ -2,8 +2,8 @@ import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence, useInView } from 'framer-motion'
 import { ArrowRight, Check, Star, Zap, TrendingUp, Target, Calendar, Search, Mail, Users, BarChart2, Briefcase, Megaphone, ShoppingCart, Sparkles, Activity, Lightbulb, DollarSign, Rocket, Image, Film, Monitor, Share2, Layers, Play, BookOpen } from 'lucide-react'
-// OnboardingModal moved to AgentsHub — not triggered on landing page
 import Navbar from '../components/Navbar.jsx'
+import BrandSetupModal from '../components/BrandSetupModal.jsx'
 import { useAuth } from '../hooks/useAuth.js'
 import { redirectToLogin } from '../lib/authUtils'
 import { saveOnboardingData, getUserData } from '../services/userService'
@@ -357,6 +357,7 @@ export default function Landing() {
   const { user } = useAuth()
   const navigate = useNavigate()
 
+  const [showSetupModal,  setShowSetupModal]  = useState(false)
   const [wizardOpen,      setWizardOpen]      = useState(false)
   const [wizardPhase,     setWizardPhase]     = useState('plan') // 'plan' | 'questions' | 'connect'
   const [wizardPlan,      setWizardPlan]      = useState(null)
@@ -496,16 +497,21 @@ export default function Landing() {
     setTimeout(() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' }), 100)
   }
 
-  const goSignIn = () => user ? navigate('/agents-hub') : redirectToLogin()
-  const goBoard = () => user ? navigate('/agents-hub') : goSignIn()
+  const goSignIn = () => {
+    if (user) {
+      setShowSetupModal(true)
+    } else {
+      try { sessionStorage.setItem('evoke_post_login_route', '/brand-kb') } catch {}
+      redirectToLogin()
+    }
+  }
+  const goBoard = () => user ? navigate('/dashboard') : goSignIn()
 
-  // "Get Started Free" from the wizard free-detail page — always lands on agents-hub
-  // after login instead of bouncing back to the landing page first.
   const goFreeStart = () => {
     if (user) {
-      navigate('/plans')
+      document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })
     } else {
-      redirectToLogin(window.location.origin + '/plans')
+      document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })
     }
   }
 
@@ -520,16 +526,23 @@ export default function Landing() {
     }
   }
 
-  // Open the wizard card panel and scroll to it.
-  // If the user already completed the assessment, show their saved result
-  // instead of asking the questions again.
   const openAssessment = () => {
     document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })
   }
 
+  const handleSetupComplete = (answers, recs) => {
+    setShowSetupModal(false)
+    navigate('/dashboard')
+  }
+
   const startWizardWithPlan = (planKey) => {
     try { localStorage.setItem('evoke_selected_package', planKey) } catch {}
-    navigate('/brand-kb')
+    if (user) {
+      setShowSetupModal(true)
+    } else {
+      try { sessionStorage.setItem('evoke_post_login_route', '/dashboard') } catch {}
+      redirectToLogin()
+    }
   }
 
   /* Gold gradient text helper */
@@ -1426,7 +1439,7 @@ export default function Landing() {
                         {/* CTA button */}
                         <button onClick={()=>{
                           try { localStorage.setItem('evoke_selected_package', plan.key) } catch {}
-                          navigate('/brand-kb')
+                          user ? navigate('/brand-kb') : redirectToLogin(window.location.origin + '/brand-kb')
                         }} style={{
                           width:'100%',padding:'11px',marginBottom:16,
                           background:plan.key==='free'?'linear-gradient(135deg,#d4a853,#b8803a)':plan.ctaDark?'linear-gradient(135deg,#d4a853,#b8803a)':'rgba(255,255,255,0.06)',
@@ -1625,6 +1638,13 @@ export default function Landing() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {showSetupModal && (
+        <BrandSetupModal
+          onComplete={handleSetupComplete}
+          onDismiss={() => setShowSetupModal(false)}
+        />
+      )}
     </div>
   )
 }

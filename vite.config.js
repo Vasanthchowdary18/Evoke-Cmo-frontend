@@ -355,7 +355,7 @@ export default defineConfig(({ mode }) => {
       proxy: {
         // n8n webhook proxy (avoids CORS in dev)
         '/n8n-webhook': {
-          target: 'https://vasanthchowdary373.app.n8n.cloud',
+          target: 'https://vasanth373.app.n8n.cloud',
           changeOrigin: true,
           rewrite: path => path.replace(/^\/n8n-webhook/, '/webhook'),
           secure: true,

@@ -2,228 +2,211 @@ import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
-  Activity, Edit3, Target, Palette, Building2, Users, DollarSign,
-  Rocket, ArrowRight, Sparkles,
+  Activity, Edit3, Target, Palette, Building2,
+  Rocket, ArrowRight, Sparkles, PenLine,
 } from 'lucide-react'
-import Navbar from '../components/Navbar.jsx'
+import AppSidebar from '../components/AppSidebar.jsx'
+import BrandSetupModal from '../components/BrandSetupModal.jsx'
 import { useAuth } from '../hooks/useAuth.js'
 import { getKnowledgeBase } from '../services/knowledgeBaseService.js'
-import { getRecommendedActions } from '../lib/recommendations.jsx'
 
-const BG      = '#0e0c09'
+const BG      = '#0a0907'
 const GOLD    = '#c8973e'
-const GDIM    = 'rgba(200,151,62,0.13)'
-const GBORDER = 'rgba(200,151,62,0.28)'
-const CARD    = '#1c1a13'
+const GDIM    = 'rgba(200,151,62,0.1)'
+const GBORDER = 'rgba(200,151,62,0.22)'
+const CARD    = '#131109'
+const CARD2   = '#181510'
 const TEXT    = '#f0ebe0'
 const TEXT2   = 'rgba(240,235,224,0.55)'
-const TEXT3   = 'rgba(240,235,224,0.32)'
-const BORDER  = 'rgba(255,255,255,0.07)'
+const TEXT3   = 'rgba(240,235,224,0.26)'
+const BORDER  = 'rgba(255,255,255,0.06)'
+const GREEN   = '#10b981'
 
-const goldGrad = {
-  background: 'linear-gradient(135deg, #e8c47a 10%, #c8973e 60%, #a87030 100%)',
-  WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
-}
-
-const OBJECTIVE_LABELS = {
-  increase_revenue: 'Increase Revenue',
-  generate_leads: 'Generate Leads',
-  brand_awareness: 'Build Brand Awareness',
-  launch_product: 'Launch a Product',
-  grow_social: 'Grow Social Following',
-  retain_customers: 'Retain Customers',
-}
+const INDUSTRY_LABELS = { ecommerce: 'E-commerce & Retail', tech: 'Tech / SaaS', services: 'Professional Services', food: 'Food & Beverage', fashion: 'Fashion & Lifestyle', health: 'Health & Fitness', education: 'Education / EdTech', realestate: 'Real Estate', finance: 'Finance / Fintech', media: 'Media & Entertainment', beauty: 'Beauty & Personal Care', other: 'Other' }
+const GOAL_LABELS     = { leads: 'Generate Leads', sales: 'Drive Sales', awareness: 'Build Brand Awareness', brand_awareness: 'Build Brand Awareness', social_growth: 'Grow Social Following', social: 'Grow Social Following', launch: 'Launch a Product', engage: 'Retain & Engage' }
+const TONE_LABELS     = { professional: 'Professional', casual: 'Casual & Friendly', bold: 'Bold & Direct', luxury: 'Luxury & Premium', playful: 'Playful & Fun', educational: 'Educational' }
+const AUDIENCE_LABELS = { b2c_young: 'Consumers 18–35', b2c_mature: 'Consumers 35–55', b2b_small: 'Small Business', b2b_enterprise: 'Enterprise', mixed: 'Mixed B2B & B2C' }
+const GOAL_ICONS      = { leads: '🎯', sales: '💰', awareness: '✨', brand_awareness: '✨', social_growth: '📈', social: '📈', launch: '🚀', engage: '💬' }
+const TONE_ICONS      = { professional: '🎩', casual: '😊', bold: '⚡', luxury: '💎', playful: '🎉', educational: '📖' }
+const AUDIENCE_ICONS  = { b2c_young: '🧑', b2c_mature: '👤', b2b_small: '🏢', b2b_enterprise: '🏛️', mixed: '👥' }
 
 export default function BrandProfilePage() {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const [loading, setLoading] = useState(true)
-  const [kb, setKb] = useState(null)
+  const [loading,       setLoading]       = useState(true)
+  const [kb,            setKb]            = useState(null)
+  const [showEditModal, setShowEditModal] = useState(false)
 
-  useEffect(() => {
+  const loadKb = () => {
     if (!user?.uid) return
     getKnowledgeBase(user.uid).then(data => {
       setKb(data)
       setLoading(false)
     }).catch(() => setLoading(false))
-  }, [user?.uid])
-
-  if (loading) {
-    return (
-      <div style={{ minHeight: '100vh', background: BG, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ color: TEXT2, fontSize: 14 }}>Loading your brand profile…</div>
-      </div>
-    )
   }
 
-  const hasBrand = !!(kb && kb.companyName && kb.industry)
+  useEffect(loadKb, [user?.uid])
 
-  if (!hasBrand) {
-    return (
-      <div style={{ minHeight: '100vh', background: BG, color: TEXT, fontFamily: "'Inter',sans-serif" }}>
-        <Navbar />
-        <div style={{ maxWidth: 520, margin: '0 auto', padding: '140px 24px', textAlign: 'center' }}>
-          <div style={{ fontSize: 48, marginBottom: 20 }}>📋</div>
-          <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 10 }}>No Brand Profile Yet</h2>
-          <p style={{ color: TEXT2, fontSize: 14, marginBottom: 28 }}>Complete your Brand Knowledge Base first so EVOX can build your personalised strategy.</p>
-          <button onClick={() => navigate('/brand-kb')} style={{ padding: '12px 32px', background: 'linear-gradient(135deg,#d4a853,#b8803a)', border: 'none', borderRadius: 100, color: '#0e0c09', fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
-            Set Up Brand KB →
-          </button>
-        </div>
-      </div>
-    )
-  }
+  const toArr = (v) => Array.isArray(v) ? v : (v ? [v] : [])
 
-  const objectives = Array.isArray(kb.primaryObjective)
-    ? kb.primaryObjective
-    : (kb.primaryObjective ? [kb.primaryObjective] : [])
-  const channels = Array.isArray(kb.primaryChannels) ? kb.primaryChannels : []
-  const recs = getRecommendedActions(0, [], 0, kb, 4)
+  // Support both old (companyName) and new (businessName) field names
+  const brandName = kb?.businessName || kb?.companyName || ''
+  const industries = toArr(kb?.industry)
+  const goals      = toArr(kb?.goal || kb?.primaryObjective)
+  const tones      = toArr(kb?.tone || kb?.toneOfVoice)
+  const audiences  = toArr(kb?.audience || kb?.audienceType)
 
-  const chips = [
-    { label: 'Industry', value: (kb.industry || '').replace(/_/g, ' ') },
-    { label: 'Audience', value: (kb.audienceType || '').toUpperCase() },
-    { label: 'Tone', value: kb.toneOfVoice },
-    { label: 'Timeline', value: kb.timeline },
-    { label: 'Budget', value: kb.marketingBudget },
-  ].filter(c => c.value)
+  const hasBrand = !!(kb && (brandName || industries.length > 0))
+
+  if (loading) return (
+    <div style={{ minHeight: '100vh', background: BG, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ width: 28, height: 28, border: `2px solid ${GOLD}`, borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+    </div>
+  )
 
   return (
-    <div style={{ minHeight: '100vh', background: BG, color: TEXT, fontFamily: "'Inter',sans-serif" }}>
-      <Navbar />
+    <div style={{ minHeight: '100vh', background: BG, fontFamily: "'Inter',sans-serif" }}>
+      <AppSidebar />
 
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '96px 28px 80px' }}>
+      <div style={{ marginLeft: 'var(--evox-sidebar-w, 220px)', minHeight: '100vh', transition: 'margin-left 0.22s cubic-bezier(0.4,0,0.2,1)' }}>
 
-        {/* ═══ HEADER ═══ */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
-          style={{ marginBottom: 36 }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
-            <div>
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 14px', background: GDIM, border: `1px solid ${GBORDER}`, borderRadius: 100, fontSize: 11, fontWeight: 700, color: GOLD, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 14 }}>
-                <Activity size={11}/> EVOX CMO · Brand Profile
-              </div>
-              <h1 style={{ fontSize: 'clamp(22px,3vw,34px)', fontWeight: 900, letterSpacing: '-0.03em', lineHeight: 1.1, margin: '0 0 8px', fontFamily: "'Syne','Inter',sans-serif" }}>
-                {kb.companyName ? <>{kb.companyName}'s <span style={goldGrad}>CMO Strategy</span></> : <span style={goldGrad}>Your CMO Strategy</span>}
-              </h1>
-              <p style={{ fontSize: 14, color: TEXT2, margin: 0, lineHeight: 1.6 }}>
-                Built from your brand profile · EVOX personalises every campaign to your goals
-              </p>
-            </div>
-            <button
-              onClick={() => navigate('/brand-kb', { state: { edit: true } })}
-              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px', background: 'transparent', border: `1px solid ${BORDER}`, borderRadius: 100, color: TEXT2, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.18s', whiteSpace: 'nowrap' }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = GBORDER; e.currentTarget.style.color = GOLD }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = BORDER; e.currentTarget.style.color = TEXT2 }}
-            >
-              <Edit3 size={14}/> Edit Profile
-            </button>
+        {/* Top bar */}
+        <div style={{ height: 58, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 28px', borderBottom: `1px solid ${BORDER}`, position: 'sticky', top: 0, background: BG, zIndex: 100 }}>
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: TEXT }}>Brand Profile</div>
+            <div style={{ fontSize: 10, color: TEXT3 }}>Your brand identity & marketing goals</div>
           </div>
-        </motion.div>
-
-        {/* ═══ CHIPS ═══ */}
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-          style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 32 }}>
-          {chips.map(c => (
-            <div key={c.label} style={{ padding: '7px 16px', borderRadius: 100, background: 'rgba(200,151,62,0.1)', border: '1px solid rgba(200,151,62,0.25)', fontSize: 12, color: TEXT2 }}>
-              <span style={{ color: GOLD, fontWeight: 700 }}>{c.label}:</span>{' '}
-              <span style={{ fontWeight: 600, textTransform: 'capitalize' }}>{c.value}</span>
-            </div>
-          ))}
-        </motion.div>
-
-        {/* ═══ TWO-COLUMN: Business / Brand ═══ */}
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
-          style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(320px,1fr))', gap: 16, marginBottom: 16 }}>
-
-          <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 18, padding: '22px 24px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-              <Building2 size={15} color={GOLD} />
-              <span style={{ fontSize: 13, fontWeight: 800, color: TEXT, letterSpacing: '0.02em' }}>Business Identity</span>
-            </div>
-            {[
-              ['Company', kb.companyName],
-              ['What you sell', kb.productService],
-              ['Pricing', kb.pricingRange],
-              ['Website', kb.website],
-            ].filter(([, v]) => v).map(([label, val]) => (
-              <div key={label} style={{ marginBottom: 12 }}>
-                <div style={{ fontSize: 10, color: TEXT3, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 3 }}>{label}</div>
-                <div style={{ fontSize: 13, color: TEXT }}>{val}</div>
-              </div>
-            ))}
-          </div>
-
-          <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 18, padding: '22px 24px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-              <Palette size={15} color="#ec4899" />
-              <span style={{ fontSize: 13, fontWeight: 800, color: TEXT, letterSpacing: '0.02em' }}>Brand Identity</span>
-            </div>
-            {[
-              ['Tagline', kb.brandTagline],
-              ['Personality', kb.brandPersonality],
-              ['Visual Style', kb.visualStyle],
-            ].filter(([, v]) => v).map(([label, val]) => (
-              <div key={label} style={{ marginBottom: 12 }}>
-                <div style={{ fontSize: 10, color: TEXT3, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 3 }}>{label}</div>
-                <div style={{ fontSize: 13, color: TEXT, textTransform: 'capitalize' }}>{val}</div>
-              </div>
-            ))}
-          </div>
-        </motion.div>
-
-        {/* ═══ Goals ═══ */}
-        {objectives.length > 0 && (
-          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-            style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 18, padding: '22px 24px', marginBottom: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-              <Target size={15} color="#10b981" />
-              <span style={{ fontSize: 13, fontWeight: 800, color: TEXT, letterSpacing: '0.02em' }}>Business Goals</span>
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
-              {objectives.map(o => (
-                <span key={o} style={{ padding: '5px 12px', borderRadius: 100, background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.25)', fontSize: 12, color: '#10b981', fontWeight: 600 }}>
-                  {OBJECTIVE_LABELS[o] || o}
-                </span>
-              ))}
-            </div>
-            {channels.length > 0 && (
-              <div style={{ fontSize: 12, color: TEXT2 }}>
-                <span style={{ color: TEXT3, fontWeight: 700 }}>Channels: </span>
-                {channels.join(', ')}
-              </div>
-            )}
-          </motion.div>
-        )}
-
-        {/* ═══ Recommendations ═══ */}
-        {recs.length > 0 && (
-          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', background: GDIM, border: `1px solid ${GBORDER}`, borderRadius: 100, fontSize: 11, fontWeight: 700, color: GOLD, letterSpacing: '0.06em', marginBottom: 16 }}>
-              <Sparkles size={11}/> AI-POWERED RECOMMENDATIONS
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 14 }}>
-              {recs.map(r => (
-                <div key={r.path} onClick={() => navigate(r.path)} style={{ padding: '18px', background: CARD, border: `1px solid ${BORDER}`, borderRadius: 14, cursor: 'pointer' }}>
-                  <div style={{ width: 34, height: 34, borderRadius: 9, background: `${r.color}15`, border: `1px solid ${r.color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: r.color, marginBottom: 10 }}>
-                    {r.icon}
-                  </div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: TEXT, marginBottom: 4 }}>{r.title}</div>
-                  <div style={{ fontSize: 11, color: TEXT3, lineHeight: 1.5, marginBottom: 10 }}>{r.desc}</div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color: r.color }}>
-                    {r.cta} <ArrowRight size={11}/>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-        )}
-
-        <div style={{ textAlign: 'center', marginTop: 40 }}>
-          <button onClick={() => navigate('/agents-hub')} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '12px 26px', background: 'transparent', border: `1px solid ${BORDER}`, borderRadius: 100, color: TEXT2, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
-            <Rocket size={14}/> Go to Dashboard
+          <button
+            onClick={() => setShowEditModal(true)}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 15px', background: GDIM, border: `1px solid ${GBORDER}`, borderRadius: 9, color: GOLD, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s' }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(200,151,62,0.18)' }}
+            onMouseLeave={e => { e.currentTarget.style.background = GDIM }}
+          >
+            <PenLine size={13}/> Edit Profile
           </button>
         </div>
+
+        <div style={{ padding: '28px 28px 80px', maxWidth: 820, margin: '0 auto' }}>
+
+          {!hasBrand ? (
+            /* ── No profile yet ── */
+            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+              style={{ textAlign: 'center', padding: '80px 24px' }}>
+              <div style={{ fontSize: 52, marginBottom: 20 }}>📋</div>
+              <h2 style={{ fontSize: 20, fontWeight: 800, color: TEXT, marginBottom: 10 }}>No Brand Profile Yet</h2>
+              <p style={{ color: TEXT2, fontSize: 13, marginBottom: 28, lineHeight: 1.7 }}>
+                Answer 5 quick questions so EVOX AI can recommend the right agents and personalise every campaign for your brand.
+              </p>
+              <button onClick={() => setShowEditModal(true)}
+                style={{ padding: '11px 28px', background: `linear-gradient(135deg,${GOLD},#b8803a)`, border: 'none', borderRadius: 100, color: '#0a0907', fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
+                Set Up Brand Profile →
+              </button>
+            </motion.div>
+          ) : (
+            <>
+              {/* ── Brand Identity Card ── */}
+              <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}
+                style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 18, padding: '24px 26px', marginBottom: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
+                  <div style={{ width: 52, height: 52, borderRadius: 14, background: `linear-gradient(135deg,${GOLD},#8b5e1e)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 900, color: '#0a0907', flexShrink: 0 }}>
+                    {brandName?.[0]?.toUpperCase() || '🏢'}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 10, fontWeight: 800, color: GOLD, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 3 }}>Your Brand</div>
+                    <div style={{ fontSize: 20, fontWeight: 900, color: TEXT, fontFamily: "'Syne','Inter',sans-serif" }}>{brandName}</div>
+                  </div>
+                </div>
+
+                {/* Industry */}
+                {industries.length > 0 && (
+                  <ProfileSection icon={<Building2 size={14} color={GOLD}/>} label="Industry">
+                    {industries.map(v => (
+                      <Chip key={v} label={INDUSTRY_LABELS[v] || v} color={GOLD} />
+                    ))}
+                  </ProfileSection>
+                )}
+
+                {/* Goals */}
+                {goals.length > 0 && (
+                  <ProfileSection icon={<Target size={14} color={GREEN}/>} label="Marketing Goals">
+                    {goals.map(v => (
+                      <Chip key={v} label={`${GOAL_ICONS[v] || '🎯'} ${GOAL_LABELS[v] || v}`} color={GREEN} />
+                    ))}
+                  </ProfileSection>
+                )}
+
+                {/* Tone */}
+                {tones.length > 0 && (
+                  <ProfileSection icon={<Palette size={14} color="#a855f7"/>} label="Brand Voice & Tone">
+                    {tones.map(v => (
+                      <Chip key={v} label={`${TONE_ICONS[v] || ''} ${TONE_LABELS[v] || v}`} color="#a855f7" />
+                    ))}
+                  </ProfileSection>
+                )}
+
+                {/* Audience */}
+                {audiences.length > 0 && (
+                  <ProfileSection icon={<Activity size={14} color="#3b82f6"/>} label="Target Audience">
+                    {audiences.map(v => (
+                      <Chip key={v} label={`${AUDIENCE_ICONS[v] || '👥'} ${AUDIENCE_LABELS[v] || v}`} color="#3b82f6" />
+                    ))}
+                  </ProfileSection>
+                )}
+              </motion.div>
+
+              {/* ── What's next ── */}
+              <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+                style={{ background: `linear-gradient(135deg,rgba(200,151,62,0.08),rgba(200,151,62,0.02))`, border: `1px solid ${GBORDER}`, borderRadius: 16, padding: '20px 22px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                  <div style={{ fontSize: 28 }}>🚀</div>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 800, color: TEXT, marginBottom: 3 }}>Ready to start your campaign?</div>
+                    <div style={{ fontSize: 12, color: TEXT2 }}>EVOX AI has matched agents to your brand goals.</div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <button onClick={() => navigate('/strategy')}
+                    style={{ padding: '9px 18px', background: `linear-gradient(135deg,${GOLD},#b8803a)`, border: 'none', borderRadius: 9, color: '#0a0907', fontSize: 12, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 5 }}>
+                    Build Strategy <ArrowRight size={12}/>
+                  </button>
+                  <button onClick={() => navigate('/dashboard')}
+                    style={{ padding: '9px 18px', background: 'none', border: `1px solid ${BORDER}`, borderRadius: 9, color: TEXT2, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                    Dashboard
+                  </button>
+                </div>
+              </motion.div>
+            </>
+          )}
+        </div>
       </div>
+
+      {showEditModal && (
+        <BrandSetupModal
+          onComplete={() => { setShowEditModal(false); loadKb() }}
+          onDismiss={() => setShowEditModal(false)}
+        />
+      )}
     </div>
+  )
+}
+
+function ProfileSection({ icon, label, children }) {
+  return (
+    <div style={{ marginBottom: 18 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+        {icon}
+        <span style={{ fontSize: 10, fontWeight: 800, color: TEXT3, letterSpacing: '0.1em', textTransform: 'uppercase' }}>{label}</span>
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>{children}</div>
+    </div>
+  )
+}
+
+function Chip({ label, color }) {
+  return (
+    <span style={{ padding: '5px 12px', background: `${color}10`, border: `1px solid ${color}28`, borderRadius: 100, fontSize: 12, color, fontWeight: 600 }}>
+      {label}
+    </span>
   )
 }
