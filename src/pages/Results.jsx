@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -15,9 +15,18 @@ import { getEvokeUserProfile } from '../lib/session'
 import { profileToUser } from '../lib/authUtils'
 import { useAuth } from '../hooks/useAuth.js'
 import { deductToken, getUserData } from '../services/userService'
-import { saveContentItems, updateContentItem, markItemsPublished } from '../services/contentService'
-import { WEBHOOK_URL, DAY_WEBHOOK_URL } from '../config.js'
+import { saveContentItems, updateContentItem, markItemsPublished, scheduleCampaignDays } from '../services/contentService'
+import { WEBHOOK_URL } from '../config.js'
 import { getGoogleAdsAccount, createGoogleAdsCampaign, extractAdsContent } from '../services/googleAdsService'
+
+// Campaign types that keep the manual "Review & Launch" gate — real ad spend,
+// reputational/legal exposure, or C-suite sign-off. Everything else is routine
+// content-calendar output and auto-publishes as soon as generation finishes.
+const HIGH_PRIORITY_TYPES = new Set([
+  'ads_creation', 'ads_manager', 'paid_advertising', 'pr_reputation', 'crm_lifecycle',
+  'email_drip', 'growth_strategy', 'growth_agent',
+  'ai_cfo', 'ai_cto', 'ai_cro_exec', 'ai_ceo', 'ai_compliance',
+])
 
 const PLATFORMS = [
   { key: 'linkedin',   label: 'LinkedIn',      icon: <Linkedin size={15} />,        color: '#0a66c2' },
@@ -672,6 +681,12 @@ export default function Results() {
   const [googleAdsStatus, setGoogleAdsStatus]   = useState('idle') // idle | loading | success | error
   const [googleAdsError, setGoogleAdsError]     = useState('')
   const [googleAdsCampaignId, setGoogleAdsCampaignId] = useState('')
+  const autoLaunchedRef = useRef(false)
+
+  // Routine content-calendar output auto-publishes with no manual Launch click;
+  // ads/PR/exec campaigns keep the review-and-click gate.
+  const isHighPriority = HIGH_PRIORITY_TYPES.has(campaignType)
+  const isRoutine      = !isHighPriority
 
   const checkGoogleAdsAccount = () => {
     const user = authUser || profileToUser(getEvokeUserProfile())
@@ -825,6 +840,7 @@ export default function Results() {
               name: flat.campaignName || meta.name || 'Campaign',
               type: type || 'event',
               source: 'campaign',
+              requiresApproval: HIGH_PRIORITY_TYPES.has(type),
             }, items)
               .then(ids => {
                 sessionStorage.setItem('firestoreContentIds', JSON.stringify(ids))
@@ -856,57 +872,65 @@ export default function Results() {
   }
   const cancelEdit = () => { setEditingKey(null); setEditDraft('') }
 
-  // Schedule remaining days (2…N) using localStorage queue + setTimeout
-  const scheduleDailyPosts = (campaignId, payload, schedule, totalDays, postTime) => {
-    if (totalDays <= 1 || schedule.length === 0) return
-    const [postHour, postMin] = (postTime || '09:00').split(':').map(Number)
+  // Schedule remaining days (2…N) as Firestore content_items (status:'scheduled',
+  // requiresApproval:false) so the n8n Auto Publish Schedule Trigger posts them
+  // server-side on its own cron cycle — independent of whether this tab stays open.
+  const scheduleDailyPosts = async (campaignId, payload, schedule, totalDays, postTime) => {
+    const postsPerDay = Math.max(1, payload.postsPerDay || 1)
+    const postTimes   = (payload.postTimes?.length ? payload.postTimes : [postTime || payload.postTime || '09:00'])
+    const needsScheduling = totalDays > 1 || postsPerDay > 1
+    if (!needsScheduling || schedule.length === 0) return
+
     const now = new Date()
-    const pending = []
+    const dayPayloads = []
 
-    for (let day = 2; day <= totalDays; day++) {
-      const target = new Date(now)
-      target.setDate(target.getDate() + (day - 1))
-      target.setHours(postHour, postMin, 0, 0)
-      const delayMs = target.getTime() - now.getTime()
+    for (let day = 1; day <= totalDays; day++) {
       const dayContent = schedule[day - 1] || {}
-      const dayPayload = {
-        ...payload,
-        day,
-        linkedinPost:     dayContent.linkedinPost     || payload.linkedinPost     || '',
-        instagramCaption: dayContent.instagramCaption || payload.instagramCaption || '',
-        facebookPost:     dayContent.facebookPost     || payload.facebookPost     || '',
-        whatsappMessage:  dayContent.whatsappMessage  || payload.whatsappMessage  || '',
-        emailSubject:     dayContent.emailSubject     || payload.emailSubject     || '',
-        emailBody:        dayContent.emailBody        || payload.emailBody        || '',
-        dailySchedule:    schedule,
-      }
-      pending.push({ campaignId, day, scheduledAt: target.toISOString(), payload: dayPayload, posted: false })
+      // Legacy single-post-per-day schema has no `slots` array — treat the flat
+      // fields as slot 0 so the day/slot loop below behaves identically to before.
+      const slots = Array.isArray(dayContent.slots) && dayContent.slots.length
+        ? dayContent.slots
+        : [{
+            linkedinPost:     dayContent.linkedinPost,
+            instagramCaption: dayContent.instagramCaption,
+            facebookPost:     dayContent.facebookPost,
+            whatsappMessage:  dayContent.whatsappMessage,
+          }]
 
-      // Browser-session setTimeout (works when tab stays open)
-      if (delayMs > 0 && delayMs < 2147483647) {
-        setTimeout(async () => {
-          try {
-            await fetch(DAY_WEBHOOK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dayPayload) })
-            // Mark as posted in localStorage
-            const queue = JSON.parse(localStorage.getItem('evoke_pending_days') || '[]')
-            const qi = queue.findIndex(q => q.campaignId === campaignId && q.day === day)
-            if (qi !== -1) { queue[qi].posted = true; localStorage.setItem('evoke_pending_days', JSON.stringify(queue)) }
-            // Update daysPosted in campaign history
-            const ck2 = authUser?.uid ? `evoke_campaigns_${authUser.uid}` : 'evoke_campaigns'
-            const campaigns = JSON.parse(localStorage.getItem(ck2) || '[]')
-            const ci = campaigns.findIndex(c => c.id === campaignId)
-            if (ci !== -1) {
-              campaigns[ci].daysPosted = [...new Set([...(campaigns[ci].daysPosted || [1]), day])]
-              localStorage.setItem(ck2, JSON.stringify(campaigns))
-            }
-          } catch (e) { console.warn(`Day ${day} post failed:`, e) }
-        }, delayMs)
+      for (let slotIndex = 0; slotIndex < postsPerDay; slotIndex++) {
+        // Day 1 / slot 0 already went out via the immediate handleLaunch webhook call.
+        if (day === 1 && slotIndex === 0) continue
+
+        const slotContent = slots[slotIndex] || slots[0] || {}
+        const time = postTimes[slotIndex] || postTimes[0] || '09:00'
+        const [postHour, postMin] = time.split(':').map(Number)
+        const target = new Date(now)
+        target.setDate(target.getDate() + (day - 1))
+        target.setHours(postHour, postMin, 0, 0)
+
+        dayPayloads.push({
+          ...payload,
+          day,
+          slot: slotIndex,
+          scheduledAt:      target.toISOString(),
+          linkedinPost:     slotContent.linkedinPost     || payload.linkedinPost     || '',
+          instagramCaption: slotContent.instagramCaption || payload.instagramCaption || '',
+          facebookPost:     slotContent.facebookPost     || payload.facebookPost     || '',
+          whatsappMessage:  slotContent.whatsappMessage  || payload.whatsappMessage  || '',
+          // Only the first post of the day carries the email send — never repeat an email per slot.
+          emailSubject:     slotIndex === 0 ? (dayContent.emailSubject || payload.emailSubject || '') : '',
+          emailBody:        slotIndex === 0 ? (dayContent.emailBody    || payload.emailBody    || '') : '',
+          dailySchedule:    schedule,
+        })
       }
     }
 
-    // Save pending queue so Dashboard can pick up missed days (browser closed/reopened)
-    const existingQueue = JSON.parse(localStorage.getItem('evoke_pending_days') || '[]')
-    localStorage.setItem('evoke_pending_days', JSON.stringify([...pending, ...existingQueue]))
+    const user = authUser || profileToUser(getEvokeUserProfile())
+    if (user?.uid && dayPayloads.length) {
+      try {
+        await scheduleCampaignDays(user.uid, campaignId, { name: payload.name, type: payload.campaignType }, dayPayloads)
+      } catch (e) { console.warn('Failed to schedule campaign days in Firestore:', e) }
+    }
   }
 
   const handleLaunch = async () => {
@@ -960,9 +984,9 @@ export default function Results() {
           const existing = JSON.parse(localStorage.getItem(ck3) || '[]')
           localStorage.setItem(ck3, JSON.stringify([newCampaign, ...existing]))
 
-          // ── Schedule remaining days (2…N) ──
-          if (totalDays > 1) {
-            scheduleDailyPosts(campaignId, payload, dailySchedule || [], totalDays, postTime)
+          // ── Schedule remaining days (2…N) and any extra same-day slots ──
+          if (totalDays > 1 || (payload.postsPerDay || 1) > 1) {
+            await scheduleDailyPosts(campaignId, payload, dailySchedule || [], totalDays, postTime)
           }
         } catch (saveErr) {
           console.warn('Failed to save campaign history:', saveErr)
@@ -976,6 +1000,18 @@ export default function Results() {
       sessionStorage.setItem('webhookStatus', 'failed')
     }
   }
+
+  // Routine campaigns (not ads/PR/email/exec/growth-strategy — see HIGH_PRIORITY_TYPES)
+  // skip the manual "Review & Launch" click entirely: fire the same launch path
+  // automatically as soon as generated content is on screen.
+  useEffect(() => {
+    if (autoLaunchedRef.current) return
+    if (!campaignType || isHighPriority) return
+    if (postingStatus !== 'idle') return
+    if (!sessionStorage.getItem('webhookPayload')) return
+    autoLaunchedRef.current = true
+    handleLaunch()
+  }, [campaignType, isHighPriority, postingStatus]) // eslint-disable-line
 
   const handleNewCampaign = () => {
     ['campaignResult','campaignType','campaignMeta','webhookStatus','webhookPayload','campaignDays','dailySchedule','firestoreContentSig','firestoreContentIds','firestoreCampaignId'].forEach(k => sessionStorage.removeItem(k))
@@ -1297,8 +1333,8 @@ export default function Results() {
           )}
         </AnimatePresence>
 
-        {/* Launch Banner (before launch) — hidden for strategy and email drip */}
-        {!isStrategy && !isEmailDrip && !launched && (
+        {/* Launch Banner (before launch) — high-priority types only (ads/PR/email/exec/growth-strategy) */}
+        {isHighPriority && !isStrategy && !isEmailDrip && !launched && (
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
@@ -1322,6 +1358,21 @@ export default function Results() {
             >
               <Zap size={16} /> Launch Campaign
             </motion.button>
+          </motion.div>
+        )}
+
+        {/* Routine content — auto-publishes with no manual click; brief notice while it fires */}
+        {isRoutine && !isStrategy && !isEmailDrip && !launched && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            style={{ background: '#fffbeb', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 14, padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 10, marginBottom: 28 }}
+          >
+            <Loader2 size={16} style={{ color: '#f59e0b', animation: 'spin 1s linear infinite' }} />
+            <span style={{ fontSize: 13, color: '#92400e', fontWeight: 600 }}>
+              Routine content calendar post — auto-publishing now, no approval needed.
+            </span>
           </motion.div>
         )}
 
@@ -1459,6 +1510,13 @@ export default function Results() {
                       ? 'Your content calendar is ready — connect platforms and start scheduling posts'
                       : 'Turn this plan into real campaigns, one click at a time'}
                   </p>
+                  {isCalendar && (
+                    <p style={{ fontSize: 11, fontWeight: 700, margin: '6px 0 0 0', display: 'flex', alignItems: 'center', gap: 6, color: postingStatus === 'success' ? '#10b981' : postingStatus === 'failed' ? '#ef4444' : '#f59e0b' }}>
+                      {postingStatus === 'posting' && (<><Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} /> Auto-publishing to your calendar…</>)}
+                      {postingStatus === 'success' && (<><CheckCircle2 size={12} /> Auto-published — no approval needed</>)}
+                      {postingStatus === 'failed'  && (<>Auto-publish failed — <button onClick={handleLaunch} style={{ background: 'none', border: 'none', color: '#ef4444', textDecoration: 'underline', cursor: 'pointer', fontSize: 11, fontWeight: 700, padding: 0, fontFamily: 'inherit' }}>retry</button></>)}
+                    </p>
+                  )}
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '1px', background: 'rgba(255,255,255,0.05)' }}>
