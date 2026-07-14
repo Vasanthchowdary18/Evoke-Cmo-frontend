@@ -5,7 +5,6 @@ import {
   Users, ArrowLeft, Loader2, Target, Copy, Check,
   ChevronRight, ArrowRight, CheckCircle2, Sparkles,
 } from 'lucide-react'
-import Navbar from '../components/Navbar.jsx'
 import { useRequireAuth } from '../hooks/useRequireAuth'
 import { useAuth } from '../hooks/useAuth'
 import { getKnowledgeBase } from '../services/knowledgeBaseService.js'
@@ -286,8 +285,8 @@ export default function AudienceBuilder() {
 
   return (
     <div style={{ minHeight: '100vh', background: BG, color: TEXT, fontFamily: FONT }}>
-      <Navbar />
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '88px 20px 80px' }}>
+      <div>
+      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '36px 28px 80px' }}>
 
         {/* Header */}
         <div style={{ marginBottom: 28 }}>
@@ -548,6 +547,7 @@ export default function AudienceBuilder() {
           )}
         </AnimatePresence>
 
+      </div>
       </div>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } } select option { background: #1c1a13; color: #f0ebe0; }`}</style>
     </div>

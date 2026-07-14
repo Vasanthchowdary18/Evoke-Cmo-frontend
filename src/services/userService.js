@@ -46,6 +46,15 @@ export async function getOrCreateUser(uid, displayName, email) {
   return snap.data()
 }
 
+/** Saves the chat onboarding answers (background/industry/goal). Does NOT mark onboardingComplete — that is set by SetupPage after brand setup. */
+export async function saveChatOnboardingData(uid, data) {
+  await updateDoc(doc(db, 'users', uid), {
+    chatOnboardingDone: true,
+    onboardingData: data,
+    chatOnboardingCompletedAt: serverTimestamp(),
+  })
+}
+
 /** Saves completed onboarding answers and marks onboarding as done. */
 export async function saveOnboardingData(uid, data) {
   await updateDoc(doc(db, 'users', uid), {
@@ -111,31 +120,31 @@ export const TOKEN_PACKAGES = [
   {
     id:       'starter',
     tokens:   10,
-    price:    999,
+    price:    9.99,
     label:    'Starter',
     popular:  false,
     color:    '#7c3aed',
-    perToken: '₹99.9',
+    perToken: '$0.99',
     features: ['10 AI campaigns', 'All platforms', 'Email + WhatsApp', 'LinkedIn + Instagram'],
   },
   {
     id:       'growth',
     tokens:   20,
-    price:    1799,
+    price:    17.99,
     label:    'Growth',
     popular:  true,
     color:    '#06b6d4',
-    perToken: '₹89.9',
+    perToken: '$0.89',
     features: ['20 AI campaigns', 'All platforms', 'Priority generation', '7-day calendar'],
   },
   {
     id:       'pro',
     tokens:   35,
-    price:    2499,
+    price:    24.99,
     label:    'Pro',
     popular:  false,
     color:    '#a855f7',
-    perToken: '₹71.4',
+    perToken: '$0.71',
     features: ['35 AI campaigns', 'All platforms', 'Best value', 'Full brand strategy'],
   },
 ]

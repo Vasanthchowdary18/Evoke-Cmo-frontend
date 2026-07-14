@@ -226,8 +226,8 @@ export default function Purchase() {
                   {pkg.label.toUpperCase()}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, marginBottom: 4 }}>
-                  <span style={{ fontSize: 48, fontWeight: 900, letterSpacing: '-0.03em', color: 'white' }}>₹{pkg.price}</span>
-                  <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, marginBottom: 10 }}>INR</span>
+                  <span style={{ fontSize: 48, fontWeight: 900, letterSpacing: '-0.03em', color: 'white' }}>${pkg.price}</span>
+                  <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, marginBottom: 10 }}>USD</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 28, fontWeight: 800, color: pkg.color }}>{pkg.tokens}</span>

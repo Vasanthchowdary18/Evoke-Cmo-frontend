@@ -67,12 +67,14 @@ export default function Navbar() {
     window.location.href = buildAccountsLoginUrl(window.location.href)
   }
 
-  // "Get Started Free" — new users should land on pricing/plan selection
-  // after login, not straight into the dashboard.
   const handleGetStartedFree = (e) => {
     e?.preventDefault?.()
-    try { sessionStorage.setItem('evoke_post_login_route', '/#pricing') } catch {}
-    window.location.href = buildAccountsLoginUrl(window.location.origin + '/')
+    if (user) {
+      navigate('/brand-kb')
+    } else {
+      try { sessionStorage.setItem('evoke_post_login_route', '/brand-kb') } catch {}
+      window.location.href = buildAccountsLoginUrl(window.location.origin + '/brand-kb')
+    }
   }
 
   const landingLinks = [

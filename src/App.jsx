@@ -4,6 +4,7 @@ import { AuthProvider } from './components/AuthProvider.jsx'
 import { auth } from './firebase'
 import { signInWithCustomToken } from 'firebase/auth'
 import { getOrCreateUser } from './services/userService'
+import PlanGate from './components/PlanGate.jsx'
 import Landing from './pages/Landing.jsx'
 import SignIn from './pages/SignIn.jsx'
 import Onboarding from './pages/Onboarding.jsx'
@@ -43,12 +44,32 @@ import MarketingStrategyPage from './pages/MarketingStrategyPage.jsx'
 import MarketingExecutionPage from './pages/MarketingExecutionPage.jsx'
 import CampaignHub from './pages/CampaignHub.jsx'
 import AgentHub from './pages/AgentHub.jsx'
+import ContentGenerationPage from './pages/ContentGenerationPage.jsx'
+import CopywritingAgentPage from './pages/CopywritingAgentPage.jsx'
+import ExecutiveReportPage from './pages/ExecutiveReportPage.jsx'
 import MarketingHealthPage from './pages/MarketingHealthPage.jsx'
 import BrandProfilePage from './pages/BrandProfilePage.jsx'
 import EventbritePost from './pages/EventbritePost.jsx'
 import DevResetPage from './pages/DevResetPage.jsx'
 import ExecutiveReportingPage from './pages/ExecutiveReportingPage.jsx'
+import EmailMarketingPage from './pages/EmailMarketingPage.jsx'
+import StrategyHubPage from './pages/StrategyHubPage.jsx'
+import SeoAgentPage from './pages/SeoAgentPage.jsx'
+import ABTestingPage from './pages/ABTestingPage.jsx'
+import MarketingAttributionPage from './pages/MarketingAttributionPage.jsx'
+import DashboardPage from './pages/DashboardPage.jsx'
+import SetupPage from './pages/SetupPage.jsx'
 import Chatbot from './components/Chatbot.jsx'
+
+// Helper: wrap a page component with a plan gate
+// On localhost this is a no-op (PlanGate bypasses in dev)
+function G(plan, name, Comp) {
+  return (
+    <PlanGate requiredPlan={plan} featureName={name}>
+      <Comp />
+    </PlanGate>
+  )
+}
 
 // Handles token returned from accounts.evokemarketplace.com after login
 function EvokeAuthHandler() {
@@ -60,10 +81,9 @@ function EvokeAuthHandler() {
                    params.get('access_token') || params.get('auth_token')
     if (!token) return
 
-    // Clean token from URL immediately
     window.history.replaceState({}, '', window.location.pathname)
 
-    const postLoginRoute = sessionStorage.getItem('evoke_post_login_route') || '/agents-hub'
+    const postLoginRoute = sessionStorage.getItem('evoke_post_login_route') || '/dashboard'
     sessionStorage.removeItem('evoke_post_login_route')
 
     signInWithCustomToken(auth, token)
@@ -84,56 +104,77 @@ export default function App() {
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <AuthProvider>
       <Routes>
+        {/* ── Public ── */}
         <Route path="/"                  element={<Landing />} />
         <Route path="/signin"            element={<SignIn />} />
         <Route path="/onboarding"        element={<Onboarding />} />
-        <Route path="/dashboard"         element={<Navigate to="/agents-hub" replace />} />
-        <Route path="/campaign/:type"    element={<CampaignForm />} />
-        <Route path="/results"           element={<Results />} />
-        <Route path="/tokens"            element={<Tokens />} />
-        <Route path="/purchase"          element={<Purchase />} />
-        <Route path="/connect-accounts"  element={<ConnectAccounts />} />
-        <Route path="/post-content"      element={<PostContent />} />
-        <Route path="/products"          element={<ProductsPage />} />
-        <Route path="/product-desc"      element={<ProductDescription />} />
-        <Route path="/image-angles"      element={<ImageToolPage />} />
-        <Route path="/image-360"         element={<ImageToolPage />} />
-        <Route path="/image-seo"         element={<ImageToolPage />} />
-        <Route path="/image-lifestyle"   element={<ImageToolPage />} />
-        <Route path="/image-3d"          element={<ImageToolPage />} />
-        <Route path="/meta-ads-boost"    element={<MetaAdsBoost />} />
+        <Route path="/setup"             element={<SetupPage />} />
+        <Route path="/privacy"           element={<Privacy />} />
+        <Route path="/terms"             element={<Terms />} />
+        <Route path="/dashboard"         element={<DashboardPage />} />
+
+        {/* ── Plans & packages (always accessible) ── */}
+        <Route path="/plans"             element={<PlansPage />} />
+        <Route path="/free-plan"         element={<FreePlanPage />} />
+        <Route path="/package-a"         element={<PackageAPage />} />
+        <Route path="/package-b"         element={<PackageBPage />} />
+        <Route path="/package-c"         element={<PackageCPage />} />
+
+        {/* ── Free tier (all authenticated users) ── */}
         <Route path="/agents-hub"         element={<AgentsHub />} />
-        <Route path="/plans"              element={<PlansPage />} />
-        <Route path="/free-plan"          element={<FreePlanPage />} />
-        <Route path="/package-a"          element={<PackageAPage />} />
-        <Route path="/package-b"          element={<PackageBPage />} />
-        <Route path="/package-c"          element={<PackageCPage />} />
-        <Route path="/caption-suite"      element={<CaptionSuitePage />} />
-        <Route path="/reel-scripts"       element={<ReelScriptsPage />} />
-        <Route path="/queue"              element={<ApprovalQueue />} />
+        <Route path="/hub/:agent"         element={<AgentHub />} />
+        <Route path="/brand-profile"      element={<BrandProfilePage />} />
+        <Route path="/brand-kb"           element={<BrandKnowledgeBase />} />
+        <Route path="/health-score"       element={<MarketingHealthPage />} />
+        <Route path="/strategy-hub"        element={<StrategyHubPage />} />
+        <Route path="/strategy"           element={<MarketingStrategyPage />} />
         <Route path="/kpi-recommendations" element={<KpiRecommendationsPage />} />
-        <Route path="/analytics"             element={<AnalyticsDashboard />} />
-        <Route path="/crm"                   element={<CrmPage />} />
-        <Route path="/brand-kb"              element={<BrandKnowledgeBase />} />
-        <Route path="/health-score"          element={<MarketingHealthPage />} />
-        <Route path="/brand-profile"         element={<BrandProfilePage />} />
-        <Route path="/eventbrite-post"       element={<EventbritePost />} />
-        <Route path="/inbox"                 element={<SocialInbox />} />
-        <Route path="/trends"                element={<TrendAnalysis />} />
-        <Route path="/audience-builder"      element={<AudienceBuilder />} />
-        <Route path="/team"                  element={<TeamManagement />} />
-        <Route path="/partner-sharing"       element={<PartnerSharing />} />
-        <Route path="/video-gen"             element={<VideoGenerationPage />} />
-        <Route path="/brand-governance"      element={<BrandGovernancePage />} />
-        <Route path="/strategy"              element={<MarketingStrategyPage />} />
-        <Route path="/execution"             element={<MarketingExecutionPage />} />
-        <Route path="/campaign-hub"          element={<CampaignHub />} />
-        <Route path="/hub/:agent"            element={<AgentHub />} />
-        <Route path="/dev-reset"             element={<DevResetPage />} />
-        <Route path="/executive-report"      element={<ExecutiveReportingPage />} />
-        <Route path="/privacy"            element={<Privacy />} />
-        <Route path="/terms"              element={<Terms />} />
-        <Route path="*"                  element={<Navigate to="/" replace />} />
+        <Route path="/campaign/:type"     element={<CampaignForm />} />
+        <Route path="/results"            element={<Results />} />
+        <Route path="/tokens"             element={<Tokens />} />
+        <Route path="/purchase"           element={<Purchase />} />
+        <Route path="/products"           element={<ProductsPage />} />
+        <Route path="/eventbrite-post"    element={<EventbritePost />} />
+        <Route path="/dev-reset"          element={<DevResetPage />} />
+
+        {/* ── Package A — Creative & Content ── */}
+        <Route path="/caption-suite"   element={G('package-a', 'Caption Suite',          CaptionSuitePage)} />
+        <Route path="/reel-scripts"    element={G('package-a', 'Reel Scripts',            ReelScriptsPage)} />
+        <Route path="/content-gen"     element={G('package-a', 'Content Generation',      ContentGenerationPage)} />
+        <Route path="/copywriting"     element={G('package-a', 'Copywriting Agent',       CopywritingAgentPage)} />
+        <Route path="/product-desc"    element={G('package-a', 'Product Description',     ProductDescription)} />
+        <Route path="/image-angles"    element={G('package-a', 'Product Image Angles',    ImageToolPage)} />
+        <Route path="/image-360"       element={G('package-a', '360° Product Video',      ImageToolPage)} />
+        <Route path="/image-seo"       element={G('package-a', 'SEO Product Images',      ImageToolPage)} />
+        <Route path="/image-lifestyle" element={G('package-a', 'Lifestyle Photos',        ImageToolPage)} />
+        <Route path="/video-gen"       element={G('package-a', 'Video Generation',        VideoGenerationPage)} />
+
+        {/* ── Package B — AI Agents + Social ── */}
+        <Route path="/email-marketing"     element={G('package-b', 'Email Marketing Agent',    EmailMarketingPage)} />
+        <Route path="/seo-agent"           element={G('package-b', 'SEO Agent',                SeoAgentPage)} />
+        <Route path="/ab-testing"          element={G('package-b', 'A/B Testing Framework',    ABTestingPage)} />
+        <Route path="/marketing-attribution" element={G('package-b', 'Marketing Attribution',   MarketingAttributionPage)} />
+        <Route path="/audience-builder"    element={G('package-b', 'Audience Builder',          AudienceBuilder)} />
+        <Route path="/trends"              element={G('package-b', 'Trend Analysis',            TrendAnalysis)} />
+        <Route path="/crm"                 element={G('package-b', 'CRM & Lifecycle',           CrmPage)} />
+        <Route path="/analytics"           element={G('package-b', 'Analytics Dashboard',       AnalyticsDashboard)} />
+        <Route path="/executive-report"    element={G('package-b', 'Executive Report',          ExecutiveReportPage)} />
+        <Route path="/executive-reporting" element={G('package-b', 'Executive Reporting',       ExecutiveReportingPage)} />
+        <Route path="/campaign-hub"        element={G('package-b', 'Campaign Hub',              CampaignHub)} />
+        <Route path="/connect-accounts"    element={G('package-b', 'Connect Social Accounts',   ConnectAccounts)} />
+        <Route path="/queue"               element={G('package-b', 'Approval Queue',            ApprovalQueue)} />
+        <Route path="/post-content"        element={G('package-b', 'Post Content',              PostContent)} />
+        <Route path="/inbox"               element={G('package-b', 'Social Inbox',              SocialInbox)} />
+        <Route path="/brand-governance"    element={G('package-b', 'Brand Governance',          BrandGovernancePage)} />
+        <Route path="/image-3d"            element={G('package-b', '3D Product Images',         ImageToolPage)} />
+
+        {/* ── Package C — Paid Ads & Full Deploy ── */}
+        <Route path="/meta-ads-boost"  element={G('package-c', 'Meta Ads Boost',          MetaAdsBoost)} />
+        <Route path="/execution"       element={G('package-c', 'Marketing Execution',      MarketingExecutionPage)} />
+        <Route path="/team"            element={G('package-c', 'Team Management',          TeamManagement)} />
+        <Route path="/partner-sharing" element={G('package-c', 'Partner Sharing',          PartnerSharing)} />
+
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <Chatbot />
       </AuthProvider>

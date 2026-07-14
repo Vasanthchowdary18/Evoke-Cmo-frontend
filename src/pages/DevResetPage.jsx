@@ -46,9 +46,13 @@ export default function DevResetPage() {
       await delay(400)
       const ref = doc(db, 'users', user.uid)
       await updateDoc(ref, {
-        onboardingComplete: false,
-        onboardingData:     deleteField(),
-        selectedPlan:       deleteField(),
+        onboardingComplete:  false,
+        chatOnboardingDone:  deleteField(),
+        brandSetupComplete:  deleteField(),
+        onboardingData:      deleteField(),
+        selectedPlan:        deleteField(),
+        recommendedRoutes:   deleteField(),
+        brandName:           deleteField(),
       })
 
       // Step 2 — clear brand knowledge base

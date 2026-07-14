@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Zap, ArrowRight, Loader2 } from 'lucide-react'
 import { useRequireAuth } from '../hooks/useRequireAuth'
-import { getUserData, saveOnboardingData } from '../services/userService'
+import { getUserData, saveChatOnboardingData } from '../services/userService'
 
 // ─── Onboarding questions ────────────────────────────────────────────────────
 const STEPS = [
@@ -108,11 +108,17 @@ export default function Onboarding() {
     setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 80)
   }, [messages, isTyping, showOptions])
 
-  // Redirect if onboarding already complete
+  // Skip onboarding chat if already done
   useEffect(() => {
     if (!authReady || !user) return
     getUserData(user.uid).then((userData) => {
-      if (userData?.onboardingComplete) navigate('/dashboard')
+      if (userData?.onboardingComplete) {
+        // Fully set up — go to dashboard
+        navigate('/dashboard', { replace: true })
+      } else if (userData?.chatOnboardingDone) {
+        // Chat done but brand setup not yet — send to setup
+        navigate('/setup', { replace: true })
+      }
     })
   }, [authReady, user, navigate])
 
@@ -158,10 +164,10 @@ export default function Onboarding() {
 
       setTimeout(() => pushAgentMessage(doneText, 3, true), 500)
 
-      // Save to Firestore
+      // Save chat answers only — brand setup (SetupPage) sets onboardingComplete
       setSaving(true)
       try {
-        await saveOnboardingData(user.uid, newAnswers)
+        await saveChatOnboardingData(user.uid, newAnswers)
       } catch (err) {
         console.error('Onboarding save error:', err)
       } finally {
@@ -359,7 +365,7 @@ export default function Onboarding() {
               <motion.button
                 whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.97 }}
-                onClick={() => navigate('/connect-accounts?setup=cmo')}
+                onClick={() => navigate('/setup')}
                 disabled={saving}
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: 10,
@@ -377,7 +383,7 @@ export default function Onboarding() {
               >
                 {saving
                   ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Saving...</>
-                  : <>Connect Social Accounts <ArrowRight size={17} /></>
+                  : <>Set Up Your Brand <ArrowRight size={17} /></>
                 }
               </motion.button>
             </motion.div>

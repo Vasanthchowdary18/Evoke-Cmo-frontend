@@ -37,37 +37,37 @@ const LINKEDIN_CLIENT_ID =
 const LINKEDIN_REDIRECT = window.location.origin + "/connect-accounts";
 const LINKEDIN_SCOPE = "openid profile email w_member_social";
 const LINKEDIN_N8N =
-  "https://vasanthchowdary373.app.n8n.cloud/webhook/linkedin-oauth";
+  "https://vasanth373.app.n8n.cloud/webhook/linkedin-oauth";
 
 const TWITTER_CLIENT_ID =
   import.meta.env.VITE_TWITTER_CLIENT_ID || "YOUR_TWITTER_CLIENT_ID";
 const TWITTER_REDIRECT = window.location.origin + "/connect-accounts";
 const TWITTER_SCOPE = "tweet.read tweet.write users.read offline.access";
 const TWITTER_N8N =
-  "https://vasanthchowdary373.app.n8n.cloud/webhook/twitter-oauth";
+  "https://vasanth373.app.n8n.cloud/webhook/twitter-oauth";
 
 const GOOGLE_CLIENT_ID =
   "53481639003-g903a5274f1bcq4jvkgpeoispls7aps9.apps.googleusercontent.com";
 const GOOGLE_REDIRECT = window.location.origin + "/connect-accounts";
 const GOOGLE_SCOPE =
   "https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile";
-const GMAIL_N8N = "https://vasanthchowdary373.app.n8n.cloud/webhook/gmail-oauth";
+const GMAIL_N8N = "https://vasanth373.app.n8n.cloud/webhook/gmail-oauth";
 
 const GOOGLE_ADS_SCOPE =
   "https://www.googleapis.com/auth/adwords https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile";
-const GOOGLE_ADS_N8N = "https://vasanthchowdary373.app.n8n.cloud/webhook/google-ads-oauth";
+const GOOGLE_ADS_N8N = "https://vasanth373.app.n8n.cloud/webhook/google-ads-oauth";
 
 const TIKTOK_CLIENT_KEY = "sbawq8ejz7li1bzsf1";
 const TIKTOK_REDIRECT = window.location.origin + "/connect-accounts";
 const TIKTOK_SCOPE = "user.info.basic,video.upload";
 const TIKTOK_N8N =
-  "https://vasanthchowdary373.app.n8n.cloud/webhook/tiktok-oauth";
+  "https://vasanth373.app.n8n.cloud/webhook/tiktok-oauth";
 
 const EVENTBRITE_CLIENT_ID =
   import.meta.env.VITE_EVENTBRITE_CLIENT_ID || "AQUWB7RTTS3CUWMCXM";
 const EVENTBRITE_REDIRECT = window.location.origin + "/connect-accounts";
 const EVENTBRITE_N8N =
-  "https://vasanthchowdary373.app.n8n.cloud/webhook/eventbrite-oauth";
+  "https://vasanth373.app.n8n.cloud/webhook/eventbrite-oauth";
 
 function genVerifier() {
   const arr = new Uint8Array(32);
