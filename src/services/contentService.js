@@ -24,6 +24,7 @@ import { db } from '../firebase'
 //   data: string                  // JSON payload for structured items (strategy docs)
 //   imageUrl, videoUrl: string
 //   status: 'draft' | 'approved' | 'scheduled' | 'published' | 'rejected'
+//   requiresApproval: boolean     // true = stays in /queue for manual review; false = eligible for n8n auto-publish
 //   scheduledAt: timestamp | null
 //   publishedAt: timestamp | null
 //   source: 'campaign' | 'post-content'
@@ -54,11 +55,58 @@ export async function saveContentItems(userId, campaignMeta, items, status = 'dr
       imageUrl:     item.imageUrl             || '',
       videoUrl:     item.videoUrl             || '',
       status,
+      requiresApproval: campaignMeta.requiresApproval ?? true,
       scheduledAt:  null,
       publishedAt:  status === 'published' ? serverTimestamp() : null,
       source:       campaignMeta.source       || 'campaign',
       createdAt:    serverTimestamp(),
       updatedAt:    serverTimestamp(),
+    })
+  })
+  await batch.commit()
+  return ids
+}
+
+// Writes one content_item per remaining campaign day (2..N) with everything the
+// n8n "Auto Publish Schedule Trigger" workflow needs to post it headlessly:
+// status 'scheduled' + requiresApproval:false makes it eligible for auto-publish;
+// scheduledAt is the real trigger the n8n Firestore query filters on.
+// This replaces relying on the browser tab staying open (setTimeout) as the only
+// way days 2..N actually get posted.
+export async function scheduleCampaignDays(userId, campaignId, campaignMeta, dayPayloads) {
+  if (!userId || !dayPayloads?.length) return []
+  const batch = writeBatch(db)
+  const ids = []
+  dayPayloads.forEach(dp => {
+    const ref = doc(collection(db, COL))
+    ids.push(ref.id)
+    batch.set(ref, {
+      userId,
+      campaignId,
+      campaignName: campaignMeta.name || '',
+      campaignType: campaignMeta.type || '',
+      type:   'post',
+      platform: dp.platforms || '',
+      text:   dp.linkedinPost || dp.facebookPost || dp.instagramCaption || '',
+      status: 'scheduled',
+      requiresApproval: false,
+      scheduledAt: dp.scheduledAt,
+      publishedAt: null,
+      source: 'campaign',
+      day: dp.day,
+      dailySchedule:     dp.dailySchedule     || [],
+      linkedinPost:      dp.linkedinPost      || '',
+      instagramCaption:  dp.instagramCaption  || '',
+      facebookPost:      dp.facebookPost      || '',
+      whatsappMessage:   dp.whatsappMessage   || '',
+      emailSubject:      dp.emailSubject      || '',
+      emailBody:         dp.emailBody         || '',
+      imageUrl:          dp.imageUrl          || '',
+      whatsappRecipients: dp.whatsappRecipients || '',
+      emailRecipients:   dp.emailRecipients   || '',
+      userCredentials:   dp.userCredentials   || {},
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
     })
   })
   await batch.commit()
@@ -102,6 +150,7 @@ export async function setItemStatus(id, status, extra = {}) {
 export async function scheduleItem(id, scheduledAt) {
   await updateDoc(doc(db, COL, id), {
     status: 'scheduled',
+    requiresApproval: false, // a human already approved it in /queue before scheduling
     scheduledAt: scheduledAt instanceof Date ? scheduledAt.toISOString() : scheduledAt,
     updatedAt: serverTimestamp(),
   })
