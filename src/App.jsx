@@ -19,6 +19,7 @@ import Terms from './pages/Terms.jsx'
 import MetaAdsBoost from './pages/MetaAdsBoost.jsx'
 import AgentsHub from './pages/AgentsHub.jsx'
 import PlansPage from './pages/PlansPage.jsx'
+import PricingPage from './pages/PricingPage.jsx'
 import FreePlanPage from './pages/FreePlanPage.jsx'
 import PackageAPage from './pages/PackageAPage.jsx'
 import PackageBPage from './pages/PackageBPage.jsx'
@@ -28,6 +29,7 @@ import ReelScriptsPage from './pages/ReelScriptsPage.jsx'
 import ProductsPage from './pages/ProductsPage.jsx'
 import ProductDescription from './pages/ProductDescription.jsx'
 import ImageToolPage from './pages/ImageToolPage.jsx'
+import CreativeAssetPage from './pages/CreativeAssetPage.jsx'
 import ApprovalQueue from './pages/ApprovalQueue.jsx'
 import KpiRecommendationsPage from './pages/KpiRecommendationsPage.jsx'
 import AnalyticsDashboard from './pages/AnalyticsDashboard.jsx'
@@ -52,6 +54,7 @@ import BrandProfilePage from './pages/BrandProfilePage.jsx'
 import EventbritePost from './pages/EventbritePost.jsx'
 import DevResetPage from './pages/DevResetPage.jsx'
 import ExecutiveReportingPage from './pages/ExecutiveReportingPage.jsx'
+import CmoAgentOverviewPage from './pages/CmoAgentOverviewPage.jsx'
 import EmailMarketingPage from './pages/EmailMarketingPage.jsx'
 import StrategyHubPage from './pages/StrategyHubPage.jsx'
 import SeoAgentPage from './pages/SeoAgentPage.jsx'
@@ -70,6 +73,10 @@ function G(plan, name, Comp) {
     </PlanGate>
   )
 }
+
+// Dev/test utilities should never be usable in production
+const IS_LOCAL = typeof window !== 'undefined' &&
+  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
 
 // Handles token returned from accounts.evokemarketplace.com after login
 function EvokeAuthHandler() {
@@ -112,9 +119,12 @@ export default function App() {
         <Route path="/privacy"           element={<Privacy />} />
         <Route path="/terms"             element={<Terms />} />
         <Route path="/dashboard"         element={<DashboardPage />} />
+        {/* Legacy CMO command-center route — replaced by /dashboard */}
+        <Route path="/cmo"               element={<Navigate to="/dashboard" replace />} />
 
         {/* ── Plans & packages (always accessible) ── */}
         <Route path="/plans"             element={<PlansPage />} />
+        <Route path="/pricing"           element={<PricingPage />} />
         <Route path="/free-plan"         element={<FreePlanPage />} />
         <Route path="/package-a"         element={<PackageAPage />} />
         <Route path="/package-b"         element={<PackageBPage />} />
@@ -123,19 +133,22 @@ export default function App() {
         {/* ── Free tier (all authenticated users) ── */}
         <Route path="/agents-hub"         element={<AgentsHub />} />
         <Route path="/hub/:agent"         element={<AgentHub />} />
+        <Route path="/agent/:type"        element={<CmoAgentOverviewPage />} />
         <Route path="/brand-profile"      element={<BrandProfilePage />} />
-        <Route path="/brand-kb"           element={<BrandKnowledgeBase />} />
         <Route path="/health-score"       element={<MarketingHealthPage />} />
         <Route path="/strategy-hub"        element={<StrategyHubPage />} />
         <Route path="/strategy"           element={<MarketingStrategyPage />} />
-        <Route path="/kpi-recommendations" element={<KpiRecommendationsPage />} />
+
+        {/* Brand KB tool & KPI moved to Package A (setup wizard /brand-profile stays free) */}
+        <Route path="/brand-kb"           element={G('package-a', 'Brand Knowledge Base', BrandKnowledgeBase)} />
+        <Route path="/kpi-recommendations" element={G('package-a', 'KPI Recommendations', KpiRecommendationsPage)} />
         <Route path="/campaign/:type"     element={<CampaignForm />} />
         <Route path="/results"            element={<Results />} />
         <Route path="/tokens"             element={<Tokens />} />
         <Route path="/purchase"           element={<Purchase />} />
         <Route path="/products"           element={<ProductsPage />} />
         <Route path="/eventbrite-post"    element={<EventbritePost />} />
-        <Route path="/dev-reset"          element={<DevResetPage />} />
+        <Route path="/dev-reset"          element={IS_LOCAL ? <DevResetPage /> : <Navigate to="/" replace />} />
 
         {/* ── Package A — Creative & Content ── */}
         <Route path="/caption-suite"   element={G('package-a', 'Caption Suite',          CaptionSuitePage)} />
@@ -147,6 +160,7 @@ export default function App() {
         <Route path="/image-360"       element={G('package-a', '360° Product Video',      ImageToolPage)} />
         <Route path="/image-seo"       element={G('package-a', 'SEO Product Images',      ImageToolPage)} />
         <Route path="/image-lifestyle" element={G('package-a', 'Lifestyle Photos',        ImageToolPage)} />
+        <Route path="/creative-asset"  element={G('package-a', 'Creative Assets',         CreativeAssetPage)} />
         <Route path="/video-gen"       element={G('package-a', 'Video Generation',        VideoGenerationPage)} />
 
         {/* ── Package B — AI Agents + Social ── */}

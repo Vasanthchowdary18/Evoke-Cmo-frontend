@@ -23,7 +23,7 @@ export function getRecommendedActions(connectedCount, campaigns, tokenBalance, k
 
   // ── Always: Brand KB setup if not done ──
   if (!hasBrandKb) {
-    pool.push({ score: 100, icon: <BookOpen size={18}/>, title: 'Set Up Brand Profile', desc: 'Your AI CMO needs your brand details before it can personalise campaigns, health scores and growth plans.', color: GOLD, cta: 'Set Up Now', path: '/brand-kb', highlight: true, planRequired: 'free' })
+    pool.push({ score: 100, icon: <BookOpen size={18}/>, title: 'Set Up Brand Profile', desc: 'Your AI CMO needs your brand details before it can personalise campaigns, health scores and growth plans.', color: GOLD, cta: 'Set Up Now', path: '/brand-profile', highlight: true, planRequired: 'free' })
   }
 
   // ── Always: Marketing Strategy — the first thing every brand does after Brand KB ──

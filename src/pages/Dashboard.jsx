@@ -70,7 +70,6 @@ import { db } from "../firebase";
 import { useRequireAuth } from "../hooks/useRequireAuth";
 import { doc, updateDoc } from "firebase/firestore";
 import { getOrCreateUser, getTokenBalance } from "../services/userService";
-import { DAY_WEBHOOK_URL } from "../config.js";
 
 const campaignCards = [
   {
@@ -885,56 +884,9 @@ export default function Dashboard() {
   useEffect(() => {
     const stored = JSON.parse(localStorage.getItem("evoke_campaigns") || "[]");
     setCampaigns(stored);
-
-    // ── Check for missed day posts (browser was closed, now reopened) ──
-    try {
-      const queue = JSON.parse(
-        localStorage.getItem("evoke_pending_days") || "[]",
-      );
-      const now = Date.now();
-      let queueChanged = false;
-      const updatedQueue = queue.map((item) => {
-        if (item.posted) return item;
-        const due = new Date(item.scheduledAt).getTime();
-        if (due <= now) {
-          // Trigger overdue day post
-          fetch(DAY_WEBHOOK_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(item.payload),
-          })
-            .then(() => {
-              const campaigns = JSON.parse(
-                localStorage.getItem("evoke_campaigns") || "[]",
-              );
-              const ci = campaigns.findIndex((c) => c.id === item.campaignId);
-              if (ci !== -1) {
-                campaigns[ci].daysPosted = [
-                  ...new Set([...(campaigns[ci].daysPosted || [1]), item.day]),
-                ];
-                localStorage.setItem(
-                  "evoke_campaigns",
-                  JSON.stringify(campaigns),
-                );
-                setCampaigns([...campaigns]);
-              }
-            })
-            .catch((e) =>
-              console.warn(`Missed day ${item.day} post failed:`, e),
-            );
-          queueChanged = true;
-          return { ...item, posted: true };
-        }
-        return item;
-      });
-      if (queueChanged)
-        localStorage.setItem(
-          "evoke_pending_days",
-          JSON.stringify(updatedQueue),
-        );
-    } catch (e) {
-      console.warn("Pending day check failed:", e);
-    }
+    // Day 2+ posting is now handled server-side by the n8n Auto Publish
+    // Schedule Trigger reading content_items from Firestore — no client-side
+    // catch-up needed here regardless of whether this tab was open.
   }, []);
 
   /** Routes to the campaign form. Product type shows the visual tools modal first. */

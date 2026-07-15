@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   ArrowLeft, Loader2, Sparkles, Check, Copy, Download,
@@ -9,9 +9,11 @@ import {
   AlertCircle,
 } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
+import JourneyFooter from '../components/JourneyFooter.jsx'
 import { useRequireAuth } from '../hooks/useRequireAuth'
 import { useAuth } from '../hooks/useAuth'
 import { saveContentItems, getContentItems } from '../services/contentService'
+import { appendJourneyOutput } from '../services/knowledgeBaseService.js'
 
 const BG      = '#0e0c09'
 const CARD    = '#1c1a13'
@@ -175,10 +177,12 @@ const selectStyle = { ...inputStyle, cursor: 'pointer', colorScheme: 'dark' }
 export default function CreativeAssetPage() {
   useRequireAuth()
   const navigate  = useNavigate()
+  const location  = useLocation()
   const { user }  = useAuth()
+  const fromContent = location.state?.payload?.fromStep === 5 ? location.state.payload : null
 
   const [assetType, setAssetType] = useState('')
-  const [inputs, setInputs]       = useState({ brand: '', brief: '', brandColors: '', platform: 'Instagram', style: 'Minimalist', tone: 'Inspirational' })
+  const [inputs, setInputs]       = useState({ brand: fromContent?.productName || '', brief: fromContent?.context || '', brandColors: '', platform: 'Instagram', style: 'Minimalist', tone: 'Inspirational' })
 
   const selectAssetType = (key) => {
     setAssetType(key)
@@ -272,6 +276,9 @@ export default function CreativeAssetPage() {
         )
         if (ids?.[0]) setSavedDocId(ids[0])
         await loadHistory()
+      } catch {}
+      try {
+        if (user?.uid) await appendJourneyOutput(user.uid, 'creative', r.title)
       } catch {}
     } catch (e) {
       setError(e.message || 'Generation failed. Please try again.')
@@ -393,6 +400,13 @@ export default function CreativeAssetPage() {
             </button>
           )}
         </div>
+
+        {fromContent && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: 10, marginBottom: 16, width: 'fit-content' }}>
+            <Check size={13} color="#10b981" />
+            <span style={{ fontSize: 12, color: '#10b981', fontWeight: 600 }}>Brief pre-filled from your Content Generation step{fromContent.productName ? ` — ${fromContent.productName}` : ''}</span>
+          </div>
+        )}
 
         {/* History drawer */}
         <AnimatePresence>
@@ -787,6 +801,7 @@ export default function CreativeAssetPage() {
         </AnimatePresence>
       </div>
 
+      <JourneyFooter currentPath="/creative-asset" />
       <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
     </div>
   )

@@ -1645,6 +1645,8 @@ export default function CampaignForm() {
   const [loading, setLoading] = useState(false);
   const [loadingPhase, setLoadingPhase] = useState(""); // 'uploading-image' | 'uploading-video' | 'generating' | 'posting'
   const [submitError, setSubmitError] = useState("");
+  const [emailRecipientInput, setEmailRecipientInput] = useState("");
+  const [emailRecipientError, setEmailRecipientError] = useState("");
   const [posterGenerating, setPosterGenerating] = useState(false);
   const [generatingEventUrl, setGeneratingEventUrl] = useState(false);
   const [generatedEventUrl, setGeneratedEventUrl] = useState("");
@@ -1854,6 +1856,35 @@ export default function CampaignForm() {
     );
   };
 
+  // emailRecipients is stored as a comma-separated string (matches the existing
+  // submission payload contract) — these helpers manage it as a chip list in the UI.
+  const emailRecipientList = (form.emailRecipients || "")
+    .split(",")
+    .map((e) => e.trim())
+    .filter(Boolean);
+
+  const addEmailRecipient = () => {
+    const email = emailRecipientInput.trim().replace(/,$/, "");
+    if (!email) return;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setEmailRecipientError(`"${email}" isn't a valid email address`);
+      return;
+    }
+    if (emailRecipientList.includes(email)) {
+      setEmailRecipientError(`${email} is already in the list`);
+      setEmailRecipientInput("");
+      return;
+    }
+    set("emailRecipients", [...emailRecipientList, email].join(","));
+    setEmailRecipientInput("");
+    setEmailRecipientError("");
+  };
+
+  const removeEmailRecipient = (email) => {
+    set("emailRecipients", emailRecipientList.filter((e) => e !== email).join(","));
+    setEmailRecipientError("");
+  };
+
   // Close dropdowns when clicking outside
   const audienceRef = useRef(null);
   const locationRef = useRef(null);
@@ -1952,6 +1983,25 @@ export default function CampaignForm() {
     if (!form.goal.trim() && !form.goalType && type !== "ads_creation" && type !== "ads_manager" && type !== "target_audience") return setSubmitError("Please select or describe a campaign goal.");
     if (needsBrandName && !form.brandName.trim()) return setSubmitError("Please enter a brand name.");
     if (form.targetAudience.length === 0) return setSubmitError("Please select at least one target audience.");
+
+    // Auto-commit an email still sitting in the Recipients box (typed but never
+    // clicked "Add") so it isn't silently dropped from the outgoing payload.
+    let resolvedEmailRecipients = form.emailRecipients || "";
+    const pendingEmail = emailRecipientInput.trim().replace(/,$/, "");
+    if (pendingEmail) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(pendingEmail)) {
+        return setSubmitError(`"${pendingEmail}" isn't a valid email address — fix or clear it in Email Recipients before submitting.`);
+      }
+      const existing = resolvedEmailRecipients.split(",").map((e) => e.trim()).filter(Boolean);
+      if (!existing.includes(pendingEmail)) {
+        resolvedEmailRecipients = [...existing, pendingEmail].join(",");
+        set("emailRecipients", resolvedEmailRecipients);
+      }
+      setEmailRecipientInput("");
+    }
+    if (form.platforms.includes("email") && connectedAccounts.gmail?.connected && !resolvedEmailRecipients) {
+      return setSubmitError("Email is selected as a platform — add at least one recipient in Email Recipients before submitting.");
+    }
 
     setLoading(true);
     setLoadingPhase("generating");
@@ -2062,7 +2112,7 @@ export default function CampaignForm() {
         adminEmail: "vasanthchowdarythumati@gmail.com",
         imageUrl: resolvedImageUrl,
         whatsappRecipients: form.whatsappRecipients || "",
-        emailRecipients: form.emailRecipients || "",
+        emailRecipients: resolvedEmailRecipients,
         dailySchedule: dailySchedule,
         campaignBrief: `${type} campaign for ${form.brandName || form.name}. Goal: ${form.goal}. Audience: ${form.targetAudience.join(", ")}. Description: ${form.description}`,
         ...((type === "event" || type === "event_full") && {
@@ -3918,6 +3968,72 @@ export default function CampaignForm() {
           <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.3)", marginTop: "6px" }}>
             Green dot = connected. Tap an unconnected platform to link your account.
           </p>
+
+          {/* Email recipient list — only once Email is connected and selected as an active platform */}
+          {form.platforms.includes("email") && connectedAccounts.gmail?.connected && (
+            <div style={{ marginTop: "14px", padding: "14px 16px", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "12px" }}>
+              <label style={{ ...s.label, marginTop: 0, display: "flex", alignItems: "center", gap: "6px" }}>
+                <Mail size={13} /> Email Recipients
+              </label>
+              <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.35)", marginTop: "2px", marginBottom: "10px" }}>
+                Add the people who should receive this campaign by email — e.g. your event invite list. Everyone here gets the generated content sent to their inbox.
+              </p>
+
+              {emailRecipientList.length > 0 && (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "10px" }}>
+                  {emailRecipientList.map((email) => (
+                    <span key={email} style={{
+                      display: "flex", alignItems: "center", gap: "6px",
+                      padding: "5px 8px 5px 10px", background: "rgba(16,185,129,0.1)",
+                      border: "1px solid rgba(16,185,129,0.3)", borderRadius: "100px",
+                      fontSize: "12px", color: "#a7f3d0",
+                    }}>
+                      {email}
+                      <button
+                        type="button"
+                        onClick={() => removeEmailRecipient(email)}
+                        aria-label={`Remove ${email}`}
+                        style={{ display: "flex", background: "none", border: "none", cursor: "pointer", padding: 2, color: "#a7f3d0" }}
+                      >
+                        <X size={11} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              <div style={{ display: "flex", gap: "8px" }}>
+                <input
+                  type="email"
+                  value={emailRecipientInput}
+                  onChange={(e) => { setEmailRecipientInput(e.target.value); setEmailRecipientError(""); }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === ",") { e.preventDefault(); addEmailRecipient(); }
+                  }}
+                  placeholder="name@example.com — press Enter to add"
+                  style={{ ...s.input, flex: 1 }}
+                />
+                <button
+                  type="button"
+                  onClick={addEmailRecipient}
+                  style={{
+                    padding: "0 16px", borderRadius: "10px", border: "1px solid rgba(16,185,129,0.4)",
+                    background: "rgba(16,185,129,0.12)", color: "#6ee7b7", fontSize: "13px", fontWeight: 700, cursor: "pointer",
+                  }}
+                >
+                  Add
+                </button>
+              </div>
+              {emailRecipientError && (
+                <p style={{ fontSize: "11px", color: "#fca5a5", marginTop: "6px" }}>{emailRecipientError}</p>
+              )}
+              {emailRecipientList.length === 0 && !emailRecipientError && (
+                <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.3)", marginTop: "6px" }}>
+                  No recipients yet — add at least one email to send this campaign's content out.
+                </p>
+              )}
+            </div>
+          )}
 
             </>
           )} {/* end type !== "growth_strategy" publishing settings */}

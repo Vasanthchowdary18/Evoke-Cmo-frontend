@@ -20,7 +20,7 @@ const TOOLS = {
     ],
     buildPrompt: (f) =>
       `Product photography showcase of a ${f.productName || 'product'}. Smooth camera rotation revealing ${f.angles || 'front, back, side, top and lifestyle angles'}. ${f.style || 'Clean studio white background, professional lighting'}. High-resolution e-commerce product video. Cinematic, no people.`,
-    duration: 5,
+    duration: 8,
   },
 
   'image-360': {
@@ -37,7 +37,7 @@ const TOOLS = {
     ],
     buildPrompt: (f) =>
       `${f.productName || 'Product'} 360 degree turntable rotation video. The product rotates smoothly in a ${f.speed || 'slow and smooth'} clockwise orbit. ${f.background || 'Pure white'} background, professional studio lighting with subtle shadows. Perfect loop, e-commerce product showcase, no people, no text.`,
-    duration: 5,
+    duration: 8,
   },
 
   'image-lifestyle': {
@@ -54,7 +54,7 @@ const TOOLS = {
     ],
     buildPrompt: (f) =>
       `Lifestyle product video showcasing ${f.productName || 'a premium product'} in a ${f.setting || 'real-world lifestyle setting'}. ${f.mood || 'Clean minimal'} aesthetic, natural light, elegant composition. Product prominently featured, cinematic camera movement, aspirational brand feel. High quality, no text overlays.`,
-    duration: 5,
+    duration: 8,
   },
 
   'image-video': {
@@ -71,7 +71,7 @@ const TOOLS = {
     ],
     buildPrompt: (f) =>
       `Story-driven lifestyle video featuring ${f.productName || 'a product'}. Scene: ${f.scene || 'person using the product in a beautiful real-world setting'}. Optimised for ${f.platform || 'social media'}. Cinematic quality, smooth motion, vibrant colours, aspirational feel. No text, no voiceover.`,
-    duration: 5,
+    duration: 8,
   },
 
   'image-seo': {
@@ -134,19 +134,33 @@ async function submitWaveSpeedJob(apiKey, model, prompt, imageUrl, duration) {
 }
 
 async function pollWaveSpeedJob(apiKey, getUrl) {
-  for (let i = 0; i < 90; i++) {
-    await new Promise(r => setTimeout(r, 2000))
-    const res = await fetch(getUrl, {
-      headers: { 'Authorization': `Bearer ${apiKey}` },
-    })
-    if (!res.ok) continue
+  const maxAttempts = 150 // ~10 min of actual "still processing" checks
+  let attempts = 0
+  let errorStreak = 0
+  while (attempts < maxAttempts) {
+    await new Promise(r => setTimeout(r, 4000))
+    let res
+    try {
+      res = await fetch(getUrl, { headers: { 'Authorization': `Bearer ${apiKey}` } })
+    } catch {
+      errorStreak++
+      if (errorStreak > 10) throw new Error('Lost connection while waiting for video. Please try again.')
+      continue // network hiccup — don't burn an attempt
+    }
+    if (!res.ok) {
+      errorStreak++
+      if (errorStreak > 10) throw new Error(`WaveSpeed status check failed (${res.status}). Please try again.`)
+      continue // transient API hiccup — don't burn an attempt
+    }
+    errorStreak = 0
     const data = await res.json()
     const job = data?.data
     if (!job) continue
     if (job.status === 'completed') return job.outputs?.[0] || null
     if (job.status === 'failed')    throw new Error('Video generation failed: ' + (job.error || job.failure_reason || 'unknown reason. Check your image URL is a direct image link and your WaveSpeed credits.'))
+    attempts++ // only counts toward the limit while the job is genuinely still processing
   }
-  throw new Error('Timed out waiting for video. Please try again.')
+  throw new Error('Video is taking longer than usual (10+ min). It may still finish on WaveSpeed\'s side — please try again shortly.')
 }
 
 /* ─── Groq text generation ─── */
@@ -407,11 +421,6 @@ export default function ImageToolPage() {
               <h1 style={{ fontSize: 16, fontWeight: 900, letterSpacing: '-0.02em', color: TEXT, margin: 0 }}>{tool.title}</h1>
               <span style={{ color: TEXT3, fontSize: 13 }}>·</span>
               <p style={{ color: TEXT2, fontSize: 12, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tool.subtitle}</p>
-              {isVideo && (
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 10px', background: 'rgba(249,115,22,0.1)', border: '1px solid rgba(249,115,22,0.25)', borderRadius: 6, fontSize: 10, color: '#fb923c', flexShrink: 0 }}>
-                  <Video size={10} /> WaveSpeed AI
-                </div>
-              )}
             </div>
           </div>
 
@@ -619,10 +628,12 @@ export default function ImageToolPage() {
                       Download
                     </a>
                   </div>
-                  <video
-                    src={videoUrl} controls autoPlay loop muted playsInline
-                    style={{ width: '100%', borderRadius: 14, border: `1px solid ${tool.color}35`, background: '#000' }}
-                  />
+                  <div style={{ padding: 16, background: 'rgba(0,0,0,0.25)', border: `1px solid ${tool.color}25`, borderRadius: 16, display: 'flex', justifyContent: 'center' }}>
+                    <video
+                      src={videoUrl} controls autoPlay loop muted playsInline
+                      style={{ maxWidth: '100%', maxHeight: '55vh', width: 'auto', borderRadius: 10, background: '#000', display: 'block' }}
+                    />
+                  </div>
                   <div style={{ marginTop: 12, padding: '10px 14px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
                     <input value={videoUrl} readOnly style={{ ...inp, fontSize: 11, color: TEXT3, flex: 1, padding: '6px 10px' }} />
                     <button onClick={() => copy(videoUrl, 'url')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: copied === 'url' ? '#4ade80' : TEXT3, flexShrink: 0 }}>
@@ -665,7 +676,7 @@ export default function ImageToolPage() {
                   <p style={{ color: TEXT3, fontSize: 13, marginBottom: 6 }}>
                     {isVideo ? 'Upload your product image, fill in the details, then click Generate Video' : 'Fill in the details and click Generate SEO'}
                   </p>
-                  {isVideo && <p style={{ color: TEXT3, fontSize: 11 }}>Output: MP4 video · 720p · ~5 seconds</p>}
+                  {isVideo && <p style={{ color: TEXT3, fontSize: 11 }}>Output: MP4 video · 720p · ~8 seconds</p>}
                 </motion.div>
               )}
             </AnimatePresence>

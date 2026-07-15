@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Calendar, Package, Zap, TrendingUp, Mail, Users, BarChart2, Briefcase, ShoppingCart, Sparkles, Activity, Search, ChevronLeft, ArrowRight, CheckCircle2 } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
@@ -43,19 +43,24 @@ function getRecommendedType(kb) {
 
 export default function CampaignHub() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { user } = useAuth()
+  const fromStrategy = location.state?.payload?.fromStep === 2 ? location.state.payload : null
+
   const [hovered, setHovered]   = useState(null)
   const [kb, setKb]             = useState(null)
-  const [recType, setRecType]   = useState('product')
+  const [recType, setRecType]   = useState(fromStrategy?.recommendedType || 'product')
 
   useEffect(() => {
     if (!user?.uid) return
     getKnowledgeBase(user.uid).then(data => {
       if (!data) return
       setKb(data)
-      setRecType(getRecommendedType(data))
+      // A hand-off from Strategy is more specific than the general brand-profile
+      // recommendation, so it wins if present.
+      if (!fromStrategy?.recommendedType) setRecType(getRecommendedType(data))
     }).catch(() => {})
-  }, [user?.uid])
+  }, [user?.uid]) // eslint-disable-line
 
   const recommended = CAMPAIGN_TYPES.find(c => c.type === recType) || CAMPAIGN_TYPES[1]
 
@@ -107,7 +112,9 @@ export default function CampaignHub() {
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 2 }}>
               <span style={{ fontSize: 9, fontWeight: 800, color: '#10b981', background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.25)', borderRadius: 100, padding: '2px 8px', letterSpacing: '0.07em' }}>RECOMMENDED FOR YOU</span>
-              {kb?.companyName && <span style={{ fontSize: 11, color: TEXT3 }}>based on {kb.companyName}'s brand profile</span>}
+              {fromStrategy?.recommendedReason
+                ? <span style={{ fontSize: 11, color: TEXT3 }}>{fromStrategy.recommendedReason}</span>
+                : kb?.companyName && <span style={{ fontSize: 11, color: TEXT3 }}>based on {kb.companyName}'s brand profile</span>}
             </div>
             <div style={{ fontSize: 14, fontWeight: 700, color: TEXT }}>{recommended.label}</div>
           </div>

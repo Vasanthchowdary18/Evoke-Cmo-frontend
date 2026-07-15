@@ -3,19 +3,52 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, Bot, TrendingUp, BarChart2,
   Share2, Settings, LogOut, ChevronLeft, ChevronRight,
-  Zap, Crown, Target,
+  Zap, Crown, PenTool, Image, Video, Rocket, Users, Send, Shield,
 } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth.js'
 import { useUserPlan } from '../hooks/useUserPlan.js'
 import { signOut as ssoSignOut } from '../lib/session'
 
-const NAV_BASE = [
-  { label: 'Dashboard',       icon: LayoutDashboard, route: '/dashboard',        minPlan: 'free' },
-  { label: 'AI Agents',       icon: Bot,             route: '/agents-hub',       minPlan: 'free' },
-  { label: 'Strategy',        icon: TrendingUp,      route: '/strategy-hub',     minPlan: 'free' },
-  { label: 'Analytics',       icon: BarChart2,       route: '/analytics',        minPlan: 'package-b' },
-  { label: 'Social Accounts', icon: Share2,          route: '/connect-accounts', minPlan: 'package-b' },
-  { label: 'Settings',        icon: Settings,        route: '/brand-profile',    minPlan: 'free' },
+// Grouped functional navigation — mirrors the Information Architecture:
+// each entry lands on a function hub (/hub/*) or key page, not a flat tool list.
+const NAV_SECTIONS = [
+  {
+    items: [
+      { label: 'Dashboard', icon: LayoutDashboard, route: '/dashboard', minPlan: 'free' },
+    ],
+  },
+  {
+    heading: 'Create',
+    items: [
+      { label: 'Strategy', icon: TrendingUp, route: '/hub/strategy', minPlan: 'free' },
+      { label: 'Content',  icon: PenTool,    route: '/hub/content',  minPlan: 'free' },
+      { label: 'Creative', icon: Image,      route: '/hub/creative', minPlan: 'free' },
+      { label: 'Video',    icon: Video,      route: '/hub/video',    minPlan: 'free' },
+    ],
+  },
+  {
+    heading: 'Grow',
+    items: [
+      { label: 'Campaigns', icon: Rocket, route: '/campaign-hub',   minPlan: 'free' },
+      { label: 'Audience',  icon: Users,  route: '/hub/audience',   minPlan: 'free' },
+      { label: 'Execution', icon: Send,   route: '/hub/execution',  minPlan: 'free' },
+    ],
+  },
+  {
+    heading: 'Measure & Govern',
+    items: [
+      { label: 'Analytics',  icon: BarChart2, route: '/analytics',      minPlan: 'package-b' },
+      { label: 'Governance', icon: Shield,    route: '/hub/governance', minPlan: 'free' },
+    ],
+  },
+  {
+    heading: 'Account',
+    items: [
+      { label: 'AI Agents',       icon: Bot,      route: '/agents-hub',       minPlan: 'free' },
+      { label: 'Social Accounts', icon: Share2,   route: '/connect-accounts', minPlan: 'package-b' },
+      { label: 'Settings',        icon: Settings, route: '/brand-profile',    minPlan: 'free' },
+    ],
+  },
 ]
 
 const PLAN_ORDER = ['free', 'package-a', 'package-b', 'package-c']
@@ -50,7 +83,8 @@ export default function AppSidebar() {
 
   const isActive = (route) => {
     if (route === '/dashboard') return location.pathname === '/dashboard'
-    if (route === '/strategy-hub') return location.pathname === '/strategy-hub' || location.pathname === '/strategy' || location.pathname.startsWith('/campaign/')
+    if (route === '/hub/strategy') return location.pathname.startsWith('/hub/strategy') || location.pathname === '/strategy'
+    if (route === '/campaign-hub') return location.pathname === '/campaign-hub' || location.pathname.startsWith('/campaign/')
     return location.pathname.startsWith(route)
   }
 
@@ -92,20 +126,33 @@ export default function AppSidebar() {
         </button>
       </div>
 
-      {/* ── Nav items ── */}
+      {/* ── Nav items (grouped by function) ── */}
       <div style={{ flex: 1, padding: '10px 8px', overflowY: 'auto', overflowX: 'hidden' }}>
-        {NAV_BASE.filter(item => planAllows(plan, item.minPlan)).map(item => {
-          const active = isActive(item.route)
-          const Icon   = item.icon
+        {NAV_SECTIONS.map((section, si) => {
+          const visible = section.items.filter(item => planAllows(plan, item.minPlan))
+          if (visible.length === 0) return null
           return (
-            <NavItem
-              key={item.route}
-              icon={<Icon size={16} color={active ? '#c8973e' : 'rgba(240,235,224,0.4)'}/>}
-              label={item.label}
-              active={active}
-              collapsed={collapsed}
-              onClick={() => navigate(item.route)}
-            />
+            <div key={section.heading || `sec-${si}`} style={{ marginBottom: 6 }}>
+              {section.heading && (
+                collapsed
+                  ? <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', margin: '8px 10px' }} />
+                  : <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(240,235,224,0.28)', padding: '10px 12px 5px' }}>{section.heading}</div>
+              )}
+              {visible.map(item => {
+                const active = isActive(item.route)
+                const Icon   = item.icon
+                return (
+                  <NavItem
+                    key={item.route}
+                    icon={<Icon size={16} color={active ? '#c8973e' : 'rgba(240,235,224,0.4)'}/>}
+                    label={item.label}
+                    active={active}
+                    collapsed={collapsed}
+                    onClick={() => navigate(item.route)}
+                  />
+                )
+              })}
+            </div>
           )
         })}
       </div>

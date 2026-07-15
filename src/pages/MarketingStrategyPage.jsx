@@ -11,7 +11,8 @@ import Navbar from '../components/Navbar.jsx'
 import { useRequireAuth } from '../hooks/useRequireAuth'
 import { useAuth } from '../hooks/useAuth'
 import { saveContentItems, getContentItems } from '../services/contentService'
-import { getKnowledgeBase } from '../services/knowledgeBaseService.js'
+import { getKnowledgeBase, appendJourneyOutput } from '../services/knowledgeBaseService.js'
+import { strategyToCampaignHub } from '../lib/journeyHandoff.js'
 
 const BG      = '#0e0c09'
 const CARD    = '#1c1a13'
@@ -258,6 +259,9 @@ export default function MarketingStrategyPage() {
         )
         setSavedDocId(ids['output'] || null)
         loadHistory()
+      } catch {}
+      try {
+        if (user?.uid) await appendJourneyOutput(user.uid, 'strategy', r.executiveSummary)
       } catch {}
     } catch {
       setError('Strategy generation failed. Please try again.')
@@ -550,7 +554,7 @@ export default function MarketingStrategyPage() {
                   <button onClick={handleGenerate} style={{ background: 'none', border: `1px solid ${BORDER}`, borderRadius: 10, padding: '10px 18px', color: TEXT2, fontSize: 13, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'inherit' }}>
                     <RefreshCw size={13} /> Regenerate
                   </button>
-                  <button onClick={() => navigate('/campaign-hub')} style={{ padding: '10px 22px', background: '#f97316', border: 'none', borderRadius: 10, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit' }}>
+                  <button onClick={() => navigate('/campaign-hub', { state: { payload: strategyToCampaignHub(result, inputs) } })} style={{ padding: '10px 22px', background: '#f97316', border: 'none', borderRadius: 10, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit' }}>
                     Next: Campaign Hub →
                   </button>
                 </div>

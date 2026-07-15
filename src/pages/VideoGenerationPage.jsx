@@ -91,6 +91,8 @@ Return ONLY valid JSON:
   }
 }`
 
+  if (!GROQ_KEY) throw new Error('Groq API key is not configured. Set VITE_GROQ_API_KEY.')
+
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${GROQ_KEY}` },
@@ -109,28 +111,53 @@ Return ONLY valid JSON:
   return JSON.parse(match[0])
 }
 
+const WAVESPEED_V3_BASE  = 'https://api.wavespeed.ai/api/v3'
+const WAVESPEED_T2V_MODEL = 'wavespeed-ai/wan-2.1/t2v-480p'
+
 async function generateActualVideo(prompt) {
-  const res = await fetch('https://api.wavespeed.ai/api/v2/wavespeed-ai/wan-t2v-480p', {
+  if (!WAVESPEED_KEY) throw new Error('WaveSpeed API key is not configured. Set VITE_WAVESPEED_API_KEY.')
+
+  const res = await fetch(`${WAVESPEED_V3_BASE}/${WAVESPEED_T2V_MODEL}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${WAVESPEED_KEY}` },
-    body: JSON.stringify({ prompt, num_frames: 81, resolution: '480p' }),
+    body: JSON.stringify({ prompt, duration: 5, size: '832*480' }),
   })
-  if (!res.ok) throw new Error(`WaveSpeed ${res.status}`)
-  const init = await res.json()
-  const requestId = init?.data?.id
-  if (!requestId) throw new Error('No request ID')
-
-  for (let i = 0; i < 60; i++) {
-    await new Promise(r => setTimeout(r, 5000))
-    const poll = await fetch(`https://api.wavespeed.ai/api/v2/predictions/${requestId}/result`, {
-      headers: { Authorization: `Bearer ${WAVESPEED_KEY}` },
-    })
-    const pd = await poll.json()
-    const status = pd?.data?.status
-    if (status === 'completed') return pd?.data?.outputs?.[0]
-    if (status === 'failed') throw new Error('WaveSpeed generation failed')
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}))
+    throw new Error(e?.message || `WaveSpeed error ${res.status}`)
   }
-  throw new Error('Video generation timed out')
+  const init = await res.json()
+  const job = init?.data
+  const getUrl = job?.urls?.get
+  if (!getUrl) throw new Error('WaveSpeed did not return a job status URL')
+
+  const maxAttempts = 36 // ~3 min of actual "still processing" checks
+  let attempts = 0
+  let errorStreak = 0
+  while (attempts < maxAttempts) {
+    await new Promise(r => setTimeout(r, 5000))
+    let poll
+    try {
+      poll = await fetch(getUrl, { headers: { Authorization: `Bearer ${WAVESPEED_KEY}` } })
+    } catch {
+      errorStreak++
+      if (errorStreak > 10) throw new Error('Lost connection while waiting for video. Please try again.')
+      continue // network hiccup — don't burn an attempt
+    }
+    if (!poll.ok) {
+      errorStreak++
+      if (errorStreak > 10) throw new Error(`WaveSpeed status check failed (${poll.status}). Please try again.`)
+      continue // transient API hiccup — don't burn an attempt
+    }
+    errorStreak = 0
+    const pd = await poll.json()
+    const data = pd?.data
+    if (!data) continue
+    if (data.status === 'completed') return data.outputs?.[0] || null
+    if (data.status === 'failed') throw new Error('WaveSpeed generation failed: ' + (data.error || data.failure_reason || 'unknown reason.'))
+    attempts++ // only counts while job is genuinely still processing
+  }
+  throw new Error('Video is taking longer than usual (3+ min). It may still finish on WaveSpeed\'s side — please try again shortly.')
 }
 
 const DURATIONS = ['15 seconds', '30 seconds', '60 seconds', '90 seconds', '2 minutes', '3-5 minutes']
@@ -153,8 +180,20 @@ export default function VideoGenerationPage() {
   const [history, setHistory]     = useState([])
   const [videoUrl, setVideoUrl]       = useState(null)
   const [videoLoading, setVideoLoading] = useState(false)
+  const [videoError, setVideoError]   = useState('')
+  const [videoPrompt, setVideoPrompt] = useState('')
+  const [videoElapsed, setVideoElapsed] = useState(0)
 
   const inp = (field) => ({ value: inputs[field], onChange: e => setInputs(p => ({ ...p, [field]: e.target.value })) })
+
+  useEffect(() => {
+    if (!videoLoading) return
+    setVideoElapsed(0)
+    const t = setInterval(() => setVideoElapsed(s => s + 1), 1000)
+    return () => clearInterval(t)
+  }, [videoLoading])
+
+  const fmtElapsed = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
 
   const loadHistory = async () => {
     if (!user?.uid) return
@@ -174,6 +213,7 @@ export default function VideoGenerationPage() {
     setSavedDocId(null)
     setVideoUrl(null)
     setVideoLoading(false)
+    setVideoError('')
     try {
       const r = await generateVideoPackage({ ...inputs, videoType })
       setResult(r)
@@ -190,16 +230,22 @@ export default function VideoGenerationPage() {
       } catch {}
 
       // Generate actual video via WaveSpeed in background
-      setVideoLoading(true)
       const vPrompt = `${r.title}. ${r.hook}. ${r.script?.intro} ${r.script?.body} ${inputs.brand} ${inputs.videoType} video, ${inputs.tone} tone, cinematic quality.`
-      generateActualVideo(vPrompt)
-        .then(url => { setVideoUrl(url); setVideoLoading(false) })
-        .catch(() => setVideoLoading(false))
+      setVideoPrompt(vPrompt)
+      runVideoGeneration(vPrompt)
     } catch (e) {
-      setError('Generation failed. Please try again.')
+      setError(e?.message || 'Generation failed. Please try again.')
     } finally {
       setLoading(false)
     }
+  }
+
+  const runVideoGeneration = (vPrompt) => {
+    setVideoLoading(true)
+    setVideoError('')
+    generateActualVideo(vPrompt)
+      .then(url => { setVideoUrl(url); setVideoLoading(false) })
+      .catch(e => { setVideoError(e?.message || 'Video generation failed.'); setVideoLoading(false) })
   }
 
   const copyText = (text, key) => {
@@ -354,15 +400,16 @@ export default function VideoGenerationPage() {
               </div>
 
               {/* Video Player */}
-              {(videoLoading || videoUrl) && (
+              {(videoLoading || videoUrl || videoError) && (
                 <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, overflow: 'hidden', marginBottom: 16 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '14px 18px', borderBottom: `1px solid ${BORDER}` }}>
                     <Play size={14} color={GOLD} />
                     <span style={{ fontSize: 14, fontWeight: 600 }}>Generated Video</span>
+                    <span style={{ fontSize: 11, color: TEXT3 }}>· short AI preview clip (full-length script above)</span>
                     {videoLoading && (
                       <span style={{ fontSize: 12, color: TEXT3, marginLeft: 4, display: 'flex', alignItems: 'center', gap: 5 }}>
                         <Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} />
-                        Rendering video — this may take 1-2 minutes…
+                        Rendering video — usually 2–3 minutes…
                       </span>
                     )}
                   </div>
@@ -371,6 +418,19 @@ export default function VideoGenerationPage() {
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, padding: '40px 0' }}>
                         <div style={{ width: 48, height: 48, borderRadius: '50%', border: `3px solid ${GBORDER}`, borderTopColor: GOLD, animation: 'spin 1s linear infinite' }} />
                         <span style={{ fontSize: 13, color: TEXT3 }}>EVOX AI is generating your video…</span>
+                        <span style={{ fontSize: 12, color: GOLD, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{fmtElapsed(videoElapsed)} elapsed</span>
+                      </div>
+                    )}
+                    {!videoLoading && videoError && (
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: '30px 0', textAlign: 'center' }}>
+                        <AlertCircle size={28} color="#f87171" />
+                        <span style={{ fontSize: 13, color: '#f87171', maxWidth: 480 }}>{videoError}</span>
+                        <button
+                          onClick={() => runVideoGeneration(videoPrompt)}
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: GDIM, border: `1px solid ${GBORDER}`, borderRadius: 8, padding: '8px 16px', fontSize: 12, color: GOLD, fontWeight: 600, cursor: 'pointer' }}
+                        >
+                          <RefreshCw size={13} /> Retry video generation
+                        </button>
                       </div>
                     )}
                     {videoUrl && (

@@ -27,7 +27,9 @@ export default function Navbar() {
   const location = useLocation()
   const navigate = useNavigate()
 
-  const isApp = location.pathname !== '/'
+  const onHome = location.pathname === '/'
+  // Marketing pages (home + pricing) show the public nav; everything else is the "app" shell
+  const isApp = location.pathname !== '/' && location.pathname !== '/pricing'
 
   useEffect(() => {
     const fn = () => setScrolled(window.scrollY > 10)
@@ -70,34 +72,35 @@ export default function Navbar() {
   const handleGetStartedFree = (e) => {
     e?.preventDefault?.()
     if (user) {
-      navigate('/brand-kb')
+      navigate('/brand-profile')
     } else {
-      try { sessionStorage.setItem('evoke_post_login_route', '/brand-kb') } catch {}
-      window.location.href = buildAccountsLoginUrl(window.location.origin + '/brand-kb')
+      try { sessionStorage.setItem('evoke_post_login_route', '/brand-profile') } catch {}
+      window.location.href = buildAccountsLoginUrl(window.location.origin + '/brand-profile')
     }
   }
 
   const landingLinks = [
-    { label: 'Features',     href: '#features'     },
-    { label: 'Agents',       href: '#agents'       },
-    { label: 'Pricing',      href: '#pricing'      },
-    { label: 'How It Works', href: '#how-it-works' },
+    { label: 'Overview',     href: '/'             },
+    { label: 'AI Agents',    href: '#agents'       },
+    { label: 'Features',     href: onHome ? '#features'     : '/#features'     },
+    { label: 'Pricing',      href: '/pricing'      },
   ]
   const appLinks = [
-    { label: 'Command Center',  href: '/agents-hub'       },
-    { label: 'Campaigns',       href: '/cmo'              },
-    { label: 'Creative Studio', href: '/products'         },
-    { label: 'Connect',         href: '/connect-accounts' },
+    { label: 'Dashboard',   href: '/dashboard'        },
+    { label: 'Campaigns',   href: '/campaign-hub'     },
+    { label: 'Content',     href: '/hub/content'      },
+    { label: 'Connect',     href: '/connect-accounts' },
   ]
   const navLinks = isApp ? appLinks : landingLinks
 
   const navLink = {
-    fontSize: 14, fontWeight: 500,
-    color: 'rgba(240,235,224,0.55)',
-    textDecoration: 'none', padding: '6px 14px', borderRadius: 8,
+    fontSize: 14, fontWeight: 400,
+    color: '#94A3B8',
+    textDecoration: 'none', padding: '2px 0', borderRadius: 4,
     transition: 'color 0.15s', cursor: 'pointer',
     background: 'none', border: 'none',
-    fontFamily: "'Inter', sans-serif",
+    fontFamily: "'Manrope', 'Inter', sans-serif",
+    lineHeight: '100%',
   }
 
   return (
@@ -108,16 +111,17 @@ export default function Navbar() {
         transition={{ duration: 0.35 }}
         style={{
           position: 'fixed', top: 0, left: 0, right: 0, zIndex: 200,
-          height: 64, display: 'flex', alignItems: 'center',
-          padding: '0 40px',
-          background: scrolled ? 'rgba(14,12,9,0.98)' : 'rgba(14,12,9,0.82)',
+          height: 80, display: 'flex', alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '20px 80px',
+          background: '#05050ACC',
           backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
-          borderBottom: `1px solid ${scrolled ? 'rgba(200,151,62,0.12)' : 'transparent'}`,
-          transition: 'background 0.3s, border-color 0.3s',
+          borderBottom: '1px solid rgba(255,255,255,0.04)',
+          transition: 'background 0.3s',
         }}
       >
         {/* ── Logo ── */}
-        <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', flexShrink: 0 }}>
+        <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 9, textDecoration: 'none', flexShrink: 0, height: 27 }}>
           {/* EVOKE image logo */}
           <img
             src="/evoke-logo.png"
@@ -155,19 +159,20 @@ export default function Navbar() {
             transform: 'translateX(-50%)',
             display: 'flex',
             alignItems: 'center',
-            gap: 0,
+            gap: 32,
+            height: 19,
           }}>
             {navLinks.map(link => {
-              if (link.label === 'Agents') {
+              if (link.label === 'AI Agents') {
                 return (
                   <div key="agents" ref={agentsRef} style={{ position: 'relative' }}>
                     <button
                       onClick={() => setAgentsOpen(o => !o)}
-                      style={{ ...navLink, display: 'flex', alignItems: 'center', gap: 4, color: agentsOpen ? '#f0ebe0' : 'rgba(240,235,224,0.55)' }}
+                      style={{ ...navLink, display: 'flex', alignItems: 'center', gap: 4, color: agentsOpen ? '#f0ebe0' : '#94A3B8' }}
                       onMouseEnter={e => e.currentTarget.style.color = '#f0ebe0'}
-                      onMouseLeave={e => { if (!agentsOpen) e.currentTarget.style.color = 'rgba(240,235,224,0.55)' }}
+                      onMouseLeave={e => { if (!agentsOpen) e.currentTarget.style.color = '#94A3B8' }}
                     >
-                      Agents
+                      AI Agents
                       <ChevronDown size={13} style={{ transition: 'transform 0.18s', transform: agentsOpen ? 'rotate(180deg)' : 'rotate(0deg)' }} />
                     </button>
 
@@ -244,15 +249,12 @@ export default function Navbar() {
               return link.href.startsWith('#') ? (
                 <a key={link.label} href={link.href} style={navLink}
                   onMouseEnter={e => e.currentTarget.style.color = '#f0ebe0'}
-                  onMouseLeave={e => e.currentTarget.style.color = 'rgba(240,235,224,0.55)'}
+                  onMouseLeave={e => e.currentTarget.style.color = '#94A3B8'}
                 >{link.label}</a>
               ) : (
-                <Link key={link.label} to={link.href} style={{
-                  ...navLink,
-                  color: location.pathname === link.href ? '#c8973e' : 'rgba(240,235,224,0.55)',
-                }}
+                <Link key={link.label} to={link.href} style={navLink}
                   onMouseEnter={e => e.currentTarget.style.color = '#f0ebe0'}
-                  onMouseLeave={e => e.currentTarget.style.color = location.pathname === link.href ? '#c8973e' : 'rgba(240,235,224,0.55)'}
+                  onMouseLeave={e => e.currentTarget.style.color = '#94A3B8'}
                 >{link.label}</Link>
               )
             })}
@@ -263,7 +265,7 @@ export default function Navbar() {
         <div style={{ flex: 1 }} />
 
         {/* ── Right actions ── */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }} className="mobile-hide">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, height: 39 }} className="mobile-hide">
 
           {/* EGT wallet — on-chain balance from SSO wallet address */}
           <EgtWalletHeader />
@@ -338,7 +340,7 @@ export default function Navbar() {
                     {/* Menu items */}
                     <div style={{ padding: '8px 0' }}>
                       {[
-                        { icon: <LayoutDashboard size={15} />, label: 'Dashboard',      action: () => { navigate('/agents-hub'); setProfileOpen(false) } },
+                        { icon: <LayoutDashboard size={15} />, label: 'Dashboard',      action: () => { navigate('/dashboard'); setProfileOpen(false) } },
                         { icon: <Inbox size={15} />,           label: 'Approval Queue', action: () => { navigate('/queue');      setProfileOpen(false) } },
                         { icon: <Image size={15} />,           label: 'My Generations', action: () => { navigate('/results');   setProfileOpen(false) } },
                       ].map(item => (
@@ -388,15 +390,16 @@ export default function Navbar() {
                 onMouseLeave={e => e.currentTarget.style.color = 'rgba(240,235,224,0.55)'}
               >Sign In</button>
               <button onClick={handleGetStartedFree} style={{
-                padding: '9px 22px', marginLeft: 4,
-                background: 'linear-gradient(135deg, #d4a853 0%, #b8803a 100%)',
-                color: '#0e0c09', border: 'none', borderRadius: 100,
-                fontSize: 14, fontWeight: 600, fontFamily: "'Inter',sans-serif",
+                padding: '10px 20px', height: 39, boxSizing: 'border-box',
+                background: 'linear-gradient(81.63deg, #BE954A -7.2%, #9F6F3A 64.21%)',
+                color: '#080810', border: 'none', borderRadius: 999,
+                fontSize: 14, fontWeight: 600, fontFamily: "'Manrope', 'Inter',sans-serif",
+                lineHeight: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
                 cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap',
               }}
-                onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 22px rgba(200,151,62,0.45)' }}
+                onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 22px rgba(190,149,74,0.45)' }}
                 onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none' }}
-              >Get Started Free</button>
+              >Hire Agent</button>
             </>
           )}
         </div>
