@@ -55,15 +55,31 @@ async function wsSubmit(model, prompt, imageUrl, duration = 5) {
   return d?.data; // { id, urls: { get } }
 }
 async function wsPoll(getUrl) {
-  for (let i = 0; i < 60; i++) {
-    await new Promise((r) => setTimeout(r, 3000));
-    const r = await fetch(getUrl, { headers: { Authorization: `Bearer ${WS_KEY}` } });
-    if (!r.ok) continue;
+  const maxAttempts = 150; // ~10 min of actual "still processing" checks
+  let attempts = 0;
+  let errorStreak = 0;
+  while (attempts < maxAttempts) {
+    await new Promise((r) => setTimeout(r, 4000));
+    let r;
+    try {
+      r = await fetch(getUrl, { headers: { Authorization: `Bearer ${WS_KEY}` } });
+    } catch {
+      errorStreak++;
+      if (errorStreak > 10) throw new Error("Lost connection while waiting for video. Please try again.");
+      continue; // network hiccup — don't burn an attempt
+    }
+    if (!r.ok) {
+      errorStreak++;
+      if (errorStreak > 10) throw new Error(`WaveSpeed status check failed (${r.status}). Please try again.`);
+      continue; // transient API hiccup — don't burn an attempt
+    }
+    errorStreak = 0;
     const d = await r.json();
     if (d?.data?.status === "completed") return d.data.outputs?.[0] || null;
     if (d?.data?.status === "failed") throw new Error("WaveSpeed generation failed.");
+    attempts++; // only counts while job is genuinely still processing
   }
-  throw new Error("Timed out waiting for video.");
+  throw new Error("Video is taking longer than usual (10+ min). It may still finish on WaveSpeed's side — please try again shortly.");
 }
 
 /* ── Groq text ── */
@@ -864,16 +880,24 @@ ${getOutputSchema()}`;
 }
 
 // â"€â"€â"€ Generate N-day daily schedule (unique content per day) â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
-async function generateDailySchedule(form, campaignType, days) {
-  if (days <= 1) return [];
+async function generateDailySchedule(form, campaignType, days, postsPerDay = 1) {
+  if (days <= 1 && postsPerDay <= 1) return [];
   const apiKey = import.meta.env.VITE_GROQ_API_KEY || "";
   if (!apiKey) return [];
 
-  // For large calendars (>14 days) use compact per-day schema to stay within token limits
-  const compact = days > 14
-  const daySchema = compact
-    ? `{ "day": 1, "theme": "one-sentence theme", "focus": "Awareness|Education|Engagement|Conversion|Retention", "linkedinPost": "60-word LinkedIn post + 3 hashtags", "instagramCaption": "50-word caption + emojis + 3 hashtags", "contentIdea": "one actionable content idea for any platform" }`
+  const totalSlots = days * postsPerDay
+  // For large calendars (>14 total slots) use compact per-slot schema to stay within token limits
+  const compact = totalSlots > 14
+  const slotSchema = compact
+    ? `{ "linkedinPost": "60-word LinkedIn post + 3 hashtags", "instagramCaption": "50-word caption + emojis + 3 hashtags", "contentIdea": "one actionable content idea for any platform" }`
+    : `{ "linkedinPost": "unique LinkedIn post (100-200 words with hashtags)", "instagramCaption": "unique Instagram caption (80-120 words with emojis and hashtags)", "facebookPost": "unique Facebook post (80-150 words)", "whatsappMessage": "unique WhatsApp message (40-60 words)" }`
+  const daySchema = postsPerDay > 1
+    ? `{ "day": 1, "theme": "one-sentence theme for this day", "focus": "Awareness | Education | Engagement | Conversion | Retention", "slots": [${Array.from({ length: postsPerDay }, () => slotSchema).join(', ')}], "emailSubject": "email subject line for this day (goes with slots[0] only)", "emailBody": "short email body, 2 paragraphs (goes with slots[0] only)" }`
     : `{ "day": 1, "theme": "one-sentence theme for this day", "focus": "Awareness | Education | Engagement | Conversion | Retention", "linkedinPost": "unique LinkedIn post (100-200 words with hashtags)", "instagramCaption": "unique Instagram caption (80-120 words with emojis and hashtags)", "facebookPost": "unique Facebook post (80-150 words)", "whatsappMessage": "unique WhatsApp message (40-60 words)", "emailSubject": "email subject line for this day", "emailBody": "short email body (2 paragraphs)" }`
+
+  const slotsNote = postsPerDay > 1
+    ? `\n\nEach day has ${postsPerDay} posts (a "slots" array of ${postsPerDay} objects) published at different times of that day. Each slot's content MUST be genuinely distinct from the other slots that same day — a different angle, hook, or piece of the message — never the same post repeated.`
+    : ''
 
   const prompt = `You are an AI CMO generating a ${days}-day social media campaign schedule.
 
@@ -882,31 +906,58 @@ Type: ${campaignType}
 Description: ${form.description}
 Goal: ${form.goal}
 Target Audience: ${(form.targetAudience || []).join(", ")}
-Brand: ${form.brandName || form.name}
+Brand: ${form.brandName || form.name}${slotsNote}
 
 Generate a ${days}-day campaign schedule. Return ONLY a valid JSON array with exactly ${days} objects:
 [
   ${daySchema}
 ]`
 
-  const tokenBudget = compact ? Math.min(4000, days * 80 + 400) : Math.min(4000, days * 200 + 500)
+  const tokenBudget = compact ? Math.min(6000, totalSlots * 80 + 400) : Math.min(6000, totalSlots * 200 + 500)
 
+  const requestBody = JSON.stringify({
+    model: "llama-3.1-8b-instant",
+    messages: [
+      { role: "system", content: "You are an AI CMO. Respond ONLY with a valid JSON array, no markdown, no explanation." },
+      { role: "user", content: prompt },
+    ],
+    temperature: 0.8,
+    max_tokens: tokenBudget,
+  });
+
+  // The calendar call fires right after the main-copy Groq call, on the same
+  // model/key — a 429 here is usually a transient per-minute rate limit, not a
+  // hard failure, so retry with backoff instead of silently returning an empty
+  // calendar (which used to mean days 2..N never got generated or scheduled).
+  const MAX_ATTEMPTS = 3
+  let lastRes = null
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    try {
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: requestBody,
+      });
+      if (res.ok) { lastRes = res; break }
+      if (res.status !== 429 || attempt === MAX_ATTEMPTS - 1) { lastRes = res; break }
+
+      // Groq embeds the actual cooldown in the error body (e.g. "try again in 4.2s");
+      // fall back to exponential backoff if that's not present.
+      let waitMs = 2500 * Math.pow(2, attempt)
+      try {
+        const errBody = await res.clone().json()
+        const m = (errBody?.error?.message || "").match(/try again in ([\d.]+)s/i)
+        if (m) waitMs = Math.ceil(parseFloat(m[1]) * 1000) + 300
+      } catch {}
+      await new Promise(r => setTimeout(r, Math.min(waitMs, 15000)))
+    } catch {
+      if (attempt === MAX_ATTEMPTS - 1) return []
+    }
+  }
+
+  if (!lastRes || !lastRes.ok) return [];
   try {
-    const res = await fetch("/api/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "llama-3.1-8b-instant",
-        messages: [
-          { role: "system", content: "You are an AI CMO. Respond ONLY with a valid JSON array, no markdown, no explanation." },
-          { role: "user", content: prompt },
-        ],
-        temperature: 0.8,
-        max_tokens: tokenBudget,
-      }),
-    });
-    if (!res.ok) return [];
-    const data = await res.json();
+    const data = await lastRes.json();
     const text = data.choices?.[0]?.message?.content || "";
     const match = text.match(/```json\s*([\s\S]*?)```/) || text.match(/(\[[\s\S]*\])/);
     if (!match) return [];
@@ -1568,6 +1619,8 @@ export default function CampaignForm() {
     contactPhone: "",
     postDate: "",
     postTime: "09:00",
+    postsPerDay: 1,
+    postTimes: ["09:00"],
     campaignDays: 7,
     platforms: ["linkedin", "instagram", "facebook", "email", "whatsapp"],
     whatsappRecipients: "",
@@ -1692,6 +1745,18 @@ export default function CampaignForm() {
   ];
 
   const set = (key, val) => setForm((p) => ({ ...p, [key]: val }));
+
+  // Default time-of-day spread when a new "posts per day" slot is added
+  const DEFAULT_SLOT_TIMES = ["09:00", "13:00", "17:00"];
+  const setPostsPerDay = (count) => setForm((p) => {
+    const times = Array.from({ length: count }, (_, i) => p.postTimes?.[i] || DEFAULT_SLOT_TIMES[i] || "09:00");
+    return { ...p, postsPerDay: count, postTimes: times };
+  });
+  const setPostTimeAt = (index, val) => setForm((p) => {
+    const times = [...(p.postTimes || [])];
+    times[index] = val;
+    return { ...p, postTimes: times };
+  });
 
   // ── Brand KB auto-fill ──────────────────────────────────────
   const CF_INDUSTRY_MAP = {
@@ -1966,10 +2031,11 @@ export default function CampaignForm() {
       // Skipped for Package C ad tools — they have no campaign-duration UI and
       // produce ad creative, not a day-by-day social posting calendar.
       const isAdTool = type === "ads_creation" || type === "ads_manager" || type === "target_audience";
+      const postsPerDay = form.postsPerDay || 1;
       let dailySchedule = [];
-      if (!isAdTool && (form.campaignDays || 7) > 1) {
+      if (!isAdTool && ((form.campaignDays || 7) > 1 || postsPerDay > 1)) {
         setLoadingPhase("generating-schedule");
-        dailySchedule = await generateDailySchedule(form, type, form.campaignDays || 7);
+        dailySchedule = await generateDailySchedule(form, type, form.campaignDays || 7, postsPerDay);
       }
 
       // â"€â"€ Build payload for n8n â"€â"€
@@ -1988,6 +2054,8 @@ export default function CampaignForm() {
         website: form.website || "",
         postDate: form.postDate || today,
         postTime: form.postTime || "09:00",
+        postsPerDay: postsPerDay,
+        postTimes: form.postTimes?.length ? form.postTimes : [form.postTime || "09:00"],
         campaignDays: form.campaignDays || 7,
         dailyPostTime: form.postTime || "09:00",
         platforms: form.platforms.join(","),
@@ -3710,7 +3778,38 @@ export default function CampaignForm() {
             </div>
           )}
 
-          {/* ── Schedule Date + Time ── */}
+          {/* ── Posts per day ── */}
+          <label style={{ ...s.label, marginTop: "12px" }}>Posts per Day</label>
+          <div style={{ display: "flex", gap: "8px" }}>
+            {[1, 2, 3].map((n) => (
+              <button
+                key={n}
+                type="button"
+                onClick={() => setPostsPerDay(n)}
+                style={{
+                  flex: 1,
+                  padding: "9px 0",
+                  borderRadius: "10px",
+                  border: (form.postsPerDay || 1) === n ? "1px solid #c8973e" : "1px solid rgba(200,151,62,0.2)",
+                  background: (form.postsPerDay || 1) === n ? "rgba(200,151,62,0.14)" : "#1c1a13",
+                  color: (form.postsPerDay || 1) === n ? "#f0ebe0" : "rgba(255,255,255,0.5)",
+                  fontSize: "13px",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  fontFamily: "'Inter', sans-serif",
+                }}
+              >
+                {n}
+              </button>
+            ))}
+          </div>
+          {(form.postsPerDay || 1) > 1 && (
+            <div style={{ marginTop: "8px", padding: "10px 14px", background: `${meta.color}08`, border: `1px solid ${meta.color}25`, borderRadius: "10px", fontSize: "12px", color: "rgba(255,255,255,0.5)" }}>
+              AI will write <strong style={{ color: meta.color }}>{form.postsPerDay}</strong> distinct posts per day, one per time slot below.
+            </div>
+          )}
+
+          {/* ── Schedule Date + Time(s) ── */}
           <div
             style={{
               display: "grid",
@@ -3740,15 +3839,36 @@ export default function CampaignForm() {
                 style={s.input}
               />
             </div>
-            <div>
-              <label style={{ ...s.label, marginTop: 0 }}>Schedule Time</label>
-              <input
-                type="time"
-                value={form.postTime}
-                onChange={(e) => set("postTime", e.target.value)}
-                style={s.input}
-              />
-            </div>
+            {(form.postsPerDay || 1) === 1 ? (
+              <div>
+                <label style={{ ...s.label, marginTop: 0 }}>Schedule Time</label>
+                <input
+                  type="time"
+                  value={form.postTime}
+                  onChange={(e) => { set("postTime", e.target.value); setPostTimeAt(0, e.target.value); }}
+                  style={s.input}
+                />
+              </div>
+            ) : (
+              <div>
+                <label style={{ ...s.label, marginTop: 0 }}>Post Times</label>
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  {Array.from({ length: form.postsPerDay }, (_, i) => (
+                    <div key={i} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <span style={{ fontSize: "11px", color: "rgba(255,255,255,0.4)", width: "44px", flexShrink: 0 }}>
+                        Post {i + 1}
+                      </span>
+                      <input
+                        type="time"
+                        value={form.postTimes?.[i] || ""}
+                        onChange={(e) => setPostTimeAt(i, e.target.value)}
+                        style={s.input}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           <label style={s.label}>Platforms to Post</label>

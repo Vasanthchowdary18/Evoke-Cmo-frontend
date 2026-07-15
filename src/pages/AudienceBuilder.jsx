@@ -293,7 +293,7 @@ export default function AudienceBuilder() {
           <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', color: TEXT3, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 13, padding: 0, marginBottom: 18 }}>
             <ArrowLeft size={14} /> Back
           </button>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 12px', background: GDIM, border: `1px solid ${GBORDER}`, borderRadius: 100, fontSize: 10, fontWeight: 700, color: GOLD, letterSpacing: '0.07em', marginBottom: 10, display: 'flex', width: 'fit-content' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 12px', background: GDIM, border: `1px solid ${GBORDER}`, borderRadius: 100, fontSize: 10, fontWeight: 700, color: GOLD, letterSpacing: '0.07em', marginBottom: 10, width: 'fit-content' }}>
             <Users size={10} /> AUDIENCE BUILDER
           </div>
           <h1 style={{ fontSize: 'clamp(22px,3vw,34px)', fontWeight: 900, color: TEXT, letterSpacing: '-0.02em', margin: '0 0 6px', fontFamily: "'Syne','Inter',sans-serif" }}>AI Audience Builder</h1>
