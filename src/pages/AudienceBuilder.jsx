@@ -7,7 +7,8 @@ import {
 } from 'lucide-react'
 import { useRequireAuth } from '../hooks/useRequireAuth'
 import { useAuth } from '../hooks/useAuth'
-import { getKnowledgeBase } from '../services/knowledgeBaseService.js'
+import { getKnowledgeBase, appendJourneyOutput } from '../services/knowledgeBaseService.js'
+import { audienceToCaptionSuite } from '../lib/journeyHandoff.js'
 
 const BG     = '#0e0c09'
 const CARD   = '#1c1a13'
@@ -271,6 +272,9 @@ export default function AudienceBuilder() {
       setData(result)
       setStep('segments')
       setTimeout(() => stepRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
+      try {
+        if (user?.uid) await appendJourneyOutput(user.uid, 'audience', result.primaryAudience?.description)
+      } catch {}
     } catch { setError('Failed to build audiences. Try again.') }
     setLoading(false)
   }
@@ -530,7 +534,7 @@ export default function AudienceBuilder() {
                 </p>
                 <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                   <button
-                    onClick={() => navigate('/caption-suite')}
+                    onClick={() => navigate('/caption-suite', { state: { payload: audienceToCaptionSuite(data, inputs) } })}
                     style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '11px 24px', background: '#f97316', border: 'none', borderRadius: 10, color: '#fff', fontSize: 14, fontWeight: 800, cursor: 'pointer', fontFamily: FONT }}
                   >
                     Next: Content Generation <ArrowRight size={14} />

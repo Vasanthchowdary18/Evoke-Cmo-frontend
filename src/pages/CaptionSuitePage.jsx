@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Hash, ArrowLeft, ArrowRight, Loader2, Copy, Check,
@@ -8,7 +8,8 @@ import {
 } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
 import { useAuth } from '../hooks/useAuth.js'
-import { getKnowledgeBase } from '../services/knowledgeBaseService.js'
+import { getKnowledgeBase, appendJourneyOutput } from '../services/knowledgeBaseService.js'
+import { captionSuiteToCreativeAsset } from '../lib/journeyHandoff.js'
 
 const BG    = '#0e0c09'
 const CARD  = '#1c1a13'
@@ -118,20 +119,22 @@ function SectionBlock({ title, icon, color, children }) {
 
 export default function CaptionSuitePage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { user } = useAuth()
+  const fromAudience = location.state?.payload?.fromStep === 4 ? location.state.payload : null
 
   const [copied, setCopied] = useState({})
 
-  // Shared inputs
-  const [platforms, setPlatforms]     = useState([])
+  // Shared inputs — a hand-off from Audience Builder pre-fills these ahead of the KB defaults below
+  const [platforms, setPlatforms]     = useState(fromAudience?.platforms || [])
   const [contentType, setContentType] = useState('')
-  const [context, setContext]         = useState('')
-  const [tone, setTone]               = useState('')
+  const [context, setContext]         = useState(fromAudience?.context || '')
+  const [tone, setTone]               = useState(fromAudience?.tone || '')
 
   // Product inputs
   const [prodName, setProdName]         = useState('')
   const [prodFeatures, setProdFeatures] = useState('')
-  const [prodAudience, setProdAudience] = useState('')
+  const [prodAudience, setProdAudience] = useState(fromAudience?.prodAudience || '')
   const [prodTone, setProdTone]         = useState('Professional')
 
   // Landing page inputs
@@ -139,31 +142,34 @@ export default function CaptionSuitePage() {
   const [lpHeadline, setLpHeadline] = useState('')
   const [lpBenefits, setLpBenefits] = useState('')
   const [lpCta, setLpCta]           = useState('Get Started')
-  const [lpAudience, setLpAudience] = useState('')
+  const [lpAudience, setLpAudience] = useState(fromAudience?.lpAudience || '')
 
   // Generation
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState('')
   const [results, setResults] = useState(null)
 
-  // KB auto-fill
+  // KB auto-fill — a hand-off from Audience Builder is more specific than these
+  // brand-wide defaults, so it wins wherever it already supplied a value.
   useEffect(() => {
     if (!user?.uid) return
     getKnowledgeBase(user.uid).then(kb => {
       if (!kb) return
-      if (kb.toneOfVoice)    setTone(TONE_LABELS[kb.toneOfVoice] || kb.toneOfVoice)
+      if (kb.toneOfVoice && !fromAudience?.tone) setTone(TONE_LABELS[kb.toneOfVoice] || kb.toneOfVoice)
       if (kb.productService) {
-        setContext(kb.productService)
+        if (!fromAudience?.context) setContext(kb.productService)
         setProdFeatures(kb.productService)
         setLpHeadline(kb.companyName ? `${kb.companyName} — ${kb.productService}` : kb.productService)
       }
       if (kb.companyName)    setProdName(kb.companyName)
-      if (kb.targetAudience) { setProdAudience(kb.targetAudience); setLpAudience(kb.targetAudience) }
-      const mapped = new Set()
-      ;(kb.priorityChannels || []).forEach(ch => (CHANNEL_TO_PLATFORM[ch] || []).forEach(p => mapped.add(p)))
-      if (mapped.size > 0) setPlatforms([...mapped])
+      if (kb.targetAudience && !fromAudience?.prodAudience) { setProdAudience(kb.targetAudience); setLpAudience(kb.targetAudience) }
+      if (!fromAudience?.platforms) {
+        const mapped = new Set()
+        ;(kb.priorityChannels || []).forEach(ch => (CHANNEL_TO_PLATFORM[ch] || []).forEach(p => mapped.add(p)))
+        if (mapped.size > 0) setPlatforms([...mapped])
+      }
     }).catch(() => {})
-  }, [user?.uid])
+  }, [user?.uid]) // eslint-disable-line
 
   function copyText(id, text) {
     navigator.clipboard.writeText(text).then(() => {
@@ -182,6 +188,9 @@ export default function CaptionSuitePage() {
       const r = await generateAll({ platforms, contentType, context, tone, prodName, prodFeatures, prodAudience, prodTone, lpGoal, lpHeadline, lpBenefits, lpCta, lpAudience })
       setResults(r)
       setTimeout(() => document.getElementById('cgs-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
+      try {
+        if (user?.uid) await appendJourneyOutput(user.uid, 'content', r.product?.short || context)
+      } catch {}
     } catch (e) { setError(e.message || 'Generation failed. Please try again.') }
     setLoading(false)
   }
@@ -213,6 +222,13 @@ export default function CaptionSuitePage() {
             <p style={{ fontSize: 13, color: TEXT2, margin: '4px 0 0' }}>Fill in once — generate captions, product descriptions & landing page copy together.</p>
           </div>
         </div>
+
+        {fromAudience && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: 10, marginBottom: 16, width: 'fit-content' }}>
+            <Check size={13} color={GREEN} />
+            <span style={{ fontSize: 12, color: GREEN, fontWeight: 600 }}>Pre-filled from your Audience Builder segments</span>
+          </div>
+        )}
 
         {/* ── Single unified form ── */}
         <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 18, padding: '24px 26px', marginBottom: 20 }}>
@@ -407,7 +423,7 @@ export default function CaptionSuitePage() {
                 </div>
                 <p style={{ fontSize: 13, color: TEXT2, margin: '0 0 16px' }}>Next up: <strong style={{ color: TEXT }}>Step 6 — Creative Assets</strong>. Generate product images and visual content.</p>
                 <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                  <button onClick={() => navigate('/products')} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '11px 22px', background: '#f97316', border: 'none', borderRadius: 10, color: '#fff', fontSize: 13, fontWeight: 800, cursor: 'pointer', fontFamily: FONT }}>
+                  <button onClick={() => navigate('/creative-asset', { state: { payload: captionSuiteToCreativeAsset(prodName, context) } })} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '11px 22px', background: '#f97316', border: 'none', borderRadius: 10, color: '#fff', fontSize: 13, fontWeight: 800, cursor: 'pointer', fontFamily: FONT }}>
                     Next: Creative Assets <ArrowRight size={14}/>
                   </button>
                   <button onClick={() => navigate('/brand-governance')} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '11px 18px', background: 'rgba(200,151,62,0.1)', border: `1px solid ${GOLD}35`, borderRadius: 10, color: GOLD, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: FONT }}>

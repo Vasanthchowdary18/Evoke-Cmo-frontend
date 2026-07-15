@@ -9,6 +9,7 @@ import {
   Shield, Play, DollarSign, Bell, Send, RefreshCw, MapPin, FileCode, Lock,
 } from 'lucide-react'
 import UpgradeModal from '../components/UpgradeModal.jsx'
+import SidebarLayout from '../components/SidebarLayout.jsx'
 import { useUserPlan } from '../hooks/useUserPlan.js'
 import { PLANS, PLAN_LABELS } from '../lib/planGate.js'
 
@@ -57,7 +58,7 @@ const HUB_CONFIG = {
       { label: 'Audience Builder', badge: 'SEGMENTS',      desc: 'Build 4 precision audience segments with demographics, interests, and ad-ready configurations for Meta & Google.', icon: <Users size={20}/>,     color: '#a855f7', route: '/audience-builder', requiredPlan: 'package-b' },
       { label: 'Trend Analysis',   badge: 'TRENDS',        desc: 'Real-time trend tracking across your market, keywords, and competitor movements.',                                  icon: <TrendingUp size={20}/>, color: '#06b6d4', route: '/trends',           requiredPlan: 'package-b' },
       { label: 'CRM & Lifecycle',  badge: 'CRM',           desc: 'Manage your customer lifecycle, segment contacts, and automate follow-ups.',                                        icon: <UserCheck size={20}/>, color: '#10b981', route: '/crm',               requiredPlan: 'package-b' },
-      { label: 'Lead Scoring',     badge: 'LEAD SCORE',    desc: 'AI-powered lead scoring from CRM and segment data — rank, prioritise, and route high-intent leads to sales.',      icon: <Crosshair size={20}/>, color: '#f97316', route: '/audience-builder', requiredPlan: 'package-b' },
+      { label: 'Lead Scoring',     badge: 'LEAD SCORE',    desc: 'AI-powered lead scoring from CRM and segment data — rank, prioritise, and route high-intent leads to sales.',      icon: <Crosshair size={20}/>, color: '#f97316', route: '/crm', requiredPlan: 'package-b' },
     ],
   },
 
@@ -73,7 +74,7 @@ const HUB_CONFIG = {
       { label: 'Copywriting Agent',         badge: 'COPY',     desc: 'Ad copy, taglines, slogans, brand voice, product names, and value propositions — 5 modes.',             icon: <PenTool size={20}/>,  color: '#ec4899', route: '/copywriting',                        requiredPlan: 'package-a' },
       { label: 'Caption Suite',             badge: 'CAPTIONS', desc: 'AI-generated captions for every platform — Instagram, LinkedIn, TikTok, Twitter, and more.',            icon: <PenTool size={20}/>,  color: '#10b981', route: '/caption-suite',                        requiredPlan: 'package-a' },
       { label: 'Reel Scripts',              badge: 'SCRIPTS',  desc: 'Hook, body, and CTA scripts for short-form videos — Reels, TikTok, and YouTube Shorts.',                icon: <Sliders size={20}/>,  color: '#f59e0b', route: '/reel-scripts',                         requiredPlan: 'package-a' },
-      { label: 'Content Calendar',          badge: 'CALENDAR', desc: '30-day multi-platform content plan with daily post ideas, captions, and hashtags.',                     icon: <Calendar size={20}/>, color: '#3b82f6', route: '/campaign/content_calendar',             requiredPlan: 'free' },
+      { label: 'Content Calendar',          badge: 'CALENDAR', desc: '30-day multi-platform content plan with daily post ideas, captions, and hashtags.',                     icon: <Calendar size={20}/>, color: '#3b82f6', route: '/campaign/content_calendar',             requiredPlan: 'package-a' },
       { label: 'Email Drip Campaign',       badge: 'EMAIL',    desc: '5-email nurture sequence with subject lines, preheaders, and CTAs.',                                    icon: <Mail size={20}/>,     color: '#8b5cf6', route: '/campaign/email_drip',                   requiredPlan: 'free' },
       { label: 'Email Marketing Agent',     badge: 'EMAIL AI', desc: 'Full AI email campaigns — broadcast, welcome sequences, nurture flows, and re-engagement series.',      icon: <Send size={20}/>,     color: '#a855f7', route: '/email-marketing',                       requiredPlan: 'package-b' },
       { label: 'SEO Content Generator',     badge: 'SEO',      desc: 'Keyword research, content briefs, on-page optimisation and SEO blog outlines to rank on Google.',       icon: <Search size={20}/>,   color: '#3b82f6', route: '/seo-agent',                             requiredPlan: 'package-b' },
@@ -116,7 +117,7 @@ const HUB_CONFIG = {
     subtitle: 'Maintain brand consistency with a standards database, approval routing, and live conformance auditing.',
     accentColor: '#06b6d4',
     tools: [
-      { label: 'Brand Knowledge Base', badge: 'BRAND KB',   desc: '5-pillar brand standards database — voice, visuals, messaging, audience, and values.',        icon: <BookOpen size={20}/>, color: '#c8973e', route: '/brand-kb',        requiredPlan: 'free' },
+      { label: 'Brand Knowledge Base', badge: 'BRAND KB',   desc: '5-pillar brand standards database — voice, visuals, messaging, audience, and values.',        icon: <BookOpen size={20}/>, color: '#c8973e', route: '/brand-kb',        requiredPlan: 'package-a' },
       { label: 'Brand Governance',     badge: 'GOVERNANCE', desc: 'Approved / Flagged / Rejected routing with conformance review and live audit log.',           icon: <Shield size={20}/>,   color: '#06b6d4', route: '/brand-governance', requiredPlan: 'package-b' },
       { label: 'Approval Queue',       badge: 'APPROVALS',  desc: 'Review and approve content before it goes live — with brand rules enforced.',                 icon: <Bell size={20}/>,     color: '#8b5cf6', route: '/queue',            requiredPlan: 'package-b' },
     ],
@@ -221,7 +222,7 @@ export default function AgentHub() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: BG, fontFamily: FONT }}>
+    <SidebarLayout bg={BG}>
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '40px 32px 80px' }}>
 
         {/* Back */}
@@ -335,6 +336,6 @@ export default function AgentHub() {
           onClose={() => setUpgradeFor(null)}
         />
       )}
-    </div>
+    </SidebarLayout>
   )
 }

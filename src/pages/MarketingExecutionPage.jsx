@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Rocket, ArrowLeft, Loader2, Zap, CheckCircle2,
   Calendar, DollarSign, Target, Globe, Mail, MessageSquare,
   ShoppingCart, Linkedin, Instagram, Youtube, BarChart2,
   Play, RefreshCw, Activity, TrendingUp, ChevronRight,
-  AlertCircle, Clock, Send, MonitorPlay, Sparkles, History,
+  AlertCircle, Clock, Send, MonitorPlay, Sparkles, History, X,
 } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
 import { useRequireAuth } from '../hooks/useRequireAuth'
@@ -116,9 +116,23 @@ Return ONLY valid JSON:
   return JSON.parse(match[0])
 }
 
+// Maps an attribution recommendation's free-text channel name to a Channel Router key.
+const matchChannelKey = (channelText = '') => {
+  const t = channelText.toLowerCase()
+  if (t.includes('sms')) return 'sms'
+  if (t.includes('meta') || t.includes('instagram') || t.includes('facebook')) return 'meta'
+  if (t.includes('linkedin')) return 'linkedin'
+  if (t.includes('tiktok')) return 'tiktok'
+  if (t.includes('google') || t.includes('youtube') || t.includes('search') || t.includes('display')) return 'google'
+  if (t.includes('email')) return 'email'
+  if (t.includes('marketplace')) return 'marketplace'
+  return null
+}
+
 export default function MarketingExecutionPage() {
   useRequireAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const { user } = useAuth()
 
   const [inputs, setInputs] = useState({
@@ -134,6 +148,7 @@ export default function MarketingExecutionPage() {
   const [history, setHistory]     = useState([])
   const [launching, setLaunching] = useState(false)
   const [launched, setLaunched]   = useState(false)
+  const [appliedRec, setAppliedRec] = useState(location.state?.applyRecommendation || null)
 
   const set = (k, v) => setInputs(p => ({ ...p, [k]: v }))
   const toggleChannel = (key) => {
@@ -153,6 +168,21 @@ export default function MarketingExecutionPage() {
   }
 
   useEffect(() => { loadHistory() }, [user?.uid])
+
+  // Coming from Marketing Attribution's "Apply in Marketing Execution" — pre-fill the
+  // objective and the recommended channel so the user doesn't retype the recommendation.
+  useEffect(() => {
+    const rec = location.state?.applyRecommendation
+    if (!rec) return
+    setInputs(p => ({
+      ...p,
+      objective: p.objective || rec.action || '',
+      channels: matchChannelKey(rec.channel) && !p.channels.includes(matchChannelKey(rec.channel))
+        ? [...p.channels, matchChannelKey(rec.channel)]
+        : p.channels,
+    }))
+    window.history.replaceState({}, document.title)
+  }, [])
 
   const handleActivate = async () => {
     if (!ready) return
@@ -237,6 +267,19 @@ export default function MarketingExecutionPage() {
             </div>
           </div>
         </div>
+
+        {appliedRec && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: GDIM, border: `1px solid ${GBORDER}`, borderRadius: 12, padding: '12px 16px', marginBottom: 20 }}>
+            <Zap size={16} color={GOLD} style={{ flexShrink: 0 }} />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: TEXT }}>Applied from Marketing Attribution</div>
+              <div style={{ fontSize: 12, color: TEXT2 }}>{appliedRec.action} {appliedRec.impact ? `— expected ${appliedRec.impact}` : ''}</div>
+            </div>
+            <button onClick={() => setAppliedRec(null)} style={{ background: 'none', border: 'none', color: TEXT3, cursor: 'pointer', padding: 4, display: 'flex' }}>
+              <X size={15} />
+            </button>
+          </div>
+        )}
 
         {/* Engine Modules */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 20 }}>

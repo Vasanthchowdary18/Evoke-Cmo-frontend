@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence, useInView } from 'framer-motion'
-import { ArrowRight, Check, Star, Zap, TrendingUp, Target, Calendar, Search, Mail, Users, BarChart2, Briefcase, Megaphone, ShoppingCart, Sparkles, Activity, Lightbulb, DollarSign, Rocket, Image, Film, Monitor, Share2, Layers, Play, BookOpen } from 'lucide-react'
+import { ArrowRight, Check, Star, Zap, TrendingUp, Target, Calendar, Search, Mail, Users, BarChart2, Briefcase, Megaphone, ShoppingCart, Sparkles, Activity, Lightbulb, DollarSign, Rocket, Image, Film, Monitor, Share2, Layers, Play, BookOpen, Twitter, Linkedin, Github, Quote, Shield, Lock, UserCheck } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
 import BrandSetupModal from '../components/BrandSetupModal.jsx'
 import { useAuth } from '../hooks/useAuth.js'
@@ -17,17 +17,18 @@ function FadeIn({children,delay=0,style={}}) {
   return <motion.div ref={ref} initial="hidden" animate={inView?'visible':'hidden'} variants={fadeUp} transition={{delay}} style={style}>{children}</motion.div>
 }
 
-/* ─── PDF colours (exact) ─── */
-const BG      = '#0e0c09'
-const BG2     = '#0b0a07'
-const CARD    = '#1c1a13'
+/* ─── Figma CMO New colours ─── */
+const BG      = '#05050A'   // Figma root "cmo" frame background (1440 × 5300)
+const CARD    = '#0d1121'
 const GOLD    = '#c8973e'
-const GDIM    = 'rgba(200,151,62,0.13)'
+const ORANGE  = '#e08c35'
+const GDIM    = 'rgba(200,151,62,0.10)'
 const GBORDER = 'rgba(200,151,62,0.22)'
 const TEXT    = '#f0ebe0'
 const TEXT2   = 'rgba(240,235,224,0.55)'
 const TEXT3   = 'rgba(240,235,224,0.32)'
-const BORDER  = 'rgba(255,255,255,0.07)'
+const BORDER  = 'rgba(255,255,255,0.08)'
+const NAVY    = '#0a0f1e'
 
 /* ─── shared button styles ─── */
 const goldPill = {
@@ -48,10 +49,10 @@ const outlinePill = {
 
 /* ─── data ─── */
 const STATS = [
-  { v:'12+',  l:'AI MODULES'     },
-  { v:'8',    l:'PLATFORMS'      },
-  { v:'<60s', l:'CAMPAIGN READY' },
-  { v:'$49',  l:'PER MONTH'      },
+  { v:'$2.4M+',    l:'Ad Spend Managed'              },
+  { v:'+34.8%',    l:'Average Acquisition Increase'  },
+  { v:'180,000+',  l:'AI Agent Execution Hours'      },
+  { v:'82%',       l:'Production Cost Saved'         },
 ]
 
 /* Platform logos — PDF strip_02: 2 rows static grid */
@@ -214,24 +215,6 @@ const TESTIMONIALS = [
   { quote:'"Evoke CMO replaced our need for a full marketing team. In minutes I had a complete campaign live on LinkedIn, Instagram, and Gmail — all AI-generated and perfectly on-brand."', name:'Sarah J.', role:'Founder, TechStart India', initials:'SJ', bg:'#6b5c3e' },
   { quote:'"For $49/month I\'m getting what used to cost me $5,000+ in freelancers. The ROI is incredible. I run our entire brand marketing myself now using Evoke."',                      name:'Marcus T.', role:'Product Manager, FinScale', initials:'MT', bg:'#2e5940' },
   { quote:'"The 12 CMO modules are insane. Growth strategy, email drips, SEO blogs — all done in seconds. This is what a $15,000/month CMO used to do for us."',                         name:'Priya K.', role:'E-commerce Founder',         initials:'PK', bg:'#2e4a5e' },
-]
-
-const THE_SHIFT = [
-  {
-    number: '01',
-    before: 'AI tools wait for your prompts — you do all the thinking.',
-    after:  'Evoke CMO initiates campaigns independently. Give it a goal; it plans, writes, and deploys.',
-  },
-  {
-    number: '02',
-    before: 'Every tool forgets your brand the moment you close the tab.',
-    after:  'Evoke CMO retains your brand voice, past results, and audience insights across every campaign.',
-  },
-  {
-    number: '03',
-    before: 'Tools hand you drafts. You still have to execute, schedule, and track everything manually.',
-    after:  'Evoke CMO executes complete, multi-channel campaigns end-to-end — not just content, but strategy.',
-  },
 ]
 
 const AUTO_STEPS = [
@@ -501,7 +484,7 @@ export default function Landing() {
     if (user) {
       setShowSetupModal(true)
     } else {
-      try { sessionStorage.setItem('evoke_post_login_route', '/brand-kb') } catch {}
+      try { sessionStorage.setItem('evoke_post_login_route', '/brand-profile') } catch {}
       redirectToLogin()
     }
   }
@@ -527,7 +510,7 @@ export default function Landing() {
   }
 
   const openAssessment = () => {
-    document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })
+    navigate('/pricing')
   }
 
   const handleSetupComplete = (answers, recs) => {
@@ -559,328 +542,317 @@ export default function Landing() {
   )
 
   return (
-    <div style={{background:BG, minHeight:'100vh', color:TEXT, fontFamily:"'Inter',sans-serif", overflowX:'hidden'}}>
+    <div style={{background:BG, width:'100%', minHeight:'100vh', color:TEXT, fontFamily:"'Inter',sans-serif", overflowX:'hidden', position:'relative'}}>
+      {/* ── Global orbs background layer — sized to actual content, not a stale fixed height ── */}
+      <div style={{
+        position:'absolute', top:0, left:'50%', transform:'translateX(-50%)',
+        width:1440, height:'100%',
+        pointerEvents:'none', zIndex:0, overflow:'hidden',
+        opacity:1,
+      }}>
+        {/* glow-orb 1: purple-left */}
+        <div style={{position:'absolute',top:100,left:-100,width:600,height:600,borderRadius:'50%',background:'#6C63FF',opacity:0.15,filter:'blur(150px)'}}/>
+        {/* glow-orb 2: gold-right */}
+        <div style={{position:'absolute',top:300,right:-100,width:600,height:600,borderRadius:'50%',background:'#C8962A',opacity:0.1,filter:'blur(150px)'}}/>
+        {/* glow-orb 3: purple-mid */}
+        <div style={{position:'absolute',top:2400,left:'50%',transform:'translateX(-50%)',width:600,height:600,borderRadius:'50%',background:'#6C63FF',opacity:0.12,filter:'blur(150px)'}}/>
+        {/* glow-orb 1 repeat — bottom */}
+        <div style={{position:'absolute',top:4000,left:-80,width:600,height:600,borderRadius:'50%',background:'#6C63FF',opacity:0.15,filter:'blur(150px)'}}/>
+        {/* glow-orb 2 repeat — bottom-right */}
+        <div style={{position:'absolute',top:4200,right:-80,width:600,height:600,borderRadius:'50%',background:'#C8962A',opacity:0.1,filter:'blur(150px)'}}/>
+        {/* glow-orb 3 repeat — mid-right */}
+        <div style={{position:'absolute',top:1800,right:-80,width:600,height:600,borderRadius:'50%',background:'#6C63FF',opacity:0.12,filter:'blur(150px)'}}/>
+        {/* glow-orb 2 repeat — mid-left */}
+        <div style={{position:'absolute',top:1400,left:-80,width:600,height:600,borderRadius:'50%',background:'#C8962A',opacity:0.1,filter:'blur(150px)'}}/>
+      </div>
       <Navbar />
 
       {/* ══════════════════════════════════════════════════
-          HERO  (strip_01)
+          HERO  — Figma CMO New
       ══════════════════════════════════════════════════ */}
       <section className="hero-section" style={{
-        minHeight:'100vh', display:'flex', alignItems:'center',
+        width:'100%', height:1143,
+        display:'flex', alignItems:'center',
         justifyContent:'center', textAlign:'center',
-        padding:'120px 24px 80px', position:'relative', overflow:'hidden',
+        paddingTop:180, paddingRight:80, paddingBottom:80, paddingLeft:80,
+        position:'relative', overflow:'hidden', background:BG,
+        gap:40, flexDirection:'column',
+        boxSizing:'border-box',
       }}>
-        {/* centre-top golden glow */}
-        <div style={{position:'absolute',top:-60,left:'50%',transform:'translateX(-50%)',width:'80vw',height:'55vh',pointerEvents:'none',background:'radial-gradient(ellipse at 50% 0%, rgba(200,151,62,0.08) 0%, transparent 65%)'}} />
+        {/* radial glow top-centre */}
+        <div style={{position:'absolute',top:0,left:'50%',transform:'translateX(-50%)',width:'70vw',height:'60vh',pointerEvents:'none',background:'radial-gradient(ellipse at 50% 0%, rgba(108,99,255,0.22) 0%, rgba(200,151,62,0.06) 40%, transparent 70%)'}} />
+        {/* subtle grid overlay */}
+        <div style={{position:'absolute',inset:0,pointerEvents:'none',backgroundImage:'linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px)',backgroundSize:'60px 60px',opacity:0.5}}/>
 
-        <div style={{position:'relative',zIndex:1,width:'100%',padding:'0 max(16px, 4vw)',maxWidth:1280,margin:'0 auto'}}>
-          {/* badge — EVOX branding */}
-          <motion.div initial={{opacity:0,y:-10}} animate={{opacity:1,y:0}} transition={{duration:0.4}}
-            style={{display:'flex',flexDirection:'column',alignItems:'center',gap:10,marginBottom:44}}>
-            <div style={{display:'inline-flex',alignItems:'center',gap:8,background:'rgba(15,12,8,0.7)',border:`1px solid ${GBORDER}`,borderRadius:100,padding:'7px 18px',fontSize:13,color:GOLD,fontWeight:600,letterSpacing:'0.04em'}}>
-              <div style={{width:6,height:6,borderRadius:'50%',background:'#10b981',boxShadow:'0 0 6px #10b981'}} />
-              Powered by EVOX
+        <div style={{position:'relative',zIndex:1,width:'100%',maxWidth:1280,margin:'0 auto'}}>
+          {/* Heading layout — 1280×261, gap 16 (badge + h1 inside) */}
+          <motion.div initial={{opacity:0,y:24}} animate={{opacity:1,y:0}} transition={{delay:0.1,duration:0.7}}
+            style={{width:'100%',maxWidth:1280,minHeight:261,margin:'0 auto',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:16,marginBottom:16}}>
+            {/* Live pill badge */}
+            <div style={{
+              display:'inline-flex',alignItems:'center',gap:8,
+              height:28,
+              background:'rgba(255,255,255,0.04)',
+              border:'1px solid rgba(255,255,255,0.1)',
+              borderRadius:999,
+              padding:'6px 16px',
+              fontSize:11,color:'rgba(240,235,224,0.6)',fontWeight:600,
+              letterSpacing:'0.1em',textTransform:'uppercase',
+              justifyContent:'center',boxSizing:'border-box',
+              whiteSpace:'nowrap',
+            }}>
+              <div style={{width:6,height:6,borderRadius:'50%',background:ORANGE,boxShadow:`0 0 8px ${ORANGE}`,flexShrink:0}} />
+              Your AI Chief Marketing Officer Built on EVOX
             </div>
-            <div style={{display:'inline-flex',alignItems:'center',gap:8,background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:100,padding:'5px 14px',fontSize:11,color:'rgba(240,235,224,0.45)',fontWeight:500,letterSpacing:'0.06em',textTransform:'uppercase'}}>
-              EVOKE OS · AI Executive Workforce Platform
-            </div>
+            {/* H1 — 1000×158, single text element with gold span */}
+            <h1 style={{
+              width:'100%', maxWidth:1000,
+              fontSize:'clamp(32px, 6vw, 72px)',
+              fontWeight:700, letterSpacing:'-1px', lineHeight:'110%',
+              margin:0, fontFamily:"'Manrope','Inter',sans-serif",
+              textAlign:'center', color:'#F8FAFC',
+            }}>
+              AI Brand Marketing Powered by{' '}
+              <span style={{
+                background:'linear-gradient(306.67deg, #9F6F3A 34.55%, #BE954A 95.9%)',
+                WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text',
+              }}>
+                Autonomous CMO Agents
+              </span>
+            </h1>
           </motion.div>
 
-          {/* H1 — font scales with viewport so each line stays single-line */}
-          <motion.div initial={{opacity:0,y:24}} animate={{opacity:1,y:0}} transition={{delay:0.1,duration:0.7}}>
-            <h1 style={{
-              fontSize:'clamp(18px, 3.2vw, 46px)',
-              fontWeight:800, letterSpacing:'-0.03em', lineHeight:1.14,
-              marginBottom:6, fontFamily:"'Syne','Inter',sans-serif", color:TEXT,
-            }}>
-              Your AI Chief Marketing Officer
-            </h1>
-            <h1 style={{
-              fontSize:'clamp(18px, 3.2vw, 46px)',
-              fontWeight:800, letterSpacing:'-0.03em', lineHeight:1.14,
-              marginBottom:32, fontFamily:"'Syne','Inter',sans-serif",
-              ...goldGrad,
-            }}>
-              Built on EVOX
-            </h1>
-          </motion.div>
-
-          {/* subtext */}
+          {/* Subtext — 680×87, Manrope 400 18px, line-height 160%, color #94A3B8 */}
           <motion.p initial={{opacity:0,y:16}} animate={{opacity:1,y:0}} transition={{delay:0.22,duration:0.5}}
-            style={{fontSize:'clamp(13px,1.1vw,16px)',color:TEXT2,lineHeight:1.7,maxWidth:520,margin:'0 auto 40px'}}>
-            The only AI CMO you need for growth and marketing. Generate complete campaigns, post to every channel, and scale your brand — automatically.
+            style={{
+              width:'100%', maxWidth:680,
+              fontSize:18,
+              fontWeight:400,
+              fontFamily:"'Manrope','Inter',sans-serif",
+              color:'#94A3B8',
+              lineHeight:'160%',
+              letterSpacing:'0%',
+              textAlign:'center',
+              margin:'0 auto', padding:0, marginBottom:40,
+            }}>
+            Deploy a specialized squad of 12 hyper-focused AI marketing specialists working in perfect orchestration to scale your pipeline, brand content, and digital acquisition channels 24/7.
           </motion.p>
 
           {/* CTA buttons */}
           <motion.div initial={{opacity:0,y:12}} animate={{opacity:1,y:0}} transition={{delay:0.32,duration:0.5}}
-            className="hero-btns" style={{display:'flex',gap:14,justifyContent:'center',flexWrap:'wrap',marginBottom:36}}>
-            <button onClick={openAssessment} style={goldPill}
-              onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 10px 28px rgba(200,151,62,0.4)'}}
+            className="hero-btns" style={{display:'flex',gap:16,justifyContent:'center',flexWrap:'wrap',marginBottom:64,width:378,height:54,maxWidth:'100%',margin:'0 auto 64px',alignItems:'center'}}>
+            <button onClick={openAssessment} style={{
+              width:178,height:54,gap:8,
+              padding:'16px 32px',
+              borderRadius:100,
+              border:'none',cursor:'pointer',
+              background:'linear-gradient(81.63deg, #BE954A -7.2%, #9F6F3A 64.21%)',
+              color:'#fff',fontSize:15,fontWeight:700,
+              display:'flex',alignItems:'center',justifyContent:'center',
+              fontFamily:"'Manrope','Inter',sans-serif",
+              transition:'transform 0.18s, box-shadow 0.18s',
+              boxSizing:'border-box',flexShrink:0,
+              whiteSpace:'nowrap',
+            }}
+              onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 12px 32px rgba(190,149,74,0.45)'}}
               onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none'}}>
-              Get Started <ArrowRight size={17}/>
+              Get Started <ArrowRight size={17} style={{marginLeft:6}}/>
             </button>
-            <a href="#how-it-works" style={outlinePill}
-              onMouseEnter={e=>{e.currentTarget.style.borderColor='rgba(200,151,62,0.4)';e.currentTarget.style.color=GOLD}}
-              onMouseLeave={e=>{e.currentTarget.style.borderColor='rgba(240,235,224,0.22)';e.currentTarget.style.color=TEXT}}>
-              See All Features
-            </a>
+            <button onClick={()=>document.getElementById('agents')?.scrollIntoView({behavior:'smooth'})}
+              style={{
+                width:184,height:54,gap:8,
+                padding:'16px 32px',
+                borderRadius:100,
+                border:'1px solid rgba(255,255,255,0.06)',
+                cursor:'pointer',
+                background:'rgba(17,17,30,0.6)',
+                color:TEXT,fontSize:15,fontWeight:600,
+                display:'flex',alignItems:'center',justifyContent:'center',
+                fontFamily:"'Manrope','Inter',sans-serif",
+                transition:'border-color 0.18s, color 0.18s',
+                boxSizing:'border-box',flexShrink:0,
+              }}
+              onMouseEnter={e=>{e.currentTarget.style.borderColor='rgba(190,149,74,0.5)';e.currentTarget.style.color='#BE954A'}}
+              onMouseLeave={e=>{e.currentTarget.style.borderColor='rgba(255,255,255,0.06)';e.currentTarget.style.color=TEXT}}>
+              Meet All Agents
+            </button>
           </motion.div>
 
-          {/* trust chips */}
-          <motion.div initial={{opacity:0}} animate={{opacity:1}} transition={{delay:0.45}}
-            style={{display:'flex',gap:24,justifyContent:'center',flexWrap:'wrap'}}>
-            {['Free to start','No credit card required','12 AI modules'].map(t=>(
-              <span key={t} style={{display:'flex',alignItems:'center',gap:7,fontSize:13,color:TEXT3}}>
-                <Check size={12} color={GOLD}/> {t}
-              </span>
-            ))}
-          </motion.div>
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════════════════
-          CMO WORKFLOW PIPELINE + ASSESSMENT WIZARD
-      ══════════════════════════════════════════════════ */}
-
-      {/* ══════════════════════════════════════════════════
-          VIDEO
-      ══════════════════════════════════════════════════ */}
-      <section style={{padding:'80px 40px',background:BG}}>
-        <div style={{maxWidth:900,margin:'0 auto'}}>
-          <FadeIn style={{textAlign:'center',marginBottom:40}}>
-            <SBadge>Product Overview</SBadge>
-            <h2 style={{fontSize:'clamp(20px,3vw,38px)',fontWeight:800,letterSpacing:'-0.03em',lineHeight:1.2,fontFamily:"'Syne','Inter',sans-serif",color:TEXT,marginBottom:12}}>
-              See EVOX <span style={goldGrad}>in Action</span>
-            </h2>
-            <p style={{fontSize:15,color:TEXT2,maxWidth:460,margin:'0 auto',lineHeight:1.65}}>
-              Watch how EVOX transforms brand inputs into a complete multi-channel marketing engine — in minutes.
-            </p>
-          </FadeIn>
-          <FadeIn delay={0.1}>
-            <div style={{position:'relative',borderRadius:20,overflow:'hidden',border:`1px solid ${GBORDER}`,boxShadow:'0 0 60px rgba(200,151,62,0.1)',aspectRatio:'16/9',background:'#111008',display:'flex',alignItems:'center',justifyContent:'center'}}>
-              <div style={{position:'absolute',inset:0,background:'linear-gradient(135deg,#1c1a13 0%,#0e0c09 100%)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:12}}>
-                <div style={{fontSize:'clamp(18px,3vw,36px)',fontWeight:800,fontFamily:"'Syne','Inter',sans-serif",...goldGrad,letterSpacing:'-0.03em'}}>EVOX C-Suite Platform</div>
-                <div style={{fontSize:13,color:TEXT3}}>Product walkthrough — coming soon</div>
+          {/* ── CMO Dashboard Mockup ── */}
+          <motion.div initial={{opacity:0,y:40}} animate={{opacity:1,y:0}} transition={{delay:0.45,duration:0.8}}
+            style={{width:960,maxWidth:'100%',margin:'0 auto',borderRadius:16,overflow:'hidden',border:'1px solid rgba(255,255,255,0.1)',boxShadow:'0 40px 100px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05)',background:'#0a0f1e'}}>
+            {/* Browser chrome — 960×100 */}
+            <div style={{background:'#111827',borderBottom:'1px solid rgba(255,255,255,0.08)',height:100,padding:'0 24px',display:'flex',alignItems:'center',position:'relative',boxSizing:'border-box'}}>
+              {/* Traffic lights — left */}
+              <div style={{display:'flex',gap:8,width:46,height:10,alignItems:'center',flexShrink:0}}>
+                <div style={{width:10,height:10,borderRadius:'50%',background:'#FF5F56',flexShrink:0}}/>
+                <div style={{width:10,height:10,borderRadius:'50%',background:'#FFBD2E',flexShrink:0}}/>
+                <div style={{width:10,height:10,borderRadius:'50%',background:'#27C93F',flexShrink:0}}/>
               </div>
-              <div style={{position:'relative',zIndex:2,width:72,height:72,borderRadius:'50%',background:'linear-gradient(135deg,#d4a853,#b8803a)',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 0 40px rgba(200,151,62,0.4)'}}>
-                <Play size={26} color="#0e0c09" fill="#0e0c09"/>
+              {/* URL bar — centered absolutely */}
+              <div style={{position:'absolute',left:'50%',transform:'translateX(-50%)',width:239,height:27,background:'rgba(255,255,255,0.06)',borderRadius:8,padding:'6px 16px',display:'flex',alignItems:'center',gap:12,boxSizing:'border-box'}}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2" style={{flexShrink:0}}><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <span style={{flex:1,height:15,fontSize:11,fontWeight:400,fontFamily:"'Manrope','Inter',sans-serif",lineHeight:'100%',color:'#94A3B8',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>app.evokemarketplace.com/cmo-hq</span>
               </div>
             </div>
-          </FadeIn>
-        </div>
-      </section>
-
-
-      {/* ══════════════════════════════════════════════════
-          AI C-SUITE AGENTS — directly below Hero
-      ══════════════════════════════════════════════════ */}
-      <section id="agents" style={{padding:'56px 40px',background:'#0a0908',position:'relative',overflow:'hidden'}}>
-        <div style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)',width:'60vw',height:'50vh',pointerEvents:'none',background:'radial-gradient(ellipse, rgba(200,151,62,0.05) 0%, transparent 70%)'}} />
-        <div style={{maxWidth:1100,margin:'0 auto',position:'relative',zIndex:1}}>
-          <FadeIn style={{textAlign:'center',marginBottom:60}}>
-            <SBadge>AI Executive Suite</SBadge>
-            <h2 style={{fontSize:'clamp(18px,2.6vw,38px)',fontWeight:800,letterSpacing:'-0.03em',lineHeight:1.2,fontFamily:"'Syne','Inter',sans-serif",color:TEXT}}>
-              Your AI <span style={goldGrad}>C-Suite Agents</span>
-            </h2>
-            <p style={{fontSize:14,color:TEXT2,maxWidth:480,margin:'12px auto 0',lineHeight:1.7}}>
-              Select an AI agent to run your executive-level business functions. Click an active agent to launch its dashboard.
-            </p>
-          </FadeIn>
-
-          <div className="csuite-grid" style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:16}}>
-            {[
-              {
-                key:'cmo', label:'CMO Agent', role:'Chief Marketing Officer',
-                desc:'Generate complete multi-channel marketing campaigns for events, products, and brands — deployed in seconds.',
-                icon:(<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>),
-                color:GOLD, active:true, href:'#pricing', tags:['Campaigns','Content','Social'],
-              },
-              {
-                key:'cfo', label:'CFO Agent', role:'Chief Financial Officer',
-                desc:'AI-powered financial forecasting, budget planning, and ROI analysis for your marketing campaigns.',
-                icon:(<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="rgba(200,151,62,0.45)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>),
-                color:'rgba(200,151,62,0.4)', active:false, tags:['Forecasting','Budgets','ROI'],
-              },
-              {
-                key:'cro', label:'CRO Agent', role:'Chief Revenue Officer',
-                desc:'Revenue growth strategy, funnel optimisation, conversion rate improvements, and sales pipeline management.',
-                icon:(<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="rgba(200,151,62,0.45)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>),
-                color:'rgba(200,151,62,0.4)', active:false, tags:['Revenue','Funnels','Growth'],
-              },
-              {
-                key:'cto', label:'CTO Agent', role:'Chief Technology Officer',
-                desc:'Technology roadmap planning, stack recommendations, and AI integration strategies for your business.',
-                icon:(<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="rgba(200,151,62,0.45)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>),
-                color:'rgba(200,151,62,0.4)', active:false, tags:['Roadmap','Stack','AI'],
-              },
-            ].map((agent,i)=>(
-              <FadeIn key={agent.key} delay={i*0.09}>
-                <div
-                  onClick={()=>agent.active&&(agent.href.startsWith('#')?document.getElementById(agent.href.slice(1))?.scrollIntoView({behavior:'smooth'}):navigate(agent.href))}
-                  style={{
-                    background:agent.active?'linear-gradient(160deg,#221d10,#1c1a13)':'linear-gradient(160deg,#161410,#131210)',
-                    border:`1px solid ${agent.active?'rgba(200,151,62,0.5)':'rgba(200,151,62,0.15)'}`,
-                    borderRadius:20,padding:'28px 22px',cursor:agent.active?'pointer':'default',
-                    position:'relative',opacity:agent.active?1:0.65,transition:'all 0.25s ease',
-                    boxShadow:agent.active?'0 0 40px rgba(200,151,62,0.08)':'none',height:'100%',
-                  }}
-                  onMouseEnter={e=>{if(agent.active){e.currentTarget.style.transform='translateY(-5px)';e.currentTarget.style.boxShadow='0 16px 48px rgba(200,151,62,0.18)';e.currentTarget.style.borderColor='rgba(200,151,62,0.7)'}}}
-                  onMouseLeave={e=>{if(agent.active){e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='0 0 40px rgba(200,151,62,0.08)';e.currentTarget.style.borderColor='rgba(200,151,62,0.5)'}}}
-                >
-                  {!agent.active&&(<div style={{position:'absolute',top:14,right:14,padding:'3px 10px',background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:100,fontSize:9,fontWeight:700,color:'rgba(240,235,224,0.35)',letterSpacing:'0.08em'}}>COMING SOON</div>)}
-                  <div style={{width:52,height:52,borderRadius:14,background:agent.active?GDIM:'rgba(200,151,62,0.05)',border:`1px solid ${agent.active?GBORDER:'rgba(200,151,62,0.12)'}`,display:'flex',alignItems:'center',justifyContent:'center',marginBottom:18,boxShadow:agent.active?'0 0 16px rgba(200,151,62,0.1)':'none'}}>{agent.icon}</div>
-                  <div style={{display:'inline-flex',alignItems:'center',gap:5,padding:'3px 10px',background:agent.active?GDIM:'rgba(200,151,62,0.05)',border:`1px solid ${agent.active?GBORDER:'rgba(200,151,62,0.12)'}`,borderRadius:100,fontSize:10,fontWeight:700,color:agent.active?GOLD:'rgba(200,151,62,0.4)',letterSpacing:'0.07em',marginBottom:10}}>{agent.label}</div>
-                  <h3 style={{fontSize:15,fontWeight:800,color:agent.active?TEXT:'rgba(240,235,224,0.45)',marginBottom:8,letterSpacing:'-0.02em',fontFamily:"'Syne','Inter',sans-serif",lineHeight:1.25}}>{agent.role}</h3>
-                  <p style={{fontSize:12,color:TEXT2,lineHeight:1.65,marginBottom:16,opacity:agent.active?1:0.6}}>{agent.desc}</p>
-                  <div style={{display:'flex',flexWrap:'wrap',gap:6,marginBottom:20}}>
-                    {agent.tags.map(tag=>(<span key={tag} style={{padding:'3px 9px',background:agent.active?'rgba(200,151,62,0.08)':'rgba(255,255,255,0.03)',border:`1px solid ${agent.active?'rgba(200,151,62,0.2)':'rgba(255,255,255,0.06)'}`,borderRadius:100,fontSize:10,color:agent.active?'rgba(240,235,224,0.6)':'rgba(240,235,224,0.25)',fontWeight:500}}>{tag}</span>))}
+            {/* Dashboard content — 960, gap 24 */}
+            <div style={{display:'flex',width:960,maxWidth:'100%',minHeight:296,gap:24,boxSizing:'border-box'}}>
+              {/* Sidebar — 180×200, gap 16 */}
+              <div style={{width:180,height:200,background:'#0d1121',borderRight:'1px solid rgba(255,255,255,0.06)',padding:'16px 0',flexShrink:0,display:'flex',flexDirection:'column',gap:16,boxSizing:'border-box'}}>
+                {[
+                  {label:'CMO Dashboard',active:true},
+                  {label:'Campaign Strategy',active:false},
+                  {label:'Agent Workforce',active:false},
+                  {label:'Attribution & ROI',active:false},
+                ].map(item=>(
+                  <div key={item.label} style={{
+                    width:180,height:38,
+                    padding:10,
+                    borderRadius:8,
+                    fontSize:13,fontWeight:item.active?700:400,
+                    fontFamily:"'Manrope','Inter',sans-serif",
+                    letterSpacing:0,lineHeight:'100%',
+                    color:item.active?'#fff':'#94A3B8',
+                    background:item.active?'#6C63FF1A':'transparent',
+                    cursor:'pointer',transition:'all 0.15s',
+                    textAlign:'left',display:'flex',alignItems:'center',
+                    boxSizing:'border-box',
+                  }}>
+                    {item.label}
                   </div>
-                  {agent.active?(
-                    <button onClick={e=>{e.stopPropagation();agent.href.startsWith('#')?document.getElementById(agent.href.slice(1))?.scrollIntoView({behavior:'smooth'}):navigate(agent.href)}} style={{width:'100%',padding:'11px',background:'linear-gradient(135deg,#d4a853,#b8803a)',border:'none',borderRadius:10,color:'#0e0c09',fontSize:13,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:6,fontFamily:"'Inter',sans-serif",transition:'all 0.2s'}}
-                      onMouseEnter={e=>{e.currentTarget.style.boxShadow='0 6px 20px rgba(200,151,62,0.4)'}}
-                      onMouseLeave={e=>{e.currentTarget.style.boxShadow='none'}}>
-                      Launch CMO Agent
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-                    </button>
-                  ):(
-                    <div style={{width:'100%',padding:'11px',background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:10,color:'rgba(240,235,224,0.25)',fontSize:13,fontWeight:600,display:'flex',alignItems:'center',justifyContent:'center',boxSizing:'border-box'}}>Coming Soon</div>
-                  )}
+                ))}
+              </div>
+              {/* Spacer — pushes stats to right */}
+              <div style={{flex:1}}/>
+              {/* Mockup content — 366×296, gap 24 */}
+              <div style={{width:366,height:296,padding:'16px',background:'#070b17',display:'flex',flexDirection:'column',gap:24,boxSizing:'border-box',flexShrink:0}}>
+                {/* stat-top — full width, gap 16 */}
+                <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:16,width:'100%',boxSizing:'border-box'}}>
+                  {[
+                    {label:'ACTIVE AGENTS',         value:'12 / 12',       sub:null, color:'#C8962A', valueFontSize:24, height:112},
+                    {label:'TOTAL ACQUISITION RATE', value:'+34.8%',       sub:null, color:'#10b981', valueFontSize:20, height:112},
+                    {label:'COST REDUCTION',         value:'-82% vs Agency',sub:null, color:'#06B6D4', valueFontSize:20, height:109},
+                  ].map(stat=>(
+                    <div key={stat.label} style={{height:stat.height||112,background:'#FFFFFF05',border:'1px solid #FFFFFF0F',borderRadius:12,padding:16,textAlign:'left',display:'flex',flexDirection:'column',gap:8,boxSizing:'border-box'}}>
+                      <div style={{fontSize:11,fontWeight:400,fontFamily:"'Manrope','Inter',sans-serif",color:'#64748B',lineHeight:'100%',letterSpacing:0,textTransform:'uppercase'}}>{stat.label}</div>
+                      <div style={{fontSize:stat.valueFontSize||24,fontWeight:700,fontFamily:"'Manrope','Inter',sans-serif",color:stat.color,lineHeight:'100%',letterSpacing:0}}>{stat.value}</div>
+                      {stat.sub&&<div style={{fontSize:10,fontFamily:"'Manrope','Inter',sans-serif",color:'#64748B',marginTop:2}}>{stat.sub}</div>}
+                    </div>
+                  ))}
                 </div>
-              </FadeIn>
-            ))}
-          </div>
+                {/* Divider line */}
+                <div style={{width:'100%',height:0,border:'none',borderTop:'1px solid rgba(255,255,255,0.04)',flexShrink:0}}/>
+                {/* mockup-chart — 100%×160, gap 12, padding 20 */}
+                <div style={{width:'100%',height:160,background:'#FFFFFF03',border:'1px solid #FFFFFF0F',borderRadius:12,padding:20,display:'flex',flexDirection:'column',gap:12,boxSizing:'border-box'}}>
+                  {/* chart-header — full width, space-between */}
+                  <div style={{width:'100%',height:16,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                    <span style={{fontSize:12,fontWeight:600,fontFamily:"'Manrope','Inter',sans-serif",color:'#F8FAFC',lineHeight:'100%',letterSpacing:0,whiteSpace:'nowrap'}}>Evox Performance Analytics</span>
+                    <span style={{fontSize:11,fontWeight:400,fontFamily:"'Manrope','Inter',sans-serif",color:'#C8962A',lineHeight:'100%',letterSpacing:0,whiteSpace:'nowrap'}}>Updated 1m ago</span>
+                  </div>
+                  {/* Bars */}
+                  <div style={{display:'flex',alignItems:'flex-end',gap:8,flex:1}}>
+                    {[35,55,45,70,60,85,95].map((h,i)=>(
+                      <div key={i} style={{flex:1,borderRadius:'4px 4px 0 0',background:i===6?`linear-gradient(to top,${ORANGE},#e8a44a)`:i===5?'rgba(100,120,255,0.6)':'rgba(100,120,255,0.3)',height:`${h}%`,transition:'height 0.3s'}}/>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
         </div>
       </section>
 
       {/* ══════════════════════════════════════════════════
-          8 CORE AI AGENTS ECOSYSTEM
+          SOCIAL PROOF BAR — 1440×160
       ══════════════════════════════════════════════════ */}
-      <section id="agents-ecosystem" style={{padding:'80px 40px',background:BG}}>
-        <div style={{maxWidth:1200,margin:'0 auto'}}>
+      <section style={{
+        width:'100%',
+        height:160,
+        display:'flex', alignItems:'center', justifyContent:'space-between',
+        padding:'48px 80px',
+        background:BG,
+        boxSizing:'border-box',
+      }}>
+        {STATS.map((s,i) => (
+          <React.Fragment key={i}>
+            {/* stat-item — 290×64, gap 4 */}
+            <div style={{display:'flex',flexDirection:'column',alignItems:'center',width:290,height:64,gap:4,textAlign:'center',justifyContent:'center'}}>
+              <div style={{fontSize:32,fontWeight:700,fontFamily:"'Manrope','Inter',sans-serif",color:'#F8FAFC',lineHeight:'100%',letterSpacing:0}}>{s.v}</div>
+              <div style={{fontSize:12,fontWeight:400,fontFamily:"'Manrope','Inter',sans-serif",color:'#94A3B8',lineHeight:'100%',letterSpacing:'0.1em',textTransform:'uppercase'}}>{s.l}</div>
+            </div>
+            {/* line — vertical divider between stat items */}
+            {i < STATS.length-1 && <div style={{width:1,height:40,background:'rgba(255,255,255,0.04)',flexShrink:0}}/>}
+          </React.Fragment>
+        ))}
+      </section>
+
+
+
+      {/* ══════════════════════════════════════════════════
+          AGENTS SECTION — Figma: 1440×928, padding 120/80, gap 64
+      ══════════════════════════════════════════════════ */}
+      <section id="agents" style={{padding:'120px 80px',background:NAVY,display:'flex',flexDirection:'column',gap:64,boxSizing:'border-box'}}>
+        <div style={{maxWidth:1200,margin:'0 auto',width:'100%'}}>
           <FadeIn style={{textAlign:'center',marginBottom:60}}>
-            <SBadge>Agent &amp; Tool Ecosystem</SBadge>
-            <h2 style={{fontSize:'clamp(22px,2.8vw,42px)',fontWeight:800,letterSpacing:'-0.03em',lineHeight:1.2,color:TEXT,fontFamily:"'Syne','Inter',sans-serif"}}>
-              8 Core Agents.<br/><span style={goldGrad}>Every business function covered.</span>
+            <div style={{display:'inline-flex',alignItems:'center',padding:'5px 14px',background:'rgba(108,99,255,0.10)',border:'1px solid rgba(108,99,255,0.3)',borderRadius:100,fontSize:11,fontWeight:700,color:'#6C63FF',letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:24}}>
+              Active Agent Fleet
+            </div>
+            <h2 style={{fontSize:'clamp(22px,2.8vw,42px)',fontWeight:800,letterSpacing:'-0.03em',lineHeight:1.2,color:TEXT,fontFamily:"'Manrope','Inter',sans-serif"}}>
+              Meet the Core Agents driving your brand growth
             </h2>
             <p style={{fontSize:15,color:TEXT2,maxWidth:520,margin:'14px auto 0',lineHeight:1.65}}>
-              Each agent runs its own specialist function autonomously — strategy, creative, execution, governance, and more.
+              A complete collaborative executive system mapped to every high-performing corporate marketing division.
             </p>
           </FadeIn>
 
           <motion.div initial="hidden" whileInView="visible" viewport={{once:true,margin:'-60px'}} variants={stagger}
-            style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:16}}>
+            style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:20}}>
             {[
               {
-                label:'Marketing Strategy Agent',
-                badge:'STRATEGY',
-                color:'#c8973e',
-                headerBg:'linear-gradient(135deg,#2a1f0a,#1c1508)',
-                icon:<TrendingUp size={20}/>,
-                points:['Annual / Quarterly / Monthly Plans','Budget recommendations per channel','7 input fields · 5 output tabs'],
-                tag:'NEW',
-                route:'/hub/strategy',
+                title:'Sovereign CMO', tag:'SYSTEM ARCHITECT', color:'#6C63FF',
+                desc:'Translates broad revenue directives into hyper-granular tactical pipelines. Orchestrates the 11 secondary specialists under unified KPI governance.',
+                pills:['Master Orchestration','Dynamic Re-allocation'],
               },
               {
-                label:'Campaign Planning Agent',
-                badge:'CAMPAIGNS',
-                color:'#3b82f6',
-                headerBg:'linear-gradient(135deg,#0a1428,#08101e)',
-                icon:<Target size={20}/>,
-                points:['Campaign brief + timeline','Growth / Content / Product types','AI-generated full plan'],
-                tag:null,
-                route:'/campaign-hub',
+                title:'Creative Director', tag:'BRAND STYLIST', color:'#C8962A',
+                desc:'Guarantees brand style guide coherence at infinite scale. Reviews all visual generation assets, color-space mapping, typography constraints.',
+                pills:['Visual Guardrails','Asset Auditing'],
               },
               {
-                label:'Audience Intelligence',
-                badge:'AUDIENCE',
-                color:'#a855f7',
-                headerBg:'linear-gradient(135deg,#1a0828,#12061c)',
-                icon:<Users size={20}/>,
-                points:['Segmentation + lookalike builder','Retargeting audience profiles','Trend analysis + CRM data'],
-                tag:null,
-                route:'/hub/audience',
+                title:'Acquisition Lead', tag:'PAID TRAFFIC', color:'#10b981',
+                desc:'Runs real-time multi-variate search and social ad placement, automated bid optimization, structural copy revisions based on real-time ROAS feedback.',
+                pills:['High ROAS Engine','Instant Placement'],
               },
               {
-                label:'Content Generation Agent',
-                badge:'CONTENT',
-                color:'#10b981',
-                headerBg:'linear-gradient(135deg,#0a2018,#081410)',
-                icon:<Layers size={20}/>,
-                points:['Captions + Reel scripts','Product descriptions + Blogs','Brand voice matching'],
-                tag:null,
-                route:'/hub/content',
+                title:'SEO Strategist', tag:'CONTENT PIPELINE', color:'#06b6d4',
+                desc:'Monitors shifting search landscape shifts. Auto-drafts deep-dive topical authority clusters designed for real human reading first, crawl efficiency second.',
+                pills:['Topical Authority','Automatic Indexing'],
               },
               {
-                label:'Creative Asset Agent',
-                badge:'CREATIVE',
-                color:'#ec4899',
-                headerBg:'linear-gradient(135deg,#280a18,#1c0812)',
-                icon:<Image size={20}/>,
-                points:['Images: Angles · 360 · 3D · SEO','AI Banners + Product Renders','Meta Ads Boost'],
-                tag:null,
-                route:'/hub/creative',
+                title:'Copywriter AI', tag:'CREATIVE PROSE', color:'#ef4444',
+                desc:'Adapts brand-specific voice profiles with strict stylistic metrics. Drafts conversion-oriented lander headers, long-form newsletters, and short-form social hooks.',
+                pills:['Style Calibration','Micro-copy Optimization'],
               },
               {
-                label:'Video Generation Agent',
-                badge:'VIDEO · NEW',
-                color:'#ef4444',
-                headerBg:'linear-gradient(135deg,#280a0a,#1c0808)',
-                icon:<Film size={20}/>,
-                points:['Promo · Product · Reel · Ad · Event','Script + Visual + Audio + Brand Review','6 video types'],
-                tag:'NEW',
-                route:'/hub/video',
+                title:'Attribution Agent', tag:'DATA COMPLIANCE', color:'#6C63FF',
+                desc:'De-duplicates attribution channels using deep machine learning vectors. Maps clear, reliable touchpoints to prove exactly where your conversions originate.',
+                pills:['Clean Data Pools','Vector Modeling'],
               },
-              {
-                label:'Brand Governance Agent',
-                badge:'GOVERNANCE · NEW',
-                color:'#06b6d4',
-                headerBg:'linear-gradient(135deg,#0a1e28,#08141c)',
-                icon:<Monitor size={20}/>,
-                points:['5-pillar brand standards database','Approved / Flagged / Rejected routing','Conformance review · Live audit log'],
-                tag:'NEW',
-                route:'/hub/governance',
-              },
-              {
-                label:'Marketing Execution Agent',
-                badge:'EXECUTION · NEW',
-                color:'#84cc16',
-                headerBg:'linear-gradient(135deg,#102808,#0a1c06)',
-                icon:<Share2 size={20}/>,
-                points:['7-channel: Meta · LinkedIn · TikTok · Google','Email · SMS · Marketplace','Scheduler · Budget · Audience · KPIs'],
-                tag:'NEW',
-                route:'/hub/execution',
-              },
-            ].map((agent,i)=>(
-              <motion.div key={agent.label} variants={fadeUp}
-                onClick={()=>{if(user){navigate(agent.route,{state:{backTo:'/',backScroll:'agents-ecosystem'}})}else{try{sessionStorage.setItem('evoke_post_login_route',agent.route)}catch{}redirectToLogin()}}}
-                style={{background:'#141210',border:`1px solid rgba(255,255,255,0.07)`,borderRadius:16,overflow:'hidden',cursor:'pointer',transition:'all 0.25s'}}
-                onMouseEnter={e=>{e.currentTarget.style.borderColor=agent.color+'66';e.currentTarget.style.transform='translateY(-4px)';e.currentTarget.style.boxShadow=`0 20px 50px ${agent.color}18`}}
-                onMouseLeave={e=>{e.currentTarget.style.borderColor='rgba(255,255,255,0.07)';e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none'}}>
-                {/* Colored header */}
-                <div style={{background:agent.headerBg,borderBottom:`1px solid ${agent.color}22`,padding:'16px 18px',display:'flex',alignItems:'center',gap:10}}>
-                  <div style={{width:34,height:34,borderRadius:9,background:`${agent.color}20`,border:`1px solid ${agent.color}40`,display:'flex',alignItems:'center',justifyContent:'center',color:agent.color,flexShrink:0}}>
-                    {agent.icon}
-                  </div>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{display:'flex',alignItems:'center',gap:6}}>
-                      <span style={{fontSize:9,fontWeight:800,color:agent.color,letterSpacing:'0.07em'}}>{agent.badge}</span>
-                      {agent.tag&&(<span style={{fontSize:8,fontWeight:700,padding:'2px 6px',background:`${agent.color}20`,border:`1px solid ${agent.color}40`,borderRadius:100,color:agent.color,letterSpacing:'0.06em'}}>{agent.tag}</span>)}
-                    </div>
-                    <div style={{fontSize:12,fontWeight:700,color:TEXT,lineHeight:1.3,marginTop:3}}>{agent.label}</div>
-                  </div>
+            ].map((agent)=>(
+              <motion.div key={agent.title} variants={fadeUp}
+                style={{background:'#0d1121',border:'1px solid rgba(255,255,255,0.08)',borderTop:`3px solid ${agent.color}`,borderRadius:16,padding:'24px 22px',transition:'all 0.25s'}}
+                onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-4px)';e.currentTarget.style.boxShadow=`0 20px 50px ${agent.color}18`}}
+                onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none'}}>
+                <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:10,marginBottom:6}}>
+                  <h3 style={{fontSize:17,fontWeight:800,color:TEXT,letterSpacing:'-0.01em',fontFamily:"'Manrope','Inter',sans-serif",margin:0}}>{agent.title}</h3>
+                  <span style={{width:8,height:8,borderRadius:'50%',background:agent.color,flexShrink:0,marginTop:6}}/>
                 </div>
-                {/* Body */}
-                <div style={{padding:'16px 18px 18px'}}>
-                  {agent.points.map((pt,pi)=>(
-                    <div key={pi} style={{display:'flex',alignItems:'flex-start',gap:8,marginBottom:pi<agent.points.length-1?10:0}}>
-                      <div style={{width:5,height:5,borderRadius:'50%',background:agent.color,flexShrink:0,marginTop:5}}/>
-                      <span style={{fontSize:12,color:TEXT2,lineHeight:1.55}}>{pt}</span>
-                    </div>
+                <div style={{fontSize:10,fontWeight:700,color:TEXT3,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:14}}>{agent.tag}</div>
+                <p style={{fontSize:13,color:TEXT2,lineHeight:1.65,margin:'0 0 18px'}}>{agent.desc}</p>
+                <div style={{display:'flex',flexWrap:'wrap',gap:8}}>
+                  {agent.pills.map(pill=>(
+                    <span key={pill} style={{padding:'5px 11px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:100,fontSize:11,color:TEXT2,fontWeight:500}}>{pill}</span>
                   ))}
-                  <div style={{marginTop:16,display:'flex',alignItems:'center',gap:4,color:agent.color,fontSize:11,fontWeight:600}}>
-                    <span>Launch agent</span>
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-                  </div>
                 </div>
               </motion.div>
             ))}
@@ -889,39 +861,47 @@ export default function Landing() {
       </section>
 
       {/* ══════════════════════════════════════════════════
-          THE SHIFT
+          CAPABILITY SHIFT — comparison table
       ══════════════════════════════════════════════════ */}
-      <section style={{padding:'56px 40px',background:'#0a0908',position:'relative',overflow:'hidden'}}>
-        <div style={{position:'absolute',top:'50%',right:-100,width:400,height:400,borderRadius:'50%',background:'radial-gradient(ellipse, rgba(200,151,62,0.05) 0%, transparent 70%)',pointerEvents:'none'}}/>
-        <div style={{maxWidth:820,margin:'0 auto',position:'relative',zIndex:1}}>
-          <FadeIn style={{textAlign:'center',marginBottom:60}}>
-            <SBadge>Why Evoke CMO Is Different</SBadge>
-            <h2 style={{fontSize:'clamp(18px,2.6vw,38px)',fontWeight:800,letterSpacing:'-0.03em',lineHeight:1.2,fontFamily:"'Syne','Inter',sans-serif",color:TEXT}}>
-              This isn&apos;t another AI tool.<br/><span style={goldGrad}>This is the shift.</span>
+      <section style={{padding:'120px 80px',background:'#080812',border:'1px solid rgba(255,255,255,0.04)',position:'relative',overflow:'hidden',display:'flex',flexDirection:'column',gap:64,boxSizing:'border-box'}}>
+        <div style={{position:'absolute',top:'50%',right:-100,width:400,height:400,borderRadius:'50%',background:'radial-gradient(ellipse, rgba(100,120,255,0.06) 0%, transparent 70%)',pointerEvents:'none'}}/>
+        <div style={{maxWidth:1280,margin:'0 auto',position:'relative',zIndex:1,width:'100%'}}>
+          <FadeIn style={{textAlign:'center',marginBottom:40}}>
+            <div style={{display:'inline-flex',alignItems:'center',padding:'5px 14px',background:GDIM,border:`1px solid ${GBORDER}`,borderRadius:100,fontSize:11,fontWeight:700,color:GOLD,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:24}}>
+              The Capability Shift
+            </div>
+            <h2 style={{fontSize:'clamp(22px,2.8vw,40px)',fontWeight:800,letterSpacing:'-0.03em',lineHeight:1.2,fontFamily:"'Manrope','Inter',sans-serif",color:TEXT}}>
+              How Evox compares to the old way
             </h2>
-            <p style={{fontSize:15,color:TEXT2,maxWidth:500,margin:'14px auto 0',lineHeight:1.65}}>
-              Three fundamental differences between using AI tools and having an autonomous AI CMO.
+            <p style={{fontSize:15,color:TEXT2,maxWidth:560,margin:'14px auto 0',lineHeight:1.65}}>
+              A radical upgrade over traditional performance marketing agencies and rigid manual automations.
             </p>
           </FadeIn>
 
-          <motion.div initial="hidden" whileInView="visible" viewport={{once:true,margin:'-60px'}} variants={stagger} style={{display:'flex',flexDirection:'column',gap:16}}>
-            {THE_SHIFT.map(item=>(
-              <motion.div key={item.number} variants={fadeUp}
-                style={{display:'grid',gridTemplateColumns:'auto 1fr 1fr',gap:28,alignItems:'center',background:'linear-gradient(145deg,#1a1710,#141210)',border:`1px solid rgba(200,151,62,0.18)`,borderRadius:20,padding:'28px 32px',transition:'all 0.25s ease'}}
-                onMouseEnter={e=>{e.currentTarget.style.borderColor='rgba(200,151,62,0.4)';e.currentTarget.style.boxShadow='0 12px 40px rgba(0,0,0,0.5)'}}
-                onMouseLeave={e=>{e.currentTarget.style.borderColor='rgba(200,151,62,0.18)';e.currentTarget.style.boxShadow='none'}}>
-                <div style={{fontSize:48,fontWeight:900,color:GOLD,opacity:0.2,letterSpacing:'-0.04em',lineHeight:1,userSelect:'none',fontFamily:"'Syne','Inter',sans-serif"}}>{item.number}</div>
-                <div style={{borderRight:`1px solid rgba(200,151,62,0.1)`,paddingRight:28}}>
-                  <div style={{fontSize:10,fontWeight:700,color:TEXT3,letterSpacing:'0.08em',marginBottom:10}}>BEFORE</div>
-                  <p style={{fontSize:14,color:TEXT2,lineHeight:1.65,margin:0}}>{item.before}</p>
+          <FadeIn delay={0.1}>
+            <div style={{border:'1px solid #1E1E30',borderRadius:16,background:'#0F0F1A',overflow:'hidden'}}>
+              {/* Header row */}
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',padding:'18px 24px',borderBottom:'1px solid #1E1E30'}}>
+                <span style={{fontSize:12,fontWeight:800,color:TEXT2,letterSpacing:'0.06em',textTransform:'uppercase'}}>Capability</span>
+                <span style={{fontSize:12,fontWeight:800,color:GOLD,letterSpacing:'0.06em',textTransform:'uppercase'}}>Evox CMO Fleet</span>
+                <span style={{fontSize:12,fontWeight:800,color:TEXT3,letterSpacing:'0.06em',textTransform:'uppercase'}}>Traditional Performance Agency</span>
+              </div>
+              {[
+                { cap:'Latency to Deployment', evox:'< 60 seconds (Instant execution)', old:'4 – 6 weeks kickoff & onboarding' },
+                { cap:'Attribution Drift',      evox:'Zero (Real-time ML vector tracing)', old:'Extensive duplicate reporting' },
+                { cap:'Cost Efficiency',        evox:'Flat monthly SaaS rate (82% saved)', old:'High monthly retainer + % of spend' },
+                { cap:'Execution Timeframe',    evox:'24/7 continuous autonomous pacing', old:'Mon–Fri 9-5 (Subject to delays)' },
+              ].map((row,i,arr)=>(
+                <div key={row.cap} style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',padding:'20px 24px',borderBottom:i<arr.length-1?'1px solid rgba(255,255,255,0.04)':'none'}}>
+                  <span style={{fontSize:14,fontWeight:600,color:TEXT}}>{row.cap}</span>
+                  <span style={{display:'flex',alignItems:'center',gap:8,fontSize:14,color:TEXT}}>
+                    <Check size={15} color={GOLD} strokeWidth={2.5}/>{row.evox}
+                  </span>
+                  <span style={{fontSize:14,color:TEXT3}}>{row.old}</span>
                 </div>
-                <div>
-                  <div style={{fontSize:10,fontWeight:700,color:GOLD,letterSpacing:'0.08em',marginBottom:10}}>WITH EVOKE CMO</div>
-                  <p style={{fontSize:14,color:TEXT,lineHeight:1.65,margin:0}}>{item.after}</p>
-                </div>
-              </motion.div>
-            ))}
-          </motion.div>
+              ))}
+            </div>
+          </FadeIn>
         </div>
       </section>
 
@@ -929,121 +909,67 @@ export default function Landing() {
       {/* ══════════════════════════════════════════════════
           HOW IT WORKS  (strip_04, strip_05)
       ══════════════════════════════════════════════════ */}
-      <section id="how-it-works" style={{padding:'100px 40px 112px',background:BG,position:'relative',overflow:'hidden'}}>
+      <section id="how-it-works" style={{padding:'120px 80px',background:NAVY,position:'relative',overflow:'hidden',display:'flex',flexDirection:'column',gap:64,boxSizing:'border-box'}}>
         {/* soft gold glow behind heading */}
         <div style={{position:'absolute',top:'0',left:'50%',transform:'translateX(-50%)',width:'60vw',height:'40vh',pointerEvents:'none',background:'radial-gradient(ellipse at 50% 0%, rgba(200,151,62,0.06) 0%, transparent 70%)'}} />
 
-        <div style={{maxWidth:1140,margin:'0 auto',position:'relative',zIndex:1}}>
-          {/* Badge + Heading */}
-          <FadeIn style={{textAlign:'center',marginBottom:72}}>
-            <SBadge>Simple 3-Step Process</SBadge>
-            <h2 style={{
-              fontSize:'clamp(18px,2.6vw,38px)',
-              fontWeight:800,
-              letterSpacing:'-0.03em',
-              lineHeight:1.2,
-              fontFamily:"'Syne','Inter',sans-serif",
-              color:TEXT,
-              marginBottom:0,
-            }}>
-              From idea to live campaign
+        <div style={{maxWidth:1280,margin:'0 auto',position:'relative',zIndex:1,width:'100%'}}>
+          {/* section-header — 1280×144, gap 16 */}
+          <FadeIn style={{textAlign:'center',display:'flex',flexDirection:'column',alignItems:'center',gap:16,marginBottom:64}}>
+            {/* section-tag — 167×24, padding 4px 12px, radius 999, bg #6C63FF1A, border 1px solid #6C63FF33 */}
+            <div style={{display:'inline-flex',alignItems:'center',height:24,padding:'4px 12px',background:'rgba(108,99,255,0.10)',border:'1px solid rgba(108,99,255,0.2)',borderRadius:999,boxSizing:'border-box'}}>
+              <span style={{fontSize:12,fontWeight:400,fontFamily:"'Manrope','Inter',sans-serif",lineHeight:'100%',letterSpacing:'0.1em',textTransform:'uppercase',color:'#6C63FF'}}>Workflow Integration</span>
+            </div>
+            {/* Heading — Manrope 700, 48px, line-height 100%, center, #F8FAFC */}
+            <h2 style={{fontSize:'clamp(28px,4.5vw,48px)',fontWeight:700,letterSpacing:0,lineHeight:'100%',fontFamily:"'Manrope','Inter',sans-serif",color:'#F8FAFC',margin:0}}>
+              Simple, powerful 3-step process
             </h2>
-            <h2 style={{
-              fontSize:'clamp(18px,2.6vw,38px)',
-              fontWeight:800,
-              letterSpacing:'-0.03em',
-              lineHeight:1.25,
-              fontFamily:"'Syne','Inter',sans-serif",
-              ...goldGrad,
-            }}>
-              in under 60 seconds
-            </h2>
+            {/* Subtitle — Manrope 400, 16px, line-height 100%, center, #94A3B8 */}
+            <p style={{fontSize:16,fontWeight:400,lineHeight:'100%',fontFamily:"'Manrope','Inter',sans-serif",color:'#94A3B8',maxWidth:480,margin:0}}>
+              Get autonomous growth active across your company in under an hour.
+            </p>
           </FadeIn>
 
-          {/* 3 step cards */}
-          <div className="steps-grid" style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:20,alignItems:'center'}}>
+          {/* steps-grid — 1280×250, gap 24 */}
+          <div className="steps-grid" style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:24}}>
             {[
               {
                 n:'01',
-                title:'Connect Your Accounts',
-                desc:'Link Facebook, Instagram, LinkedIn, TikTok, Gmail, and more in one click using OAuth. Your tokens are encrypted and stored securely.',
-                featured:false,
+                title:'Map Channels',
+                desc:'Connect your current ad managers, site analytics, and style guide docs. Evox immediately registers your style profiles.',
               },
               {
                 n:'02',
-                title:'Describe Your Campaign',
-                desc:'Fill a simple form — name, goal, audience, date — and pick which platforms you want to post to. Takes under 30 seconds.',
-                featured:true,
+                title:'Confirm Strategy',
+                desc:'The Sovereign CMO outlines exact acquisition targets, dynamic content channels, and ad spend thresholds based on historical benchmarks.',
               },
               {
                 n:'03',
-                title:'AI Generates & Posts',
-                desc:"Evoke CMO generates professional content for every platform and publishes it live — images included. You're done.",
-                featured:false,
+                title:'Deploy Autonomous Fleet',
+                desc:'Our specialized agents launch simultaneous copy generation, bidding modifications, and conversion landing tests in seamless loops.',
               },
             ].map((s,i)=>(
               <FadeIn key={s.n} delay={i*0.1}>
+                {/* process-step — 410.67×250, gap 16, radius 16, padding 32, bg #11111E99, blur(12px) */}
                 <div style={{
-                  background: s.featured
-                    ? 'linear-gradient(160deg, #26200f 0%, #1c1a10 50%, #161410 100%)'
-                    : 'linear-gradient(160deg, #1c1a13 0%, #161410 100%)',
-                  border:`1px solid ${s.featured ? 'rgba(200,151,62,0.55)' : 'rgba(200,151,62,0.2)'}`,
-                  borderRadius:22,
-                  padding: s.featured ? '48px 32px' : '40px 28px',
-                  textAlign:'center',
-                  position:'relative',
-                  boxShadow: s.featured
-                    ? '0 0 60px rgba(200,151,62,0.12), 0 24px 48px rgba(0,0,0,0.5)'
-                    : '0 8px 32px rgba(0,0,0,0.35)',
-                  transform: s.featured ? 'translateY(-16px)' : 'translateY(0)',
-                  transition:'all 0.3s ease',
-                }}
-                onMouseEnter={e=>{e.currentTarget.style.transform=s.featured?'translateY(-20px)':'translateY(-6px)';e.currentTarget.style.boxShadow=s.featured?'0 0 80px rgba(200,151,62,0.2), 0 32px 64px rgba(0,0,0,0.6)':'0 16px 48px rgba(0,0,0,0.5)'}}
-                onMouseLeave={e=>{e.currentTarget.style.transform=s.featured?'translateY(-16px)':'translateY(0)';e.currentTarget.style.boxShadow=s.featured?'0 0 60px rgba(200,151,62,0.12), 0 24px 48px rgba(0,0,0,0.5)':'0 8px 32px rgba(0,0,0,0.35)'}}
-                >
-                  {/* Gold top line on featured */}
-                  {s.featured && (
-                    <div style={{position:'absolute',top:0,left:'20%',right:'20%',height:2,background:'linear-gradient(90deg,transparent,rgba(200,151,62,0.7),transparent)',borderRadius:2}} />
-                  )}
-
-                  {/* Number circle */}
-                  <div style={{
-                    width:60, height:60, borderRadius:'50%',
-                    border:`1.5px solid ${s.featured ? 'rgba(200,151,62,0.6)' : 'rgba(200,151,62,0.25)'}`,
-                    background: s.featured
-                      ? 'radial-gradient(circle, rgba(200,151,62,0.18) 0%, rgba(200,151,62,0.06) 100%)'
-                      : 'rgba(200,151,62,0.05)',
-                    display:'flex', alignItems:'center', justifyContent:'center',
-                    margin:'0 auto 28px',
-                    fontSize:18, fontWeight:800,
-                    color: s.featured ? GOLD : 'rgba(240,235,224,0.4)',
-                    fontFamily:"'Syne','Inter',sans-serif",
-                    letterSpacing:'0.02em',
-                    boxShadow: s.featured ? '0 0 20px rgba(200,151,62,0.15)' : 'none',
-                  }}>
+                  display:'flex',flexDirection:'column',gap:16,
+                  background:'rgba(17,17,30,0.6)',
+                  border:'1px solid rgba(255,255,255,0.06)',
+                  borderRadius:16,padding:32,boxSizing:'border-box',height:'100%',
+                  backdropFilter:'blur(12px)', WebkitBackdropFilter:'blur(12px)',
+                }}>
+                  {/* Number — Manrope 700, 40px, line-height 100%, gold */}
+                  <div style={{fontSize:40,fontWeight:700,lineHeight:'100%',fontFamily:"'Manrope','Inter',sans-serif",color:'#C8962A'}}>
                     {s.n}
                   </div>
 
-                  {/* Title */}
-                  <h3 style={{
-                    fontSize: s.featured ? 17 : 15,
-                    fontWeight:700,
-                    color:TEXT,
-                    marginBottom:12,
-                    letterSpacing:'-0.02em',
-                    fontFamily:"'Syne','Inter',sans-serif",
-                    lineHeight:1.3,
-                  }}>
+                  {/* Title — Manrope 700, 24px, line-height 100%, #F8FAFC */}
+                  <h3 style={{fontSize:24,fontWeight:700,lineHeight:'100%',fontFamily:"'Manrope','Inter',sans-serif",color:'#F8FAFC',margin:0}}>
                     {s.title}
                   </h3>
 
-                  {/* Description */}
-                  <p style={{
-                    fontSize:14,
-                    color:'rgba(240,235,224,0.5)',
-                    lineHeight:1.75,
-                    margin:0,
-                  }}>
+                  {/* Description — Manrope 400, 14px, line-height 160%, #94A3B8 */}
+                  <p style={{fontSize:14,fontWeight:400,lineHeight:'160%',fontFamily:"'Manrope','Inter',sans-serif",color:'#94A3B8',margin:0}}>
                     {s.desc}
                   </p>
                 </div>
@@ -1054,124 +980,27 @@ export default function Landing() {
       </section>
 
       {/* ══════════════════════════════════════════════════
-          PRICING — EVOX SERVICE PACKAGES
-      ══════════════════════════════════════════════════ */}
-      <section id="pricing" style={{padding:'96px 40px',background:'#0a0908'}}>
-        <div style={{maxWidth:1280,margin:'0 auto'}}>
-
-          <FadeIn style={{textAlign:'center',marginBottom:48}}>
-            <SBadge>Packages & Rates</SBadge>
-            <h2 style={{fontSize:'clamp(22px,3vw,40px)',fontWeight:800,letterSpacing:'-0.03em',lineHeight:1.2,fontFamily:"'Syne','Inter',sans-serif",color:TEXT,marginBottom:14}}>
-              Choose your <span style={goldGrad}>production tier</span>
-            </h2>
-            <p style={{fontSize:15,color:TEXT2,maxWidth:480,margin:'0 auto',lineHeight:1.65}}>
-              Start with strategy and scale up to full paid-ad deployment. Each tier builds on the previous.
-            </p>
-          </FadeIn>
-
-          {/* Package cards */}
-          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(270px,1fr))',gap:16,alignItems:'start'}}>
-            {PLANS.map((plan,i)=>(
-              <FadeIn key={plan.key} delay={i*0.07}>
-                <div style={{
-                  background:plan.popular?'linear-gradient(160deg,#221d10,#1c1a13)':CARD,
-                  border:`1px solid ${plan.popular?'rgba(200,151,62,0.5)':BORDER}`,
-                  borderRadius:20,padding:'28px 24px',position:'relative',
-                  boxShadow:plan.popular?'0 0 48px rgba(200,151,62,0.1)':'none',
-                  height:'100%',boxSizing:'border-box',
-                }}>
-                  {plan.popular&&(
-                    <div style={{position:'absolute',top:-12,left:'50%',transform:'translateX(-50%)',background:'linear-gradient(135deg,#d4a853,#b8803a)',color:'#0e0c09',fontSize:10,fontWeight:800,padding:'4px 16px',borderRadius:100,letterSpacing:'0.08em',whiteSpace:'nowrap'}}>
-                      MOST POPULAR
-                    </div>
-                  )}
-
-                  <div style={{fontSize:10,fontWeight:800,color:plan.popular?GOLD:TEXT3,letterSpacing:'0.12em',textTransform:'uppercase',marginBottom:10}}>{plan.label}</div>
-                  <div style={{fontSize:30,fontWeight:800,letterSpacing:'-0.03em',color:TEXT,fontFamily:"'Syne','Inter',sans-serif",marginBottom:4}}>{plan.price}</div>
-                  <div style={{fontSize:11,color:TEXT3,marginBottom:10}}>{plan.priceNote}</div>
-                  <p style={{fontSize:12,color:TEXT2,marginBottom:16,paddingBottom:16,borderBottom:`1px solid ${BORDER}`,lineHeight:1.55}}>{plan.tagline}</p>
-
-                  <button
-                    onClick={()=> startWizardWithPlan(plan.key)}
-                    style={{
-                      width:'100%',padding:'12px',marginBottom:20,
-                      background:plan.key==='free'?'linear-gradient(135deg,#d4a853,#b8803a)':plan.ctaDark?'linear-gradient(135deg,#d4a853,#b8803a)':'rgba(255,255,255,0.06)',
-                      border:plan.ctaDark||plan.key==='free'?'none':`1px solid ${BORDER}`,
-                      borderRadius:10,color:plan.ctaDark||plan.key==='free'?'#0e0c09':TEXT2,
-                      fontSize:13,fontWeight:700,cursor:'pointer',
-                      fontFamily:"'Inter',sans-serif",transition:'all 0.2s',
-                    }}
-                    onMouseEnter={e=>{e.currentTarget.style.opacity='0.88';e.currentTarget.style.transform='translateY(-1px)'}}
-                    onMouseLeave={e=>{e.currentTarget.style.opacity='1';e.currentTarget.style.transform='translateY(0)'}}
-                  >{plan.cta}</button>
-
-                  <div style={{borderTop:`1px solid ${BORDER}`,paddingTop:16}}>
-                    <div style={{fontSize:10,fontWeight:800,color:TEXT3,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:12}}>WHAT'S INCLUDED</div>
-                    {plan.features.map((f,fi)=>{
-                      const featureKey = `${plan.key}-${fi}`
-                      const isOpen = expandedFeature === featureKey
-                      return (
-                        <div key={f.text} style={{marginBottom:6,borderRadius:8,border:`1px solid ${isOpen?(plan.popular?'rgba(200,151,62,0.35)':BORDER):BORDER}`,overflow:'hidden',transition:'border-color 0.2s',background:isOpen?'rgba(255,255,255,0.03)':'transparent'}}>
-                          {/* Row — always visible */}
-                          <button
-                            onClick={()=>setExpandedFeature(isOpen ? null : featureKey)}
-                            style={{width:'100%',display:'flex',alignItems:'center',gap:9,padding:'9px 10px',background:'none',border:'none',cursor:'pointer',textAlign:'left'}}
-                          >
-                            <div style={{color:plan.popular?GOLD:TEXT3,flexShrink:0}}>{f.icon}</div>
-                            <span style={{fontSize:12,color:isOpen?(plan.popular?GOLD:TEXT):TEXT2,lineHeight:1.5,flex:1,fontWeight:isOpen?600:400,transition:'color 0.2s'}}>{f.text}</span>
-                            <span style={{color:TEXT3,fontSize:14,flexShrink:0,transform:isOpen?'rotate(180deg)':'rotate(0deg)',transition:'transform 0.25s',lineHeight:1}}>›</span>
-                          </button>
-                          {/* Expanded description */}
-                          {isOpen && (
-                            <div style={{padding:'0 10px 10px 32px',fontSize:11,color:TEXT2,lineHeight:1.65,borderTop:`1px solid ${BORDER}`}}>
-                              <div style={{paddingTop:8}}>{f.desc}</div>
-                            </div>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              </FadeIn>
-            ))}
-          </div>
-
-          {/* Upsell ladder */}
-          <FadeIn delay={0.2} style={{marginTop:32}}>
-            <div style={{background:CARD,border:`1px solid ${BORDER}`,borderRadius:14,padding:'20px 24px',display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:16}}>
-              <div style={{fontSize:13,color:TEXT2,lineHeight:1.6}}>
-                <span style={{fontWeight:700,color:TEXT}}>Build up as you grow.</span>{' '}Every higher tier includes all deliverables from the tier below.
-              </div>
-              <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
-                {['Free','Package A','Package B','Package C'].map((t,i,arr)=>(
-                  <React.Fragment key={t}>
-                    <span style={{padding:'4px 12px',borderRadius:100,fontSize:11,fontWeight:700,background:t==='Package B'?'rgba(200,151,62,0.15)':'rgba(255,255,255,0.05)',border:`1px solid ${t==='Package B'?GBORDER:BORDER}`,color:t==='Package B'?GOLD:TEXT2}}>{t}</span>
-                    {i<arr.length-1&&<span style={{color:TEXT3,fontSize:14}}>›</span>}
-                  </React.Fragment>
-                ))}
-              </div>
-            </div>
-          </FadeIn>
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════════════════
           FOUNDER STORY
       ══════════════════════════════════════════════════ */}
-      <section style={{padding:'96px 40px',background:'#0a0908',position:'relative',overflow:'hidden'}}>
-        <div style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)',width:'50vw',height:'40vh',pointerEvents:'none',background:'radial-gradient(ellipse, rgba(200,151,62,0.04) 0%, transparent 70%)'}}/>
-        <div style={{maxWidth:760,margin:'0 auto',position:'relative',zIndex:1}}>
-          <FadeIn style={{textAlign:'center'}}>
-            <SBadge>Why We Built This</SBadge>
-            <div style={{fontSize:48,color:'rgba(200,151,62,0.25)',marginBottom:20,lineHeight:1,fontFamily:'Georgia,serif'}}>&ldquo;</div>
-            <p style={{fontSize:'clamp(16px,1.8vw,22px)',color:'rgba(240,235,224,0.78)',lineHeight:1.8,fontStyle:'italic',marginBottom:32,letterSpacing:'-0.01em'}}>
-              I watched great businesses lose to worse ones — simply because they couldn&apos;t afford a full marketing team. Agencies were too expensive. AI tools were too fragmented. Every tool forgot your brand the moment you closed the tab. So I built what I wished existed: one system that thinks like a CMO, works like an agency, and never forgets who you are.
+      <section style={{padding:'120px 80px',background:'#080812',border:'1px solid rgba(255,255,255,0.04)',position:'relative',overflow:'hidden',display:'flex',flexDirection:'column',gap:64,boxSizing:'border-box'}}>
+        <div style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)',width:'50vw',height:'40vh',pointerEvents:'none',background:'radial-gradient(ellipse, rgba(100,120,255,0.05) 0%, transparent 70%)'}}/>
+        <div style={{maxWidth:800,margin:'0 auto',position:'relative',zIndex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:32}}>
+          <FadeIn style={{textAlign:'center',display:'flex',flexDirection:'column',alignItems:'center',gap:32}}>
+            {/* icon-quote-right — 48×48, Vector 36×36 inset top/left 6px, 2px stroke gold */}
+            <div style={{width:48,height:48,display:'flex',alignItems:'center',justifyContent:'center'}}>
+              <Quote size={36} color="#C8962A" strokeWidth={2} style={{marginTop:6,marginLeft:6}}/>
+            </div>
+            {/* Quote text — 800×225, Manrope 700, 32px, line-height 140%, center, #F8FAFC */}
+            <p style={{width:'100%',maxWidth:800,fontSize:32,fontWeight:700,lineHeight:'140%',letterSpacing:0,textAlign:'center',fontFamily:"'Manrope','Inter',sans-serif",color:'#F8FAFC',margin:0}}>
+              Evox essentially replaced our bloated performance agency team within three weeks. We are shipping six times more copy, tracking conversions reliably down to the penny, and our customer acquisition cost dropped by 42%.
             </p>
-            <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:16}}>
-              <div style={{width:52,height:52,borderRadius:'50%',background:'linear-gradient(135deg,#d4a853,#b8803a)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,fontWeight:800,color:'#0e0c09',flexShrink:0,fontFamily:"'Syne','Inter',sans-serif"}}>E</div>
-              <div style={{textAlign:'left'}}>
-                <div style={{fontWeight:800,fontSize:15,color:TEXT,letterSpacing:'-0.01em',fontFamily:"'Syne','Inter',sans-serif"}}>Evoke CMO Team</div>
-                <div style={{fontSize:12,color:TEXT3,marginTop:2}}>Founders, Evoke CMO</div>
+            {/* testimonial-user — 257×48, gap 12 */}
+            <div style={{display:'flex',alignItems:'center',gap:12}}>
+              <div style={{width:48,height:48,borderRadius:'50%',background:'#6C63FF',flexShrink:0}}/>
+              {/* user-info — 197×38, gap 2 */}
+              <div style={{display:'flex',flexDirection:'column',gap:2,textAlign:'left'}}>
+                <div style={{fontSize:15,fontWeight:600,lineHeight:'100%',letterSpacing:0,fontFamily:"'Manrope','Inter',sans-serif",color:'#F8FAFC'}}>Hanson Vance</div>
+                <div style={{fontSize:12,fontWeight:400,lineHeight:'100%',letterSpacing:0,fontFamily:"'Manrope','Inter',sans-serif",color:'#94A3B8'}}>VP of Acquisition, Cambridge Digital</div>
               </div>
             </div>
           </FadeIn>
@@ -1181,80 +1010,116 @@ export default function Landing() {
       {/* ══════════════════════════════════════════════════
           CTA  (strip_07 bottom, strip_08)
       ══════════════════════════════════════════════════ */}
-      <section style={{padding:'100px 40px 120px',textAlign:'center',background:'#0a0908'}}>
+      <section style={{padding:'100px 40px 120px',textAlign:'center',background:BG}}>
         <FadeIn>
           <h2 style={{fontSize:'clamp(22px,3vw,44px)',fontWeight:800,letterSpacing:'-0.03em',lineHeight:1.12,marginBottom:18,fontFamily:"'Syne','Inter',sans-serif",color:TEXT}}>
             Start marketing like a<br/>
             <span style={goldGrad}>CMO today</span>
           </h2>
           <p style={{fontSize:16,color:TEXT2,maxWidth:480,margin:'0 auto 44px',lineHeight:1.7}}>
-            Join hundreds of founders and marketers who replaced their expensive marketing teams with Evoke CMO.
+            Join the future of autonomous revenue. Activate your dedicated growth fleet in less than five minutes.
           </p>
           <div style={{display:'flex',gap:14,justifyContent:'center',flexWrap:'wrap',marginBottom:20}}>
             <button onClick={openAssessment} style={goldPill}
               onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 10px 32px rgba(200,151,62,0.45)'}}
               onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none'}}>
-              Get Started Free <ArrowRight size={18}/>
+              Get Started <ArrowRight size={18}/>
             </button>
-            <a href="#features" style={outlinePill}
+            <button onClick={()=>document.getElementById('agents')?.scrollIntoView({behavior:'smooth'})} style={outlinePill}
               onMouseEnter={e=>{e.currentTarget.style.borderColor='rgba(240,235,224,0.4)';e.currentTarget.style.color=TEXT}}
               onMouseLeave={e=>{e.currentTarget.style.borderColor='rgba(240,235,224,0.22)';e.currentTarget.style.color=TEXT}}>
-              See All Features
-            </a>
+              View All Agents
+            </button>
           </div>
-          <p style={{fontSize:13,color:TEXT3}}>Free to start · No credit card required</p>
+          {/* TrustRow — 602×40, padding-top 24, gap 40 */}
+          <div style={{display:'flex',alignItems:'center',justifyContent:'center',paddingTop:24,gap:40,flexWrap:'wrap'}}>
+            {[
+              {icon:<Shield size={16} color="#636385" strokeWidth={2}/>, label:'SOC2 Compliant'},
+              {icon:<Lock size={16} color="#636385" strokeWidth={2}/>, label:'256-bit Encryption'},
+              {icon:<Activity size={16} color="#636385" strokeWidth={2}/>, label:'99.9% Uptime'},
+              {icon:<UserCheck size={16} color="#636385" strokeWidth={2}/>, label:'GDPR Ready'},
+            ].map(item=>(
+              <div key={item.label} style={{display:'inline-flex',alignItems:'center',gap:8}}>
+                {item.icon}
+                <span style={{fontSize:12,fontWeight:700,lineHeight:'100%',letterSpacing:'0.05em',textTransform:'uppercase',fontFamily:"'Manrope','Inter',sans-serif",color:'#A3A3C2'}}>{item.label}</span>
+              </div>
+            ))}
+          </div>
         </FadeIn>
       </section>
 
       {/* ══════════════════════════════════════════════════
           FOOTER  (strip_08)
       ══════════════════════════════════════════════════ */}
-      <footer style={{borderTop:`1px solid ${BORDER}`,padding:'56px 40px 40px',background:BG2}}>
-        <div className="footer-grid" style={{maxWidth:1200,margin:'0 auto',display:'grid',gridTemplateColumns:'1fr 180px 180px',gap:60,alignItems:'start'}}>
-
-          {/* Brand */}
-          <div>
-            <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:16}}>
-              {/* EVOKE image logo — matches navbar */}
-              <img
-                src="/evoke-logo.png"
-                alt="EVOKE"
-                style={{height:26,width:'auto',objectFit:'contain',display:'block'}}
-              />
+      <footer style={{position:'relative',zIndex:1,padding:'80px 80px 40px',background:'#030307',border:'1px solid rgba(255,255,255,0.04)',display:'flex',flexDirection:'column',gap:48,boxSizing:'border-box'}}>
+        {/* footer-columns — 1280×155, justify space-between (no explicit gap — space-between distributes it) */}
+        <div className="footer-grid" style={{maxWidth:1280,margin:'0 auto',width:'100%',display:'flex',justifyContent:'space-between',alignItems:'start',flexWrap:'wrap',rowGap:32}}>
+          {/* brand-column — 320×103, gap 16 (only column with a fixed width, to wrap the tagline) */}
+          <div style={{width:320,flexShrink:0,display:'flex',flexDirection:'column',gap:16}}>
+            <div style={{display:'flex',alignItems:'center',gap:9}}>
+              <img src="/evoke-logo.png" alt="EVOKE" style={{height:25,width:'auto',objectFit:'contain',display:'block'}}/>
               <div style={{display:'flex',alignItems:'center',gap:5,padding:'5px 11px 5px 8px',background:'#0a0805',border:'1px solid rgba(200,151,62,0.32)',borderRadius:100,boxShadow:'0 0 0 1px rgba(0,0,0,0.6) inset'}}>
                 <Zap size={11} color={GOLD} fill={GOLD}/>
                 <span style={{fontSize:11,fontWeight:700,letterSpacing:'0.09em',color:GOLD,fontFamily:"'Inter',sans-serif"}}>CMO</span>
               </div>
             </div>
-            <p style={{fontSize:13,color:TEXT3,lineHeight:1.7,maxWidth:280}}>Your AI Chief Marketing Officer. Generate campaigns, post to every channel, grow your brand.</p>
+            <p style={{fontSize:13,fontWeight:400,lineHeight:'150%',letterSpacing:0,fontFamily:"'Manrope','Inter',sans-serif",color:'#94A3B8',margin:0}}>Autonomous corporate marketing departments designed to scale acquisition pipelines with surgical machine precision.</p>
           </div>
 
-          {/* Product */}
-          <div>
-            <div style={{fontSize:11,fontWeight:700,color:TEXT3,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:20}}>PRODUCT</div>
-            {['Features','Pricing','How It Works'].map(l=>(
-              <a key={l} href={`#${l.toLowerCase().replace(/ /g,'-')}`}
-                style={{display:'block',fontSize:14,color:TEXT2,textDecoration:'none',marginBottom:14,transition:'color 0.15s'}}
-                onMouseEnter={e=>e.target.style.color=TEXT}
-                onMouseLeave={e=>e.target.style.color='rgba(240,235,224,0.55)'}>{l}</a>
+          {/* links-column — WORKFORCE — auto width (hug content), gap 16 */}
+          <div style={{display:'flex',flexDirection:'column',gap:16}}>
+            <div style={{fontSize:14,fontWeight:600,lineHeight:'100%',fontFamily:"'Manrope','Inter',sans-serif",color:'#F8FAFC'}}>WORKFORCE</div>
+            {['Sovereign CMO','Acquisition Lead','Creative Director','SEO Pipeline'].map(l=>(
+              <a key={l} href="#agents"
+                style={{fontSize:13,fontWeight:400,lineHeight:'100%',fontFamily:"'Manrope','Inter',sans-serif",color:'#94A3B8',textDecoration:'none',transition:'color 0.15s'}}
+                onMouseEnter={e=>e.target.style.color='#F8FAFC'}
+                onMouseLeave={e=>e.target.style.color='#94A3B8'}>{l}</a>
             ))}
           </div>
 
-          {/* Legal */}
-          <div>
-            <div style={{fontSize:11,fontWeight:700,color:TEXT3,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:20}}>LEGAL</div>
-            {['Privacy Policy','Terms of Service'].map(l=>(
-              <a key={l} href={`/${l.toLowerCase().replace(/ /g,'-')}`}
-                style={{display:'block',fontSize:14,color:TEXT2,textDecoration:'none',marginBottom:14,transition:'color 0.15s'}}
-                onMouseEnter={e=>e.target.style.color=TEXT}
-                onMouseLeave={e=>e.target.style.color='rgba(240,235,224,0.55)'}>{l}</a>
+          {/* links-column — PLATFORM — auto width (hug content), gap 16 */}
+          <div style={{display:'flex',flexDirection:'column',gap:16}}>
+            <div style={{fontSize:14,fontWeight:600,lineHeight:'100%',fontFamily:"'Manrope','Inter',sans-serif",color:'#F8FAFC'}}>PLATFORM</div>
+            {['Vector Attribution','Integrations','SOC2 Protocol','Attribution Drift'].map(l=>(
+              <a key={l} href="#"
+                style={{fontSize:13,fontWeight:400,lineHeight:'100%',fontFamily:"'Manrope','Inter',sans-serif",color:'#94A3B8',textDecoration:'none',transition:'color 0.15s'}}
+                onMouseEnter={e=>e.target.style.color='#F8FAFC'}
+                onMouseLeave={e=>e.target.style.color='#94A3B8'}>{l}</a>
+            ))}
+          </div>
+
+          {/* links-column — LEGAL — auto width (hug content), gap 16 */}
+          <div style={{display:'flex',flexDirection:'column',gap:16}}>
+            <div style={{fontSize:14,fontWeight:600,lineHeight:'100%',fontFamily:"'Manrope','Inter',sans-serif",color:'#F8FAFC'}}>LEGAL</div>
+            {[
+              {l:'Privacy Policy',   href:'/privacy'},
+              {l:'Terms of Service', href:'/terms'},
+              {l:'Agency SLA',       href:'#'},
+              {l:'Security',         href:'#'},
+            ].map(item=>(
+              <a key={item.l} href={item.href}
+                style={{fontSize:13,fontWeight:400,lineHeight:'100%',fontFamily:"'Manrope','Inter',sans-serif",color:'#94A3B8',textDecoration:'none',transition:'color 0.15s'}}
+                onMouseEnter={e=>e.target.style.color='#F8FAFC'}
+                onMouseLeave={e=>e.target.style.color='#94A3B8'}>{item.l}</a>
             ))}
           </div>
         </div>
 
-        {/* Copyright */}
-        <div style={{maxWidth:1200,margin:'36px auto 0',paddingTop:24,borderTop:`1px solid ${BORDER}`,textAlign:'center'}}>
-          <p style={{fontSize:13,color:TEXT3}}>© 2026 Evoke CMO. All rights reserved.</p>
+        {/* footer-bottom — 1280×42, justify space-between, padding-top 24, border-top 1px solid #FFFFFF0A */}
+        <div style={{maxWidth:1280,margin:'0 auto',width:'100%',paddingTop:24,borderTop:'1px solid rgba(255,255,255,0.04)',display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:16,boxSizing:'border-box'}}>
+          <p style={{fontSize:12,fontWeight:400,lineHeight:'100%',fontFamily:"'Manrope','Inter',sans-serif",color:'#64748B',margin:0}}>© 2026 Evoke CMO Inc. All rights reserved.</p>
+          <div style={{display:'flex',alignItems:'center',gap:16}}>
+            {[
+              {icon:<Twitter size={18}/>, href:'#', label:'Twitter'},
+              {icon:<Linkedin size={18}/>, href:'#', label:'LinkedIn'},
+              {icon:<Github size={18}/>, href:'#', label:'GitHub'},
+            ].map(s=>(
+              <a key={s.label} href={s.href} aria-label={s.label}
+                style={{color:'#64748B',display:'flex',alignItems:'center',transition:'color 0.15s'}}
+                onMouseEnter={e=>e.currentTarget.style.color='#F8FAFC'}
+                onMouseLeave={e=>e.currentTarget.style.color='#64748B'}>{s.icon}</a>
+            ))}
+          </div>
         </div>
       </footer>
 
@@ -1282,7 +1147,7 @@ export default function Landing() {
               transition={{ type: 'spring', damping: 24, stiffness: 300 }}
               onClick={e => e.stopPropagation()}
               style={{
-                background: '#16140f',
+                background: '#0d1121',
                 border: `1px solid ${activeModule.color}40`,
                 borderRadius: 24,
                 padding: '36px 32px',
@@ -1413,7 +1278,7 @@ export default function Landing() {
               {/* ══ PHASE 1: Plan Selection ══ */}
               {wizardPhase === 'plan' && (
                 <motion.div key="plan-select" initial={{opacity:0,y:20}} animate={{opacity:1,y:0}} transition={{duration:0.35}}
-                  style={{background:'linear-gradient(160deg,#161410,#131210)',border:`1px solid ${GBORDER}`,borderRadius:24,padding:'32px 28px',position:'relative'}}>
+                  style={{background:'linear-gradient(160deg,#0d1121,#0a0f1e)',border:`1px solid ${GBORDER}`,borderRadius:24,padding:'32px 28px',position:'relative'}}>
                   <button onClick={closeWizard} style={{position:'absolute',top:16,right:20,background:'none',border:'none',color:TEXT3,cursor:'pointer',fontSize:18,lineHeight:1,padding:4}}>✕</button>
                   <div style={{textAlign:'center',marginBottom:28}}>
                     <div style={{fontSize:11,fontWeight:700,color:GOLD,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:8}}>Step 1 of 3</div>
@@ -1423,7 +1288,7 @@ export default function Landing() {
                   <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(230px,1fr))',gap:14,alignItems:'start'}}>
                     {PLANS.map((plan,i)=>(
                       <div key={plan.key} style={{
-                        background:plan.popular?'linear-gradient(160deg,#221d10,#1c1a13)':CARD,
+                        background:plan.popular?'linear-gradient(160deg,#141a2e,#0d1121)':CARD,
                         border:`1px solid ${plan.popular?'rgba(200,151,62,0.5)':BORDER}`,
                         borderRadius:18,padding:'22px 18px',position:'relative',
                         boxShadow:plan.popular?'0 0 40px rgba(200,151,62,0.1)':'none',
@@ -1439,7 +1304,7 @@ export default function Landing() {
                         {/* CTA button */}
                         <button onClick={()=>{
                           try { localStorage.setItem('evoke_selected_package', plan.key) } catch {}
-                          user ? navigate('/brand-kb') : redirectToLogin(window.location.origin + '/brand-kb')
+                          user ? navigate('/brand-profile') : redirectToLogin(window.location.origin + '/brand-profile')
                         }} style={{
                           width:'100%',padding:'11px',marginBottom:16,
                           background:plan.key==='free'?'linear-gradient(135deg,#d4a853,#b8803a)':plan.ctaDark?'linear-gradient(135deg,#d4a853,#b8803a)':'rgba(255,255,255,0.06)',
@@ -1488,7 +1353,7 @@ export default function Landing() {
                 const singleSel   = wizardAnswers[step.key]
                 return (
                   <motion.div key={wizardStep} initial={{opacity:0,y:20}} animate={{opacity:1,y:0}} transition={{duration:0.35}}
-                    style={{background:'linear-gradient(160deg,#161410,#131210)',border:`1px solid ${GBORDER}`,borderRadius:24,padding:'40px 36px',position:'relative'}}>
+                    style={{background:'linear-gradient(160deg,#0d1121,#0a0f1e)',border:`1px solid ${GBORDER}`,borderRadius:24,padding:'40px 36px',position:'relative'}}>
 
                     {/* Progress */}
                     <div style={{marginBottom:28}}>
@@ -1594,7 +1459,7 @@ export default function Landing() {
               {/* ══ PHASE: Ready to Go ══ */}
               {wizardPhase === 'ready' && (
                 <motion.div key="ready" initial={{opacity:0,scale:0.95}} animate={{opacity:1,scale:1}} transition={{duration:0.35}}
-                  style={{background:'linear-gradient(160deg,#161410,#131210)',border:`1px solid ${GBORDER}`,borderRadius:24,padding:'48px 36px',position:'relative',textAlign:'center'}}>
+                  style={{background:'linear-gradient(160deg,#0d1121,#0a0f1e)',border:`1px solid ${GBORDER}`,borderRadius:24,padding:'48px 36px',position:'relative',textAlign:'center'}}>
                   <button onClick={closeWizard} style={{position:'absolute',top:16,right:20,background:'none',border:'none',color:TEXT3,cursor:'pointer',fontSize:18,lineHeight:1,padding:4}}>✕</button>
 
                   {/* Success icon */}
@@ -1617,7 +1482,7 @@ export default function Landing() {
 
                   <div style={{display:'flex',flexDirection:'column',gap:12,alignItems:'center'}}>
                     <button
-                      onClick={()=>{ setWizardOpen(false); navigate('/brand-kb') }}
+                      onClick={()=>{ setWizardOpen(false); navigate('/brand-profile') }}
                       style={{padding:'14px 40px',background:'linear-gradient(135deg,#d4a853,#b8803a)',border:'none',borderRadius:100,color:'#0e0c09',fontSize:15,fontWeight:800,cursor:'pointer',display:'inline-flex',alignItems:'center',gap:8,transition:'all 0.2s'}}
                       onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 8px 24px rgba(200,151,62,0.4)'}}
                       onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none'}}>

@@ -7,9 +7,10 @@ import {
   Mail, Globe, Users, BarChart2, UserCheck, Box, Inbox, Link2,
   DollarSign, Share2, Crown, Lock, ArrowRight, Sparkles,
 } from 'lucide-react'
-import Navbar from '../components/Navbar.jsx'
+import SidebarLayout from '../components/SidebarLayout.jsx'
 import UpgradeModal from '../components/UpgradeModal.jsx'
 import { useAuth } from '../hooks/useAuth.js'
+import { useRequireAuth } from '../hooks/useRequireAuth'
 import { useUserPlan } from '../hooks/useUserPlan.js'
 import { getKnowledgeBase } from '../services/knowledgeBaseService.js'
 import { PLANS, PLAN_LABELS } from '../lib/planGate.js'
@@ -33,11 +34,8 @@ const PLAN_SECTIONS = [
     desc: 'Core strategy & planning tools — available to all users.',
     tools: [
       { label: 'Marketing Strategy',    desc: 'Annual, quarterly & monthly marketing plans with channel budgets and KPIs.',    icon: TrendingUp,  color: '#c8973e', route: '/strategy' },
-      { label: 'Brand Knowledge Base',  desc: 'Store your brand voice, visuals, messaging, audience, and business goals.',    icon: BookOpen,    color: '#f59e0b', route: '/brand-kb' },
       { label: 'Growth Strategy',       desc: 'Full GTM plan, revenue forecast, market sizing, and milestone roadmap.',        icon: Zap,         color: '#f97316', route: '/campaign/growth_strategy' },
-      { label: 'Content Calendar',      desc: '30-day multi-platform content plan with daily post ideas and captions.',        icon: Calendar,    color: '#3b82f6', route: '/campaign/content_calendar' },
       { label: 'Marketing Health Score',desc: 'Audit your full marketing performance and get an improvement checklist.',       icon: Activity,    color: '#10b981', route: '/health-score' },
-      { label: 'KPI Recommendations',   desc: 'Set and track the right KPIs for your business goals and growth stage.',       icon: Target,      color: '#a855f7', route: '/kpi-recommendations' },
     ],
   },
   {
@@ -47,6 +45,9 @@ const PLAN_SECTIONS = [
     color: '#3b82f6',
     desc: 'AI content creation, product visuals, copywriting, and video — everything to build your creative assets.',
     tools: [
+      { label: 'Brand Knowledge Base',  desc: 'Store your brand voice, visuals, messaging, audience, and business goals.',      icon: BookOpen, color: '#f59e0b', route: '/brand-kb' },
+      { label: 'Content Calendar',       desc: '30-day multi-platform content plan with daily post ideas and captions.',        icon: Calendar, color: '#3b82f6', route: '/campaign/content_calendar' },
+      { label: 'KPI Recommendations',    desc: 'Set and track the right KPIs for your business goals and growth stage.',         icon: Target,   color: '#a855f7', route: '/kpi-recommendations' },
       { label: 'Caption Suite',          desc: 'AI-generated captions for Instagram, LinkedIn, TikTok, Twitter, and Facebook.', icon: PenTool,  color: '#10b981', route: '/caption-suite' },
       { label: 'Reel Scripts',           desc: 'Hook + body + CTA scripts for Reels, TikTok, and YouTube Shorts.',             icon: Sliders,  color: '#f59e0b', route: '/reel-scripts' },
       { label: 'Content Generation',     desc: 'Blog posts, landing page copy, and newsletters — full AI-written content.',    icon: FileText, color: '#6366f1', route: '/content-gen' },
@@ -101,6 +102,7 @@ function planAllows(userPlan, requiredPlan) {
 
 export default function AgentsHub() {
   const navigate = useNavigate()
+  const { authReady } = useRequireAuth()
   const { user } = useAuth()
   const { plan: userPlan } = useUserPlan()
   const [hasBrandKb,  setHasBrandKb]  = useState(false)
@@ -124,10 +126,16 @@ export default function AgentsHub() {
     }
   }
 
+  if (!authReady) return (
+    <div style={{ minHeight: '100vh', background: BG, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ width: 32, height: 32, border: `2px solid ${GOLD}`, borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  )
+
   return (
-    <div style={{ minHeight: '100vh', background: BG, fontFamily: "'Inter',sans-serif" }}>
-      <Navbar />
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '96px 28px 80px' }}>
+    <SidebarLayout bg={BG}>
+      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '40px 28px 80px' }}>
 
         {/* ── Header ── */}
         <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: 36 }}>
@@ -158,7 +166,7 @@ export default function AgentsHub() {
               <div style={{ fontSize: 13, fontWeight: 700, color: GOLD, marginBottom: 3 }}>Set up your Brand Profile first</div>
               <div style={{ fontSize: 12, color: TEXT2 }}>EVOX AI needs your brand details to personalise every agent output.</div>
             </div>
-            <button onClick={() => navigate('/brand-kb')}
+            <button onClick={() => navigate('/brand-profile')}
               style={{ padding: '9px 18px', background: 'linear-gradient(135deg,#d4a853,#b8803a)', border: 'none', borderRadius: 10, color: '#0e0c09', fontSize: 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6 }}>
               <BookOpen size={14} /> Set Up Brand Profile <ArrowRight size={13} />
             </button>
@@ -245,7 +253,7 @@ export default function AgentsHub() {
           onClose={() => setUpgradeFor(null)}
         />
       )}
-    </div>
+    </SidebarLayout>
   )
 }
 

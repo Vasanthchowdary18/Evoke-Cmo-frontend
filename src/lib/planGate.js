@@ -34,15 +34,17 @@ export const PLAN_TAGS = {
 export const FEATURE_PLAN = {
   // ── Free features (always available) ──
   strategy_campaigns:  'free',   // Growth, Brand, Content, Email, SEO, Event, Sales, CRO, Competitive
-  brand_kb:            'free',
   health_score:        'free',
   connect_accounts:    'free',
   campaign_hub:        'free',
   analytics_basic:     'free',
-  reel_scripts:        'free',
-  caption_suite:       'free',
 
   // ── Package A ──
+  brand_kb:            'package-a',   // Brand Knowledge Base tool (setup wizard /brand-profile stays free)
+  kpi_recommendations: 'package-a',
+  content_calendar:    'package-a',   // 30-day content plan
+  reel_scripts:        'package-a',   // was inconsistently 'free' — matches ROUTE_PLAN
+  caption_suite:       'package-a',   // was inconsistently 'free' — matches ROUTE_PLAN
   image_angles:        'package-a',   // Multi-angle product shots
   lifestyle_images:    'package-a',   // Lifestyle / scene images
   banner_creation:     'package-a',   // Ad-ready static banners
@@ -125,11 +127,13 @@ export const ROUTE_PLAN = {
   '/package-a':             'free',
   '/package-b':             'free',
   '/package-c':             'free',
-  '/brand-profile':         'free',
-  '/brand-kb':              'free',
+  '/brand-profile':         'free',   // brand setup wizard stays free (onboarding)
   '/health-score':          'free',
   '/strategy':              'free',
-  '/kpi-recommendations':   'free',
+
+  // ── Brand KB tool, KPI & Content Calendar moved to Package A ──
+  '/brand-kb':              'package-a',
+  '/kpi-recommendations':   'package-a',
 
   // ── Package A ──
   '/caption-suite':         'package-a',

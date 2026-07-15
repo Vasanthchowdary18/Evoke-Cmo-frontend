@@ -83,15 +83,6 @@ Evaluate against all 5 brand standard categories and return ONLY valid JSON:
   return JSON.parse(match[0])
 }
 
-const AUDIT_MOCK = [
-  { id: 'BG-0041', time: '2h ago',  type: 'Social Post',    status: 'approved',       score: 94, agent: 'Content Agent' },
-  { id: 'BG-0040', time: '3h ago',  type: 'Ad Creative',    status: 'flagged',        score: 71, agent: 'Creative Agent' },
-  { id: 'BG-0039', time: '5h ago',  type: 'Email',          status: 'approved',       score: 89, agent: 'Content Agent' },
-  { id: 'BG-0038', time: '7h ago',  type: 'Banner',         status: 'rejected',       score: 42, agent: 'Creative Agent' },
-  { id: 'BG-0037', time: '1d ago',  type: 'Blog Article',   status: 'approved',       score: 96, agent: 'Content Agent' },
-  { id: 'BG-0036', time: '1d ago',  type: 'Landing Page',   status: 'human_review',   score: 67, agent: 'Publishing Agent' },
-]
-
 const statusStyle = (s) => {
   const map = {
     approved:     { bg: 'rgba(16,185,129,0.12)', color: '#10b981', label: 'Approved' },
@@ -100,6 +91,17 @@ const statusStyle = (s) => {
     human_review: { bg: 'rgba(99,102,241,0.12)', color: '#6366f1', label: 'Human Review' },
   }
   return map[s] || map.flagged
+}
+
+const timeAgo = (seconds) => {
+  if (!seconds) return 'Just now'
+  const diffMs = Date.now() - seconds * 1000
+  const mins = Math.floor(diffMs / 60000)
+  if (mins < 1) return 'Just now'
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  return `${Math.floor(hrs / 24)}d ago`
 }
 
 export default function BrandGovernancePage() {
@@ -115,7 +117,7 @@ export default function BrandGovernancePage() {
   const [result, setResult]           = useState(null)
   const [error, setError]             = useState('')
   const [activeStd, setActiveStd]     = useState(null)
-  const [auditLog, setAuditLog]       = useState(AUDIT_MOCK)
+  const [auditLog, setAuditLog]       = useState([])
   const [savedDocId, setSavedDocId]   = useState(null)
   const [history, setHistory]         = useState([])
 
@@ -139,12 +141,12 @@ export default function BrandGovernancePage() {
       const r = await reviewContent(content, contentType, brand)
       setResult(r)
       const newEntry = {
-        id: `BG-00${42 + auditLog.length}`,
-        time: 'Just now',
+        id: `BG-${String(auditLog.length + 1).padStart(4, '0')}`,
         type: contentType,
         status: r.decision,
         score: r.overallScore,
         agent: 'Brand Governance Agent',
+        createdAt: { seconds: Date.now() / 1000 },
       }
       setAuditLog(prev => [newEntry, ...prev])
       try {
@@ -385,23 +387,27 @@ export default function BrandGovernancePage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
             <ClipboardList size={15} color={GOLD} />
             <h2 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Audit Log</h2>
-            <span style={{ fontSize: 11, background: GDIM, border: `1px solid ${GBORDER}`, borderRadius: 20, padding: '2px 8px', color: GOLD, marginLeft: 'auto' }}>{auditLog.length} entries</span>
+            <span style={{ fontSize: 11, background: GDIM, border: `1px solid ${GBORDER}`, borderRadius: 20, padding: '2px 8px', color: GOLD, marginLeft: 'auto' }}>{`${auditLog.length} entries`}</span>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {auditLog.map((entry, i) => {
-              const st = statusStyle(entry.status)
-              return (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 14, background: CARD2, borderRadius: 10, padding: '10px 14px' }}>
-                  <span style={{ fontSize: 11, fontFamily: 'monospace', color: TEXT3, minWidth: 56 }}>{entry.id}</span>
-                  <span style={{ fontSize: 12, background: st.bg, color: st.color, borderRadius: 20, padding: '2px 10px', fontWeight: 500, minWidth: 90, textAlign: 'center' }}>{st.label}</span>
-                  <span style={{ fontSize: 13, color: TEXT, flex: 1 }}>{entry.type}</span>
-                  <span style={{ fontSize: 12, color: TEXT3 }}>{entry.agent}</span>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: entry.score >= 80 ? '#10b981' : entry.score >= 60 ? '#f59e0b' : '#ef4444', minWidth: 32, textAlign: 'right' }}>{entry.score}</span>
-                  <span style={{ fontSize: 11, color: TEXT3, display: 'flex', alignItems: 'center', gap: 4 }}><Clock size={11} />{entry.time}</span>
-                </div>
-              )
-            })}
-          </div>
+          {auditLog.length === 0 ? (
+            <div style={{ fontSize: 13, color: TEXT3, padding: '10px 2px' }}>No reviews yet this session — run your first conformance review above.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {auditLog.map((entry, i) => {
+                const st = statusStyle(entry.status)
+                return (
+                  <div key={entry.id || i} style={{ display: 'flex', alignItems: 'center', gap: 14, background: CARD2, borderRadius: 10, padding: '10px 14px' }}>
+                    <span style={{ fontSize: 11, fontFamily: 'monospace', color: TEXT3, minWidth: 56 }}>{entry.label || entry.id}</span>
+                    <span style={{ fontSize: 12, background: st.bg, color: st.color, borderRadius: 20, padding: '2px 10px', fontWeight: 500, minWidth: 90, textAlign: 'center' }}>{st.label}</span>
+                    <span style={{ fontSize: 13, color: TEXT, flex: 1 }}>{entry.type}</span>
+                    <span style={{ fontSize: 12, color: TEXT3 }}>{entry.agent}</span>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: entry.score >= 80 ? '#10b981' : entry.score >= 60 ? '#f59e0b' : '#ef4444', minWidth: 32, textAlign: 'right' }}>{entry.score}</span>
+                    <span style={{ fontSize: 11, color: TEXT3, display: 'flex', alignItems: 'center', gap: 4 }}><Clock size={11} />{timeAgo(entry.createdAt?.seconds)}</span>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
 
       </div>

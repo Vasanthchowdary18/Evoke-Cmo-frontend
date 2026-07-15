@@ -503,7 +503,16 @@ export default function MarketingAttributionPage() {
                                 </div>
                                 <span style={{ fontSize: 11, fontWeight: 700, color: GREEN }}>{rec.impact}</span>
                               </div>
-                              <div style={{ fontSize: 12, color: TEXT2, lineHeight: 1.6 }}>{rec.action}</div>
+                              <div style={{ fontSize: 12, color: TEXT2, lineHeight: 1.6, marginBottom: 10 }}>{rec.action}</div>
+                              <button
+                                onClick={() => navigate('/execution', { state: { applyRecommendation: rec } })}
+                                style={{
+                                  display: 'flex', alignItems: 'center', gap: 6, background: `${pc}14`,
+                                  border: `1px solid ${pc}30`, borderRadius: 8, padding: '6px 12px',
+                                  color: pc, fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                                }}>
+                                <Zap size={12}/> Apply in Marketing Execution
+                              </button>
                             </motion.div>
                           )
                         })}

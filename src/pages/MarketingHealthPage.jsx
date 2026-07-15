@@ -140,7 +140,7 @@ function buildCategories(userData, kb) {
     {
       key: 'brand',     icon: <BookOpen size={17} />,   label: 'Brand Knowledge Base',
       color: '#f59e0b', score: kbScore,                 max: 20,
-      status: kbStatus, action: kbAction,               path: '/brand-kb',
+      status: kbStatus, action: kbAction,               path: '/brand-profile',
       locked: false,
     },
     {
@@ -396,7 +396,7 @@ export default function MarketingHealthPage() {
             <CategoryCard
               key={cat.key}
               cat={cat}
-              onAction={() => navigate(cat.path, cat.path === '/brand-kb' ? { state: { edit: true } } : undefined)}
+              onAction={() => navigate(cat.path, cat.path === '/brand-profile' ? { state: { edit: true } } : undefined)}
             />
           ))}
         </div>
@@ -436,7 +436,7 @@ export default function MarketingHealthPage() {
                     </div>
                   </div>
                   <button
-                    onClick={() => navigate(item.path, item.path === '/brand-kb' ? { state: { edit: true } } : undefined)}
+                    onClick={() => navigate(item.path, item.path === '/brand-profile' ? { state: { edit: true } } : undefined)}
                     style={{
                       padding: '8px 16px', flexShrink: 0,
                       background: `${item.color}14`,

@@ -10,12 +10,12 @@ const TEXT3   = 'rgba(240,235,224,0.32)'
 const BORDER  = 'rgba(255,255,255,0.07)'
 
 const JOURNEY = [
-  { step: 1,  label: 'Brand Setup',          path: '/brand-kb' },
+  { step: 1,  label: 'Brand Setup',          path: '/brand-profile' },
   { step: 2,  label: 'Marketing Strategy',    path: '/strategy' },
   { step: 3,  label: 'Campaign Planning',     path: '/campaign-hub' },
   { step: 4,  label: 'Audience Builder',      path: '/audience-builder' },
   { step: 5,  label: 'Content Generation',    path: '/caption-suite' },
-  { step: 6,  label: 'Creative Assets',       path: '/products' },
+  { step: 6,  label: 'Creative Assets',       path: '/creative-asset' },
   { step: 7,  label: 'Video Generation',      path: '/video-gen' },
   { step: 8,  label: 'Brand Governance',      path: '/brand-governance' },
   { step: 9,  label: 'Approval Queue',        path: '/queue' },

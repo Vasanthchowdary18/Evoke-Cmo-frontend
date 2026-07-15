@@ -29,3 +29,25 @@ export async function saveKnowledgeBase(uid, data) {
     }
   }
 }
+
+/**
+ * Record a journey step's output into the knowledge base so later steps
+ * (and a future orchestration engine) have context beyond the original
+ * brand-setup answers. Keyed by step name, e.g. 'strategy', 'audience'.
+ */
+export async function appendJourneyOutput(uid, step, summary) {
+  const entry = { summary, updatedAt: serverTimestamp() }
+  try {
+    await updateDoc(userRef(uid), {
+      [`knowledgeBase.journeyOutputs.${step}`]: entry,
+    })
+  } catch (e) {
+    if (e.code === 'not-found') {
+      await setDoc(userRef(uid), {
+        knowledgeBase: { journeyOutputs: { [step]: entry } },
+      }, { merge: true })
+    } else {
+      throw e
+    }
+  }
+}

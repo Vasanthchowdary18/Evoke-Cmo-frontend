@@ -12,6 +12,7 @@ import AppSidebar from '../components/AppSidebar.jsx'
 import UpgradeModal from '../components/UpgradeModal.jsx'
 import BrandSetupModal from '../components/BrandSetupModal.jsx'
 import { useAuth } from '../hooks/useAuth.js'
+import { useRequireAuth } from '../hooks/useRequireAuth'
 import { useUserPlan } from '../hooks/useUserPlan.js'
 import { getOrCreateUser } from '../services/userService'
 import { getKnowledgeBase } from '../services/knowledgeBaseService.js'
@@ -57,9 +58,9 @@ const ALL_AGENTS = [
   // Free
   { label: 'Marketing Strategy',    desc: 'Annual plan, KPIs & budget',           icon: '📊', color: GOLD,   plan: 'free',      route: '/strategy' },
   { label: 'Health Score',           desc: 'Audit your marketing performance',      icon: '💯', color: GREEN,  plan: 'free',      route: '/health-score' },
-  { label: 'KPI Recommendations',    desc: 'Set & track your key metrics',         icon: '🎯', color: GOLD,   plan: 'free',      route: '/kpi-recommendations' },
-  { label: 'Brand Knowledge Base',   desc: 'Your brand profile & goals',           icon: '🏢', color: GOLD,   plan: 'free',      route: '/brand-kb' },
   // Package A
+  { label: 'KPI Recommendations',    desc: 'Set & track your key metrics',         icon: '🎯', color: GOLD,   plan: 'package-a', route: '/kpi-recommendations' },
+  { label: 'Brand Knowledge Base',   desc: 'Your brand profile & goals',           icon: '🏢', color: GOLD,   plan: 'package-a', route: '/brand-kb' },
   { label: 'Caption Suite',          desc: 'Social captions & hashtags',           icon: '✍️', color: GREEN,  plan: 'package-a', route: '/caption-suite' },
   { label: 'Copywriting Agent',      desc: 'Ads, landing pages & web copy',        icon: '📝', color: '#ec4899', plan: 'package-a', route: '/copywriting' },
   { label: 'Reel Scripts',           desc: 'TikTok & Reels video scripts',         icon: '🎬', color: '#f59e0b', plan: 'package-a', route: '/reel-scripts' },
@@ -91,10 +92,10 @@ function getRecommendedAgents(stage, planLevel, kb) {
   const pick = (names) => names.map(n => ALL_AGENTS.find(a => a.label === n)).filter(Boolean)
 
   if (!kb || stage === 'setup') {
-    return pick(['Brand Knowledge Base', 'Marketing Strategy', 'Health Score', 'KPI Recommendations'])
+    return pick(['Marketing Strategy', 'Health Score', 'Content Generation', 'Caption Suite'])
   }
   if (planLevel === 0) {
-    return pick(['Marketing Strategy', 'Health Score', 'KPI Recommendations', 'Brand Knowledge Base'])
+    return pick(['Marketing Strategy', 'Health Score', 'Content Generation', 'Caption Suite'])
   }
 
   // Normalise multi-select arrays or legacy strings
@@ -150,7 +151,7 @@ function getRecommendedAgents(stage, planLevel, kb) {
 /* 7-step campaign launch journey */
 const JOURNEY = [
   { key: 'account',    label: 'Account created',           route: null,                icon: '🔐' },
-  { key: 'onboarding', label: 'Brand profile set',          route: '/brand-kb',         icon: '🏢' },
+  { key: 'onboarding', label: 'Brand profile set',          route: '/brand-profile',    icon: '🏢' },
   { key: 'strategy',   label: 'Marketing strategy built',   route: '/strategy-hub',     icon: '📊' },
   { key: 'social',     label: 'Social accounts connected',  route: '/connect-accounts', icon: '🔗' },
   { key: 'content',    label: 'First content generated',    route: '/agents-hub',       icon: '✍️' },
@@ -159,7 +160,7 @@ const JOURNEY = [
 ]
 
 const STAGE_LABELS = {
-  setup:    { title: 'Set up your brand',         desc: 'Tell EVOX AI about your brand so it can personalise every recommendation.', route: '/brand-kb' },
+  setup:    { title: 'Set up your brand',         desc: 'Tell EVOX AI about your brand so it can personalise every recommendation.', route: '/brand-profile' },
   strategy: { title: 'Build your strategy',       desc: 'Create your annual marketing plan, set KPIs and define your brand positioning.', route: '/strategy-hub' },
   content:  { title: 'Create your first content', desc: 'Generate captions, blog posts, email copy or campaign scripts with an AI agent.', route: '/agents-hub' },
   publish:  { title: 'Connect & publish',         desc: 'Connect your social accounts and publish your first AI-generated post.', route: '/connect-accounts' },
@@ -168,6 +169,7 @@ const STAGE_LABELS = {
 
 export default function DashboardPage() {
   const navigate = useNavigate()
+  const { authReady } = useRequireAuth()
   const { user } = useAuth()
   const { plan, loading: planLoading } = useUserPlan()
 
@@ -291,7 +293,7 @@ export default function DashboardPage() {
     }
   }
 
-  if (planLoading) return (
+  if (!authReady || planLoading) return (
     <div style={{ minHeight: '100vh', background: BG, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ width: 32, height: 32, border: `2px solid ${GOLD}`, borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
     </div>
