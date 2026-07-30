@@ -187,10 +187,20 @@ async function listConnectedPages(platform, locationId, accountId = '') {
   const live = (pages || []).filter((p) => !p.isExpired)
   if (!accountId) return live
 
-  const mine = live.filter((p) => String(p.originId || '').startsWith(`${accountId}_`))
-  // Never widen back to everyone: an empty result means this sign-in linked
-  // nothing, which is a real outcome the caller should surface.
-  return mine
+  // GHL doesn't document how the popup's accountId relates to the composite
+  // page id, and the shape differs between platforms — so match loosely.
+  const mine = live.filter((p) => String(p.originId || '').includes(accountId))
+  if (mine.length) return mine
+
+  // No match: rather than dead-ending the user, show what the workspace has.
+  // On a shared workspace that can include another user's pages, so this is a
+  // fallback to keep connecting possible, not the intended path.
+  console.warn(
+    `[ghlService] Could not match ${platform} pages to accountId "${accountId}" — ` +
+    `showing all ${live.length} account(s) on this workspace.`,
+    live.map((p) => p.originId),
+  )
+  return live
 }
 
 /**
