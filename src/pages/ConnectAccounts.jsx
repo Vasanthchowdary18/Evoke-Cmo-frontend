@@ -18,7 +18,7 @@ import {
   Link2,
   Unlink,
 } from "lucide-react";
-import Navbar from "../components/Navbar.jsx";
+import AppSidebar from "../components/AppSidebar.jsx";
 import { auth } from "../firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import {
@@ -26,6 +26,8 @@ import {
   saveSocialAccount,
   disconnectSocialAccount,
 } from "../services/userService";
+import { connectMetaAdsCallback } from "../services/metaAdsService";
+import { startSocialConnect, attachSocialPage, ensureGhlLocation } from "../services/ghlService";
 
 const META_APP_ID = import.meta.env.VITE_META_APP_ID || "1692729771989576";
 const FACEBOOK_REDIRECT = window.location.origin + "/connect-accounts";
@@ -37,37 +39,41 @@ const LINKEDIN_CLIENT_ID =
 const LINKEDIN_REDIRECT = window.location.origin + "/connect-accounts";
 const LINKEDIN_SCOPE = "openid profile email w_member_social";
 const LINKEDIN_N8N =
-  "https://vasantht18.app.n8n.cloud/webhook/linkedin-oauth";
+  "https://n8n-zvxi.srv1837606.hstgr.cloud/webhook/linkedin-oauth";
 
 const TWITTER_CLIENT_ID =
   import.meta.env.VITE_TWITTER_CLIENT_ID || "YOUR_TWITTER_CLIENT_ID";
 const TWITTER_REDIRECT = window.location.origin + "/connect-accounts";
 const TWITTER_SCOPE = "tweet.read tweet.write users.read offline.access";
 const TWITTER_N8N =
-  "https://vasantht18.app.n8n.cloud/webhook/twitter-oauth";
+  "https://n8n-zvxi.srv1837606.hstgr.cloud/webhook/twitter-oauth";
 
 const GOOGLE_CLIENT_ID =
-  "53481639003-g903a5274f1bcq4jvkgpeoispls7aps9.apps.googleusercontent.com";
+  "851129041825-domoulpjdo3b9opd736cvrbtr4k7ba80.apps.googleusercontent.com";
 const GOOGLE_REDIRECT = window.location.origin + "/connect-accounts";
 const GOOGLE_SCOPE =
   "https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile";
-const GMAIL_N8N = "https://vasantht18.app.n8n.cloud/webhook/gmail-oauth";
+const GMAIL_N8N = "https://n8n-zvxi.srv1837606.hstgr.cloud/webhook/gmail-oauth";
 
 const GOOGLE_ADS_SCOPE =
   "https://www.googleapis.com/auth/adwords https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile";
-const GOOGLE_ADS_N8N = "https://vasantht18.app.n8n.cloud/webhook/google-ads-oauth";
+const GOOGLE_ADS_N8N = "https://n8n-zvxi.srv1837606.hstgr.cloud/webhook/google-ads-oauth";
+
+const META_ADS_APP_ID = "2854212678292634";
+const META_ADS_REDIRECT = window.location.origin + "/connect-accounts";
+const META_ADS_SCOPE = "ads_management,ads_read,business_management,pages_read_engagement";
 
 const TIKTOK_CLIENT_KEY = "sbawq8ejz7li1bzsf1";
 const TIKTOK_REDIRECT = window.location.origin + "/connect-accounts";
 const TIKTOK_SCOPE = "user.info.basic,video.upload";
 const TIKTOK_N8N =
-  "https://vasantht18.app.n8n.cloud/webhook/tiktok-oauth";
+  "https://n8n-zvxi.srv1837606.hstgr.cloud/webhook/tiktok-oauth";
 
 const EVENTBRITE_CLIENT_ID =
   import.meta.env.VITE_EVENTBRITE_CLIENT_ID || "AQUWB7RTTS3CUWMCXM";
 const EVENTBRITE_REDIRECT = window.location.origin + "/connect-accounts";
 const EVENTBRITE_N8N =
-  "https://vasantht18.app.n8n.cloud/webhook/eventbrite-oauth";
+  "https://n8n-zvxi.srv1837606.hstgr.cloud/webhook/eventbrite-oauth";
 
 function genVerifier() {
   const arr = new Uint8Array(32);
@@ -115,9 +121,6 @@ function loadFBSDK() {
 const INSTAGRAM_REDIRECT = window.location.origin + "/connect-accounts";
 const INSTAGRAM_SCOPE =
   "instagram_basic,instagram_content_publish,pages_show_list,pages_read_engagement";
-
-const META_ADS_SCOPE =
-  "ads_management,ads_read,pages_show_list,business_management";
 
 const PLATFORMS = [
   {
@@ -208,6 +211,20 @@ const PLATFORMS = [
     description: "Connect your Google Ads account to build and push Search campaigns directly from EVOX.",
     oauthType: "google-ads",
     btnLabel: "Connect Google Ads",
+    note: "Currently requires a Google Ads TEST account (our developer token is Basic access). Connecting a real/live account will fail with a CUSTOMER_NOT_ENABLED error. Create a test account in the Google Ads API Center first.",
+  },
+  {
+    key: "meta-ads",
+    label: "Meta Ads",
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 48 48">
+        <path fill="#0866FF" d="M24 4C12.95 4 4 12.95 4 24c0 9.98 7.31 18.25 16.87 19.77V29.87h-5.08V24h5.08v-4.47c0-5.02 2.99-7.79 7.56-7.79 2.19 0 4.48.39 4.48.39v4.92h-2.52c-2.49 0-3.27 1.54-3.27 3.13V24h5.56l-.89 5.87h-4.67v13.9C36.69 42.25 44 33.98 44 24c0-11.05-8.95-20-20-20z"/>
+      </svg>
+    ),
+    color: "#0866FF",
+    description: "Connect your Meta Ads (Facebook/Instagram) account to boost campaign posts directly from EVOX.",
+    oauthType: "meta-ads",
+    btnLabel: "Connect Meta Ads",
   },
   {
     key: "gmail",
@@ -383,6 +400,7 @@ export default function ConnectAccounts() {
     if (state === "tiktok_connect") handleTikTokCallback(code, user.uid);
     if (state === "eventbrite_connect") handleEventbriteCallback(code, user.uid);
     if (state === "google_ads_connect") handleGoogleAdsCallback(code, user.uid);
+    if (state === "meta_ads_connect") handleMetaAdsCallback(code, user.uid);
   }, [user]); // eslint-disable-line
 
   useEffect(() => {
@@ -398,8 +416,23 @@ export default function ConnectAccounts() {
       })
       .catch(() => setAuthReady(true));
 
+    // Provision this user's GoHighLevel workspace quietly in the background so
+    // the connect buttons are live by the time they reach for them.
+    ensureGhlLocation(evokeUser.uid, {
+      displayName: evokeUser.displayName,
+      email: evokeUser.email,
+    })
+      .then(() => setGhlReady(true))
+      .catch(() => setGhlReady(false));
+
     loadFBSDK();
   }, [evokeUser, authStatus]); // eslint-disable-line
+
+  // Pages returned after the user signs in, waiting for them to pick one.
+  const [pagePicker, setPagePicker] = useState(null);
+
+  // Whether this user's GoHighLevel workspace is ready to accept connections.
+  const [ghlReady, setGhlReady] = useState(false);
 
   const setErr = (k, m) => setErrors((e) => ({ ...e, [k]: m }));
 
@@ -413,7 +446,64 @@ export default function ConnectAccounts() {
   const setLoad = (k, v) => setLoading((l) => ({ ...l, [k]: v }));
   const setOk = (k, v) => setSuccess((s) => ({ ...s, [k]: v }));
 
-  const connectFacebook = () => {
+  // Facebook and Instagram connect through the Social Planner rather than our own
+  // Meta app — the user still signs in to Facebook, but the publishing permissions
+  // come from an already-approved app, so no Meta review is needed on our side.
+  const connectViaPlanner = async (platform) => {
+    if (!user?.uid) return;
+    setLoad(platform, true);
+    clrErr(platform);
+    try {
+      const { accountId, pages } = await startSocialConnect(user.uid, platform);
+      if (!pages.length) {
+        throw new Error(
+          "No pages came back from that account. When the login window asks which pages to allow, select at least one.",
+        );
+      }
+      // One page: attach it. Several: let them choose.
+      if (pages.length === 1) {
+        await choosePage(pages[0], platform, accountId);
+      } else {
+        setPagePicker({ platform, accountId, pages });
+      }
+    } catch (e) {
+      setErr(platform, e.message);
+    } finally {
+      setLoad(platform, false);
+    }
+  };
+
+  const choosePage = async (page, platformArg, accountIdArg) => {
+    const platform = platformArg || pagePicker?.platform;
+    const accountId = accountIdArg || pagePicker?.accountId;
+    if (!platform || !accountId) return;
+
+    setPagePicker(null);
+    setLoad(platform, true);
+    clrErr(platform);
+    try {
+      await attachSocialPage(user.uid, platform, accountId, page);
+      setAccounts((a) => ({
+        ...a,
+        [platform]: {
+          connected: true,
+          pageName: page.name,
+          pageId: page.originId,
+          ghlAccountId: accountId,
+          viaGhl: true,
+        },
+      }));
+      setOk(platform, true);
+    } catch (e) {
+      setErr(platform, e.message);
+    } finally {
+      setLoad(platform, false);
+    }
+  };
+
+  // Direct Meta connection — needs our own Meta app permissions, so it only
+  // works once Meta has approved publishing for this app.
+  const connectFacebookDirect = () => {
     const url = new URLSearchParams({
       client_id: META_APP_ID,
       redirect_uri: FACEBOOK_REDIRECT,
@@ -424,24 +514,13 @@ export default function ConnectAccounts() {
     window.location.href = `https://www.facebook.com/dialog/oauth?${url}`;
   };
 
-  const connectInstagram = () => {
+  const connectInstagramDirect = () => {
     const url = new URLSearchParams({
       client_id: META_APP_ID,
       redirect_uri: INSTAGRAM_REDIRECT,
       scope: INSTAGRAM_SCOPE,
       response_type: "token",
       state: "instagram_connect",
-    });
-    window.location.href = `https://www.facebook.com/dialog/oauth?${url}`;
-  };
-
-  const connectMetaAds = () => {
-    const url = new URLSearchParams({
-      client_id: META_APP_ID,
-      redirect_uri: INSTAGRAM_REDIRECT,
-      scope: META_ADS_SCOPE,
-      response_type: "token",
-      state: "metaads_connect",
     });
     window.location.href = `https://www.facebook.com/dialog/oauth?${url}`;
   };
@@ -774,6 +853,33 @@ export default function ConnectAccounts() {
     }
   }, []);
 
+  const connectMetaAds = () => {
+    const url = new URLSearchParams({
+      client_id: META_ADS_APP_ID,
+      redirect_uri: META_ADS_REDIRECT,
+      scope: META_ADS_SCOPE,
+      response_type: "code",
+      state: "meta_ads_connect",
+    });
+    window.location.href = `https://www.facebook.com/v21.0/dialog/oauth?${url}`;
+  };
+
+  const handleMetaAdsCallback = useCallback(async (code, uid) => {
+    const resolvedUid = uid || userRef.current?.uid;
+    if (!resolvedUid) return;
+    setLoad("meta-ads", true);
+    clrErr("meta-ads");
+    try {
+      const { adAccounts } = await connectMetaAdsCallback(resolvedUid, code, META_ADS_REDIRECT);
+      setAccounts((a) => ({ ...a, "meta-ads": { connected: true, adAccounts } }));
+      setOk("meta-ads", true);
+    } catch (e) {
+      setErr("meta-ads", "Meta Ads connection failed: " + e.message);
+    } finally {
+      setLoad("meta-ads", false);
+    }
+  }, []);
+
   const handleGmailCallback = useCallback(async (code, uid) => {
     const resolvedUid = uid || auth.currentUser?.uid || userRef.current?.uid;
     if (!resolvedUid) return;
@@ -1014,10 +1120,11 @@ export default function ConnectAccounts() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#0e0c09", color: "#fff" }}>
-      <Navbar />
+      <AppSidebar />
+      <div style={{ marginLeft: 'var(--evox-sidebar-w, 220px)', transition: 'margin-left 0.22s' }}>
 
       <div
-        style={{ maxWidth: 820, margin: "0 auto", padding: "108px 24px 80px" }}
+        style={{ maxWidth: 820, margin: "0 auto", padding: "36px 24px 80px" }}
       >
         {/* Back button — only when coming from another page */}
         {fromPackageA && (
@@ -1233,62 +1340,8 @@ export default function ConnectAccounts() {
 
                   {/* Action button */}
                   <div style={{ flexShrink: 0 }}>
-                    {p.oauthType === "instagram" ? (
-                      <button
-                        onClick={connectInstagram}
-                        disabled={isLoading}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 8,
-                          padding: "10px 18px",
-                          background:
-                            "linear-gradient(135deg, #f58529, #dd2a7b, #8134af)",
-                          border: "none",
-                          borderRadius: 10,
-                          color: "white",
-                          fontSize: 14,
-                          fontWeight: 700,
-                          cursor: isLoading ? "not-allowed" : "pointer",
-                        }}
-                      >
-                        {isLoading ? (
-                          <Loader2
-                            size={14}
-                            style={{ animation: "spin 1s linear infinite" }}
-                          />
-                        ) : (
-                          <>{p.btnLabel}</>
-                        )}
-                      </button>
-                    ) : p.oauthType === "meta-ads" ? (
-                      <button
-                        onClick={connectMetaAds}
-                        disabled={isLoading}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 8,
-                          padding: "10px 18px",
-                          background: "#0866FF",
-                          border: "none",
-                          borderRadius: 10,
-                          color: "white",
-                          fontSize: 14,
-                          fontWeight: 700,
-                          cursor: isLoading ? "not-allowed" : "pointer",
-                        }}
-                      >
-                        {isLoading ? (
-                          <Loader2
-                            size={14}
-                            style={{ animation: "spin 1s linear infinite" }}
-                          />
-                        ) : (
-                          <>{p.btnLabel}</>
-                        )}
-                      </button>
-                    ) : p.oauthType === "google-ads" ? (
+                    {/* Facebook and Instagram use the two-method panel below */}
+                    {p.oauthType === "instagram" ? null : p.oauthType === "google-ads" ? (
                       connected ? (
                         <button
                           onClick={() => disconnect(p.key)}
@@ -1312,6 +1365,40 @@ export default function ConnectAccounts() {
                           style={{
                             display: "flex", alignItems: "center", gap: 8,
                             padding: "10px 18px", background: "#4285f4",
+                            border: "none", borderRadius: 10, color: "white",
+                            fontSize: 14, fontWeight: 700,
+                            cursor: isLoading ? "not-allowed" : "pointer",
+                          }}
+                        >
+                          {isLoading
+                            ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} />
+                            : <>{p.btnLabel}</>}
+                        </button>
+                      )
+                    ) : p.oauthType === "meta-ads" ? (
+                      connected ? (
+                        <button
+                          onClick={() => disconnect(p.key)}
+                          disabled={isLoading}
+                          style={{
+                            display: "flex", alignItems: "center", gap: 6,
+                            padding: "8px 14px", background: "rgba(239,68,68,0.1)",
+                            border: "1px solid rgba(239,68,68,0.25)", borderRadius: 10,
+                            color: "#ef4444", fontSize: 13, fontWeight: 600,
+                            cursor: isLoading ? "not-allowed" : "pointer",
+                          }}
+                        >
+                          {isLoading
+                            ? <Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} />
+                            : <><Unlink size={13} /> Disconnect</>}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={connectMetaAds}
+                          disabled={isLoading}
+                          style={{
+                            display: "flex", alignItems: "center", gap: 8,
+                            padding: "10px 18px", background: "#0866FF",
                             border: "none", borderRadius: 10, color: "white",
                             fontSize: 14, fontWeight: 700,
                             cursor: isLoading ? "not-allowed" : "pointer",
@@ -1396,36 +1483,7 @@ export default function ConnectAccounts() {
                         )}
                         Disconnect
                       </button>
-                    ) : p.oauthType === "facebook" ? (
-                      <button
-                        onClick={connectFacebook}
-                        disabled={isLoading}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 8,
-                          padding: "10px 18px",
-                          background: p.color,
-                          border: "none",
-                          borderRadius: 10,
-                          color: "white",
-                          fontSize: 14,
-                          fontWeight: 700,
-                          cursor: isLoading ? "not-allowed" : "pointer",
-                        }}
-                      >
-                        {isLoading ? (
-                          <Loader2
-                            size={14}
-                            style={{ animation: "spin 1s linear infinite" }}
-                          />
-                        ) : (
-                          <>
-                            <Facebook size={14} /> {p.btnLabel}
-                          </>
-                        )}
-                      </button>
-                    ) : p.oauthType === "linkedin" ? (
+                    ) : p.oauthType === "facebook" ? null : p.oauthType === "linkedin" ? (
                       <button
                         onClick={connectLinkedIn}
                         disabled={isLoading}
@@ -1624,6 +1682,182 @@ export default function ConnectAccounts() {
                     )}
                   </div>
                 </div>
+
+                {/* Two ways to connect — Facebook and Instagram only */}
+                {(p.oauthType === "facebook" || p.oauthType === "instagram") && (
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 10,
+                      padding: "0 24px 20px",
+                    }}
+                  >
+                    {[
+                      {
+                        id: "ghl",
+                        title: "Via GoHighLevel",
+                        active: !!accounts[p.key]?.viaGhl && connected,
+                        ready: ghlReady,
+                        blurb: ghlReady
+                          ? "Sign in with your own account. No Meta approval needed — recommended."
+                          : "Waiting on Evoke to finish GoHighLevel setup for your account.",
+                        onConnect: () => connectViaPlanner(p.key),
+                      },
+                      {
+                        id: "meta",
+                        title: "Direct with Meta",
+                        active: connected && !accounts[p.key]?.viaGhl,
+                        ready: true,
+                        blurb:
+                          "Uses Evoke's own Meta app. Requires Meta publishing approval, which is still pending.",
+                        onConnect:
+                          p.oauthType === "facebook"
+                            ? connectFacebookDirect
+                            : connectInstagramDirect,
+                      },
+                    ].map((m) => (
+                      <div
+                        key={m.id}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 14,
+                          padding: "14px 16px",
+                          background: m.active
+                            ? "rgba(16,185,129,0.07)"
+                            : "rgba(255,255,255,0.03)",
+                          border: `1px solid ${
+                            m.active
+                              ? "rgba(16,185,129,0.3)"
+                              : "rgba(255,255,255,0.09)"
+                          }`,
+                          borderRadius: 12,
+                        }}
+                      >
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 8,
+                              marginBottom: 3,
+                              flexWrap: "wrap",
+                            }}
+                          >
+                            <span
+                              style={{
+                                fontSize: 14,
+                                fontWeight: 700,
+                                color: "#ffffff",
+                              }}
+                            >
+                              {m.title}
+                            </span>
+                            <span
+                              style={{
+                                padding: "2px 8px",
+                                borderRadius: 100,
+                                fontSize: 10,
+                                fontWeight: 800,
+                                letterSpacing: "0.04em",
+                                background: m.active
+                                  ? "rgba(16,185,129,0.14)"
+                                  : m.ready
+                                    ? "rgba(200,151,62,0.16)"
+                                    : "rgba(255,255,255,0.07)",
+                                color: m.active
+                                  ? "#10b981"
+                                  : m.ready
+                                    ? "#c8973e"
+                                    : "rgba(255,255,255,0.4)",
+                              }}
+                            >
+                              {m.active
+                                ? "CONNECTED"
+                                : m.ready
+                                  ? "NOT CONNECTED"
+                                  : "SETTING UP"}
+                            </span>
+                          </div>
+                          <p
+                            style={{
+                              color: "rgba(255,255,255,0.45)",
+                              fontSize: 12,
+                              lineHeight: 1.5,
+                            }}
+                          >
+                            {m.blurb}
+                          </p>
+                        </div>
+
+                        {m.active ? (
+                          <button
+                            onClick={() => disconnect(p.key)}
+                            disabled={isLoading}
+                            style={{
+                              padding: "8px 14px",
+                              background: "transparent",
+                              border: "1px solid rgba(255,255,255,0.18)",
+                              borderRadius: 9,
+                              color: "rgba(255,255,255,0.7)",
+                              fontSize: 13,
+                              fontWeight: 700,
+                              cursor: isLoading ? "not-allowed" : "pointer",
+                              flexShrink: 0,
+                            }}
+                          >
+                            Disconnect
+                          </button>
+                        ) : (
+                          <button
+                            onClick={m.onConnect}
+                            disabled={isLoading || !m.ready}
+                            title={
+                              m.ready ? undefined : "Workspace setup in progress"
+                            }
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 7,
+                              padding: "8px 16px",
+                              background:
+                                m.id === "ghl" && m.ready
+                                  ? p.color
+                                  : "rgba(255,255,255,0.07)",
+                              border:
+                                m.id === "ghl" && m.ready
+                                  ? "none"
+                                  : "1px solid rgba(255,255,255,0.15)",
+                              borderRadius: 9,
+                              color:
+                                m.id === "ghl" && m.ready
+                                  ? "#ffffff"
+                                  : "rgba(255,255,255,0.6)",
+                              fontSize: 13,
+                              fontWeight: 700,
+                              cursor:
+                                isLoading || !m.ready
+                                  ? "not-allowed"
+                                  : "pointer",
+                              opacity: m.ready ? 1 : 0.55,
+                              flexShrink: 0,
+                            }}
+                          >
+                            {isLoading ? (
+                              <Loader2
+                                size={13}
+                                style={{ animation: "spin 1s linear infinite" }}
+                              />
+                            ) : (
+                              "Connect"
+                            )}
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 {/* Error row */}
                 <AnimatePresence>
@@ -1867,6 +2101,136 @@ export default function ConnectAccounts() {
           </p>
         </motion.div>
       </div>
+
+      </div>
+
+      {/* Page picker — shown when the signed-in account manages more than one page */}
+      <AnimatePresence>
+        {pagePicker && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setPagePicker(null)}
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(0,0,0,0.7)",
+              backdropFilter: "blur(4px)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 1000,
+              padding: 20,
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 10 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 10 }}
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                background: "#15161a",
+                border: "1px solid rgba(255,255,255,0.12)",
+                borderRadius: 16,
+                padding: 24,
+                width: "100%",
+                maxWidth: 440,
+                maxHeight: "80vh",
+                overflowY: "auto",
+              }}
+            >
+              <h3
+                style={{
+                  color: "#fff",
+                  fontSize: 18,
+                  fontWeight: 700,
+                  margin: 0,
+                  marginBottom: 6,
+                }}
+              >
+                Choose a page
+              </h3>
+              <p
+                style={{
+                  color: "rgba(255,255,255,0.55)",
+                  fontSize: 13,
+                  margin: 0,
+                  marginBottom: 18,
+                }}
+              >
+                Your campaigns will publish to the page you select.
+              </p>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {pagePicker.pages.map((pg) => (
+                  <button
+                    key={pg.originId}
+                    onClick={() => choosePage(pg)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 12,
+                      padding: "12px 14px",
+                      background: "rgba(255,255,255,0.05)",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      borderRadius: 10,
+                      cursor: "pointer",
+                      textAlign: "left",
+                      color: "#fff",
+                      fontSize: 14,
+                      fontWeight: 600,
+                    }}
+                  >
+                    {pg.avatar ? (
+                      <img
+                        src={pg.avatar}
+                        alt=""
+                        style={{ width: 32, height: 32, borderRadius: "50%" }}
+                      />
+                    ) : (
+                      <span
+                        style={{
+                          width: 32,
+                          height: 32,
+                          borderRadius: "50%",
+                          background: "rgba(255,255,255,0.12)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: 13,
+                        }}
+                      >
+                        {pg.name?.[0]?.toUpperCase() || "?"}
+                      </span>
+                    )}
+                    <span style={{ flex: 1 }}>{pg.name}</span>
+                    <ArrowRight size={15} style={{ opacity: 0.5 }} />
+                  </button>
+                ))}
+              </div>
+
+              <button
+                onClick={() => setPagePicker(null)}
+                style={{
+                  marginTop: 16,
+                  width: "100%",
+                  padding: "10px",
+                  background: "transparent",
+                  border: "1px solid rgba(255,255,255,0.15)",
+                  borderRadius: 10,
+                  color: "rgba(255,255,255,0.6)",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                Cancel
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <style>{`
         @keyframes spin {

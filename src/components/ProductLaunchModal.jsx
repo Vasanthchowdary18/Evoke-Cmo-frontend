@@ -7,8 +7,6 @@ import {
   Play, ZoomIn
 } from 'lucide-react'
 
-const GROQ_KEY = import.meta.env.VITE_GROQ_API_KEY || ''
-
 const CLOUDINARY_CLOUD  = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'dxbn3vyig'
 const CLOUDINARY_PRESET = 'tiktok_videos'
 
@@ -39,9 +37,9 @@ async function pollinationsGenerateImage(prompt) {
 
 /* ── Call Groq text model ───────────────────────────────────────────────── */
 async function groqText(prompt) {
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  const res = await fetch('/api/generate', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${GROQ_KEY}` },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: 'llama-3.3-70b-versatile',
       messages: [{ role: 'user', content: prompt }],

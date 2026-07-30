@@ -16,6 +16,9 @@ dist/
 # Vercel
 .vercel
 
+# Internal-only docs (never publicly served or committed)
+docs-internal/
+
 # Editor
 .vscode/
 .claude/

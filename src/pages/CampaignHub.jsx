@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Calendar, Package, Zap, TrendingUp, Mail, Users, BarChart2, Briefcase, ShoppingCart, Sparkles, Activity, Search, ChevronLeft, ArrowRight, CheckCircle2 } from 'lucide-react'
-import Navbar from '../components/Navbar.jsx'
+import AppSidebar from '../components/AppSidebar.jsx'
 import { useAuth } from '../hooks/useAuth'
 import { getKnowledgeBase } from '../services/knowledgeBaseService.js'
 
@@ -66,7 +66,8 @@ export default function CampaignHub() {
 
   return (
     <div style={{ minHeight: '100vh', background: BG, fontFamily: FONT }}>
-      <Navbar />
+      <AppSidebar />
+      <div style={{ marginLeft: 'var(--evox-sidebar-w, 220px)', transition: 'margin-left 0.22s' }}>
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '40px 32px 80px' }}>
 
         {/* Back */}
@@ -179,6 +180,7 @@ export default function CampaignHub() {
           })}
         </div>
 
+      </div>
       </div>
     </div>
   )

@@ -6,7 +6,7 @@ import {
   AlertCircle, Send, ShoppingBag, Layout, Shield,
   CheckCircle2, Sparkles, ChevronDown, ChevronUp,
 } from 'lucide-react'
-import Navbar from '../components/Navbar.jsx'
+import AppSidebar from '../components/AppSidebar.jsx'
 import { useAuth } from '../hooks/useAuth.js'
 import { getKnowledgeBase, appendJourneyOutput } from '../services/knowledgeBaseService.js'
 import { captionSuiteToCreativeAsset } from '../lib/journeyHandoff.js'
@@ -22,8 +22,6 @@ const GREEN = '#10b981'
 const PURPLE = '#6366f1'
 const BORDER = 'rgba(255,255,255,0.08)'
 const FONT  = "'Inter', sans-serif"
-
-const GROQ_KEY = import.meta.env.VITE_GROQ_API_KEY || ''
 
 const PLATFORMS = [
   { key: 'instagram', label: 'Instagram',   color: '#dd2a7b' },
@@ -52,9 +50,9 @@ const TONE_LABELS = {
 }
 
 async function callGroq(prompt, max_tokens = 2500) {
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  const res = await fetch('/api/generate', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${GROQ_KEY}` },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ model: 'llama-3.1-8b-instant', messages: [{ role: 'user', content: prompt }], temperature: 0.75, max_tokens }),
   })
   if (!res.ok) throw new Error(`Generation failed (${res.status})`)
@@ -202,8 +200,9 @@ export default function CaptionSuitePage() {
 
   return (
     <div style={{ minHeight: '100vh', background: BG, color: TEXT, fontFamily: FONT }}>
-      <Navbar />
-      <div style={{ maxWidth: 820, margin: '0 auto', padding: '88px 24px 80px' }}>
+      <AppSidebar />
+      <div style={{ marginLeft: 'var(--evox-sidebar-w, 220px)', transition: 'margin-left 0.22s' }}>
+      <div style={{ maxWidth: 820, margin: '0 auto', padding: '36px 24px 80px' }}>
 
         {/* Header */}
         <button onClick={() => navigate(-1)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: TEXT3, fontSize: 13, cursor: 'pointer', marginBottom: 24, padding: 0, fontFamily: FONT }}>
@@ -437,6 +436,7 @@ export default function CaptionSuitePage() {
             </motion.div>
           )}
         </AnimatePresence>
+      </div>
       </div>
       <style>{`@keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} } select option { background: #1c1a13; color: #f0ebe0; }`}</style>
     </div>

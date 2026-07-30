@@ -10,6 +10,8 @@ import {
 import AppSidebar from '../components/AppSidebar.jsx'
 import { useRequireAuth } from '../hooks/useRequireAuth'
 import { useAuth } from '../hooks/useAuth'
+import { getGoogleAdsMetrics } from '../services/googleAdsService'
+import { getContacts } from '../services/crmService'
 
 const BG     = '#0a0907'
 const CARD   = '#131109'
@@ -25,8 +27,6 @@ const GREEN  = '#10b981'
 const BLUE   = '#3b82f6'
 const PURPLE = '#a855f7'
 const RED    = '#ef4444'
-
-const GROQ_KEY = import.meta.env.VITE_GROQ_API_KEY || ''
 
 const CHANNELS = [
   { key: 'sms',      label: 'SMS',          icon: <MessageSquare size={14}/>, color: GREEN,  desc: 'Text campaigns' },
@@ -53,7 +53,17 @@ const MODEL_DESC = {
 
 const PERIODS = ['Last 7 days', 'Last 30 days', 'Last 90 days', 'Last 6 months', 'This year']
 
-async function generateAttribution(inputs) {
+async function generateAttribution(inputs, realData) {
+  const realDataBlock = (realData?.googleAds || realData?.crm)
+    ? `
+
+REAL CONNECTED-ACCOUNT DATA — use these numbers exactly, do not invent different figures for anything listed here:
+${realData.googleAds ? `- Google Ads (last 30 days, from the user's connected account): spend $${realData.googleAds.spend.toFixed(2)}, ${realData.googleAds.clicks} clicks, ${realData.googleAds.conversions} conversions, ROAS ${realData.googleAds.roas.toFixed(1)}x. Use this as the real basis for the "Paid Ads" channel's spend/conversions/roas — you may still estimate revenue and attributionShare from it, but do not contradict these real figures.` : '- Google Ads: not connected, no real spend data available for Paid Ads — estimate as before.'}
+${realData.crm ? `- CRM (real contact records): ${realData.crm.total} total contacts, ${realData.crm.leads} at lead stage, ${realData.crm.prospects} at prospect stage, ${realData.crm.customers} converted to customer or retained. Use ${realData.crm.total} as a grounding signal for total leads/reach, and ${realData.crm.customers} as a grounding signal for total conversions — keep summary.totalLeads and summary.totalLeads/conversion figures consistent with this real data rather than inventing unrelated numbers.` : '- CRM: no contacts recorded yet — estimate total leads as before.'}
+
+For any channel or metric NOT covered by the real data above (SMS, Social, Content, funnel awareness/consideration/intent, touchpoint journey timing), continue estimating realistically as usual.`
+    : ''
+
   const prompt = `You are a marketing analytics expert. Generate a realistic marketing attribution analysis for:
 - Brand: ${inputs.brand}
 - Campaign Goal: ${inputs.goal}
@@ -61,6 +71,7 @@ async function generateAttribution(inputs) {
 - Attribution Model: ${inputs.model}
 - Active Channels: ${inputs.channels.join(', ')}
 - Total Budget: $${inputs.budget}
+${realDataBlock}
 
 Return ONLY valid JSON with this structure:
 {
@@ -109,9 +120,9 @@ Return ONLY valid JSON with this structure:
   ]
 }`
 
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  const res = await fetch('/api/generate', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${GROQ_KEY}` },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: 'llama-3.3-70b-versatile',
       messages: [{ role: 'user', content: prompt }],
@@ -137,6 +148,24 @@ export default function MarketingAttributionPage() {
   const [result, setResult]       = useState(null)
   const [error, setError]         = useState('')
   const [activeTab, setActiveTab] = useState('overview')
+  const [groundedIn, setGroundedIn] = useState(null) // { googleAds: bool, crm: bool } for the last run
+
+  async function fetchRealData() {
+    const [googleAdsRaw, contacts] = await Promise.all([
+      getGoogleAdsMetrics(user.uid).catch(() => null),
+      getContacts(user.uid).catch(() => []),
+    ])
+    const googleAds = googleAdsRaw && googleAdsRaw.spend > 0 ? googleAdsRaw : null
+    const crm = contacts.length > 0
+      ? {
+          total: contacts.length,
+          leads: contacts.filter(c => c.stage === 'lead').length,
+          prospects: contacts.filter(c => c.stage === 'prospect').length,
+          customers: contacts.filter(c => c.stage === 'customer' || c.stage === 'retained').length,
+        }
+      : null
+    return { googleAds, crm }
+  }
 
   const toggleChannel = (key) => {
     setInputs(p => ({
@@ -149,8 +178,10 @@ export default function MarketingAttributionPage() {
     if (!inputs.brand || !inputs.goal || inputs.channels.length === 0) return
     setLoading(true); setError(''); setResult(null)
     try {
-      const r = await generateAttribution(inputs)
+      const realData = await fetchRealData()
+      const r = await generateAttribution(inputs, realData)
       setResult(r); setActiveTab('overview')
+      setGroundedIn({ googleAds: !!realData.googleAds, crm: !!realData.crm })
     } catch {
       setError('Attribution analysis failed. Please try again.')
     } finally {
@@ -189,9 +220,21 @@ export default function MarketingAttributionPage() {
                 <Activity size={20} color={GOLD}/>
               </div>
               <div>
-                <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>Marketing Attribution Model</h1>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>Marketing Attribution Model</h1>
+                  <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: '#f59e0b', background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 5, padding: '3px 7px' }}>AI Estimate</span>
+                </div>
                 <p style={{ margin: 0, fontSize: 12, color: TEXT2 }}>Track revenue & conversions across SMS, Paid Ads, Social & Content</p>
               </div>
+            </div>
+            <div style={{ marginTop: 14, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 10, padding: '10px 14px', fontSize: 12, color: TEXT2, lineHeight: 1.5 }}>
+              {!groundedIn && 'Most figures here are AI-generated estimates. Paid Ads and lead totals will use your real connected Google Ads and CRM data automatically if you have them connected — everything else (SMS, Social, Content, funnel, journey) is always modeled, not measured.'}
+              {groundedIn && (groundedIn.googleAds || groundedIn.crm) && (
+                <>This run is grounded in your real {[groundedIn.googleAds && 'Google Ads', groundedIn.crm && 'CRM'].filter(Boolean).join(' and ')} data for Paid Ads spend/ROAS and lead totals. Everything else (SMS, Social, Content, funnel, journey) is still an AI estimate, not measured.</>
+              )}
+              {groundedIn && !groundedIn.googleAds && !groundedIn.crm && (
+                <>No connected Google Ads account or CRM contacts were found, so every figure in this run is an AI estimate. Connect Google Ads and add CRM contacts for real Paid Ads and lead numbers next time.</>
+              )}
             </div>
           </div>
 

@@ -124,13 +124,11 @@ export default function Chatbot() {
     setLoading(true)
 
     try {
-      const apiKey = import.meta.env.VITE_GROQ_API_KEY
       const history = messages.map(m => ({ role: m.role, content: m.content }))
-      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      const res = await fetch('/api/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
           model: 'llama-3.1-8b-instant',

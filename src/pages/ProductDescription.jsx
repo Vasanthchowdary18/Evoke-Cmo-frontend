@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft, FileText, Sparkles, ChevronDown, Check, Copy, AlertCircle, Loader2, Settings2, Hash } from 'lucide-react'
-import Navbar from '../components/Navbar.jsx'
+import AppSidebar from '../components/AppSidebar.jsx'
 
 const PRODUCT_CATEGORIES = [
   'Watch','Sunglasses','Handbag','Wallet','Belt','Jewellery','Ring','Necklace','Bracelet','Earrings',
@@ -199,8 +199,9 @@ export default function ProductDescription() {
 
   return (
     <div style={{minHeight:'100vh',background:'#0a0a0a',color:'#fff'}}>
-      <Navbar/>
-      <div style={{maxWidth:1200,margin:'0 auto',padding:'108px 24px 80px'}}>
+      <AppSidebar/>
+      <div style={{ marginLeft: 'var(--evox-sidebar-w, 220px)', transition: 'margin-left 0.22s' }}>
+      <div style={{maxWidth:1200,margin:'0 auto',padding:'36px 24px 80px'}}>
         <button onClick={()=>navigate('/products')} style={{display:'flex',alignItems:'center',gap:'6px',background:'none',border:'none',color:'rgba(255,255,255,0.45)',fontSize:'14px',cursor:'pointer',marginBottom:'32px',padding:0}}>
           <ArrowLeft size={15}/> Back to Products
         </button>
@@ -384,6 +385,7 @@ export default function ProductDescription() {
             )}
           </motion.div>
         </div>
+      </div>
       </div>
       <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
     </div>

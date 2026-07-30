@@ -5,7 +5,7 @@ import {
   FileText, ArrowLeft, Loader2, Copy, Check, AlertCircle,
   Globe, Mail, BookOpen, ChevronDown, ChevronUp, Send,
 } from 'lucide-react'
-import Navbar from '../components/Navbar.jsx'
+import AppSidebar from '../components/AppSidebar.jsx'
 import { useRequireAuth } from '../hooks/useRequireAuth'
 
 const BG     = '#0e0c09'
@@ -18,8 +18,6 @@ const GBORDER= 'rgba(200,151,62,0.28)'
 const TEXT   = '#f0ebe0'
 const TEXT2  = 'rgba(240,235,224,0.55)'
 const TEXT3  = 'rgba(240,235,224,0.32)'
-const GROQ   = import.meta.env.VITE_GROQ_API_KEY || ''
-
 const TABS = [
   { key: 'blog',      label: 'Blog Article',   icon: <BookOpen size={15} />, color: '#6366f1' },
   { key: 'landing',   label: 'Landing Page',   icon: <Globe size={15} />,    color: '#10b981' },
@@ -44,9 +42,9 @@ const TARGET_AUDIENCES = [
 ]
 
 async function groqGenerate(prompt) {
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  const res = await fetch('/api/generate', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${GROQ}` },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: 'llama-3.3-70b-versatile',
       messages: [{ role: 'user', content: prompt }],
@@ -59,7 +57,7 @@ async function groqGenerate(prompt) {
   return data.choices?.[0]?.message?.content || ''
 }
 
-async function generateBlog({ topic, keywords, brand, audience, tone, industry }) {
+export async function generateBlog({ topic, keywords, brand, audience, tone, industry, wordCount, deepSeo }) {
   const prompt = `You are an expert SEO blog writer. Write a complete, high-quality blog article.
 
 Topic: ${topic}
@@ -68,6 +66,7 @@ Target Audience: ${audience || 'business professionals'}
 Tone: ${tone || 'Professional'}
 Industry: ${industry || 'general'}
 Focus Keywords: ${keywords || topic}
+Target Length: approximately ${wordCount || 1500} words total${deepSeo ? '\nApply deep SEO structuring: work the focus keywords naturally into the headline, intro, and at least two H2 headings, and keep paragraphs scannable.' : ''}
 
 Write a full blog article with:
 - A compelling, SEO-optimised headline (H1)
@@ -508,8 +507,9 @@ export default function ContentGenerationPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: BG, color: TEXT, fontFamily: "'Inter', sans-serif" }}>
-      <Navbar />
-      <div style={{ maxWidth: 860, margin: '0 auto', padding: '96px 20px 60px' }}>
+      <AppSidebar />
+      <div style={{ marginLeft: 'var(--evox-sidebar-w, 220px)', transition: 'margin-left 0.22s' }}>
+      <div style={{ maxWidth: 860, margin: '0 auto', padding: '36px 20px 60px' }}>
 
         <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', color: TEXT3, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, marginBottom: 24, padding: 0 }}>
           <ArrowLeft size={14} /> Back
@@ -686,6 +686,7 @@ export default function ContentGenerationPage() {
             )}
           </AnimatePresence>
         </div>
+      </div>
       </div>
       <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
     </div>

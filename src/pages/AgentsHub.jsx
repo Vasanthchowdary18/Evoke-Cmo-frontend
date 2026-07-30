@@ -5,7 +5,7 @@ import {
   TrendingUp, BookOpen, Zap, Calendar, Activity, Target,
   PenTool, Sliders, FileText, Camera, Image, Search, Video,
   Mail, Globe, Users, BarChart2, UserCheck, Box, Inbox, Link2,
-  DollarSign, Share2, Crown, Lock, ArrowRight, Sparkles,
+  DollarSign, Share2, Crown, Lock, ArrowRight, Sparkles, Shield, Cpu,
 } from 'lucide-react'
 import SidebarLayout from '../components/SidebarLayout.jsx'
 import UpgradeModal from '../components/UpgradeModal.jsx'
@@ -89,6 +89,11 @@ const PLAN_SECTIONS = [
       { label: 'Marketing Execution',    desc: '7-channel deployment — Meta, LinkedIn, TikTok, Google, Email, SMS, Marketplace.', icon: Share2,   color: '#84cc16', route: '/execution' },
       { label: 'Team Management',        desc: 'Assign roles, manage access, and collaborate with your marketing team.',         icon: Users,      color: '#a855f7', route: '/team' },
       { label: 'Partner Sharing',        desc: 'Share campaigns and assets with agencies and collaborators.',                    icon: Globe,      color: '#10b981', route: '/partner-sharing' },
+      { label: 'Compliance Agent',       desc: 'Draft privacy policy, terms of service and a GDPR checklist.',                   icon: Shield,     color: '#c8973e', route: '/compliance-agent' },
+      { label: 'AI CFO',                 desc: 'Budget planning, ROI forecasting and P&L clarity.',                             icon: DollarSign, color: '#10b981', route: '/ai-cfo' },
+      { label: 'AI CTO',                 desc: 'Tech stack advisory and sprint planning.',                                      icon: Cpu,        color: '#3b82f6', route: '/ai-cto' },
+      { label: 'AI CEO',                 desc: 'Vision, board updates and investor communication.',                            icon: Crown,      color: '#c8973e', route: '/ai-ceo' },
+      { label: 'AI CRO',                 desc: 'Revenue optimization, pricing and upsell strategy.',                           icon: TrendingUp, color: '#a855f7', route: '/ai-cro' },
     ],
   },
 ]

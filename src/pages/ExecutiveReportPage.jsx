@@ -1,14 +1,16 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   BarChart2, ArrowLeft, Loader2, Copy, Check, Download,
   TrendingUp, TrendingDown, AlertCircle, CheckCircle2,
   DollarSign, Target, Zap, Star, ChevronRight, RefreshCw,
-  FileText, Crown, Globe, Calendar,
+  FileText, Crown, Globe, Calendar, Link2,
 } from 'lucide-react'
-import Navbar from '../components/Navbar.jsx'
+import AppSidebar from '../components/AppSidebar.jsx'
 import { useRequireAuth } from '../hooks/useRequireAuth'
+import { useAuth } from '../hooks/useAuth'
+import { getGoogleAdsAccount, getGoogleAdsMetrics } from '../services/googleAdsService'
 
 const BG     = '#0e0c09'
 const CARD   = '#1c1a13'
@@ -21,8 +23,6 @@ const TEXT   = '#f0ebe0'
 const TEXT2  = 'rgba(240,235,224,0.55)'
 const TEXT3  = 'rgba(240,235,224,0.32)'
 const GREEN  = '#10b981'
-const GROQ   = import.meta.env.VITE_GROQ_API_KEY || ''
-
 const PERIODS   = ['Last 7 Days', 'Last 30 Days', 'Last Quarter', 'Last 6 Months', 'Last Year', 'Custom']
 const CHANNELS  = ['Meta Ads', 'LinkedIn', 'Google Ads', 'Email Marketing', 'TikTok', 'SEO/Organic', 'WhatsApp', 'Influencer']
 const AUDIENCES = ['B2B Professionals', 'B2C Consumers', 'SMEs', 'Enterprise', 'Students', 'Healthcare', 'E-Commerce Shoppers']
@@ -94,9 +94,9 @@ Generate a comprehensive executive marketing report. Return ONLY valid JSON:
   "boardStatement": "One powerful sentence the CMO would say to the board about this period's performance"
 }`
 
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  const res = await fetch('/api/generate', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${GROQ}` },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: 'llama-3.3-70b-versatile',
       messages: [{ role: 'user', content: prompt }],
@@ -134,6 +134,7 @@ const trendIcon   = (t) => t === 'up' ? <TrendingUp size={14} color={GREEN} /> :
 export default function ExecutiveReportPage() {
   useRequireAuth()
   const navigate = useNavigate()
+  const { user: authUser } = useAuth()
   const [loading,  setLoading]  = useState(false)
   const [error,    setError]    = useState('')
   const [report,   setReport]   = useState(null)
@@ -149,6 +150,30 @@ export default function ExecutiveReportPage() {
   const [clicks,       setClicks]       = useState('')
   const [conversions,  setConversions]  = useState('')
   const [audience,     setAudience]     = useState('B2B Professionals')
+  const [autoFilled,   setAutoFilled]   = useState(false)
+  const [gadsConnected, setGadsConnected] = useState(null) // null = checking, false = not connected, true = connected
+
+  // Pull real Google Ads metrics for the connected account instead of asking
+  // the user to type in numbers by hand — same data source Analytics Dashboard uses.
+  useEffect(() => {
+    if (!authUser?.uid) return
+    let cancelled = false
+    ;(async () => {
+      const acc = await getGoogleAdsAccount(authUser.uid)
+      if (cancelled) return
+      if (!acc) { setGadsConnected(false); return }
+      setGadsConnected(true)
+      const metrics = await getGoogleAdsMetrics(authUser.uid)
+      if (cancelled || !metrics) return
+      setBudgetSpent(String(Math.round(metrics.spend)))
+      setImpressions(String(metrics.impressions))
+      setClicks(String(metrics.clicks))
+      setConversions(String(metrics.conversions))
+      setChannels(prev => prev.includes('Google Ads') ? prev : [...prev, 'Google Ads'])
+      setAutoFilled(true)
+    })()
+    return () => { cancelled = true }
+  }, [authUser?.uid])
 
   const toggleChannel = (c) => setChannels(prev => prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c])
 
@@ -218,8 +243,9 @@ Confidence: ${report.nextPeriodForecast?.confidence}
 
   return (
     <div style={{ minHeight: '100vh', background: BG, color: TEXT, fontFamily: "'Inter', sans-serif" }}>
-      <Navbar />
-      <div style={{ maxWidth: 1040, margin: '0 auto', padding: '96px 20px 60px' }}>
+      <AppSidebar />
+      <div style={{ marginLeft: 'var(--evox-sidebar-w, 220px)', transition: 'margin-left 0.22s' }}>
+      <div style={{ maxWidth: 1040, margin: '0 auto', padding: '36px 20px 60px' }}>
 
         <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', color: TEXT3, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, marginBottom: 24, padding: 0 }}>
           <ArrowLeft size={14} /> Back
@@ -286,6 +312,17 @@ Confidence: ${report.nextPeriodForecast?.confidence}
 
             {/* Metrics */}
             <div style={{ fontSize: 11, fontWeight: 700, color: GOLD, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>Key Metrics</div>
+            {autoFilled && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '8px 12px', marginBottom: 12, background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.25)', borderRadius: 8, fontSize: 12, color: GREEN }}>
+                <CheckCircle2 size={13} /> Budget, impressions, clicks & conversions pulled from your connected Google Ads account
+              </div>
+            )}
+            {gadsConnected === false && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '8px 12px', marginBottom: 12, background: 'rgba(200,151,62,0.08)', border: `1px solid ${GBORDER}`, borderRadius: 8, fontSize: 12, color: TEXT2 }}>
+                <Link2 size={13} color={GOLD} /> Connect Google Ads to auto-fill these metrics — otherwise enter them manually below.
+                <button onClick={() => navigate('/connect-accounts')} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: GOLD, fontWeight: 700, cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>Connect →</button>
+              </div>
+            )}
             <div style={{ display: 'grid', gridTemplateColumns: '60px 1fr', gap: 8, marginBottom: 12, alignItems: 'center' }}>
               <label style={{ fontSize: 11, color: TEXT3, fontWeight: 600 }}>Currency</label>
               <select value={currency} onChange={e => setCurrency(e.target.value)} style={{ ...inputStyle, padding: '8px 10px' }}>
@@ -298,12 +335,12 @@ Confidence: ${report.nextPeriodForecast?.confidence}
                 <input value={budgetSpent} onChange={e => setBudgetSpent(e.target.value)} placeholder="50,000" style={inputStyle} />
               </div>
               <div>
-                <label style={{ fontSize: 11, color: TEXT3, marginBottom: 6, display: 'block', fontWeight: 600 }}>Revenue Generated</label>
-                <input value={revenue} onChange={e => setRevenue(e.target.value)} placeholder="2,00,000" style={inputStyle} />
+                <label style={{ fontSize: 11, color: TEXT3, marginBottom: 6, display: 'block', fontWeight: 600 }}>Revenue Generated <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(enter manually — not tracked automatically)</span></label>
+                <input value={revenue} onChange={e => setRevenue(e.target.value)} placeholder="200,000" style={inputStyle} />
               </div>
               <div>
                 <label style={{ fontSize: 11, color: TEXT3, marginBottom: 6, display: 'block', fontWeight: 600 }}>Total Impressions</label>
-                <input value={impressions} onChange={e => setImpressions(e.target.value)} placeholder="1,50,000" style={inputStyle} />
+                <input value={impressions} onChange={e => setImpressions(e.target.value)} placeholder="150,000" style={inputStyle} />
               </div>
               <div>
                 <label style={{ fontSize: 11, color: TEXT3, marginBottom: 6, display: 'block', fontWeight: 600 }}>Total Clicks</label>
@@ -503,6 +540,7 @@ Confidence: ${report.nextPeriodForecast?.confidence}
             )}
           </AnimatePresence>
         </div>
+      </div>
       </div>
       <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
     </div>

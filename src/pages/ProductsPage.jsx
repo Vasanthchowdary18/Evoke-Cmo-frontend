@@ -7,7 +7,7 @@ import {
   Loader2, Unlink,
   Linkedin, Facebook, Mail, MessageSquare,
 } from 'lucide-react'
-import Navbar from '../components/Navbar.jsx'
+import AppSidebar from '../components/AppSidebar.jsx'
 import JourneyFooter from '../components/JourneyFooter.jsx'
 import { useAuth } from '../hooks/useAuth.js'
 import { redirectToLogin } from '../lib/authUtils.js'
@@ -328,9 +328,10 @@ export default function ProductsPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: BG, color: TEXT, fontFamily: "'Inter',sans-serif" }}>
-      <Navbar />
+      <AppSidebar />
+      <div style={{ marginLeft: 'var(--evox-sidebar-w, 220px)', transition: 'margin-left 0.22s' }}>
 
-      <div style={{ maxWidth: 1280, margin: '0 auto', padding: '96px 48px 80px', display: 'flex', gap: 20, alignItems: 'flex-start' }}>
+      <div style={{ maxWidth: 1280, margin: '0 auto', padding: '36px 48px 80px', display: 'flex', gap: 20, alignItems: 'flex-start' }}>
 
         {/* ══════════ LEFT SIDEBAR ══════════ */}
         <div style={{
@@ -533,6 +534,7 @@ export default function ProductsPage() {
 
       </div>
       <JourneyFooter currentPath="/products" />
+      </div>
     </div>
   )
 }

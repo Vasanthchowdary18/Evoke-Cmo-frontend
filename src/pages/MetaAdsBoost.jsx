@@ -7,9 +7,9 @@ import {
   Link2, Unlink, TrendingUp, Eye, MousePointer,
   ChevronDown, ChevronUp, ExternalLink, RefreshCw, X,
 } from 'lucide-react'
-import Navbar from '../components/Navbar.jsx'
+import AppSidebar from '../components/AppSidebar.jsx'
 import { useRequireAuth } from '../hooks/useRequireAuth'
-import { META_API_BASE } from '../config.js'
+import { getMetaAdsAccount, createMetaAdsBoost, disconnectMetaAds as disconnectMetaAdsAccount } from '../services/metaAdsService'
 
 /* ─── colour tokens (matches Landing.jsx / Navbar.jsx) ─── */
 const BG      = '#0e0c09'
@@ -138,25 +138,17 @@ export default function MetaAdsBoost() {
   /* ── advanced toggle ── */
   const [showAdvanced, setShowAdvanced] = useState(false)
 
-  /* ── load connection status ── */
+  /* ── load connection status (Firestore, client-side — same pattern as Google Ads) ── */
   const loadConnections = useCallback(async (uid) => {
-    if (!uid || !META_API_BASE) { setConnLoading(false); return }
+    if (!uid) { setConnLoading(false); return }
     setConnLoading(true)
     try {
-      const res = await fetch(`${META_API_BASE}/status/${uid}`, {
-        headers: { 'evoke-api-key': import.meta.env.VITE_EVOKE_API_KEY || '' },
-      })
-      const data = await res.json()
-      const ma = data?.connections?.meta_ads
-      setMetaConn(ma?.connected ? ma : null)
-      if (ma?.connected) {
-        const accRes = await fetch(`${META_API_BASE}/api/ads/accounts/${uid}`, {
-          headers: { 'evoke-api-key': import.meta.env.VITE_EVOKE_API_KEY || '' },
-        })
-        const accData = await accRes.json()
-        const accounts = accData?.ad_accounts || []
+      const acc = await getMetaAdsAccount(uid)
+      setMetaConn(acc)
+      if (acc) {
+        const accounts = acc.adAccounts || []
         setAdAccounts(accounts)
-        setAdAccountId(accData?.active_ad_account_id || accounts[0]?.id || '')
+        setAdAccountId(acc.activeAdAccountId || accounts[0]?.id || '')
       }
     } catch (e) {
       console.error('[MetaAds] Failed to load connections:', e)
@@ -169,20 +161,16 @@ export default function MetaAdsBoost() {
     if (user) loadConnections(user.uid)
   }, [user, loadConnections])
 
-  /* ── connect Meta Ads ── */
+  /* ── connect Meta Ads (OAuth flow lives on /connect-accounts) ── */
   const connectMetaAds = () => {
-    if (!user) return
-    window.location.href = `${META_API_BASE}/auth/meta-ads?user_id=${user.uid}`
+    navigate('/connect-accounts')
   }
 
   /* ── disconnect ── */
   const disconnectMetaAds = async () => {
     if (!user) return
     try {
-      await fetch(`${META_API_BASE}/disconnect/${user.uid}/meta_ads`, {
-        method: 'DELETE',
-        headers: { 'evoke-api-key': import.meta.env.VITE_EVOKE_API_KEY || '' },
-      })
+      await disconnectMetaAdsAccount(user.uid)
       setMetaConn(null)
       setAdAccounts([])
     } catch (e) {
@@ -214,7 +202,6 @@ export default function MetaAdsBoost() {
     setSubmitting(true)
     try {
       const body = {
-        app_user_id:     user.uid,
         ad_account_id:   adAccountId || undefined,
         post_id:         postId.trim(),
         page_id:         pageId.trim() || undefined,
@@ -234,16 +221,7 @@ export default function MetaAdsBoost() {
         placements,
       }
 
-      const res = await fetch(`${META_API_BASE}/api/ads/boost`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'evoke-api-key': import.meta.env.VITE_EVOKE_API_KEY || '',
-        },
-        body: JSON.stringify(body),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data?.error || data?.detail || 'Boost failed.')
+      const data = await createMetaAdsBoost(user.uid, body)
       setResult(data)
     } catch (e) {
       setError(e.message || 'Something went wrong. Please try again.')
@@ -269,9 +247,10 @@ export default function MetaAdsBoost() {
   /* ─────────────────────────────── render ─────────────────────────── */
   return (
     <div style={{ background: BG, minHeight: '100vh', color: TEXT, fontFamily: "'Inter', sans-serif" }}>
-      <Navbar />
+      <AppSidebar />
+      <div style={{ marginLeft: 'var(--evox-sidebar-w, 220px)', transition: 'margin-left 0.22s' }}>
 
-      <div style={{ maxWidth: 860, margin: '0 auto', padding: '100px 24px 80px' }}>
+      <div style={{ maxWidth: 860, margin: '0 auto', padding: '36px 24px 80px' }}>
 
         {/* ── Header ── */}
         <div style={{ marginBottom: 36 }}>
@@ -718,18 +697,9 @@ export default function MetaAdsBoost() {
           </div>
         )}
 
-        {/* ── Not configured notice ── */}
-        {!META_API_BASE && (
-          <div style={{ marginTop: 24, padding: '16px 20px', background: 'rgba(224,82,82,0.08)', border: '1px solid rgba(224,82,82,0.2)', borderRadius: 12, fontSize: 13, color: RED, display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-            <AlertCircle size={16} style={{ flexShrink: 0, marginTop: 1 }} />
-            <span>
-              <strong>API not configured.</strong> Add <code style={{ background: 'rgba(0,0,0,0.3)', padding: '1px 5px', borderRadius: 4 }}>VITE_META_API_BASE=https://your-api.com</code> to your <code>.env</code> file and restart the dev server.
-            </span>
-          </div>
-        )}
-
       </div>
 
+      </div>
       {/* spin keyframe injected inline */}
       <style>{`@keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }`}</style>
     </div>

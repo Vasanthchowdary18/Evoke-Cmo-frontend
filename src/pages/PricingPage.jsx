@@ -273,8 +273,11 @@ export default function PricingPage() {
   const [billing, setBilling] = useState("monthly"); // 'monthly' | 'annual'
   const [openFaq, setOpenFaq] = useState(null);
 
-  const getStarted = () => {
-    if (user) navigate("/dashboard");
+  const getStarted = (planKey) => {
+    try {
+      if (planKey) localStorage.setItem("evoke_selected_package", planKey);
+    } catch {}
+    if (user) navigate("/brand-profile");
     else redirectToLogin(window.location.origin + "/brand-profile");
   };
   // NOTE: replace with the team's real sales inbox / contact route.
@@ -712,7 +715,7 @@ export default function PricingPage() {
                 <div style={{ paddingTop: 12 }}>
                   <button
                     onClick={
-                      plan.key === "enterprise" ? contactSales : getStarted
+                      plan.key === "enterprise" ? contactSales : () => getStarted(plan.key)
                     }
                     style={{
                       width: "100%",
@@ -1159,7 +1162,7 @@ export default function PricingPage() {
             }}
           >
             <button
-              onClick={getStarted}
+              onClick={() => getStarted()}
               style={{
                 display: "inline-flex",
                 alignItems: "center",

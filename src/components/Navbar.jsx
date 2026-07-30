@@ -88,7 +88,7 @@ export default function Navbar() {
   const appLinks = [
     { label: 'Dashboard',   href: '/dashboard'        },
     { label: 'Campaigns',   href: '/campaign-hub'     },
-    { label: 'Content',     href: '/hub/content'      },
+    { label: 'Content',     href: '/content-studio'   },
     { label: 'Connect',     href: '/connect-accounts' },
   ]
   const navLinks = isApp ? appLinks : landingLinks

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth.js'
-import Navbar from '../components/Navbar.jsx'
+import AppSidebar from '../components/AppSidebar.jsx'
 import {
   ArrowLeft, ArrowRight, CheckCircle2, Lock, AlertTriangle,
   User, BookOpen, Share2, Rocket, BarChart2, Zap, RefreshCw,
@@ -300,9 +300,10 @@ export default function MarketingHealthPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: BG, color: TEXT, fontFamily: "'Inter', sans-serif" }}>
-      <Navbar />
+      <AppSidebar />
+      <div style={{ marginLeft: 'var(--evox-sidebar-w, 220px)', transition: 'margin-left 0.22s' }}>
 
-      <div style={{ maxWidth: 880, margin: '0 auto', padding: '90px 24px 80px' }}>
+      <div style={{ maxWidth: 880, margin: '0 auto', padding: '36px 24px 80px' }}>
 
         {/* back */}
         <button
@@ -458,6 +459,7 @@ export default function MarketingHealthPage() {
 
       </div>
 
+      </div>
       <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
     </div>
   )

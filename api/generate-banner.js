@@ -18,7 +18,7 @@ export default async function handler(req) {
   }
 
   try {
-    const { prompt, provider = 'gemini' } = await req.json()
+    const { prompt, provider = 'gemini', width = 1024, height = 1024 } = await req.json()
     if (!prompt) {
       return new Response(
         JSON.stringify({ error: 'Prompt is required' }),
@@ -29,6 +29,8 @@ export default async function handler(req) {
     let imageData
     if (provider === 'dalle') {
       imageData = await generateWithDalle(prompt)
+    } else if (provider === 'pollinations') {
+      imageData = await generateWithPollinations(prompt, width, height)
     } else {
       imageData = await generateWithGemini(prompt)
     }
@@ -83,6 +85,19 @@ async function generateWithDalle(prompt) {
     mimeType: 'image/png',
     provider: 'gpt-image-2',
   }
+}
+
+// ── Pollinations Implementation (free, no API key) ──
+async function generateWithPollinations(prompt, width = 1024, height = 1024) {
+  const seed = Math.floor(Math.random() * 2147483647) // Pollinations rejects seeds > 32-bit int (Date.now() overflowed this)
+  const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${width}&height=${height}&model=flux&nologo=true&seed=${seed}`
+  const res = await fetch(url)
+  if (!res.ok) throw new Error(`Pollinations error ${res.status}`)
+  const buffer = await res.arrayBuffer()
+  const bytes = new Uint8Array(buffer)
+  let binary = ''
+  for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i])
+  return { base64Image: btoa(binary), mimeType: 'image/png', provider: 'pollinations' }
 }
 
 // ── Gemini Implementation ──

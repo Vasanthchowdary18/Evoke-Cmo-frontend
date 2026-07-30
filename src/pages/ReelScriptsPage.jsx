@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Film, ArrowLeft, ArrowRight, Loader2, Copy, Check, AlertCircle, Download } from 'lucide-react'
-import Navbar from '../components/Navbar.jsx'
+import AppSidebar from '../components/AppSidebar.jsx'
 import { useAuth } from '../hooks/useAuth'
 import { getKnowledgeBase } from '../services/knowledgeBaseService.js'
 
@@ -36,7 +36,6 @@ const SCRIPT_TYPES = [
 const DURATIONS = ['15 seconds', '30 seconds', '45 seconds', '60 seconds']
 
 async function generateScriptForPlatform({ platformKey, scriptType, context, audience, duration }) {
-  const apiKey = import.meta.env.VITE_GROQ_API_KEY || ''
   const platformLabel = PLATFORMS.find(p => p.key === platformKey)?.label || platformKey
 
   const prompt = `You are an expert short-form video scriptwriter. Generate a complete ${duration} ${platformLabel} video script.
@@ -73,20 +72,11 @@ Generate a complete, ready-to-shoot video script. Return ONLY valid JSON (no mar
     max_tokens: 2500,
   })
 
-  let res
-  if (apiKey && apiKey !== 'your_groq_api_key_here') {
-    res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-      body,
-    })
-  } else {
-    res = await fetch('/api/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body,
-    })
-  }
+  const res = await fetch('/api/generate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body,
+  })
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
@@ -222,7 +212,7 @@ export default function ReelScriptsPage() {
 
   const s = {
     page: { minHeight: '100vh', background: BG, color: TEXT, fontFamily: FONT },
-    container: { maxWidth: 780, margin: '0 auto', padding: '88px 24px 60px' },
+    container: { maxWidth: 780, margin: '0 auto', padding: '36px 24px 60px' },
     label: { fontSize: 13, fontWeight: 700, color: TEXT2, marginBottom: 8, display: 'block' },
     req: { color: ORANGE, marginLeft: 3 },
     input: {
@@ -273,7 +263,8 @@ export default function ReelScriptsPage() {
 
   return (
     <div style={s.page}>
-      <Navbar />
+      <AppSidebar />
+      <div style={{ marginLeft: 'var(--evox-sidebar-w, 220px)', transition: 'margin-left 0.22s' }}>
       <div style={s.container}>
 
         {/* Back */}
@@ -606,6 +597,7 @@ export default function ReelScriptsPage() {
         </AnimatePresence>
 
         <style>{`@keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }`}</style>
+      </div>
       </div>
     </div>
   )

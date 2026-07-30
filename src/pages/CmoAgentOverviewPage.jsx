@@ -7,7 +7,7 @@ import {
   Shield, CheckCircle2, FileText, Mail, Globe, Calendar,
   Lightbulb, Package, Rocket,
 } from 'lucide-react'
-import Navbar from '../components/Navbar.jsx'
+import AppSidebar from '../components/AppSidebar.jsx'
 
 const BG      = '#0e0c09'
 const CARD    = '#1c1a13'
@@ -272,7 +272,7 @@ export default function CmoAgentOverviewPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: BG, color: TEXT, fontFamily: "'Inter',sans-serif" }}>
-      <Navbar />
+      <AppSidebar />
 
       {/* Ambient glow */}
       <div style={{
@@ -282,7 +282,8 @@ export default function CmoAgentOverviewPage() {
         zIndex: 0,
       }} />
 
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '108px 28px 80px', position: 'relative', zIndex: 1 }}>
+      <div style={{ marginLeft: 'var(--evox-sidebar-w, 220px)', transition: 'margin-left 0.22s' }}>
+      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '36px 28px 80px', position: 'relative', zIndex: 1 }}>
 
         {/* Back */}
         <motion.button
@@ -514,6 +515,7 @@ export default function CmoAgentOverviewPage() {
           </motion.button>
         </motion.div>
 
+      </div>
       </div>
     </div>
   )

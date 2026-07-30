@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Mail, MessageSquare, Linkedin, Phone, Target,
-  Search, Calendar, Megaphone, Copy, Check,
+  Calendar, Megaphone, Copy, Check,
   ArrowLeft, Zap, AlertCircle, RefreshCw, Send,
   CheckCircle2, Facebook, Loader2, RotateCcw,
   Pencil, X, Instagram, TrendingUp, BarChart2,
@@ -827,8 +827,8 @@ export default function Results() {
           if (flat.seoTitle || flat.seoDescription) {
             push('seoTitle', 'seo', '', [safeStr(flat.seoTitle), safeStr(flat.seoDescription)].filter(Boolean).join('\n\n'))
           }
-          if (flat.executiveSummary || flat.gtmPlan) {
-            items.push({ key: 'strategy', type: 'strategy', platform: '', text: safeStr(flat.executiveSummary), data: JSON.stringify(flat), imageUrl: '', videoUrl: '' })
+          if (flat.executiveSummary || flat.gtmPlan || flat.competitorAnalysis || flat.swotAnalysis) {
+            items.push({ key: 'strategy', type: 'strategy', platform: '', text: safeStr(flat.executiveSummary || flat.competitorAnalysis), data: JSON.stringify(flat), imageUrl: '', videoUrl: '' })
           }
           if (items.length) {
             const campaignId = Date.now().toString()
@@ -1731,29 +1731,6 @@ export default function Results() {
               </ResultCard>
             )}
 
-            {!isEmailDrip && !isInfluencer && !isAnalyticsReport && positioningStatement && (
-              <ResultCard icon={<Target size={16} />} title="Positioning Statement" color="#a855f7" copyText={positioningStatement} copyId="positioning" copied={copied} copy={copy} editKey="positioningStatement" editValue={editedContent.positioningStatement} delay={0.23} {...editProps}>
-                <ContentText value={editedContent.positioningStatement || positioningStatement} />
-              </ResultCard>
-            )}
-
-            {!isEmailDrip && !isInfluencer && !isAnalyticsReport && (seoTitle || seoDescription) && (
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.26 }}
-                style={{ background: '#fff', border: '1px solid rgba(245,240,232,0.15)', borderRadius: 16, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid #f5f0e8', background: '#fafbff' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{ width: 32, height: 32, borderRadius: 9, background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f59e0b' }}><Search size={16} /></div>
-                    <span style={{ fontWeight: 700, fontSize: 14, color: '#0f172a' }}>SEO Content</span>
-                  </div>
-                  <button onClick={() => copy(`${seoTitle}\n\n${seoDescription}`, 'seo')} style={copyBtnSmall(copied === 'seo')}>{copied === 'seo' ? <Check size={11} /> : <Copy size={11} />}</button>
-                </div>
-                <div style={{ padding: '16px 18px' }}>
-                  <FieldRow label="SEO Title" value={seoTitle} />
-                  <FieldRow label="Meta Description" value={seoDescription} />
-                </div>
-              </motion.div>
-            )}
-
             {!isEmailDrip && !isInfluencer && !isAnalyticsReport && (adHeadline || adBody) && (
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.29 }}
                 style={{ background: '#fff', border: '1px solid rgba(245,240,232,0.15)', borderRadius: 16, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
@@ -1917,9 +1894,9 @@ export default function Results() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <CheckCircle2 size={20} style={{ color: '#10b981', flexShrink: 0 }} />
                   <div>
-                    <p style={{ fontWeight: 700, fontSize: 14, color: '#0f172a', margin: '0 0 2px' }}>Campaign created in Google Ads!</p>
+                    <p style={{ fontWeight: 700, fontSize: 14, color: '#0f172a', margin: '0 0 2px' }}>Campaign created in Google Ads — Paused</p>
                     <p style={{ fontSize: 12, color: '#64748b', margin: 0 }}>
-                      Campaign ID: <strong style={{ color: '#4285f4' }}>{googleAdsCampaignId}</strong> · Under review — goes live in 1–3 hours.
+                      Campaign ID: <strong style={{ color: '#4285f4' }}>{googleAdsCampaignId}</strong> · Created as PAUSED. Review budget, targeting, and ad copy in Google Ads, then enable it manually to go live.
                     </p>
                   </div>
                 </div>

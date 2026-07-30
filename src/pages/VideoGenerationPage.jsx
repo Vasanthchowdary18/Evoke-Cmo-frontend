@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Film, ArrowLeft, Loader2, Sparkles, Check, Copy,
+  Loader2, Sparkles, Check, Copy,
   Play, Mic, MonitorPlay, Clapperboard, ShoppingBag,
   Instagram, Megaphone, GraduationCap, Calendar,
   ChevronRight, Download, Shield, RefreshCw, CheckCircle2,
@@ -10,20 +10,21 @@ import {
 } from 'lucide-react'
 import { useRequireAuth } from '../hooks/useRequireAuth'
 import { useAuth } from '../hooks/useAuth'
-import { saveContentItems, getContentItems } from '../services/contentService'
+import { saveContentItems, getContentItems, updateContentItem } from '../services/contentService'
+import AppSidebar from '../components/AppSidebar.jsx'
+import ToolTopBar from '../components/ToolTopBar.jsx'
 
-const BG      = '#0e0c09'
-const CARD    = '#1c1a13'
-const CARD2   = '#211e14'
-const BORDER  = 'rgba(255,255,255,0.07)'
+const BG      = '#0A0A0F'
+const CARD    = '#111118'
+const CARD2   = '#1A1A24'
+const BORDER  = '#2A2A3A'
 const GOLD    = '#c8973e'
-const GDIM    = 'rgba(200,151,62,0.13)'
-const GBORDER = 'rgba(200,151,62,0.28)'
-const TEXT    = '#f0ebe0'
-const TEXT2   = 'rgba(240,235,224,0.55)'
-const TEXT3   = 'rgba(240,235,224,0.32)'
+const GDIM    = 'rgba(200,151,62,0.1)'
+const GBORDER = 'rgba(200,151,62,0.22)'
+const TEXT    = '#fff'
+const TEXT2   = '#9b9bb0'
+const TEXT3   = 'rgba(240,235,224,0.26)'
 
-const GROQ_KEY      = import.meta.env.VITE_GROQ_API_KEY      || ''
 const WAVESPEED_KEY = import.meta.env.VITE_WAVESPEED_API_KEY || ''
 
 const VIDEO_TYPES = [
@@ -91,11 +92,9 @@ Return ONLY valid JSON:
   }
 }`
 
-  if (!GROQ_KEY) throw new Error('Groq API key is not configured. Set VITE_GROQ_API_KEY.')
-
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  const res = await fetch('/api/generate', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${GROQ_KEY}` },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: 'llama-3.3-70b-versatile',
       messages: [{ role: 'user', content: prompt }],
@@ -167,9 +166,10 @@ const TARGET_AUDIENCES = ['Marketing Managers', 'CMOs & Marketing Leaders', 'Sma
 export default function VideoGenerationPage() {
   useRequireAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const { user } = useAuth()
 
-  const [videoType, setVideoType] = useState('')
+  const [videoType, setVideoType] = useState(location.state?.prefill?.videoType || '')
   const [inputs, setInputs]       = useState({ brand: '', goal: '', audience: '', duration: '30 seconds', tone: 'Energetic' })
   const [loading, setLoading]     = useState(false)
   const [result, setResult]       = useState(null)
@@ -218,21 +218,23 @@ export default function VideoGenerationPage() {
       const r = await generateVideoPackage({ ...inputs, videoType })
       setResult(r)
       setActiveTab('script')
+      let docId = null
       try {
         const ids = await saveContentItems(
           user?.uid,
           { name: inputs.brand, type: 'video_generation', source: 'campaign' },
-          [{ key: 'output', type: 'strategy', platform: '', text: r.title, data: JSON.stringify(r) }],
+          [{ key: 'output', type: 'strategy', platform: '', text: r.title, data: JSON.stringify({ ...r, duration: inputs.duration }) }],
           'draft'
         )
-        setSavedDocId(ids['output'] || null)
+        docId = ids['output'] || null
+        setSavedDocId(docId)
         loadHistory()
       } catch {}
 
       // Generate actual video via WaveSpeed in background
       const vPrompt = `${r.title}. ${r.hook}. ${r.script?.intro} ${r.script?.body} ${inputs.brand} ${inputs.videoType} video, ${inputs.tone} tone, cinematic quality.`
       setVideoPrompt(vPrompt)
-      runVideoGeneration(vPrompt)
+      runVideoGeneration(vPrompt, docId)
     } catch (e) {
       setError(e?.message || 'Generation failed. Please try again.')
     } finally {
@@ -240,11 +242,16 @@ export default function VideoGenerationPage() {
     }
   }
 
-  const runVideoGeneration = (vPrompt) => {
+  const runVideoGeneration = (vPrompt, docId) => {
     setVideoLoading(true)
     setVideoError('')
     generateActualVideo(vPrompt)
-      .then(url => { setVideoUrl(url); setVideoLoading(false) })
+      .then(url => {
+        setVideoUrl(url)
+        setVideoLoading(false)
+        const targetId = docId ?? savedDocId
+        if (targetId) updateContentItem(targetId, { videoUrl: url }).then(loadHistory).catch(() => {})
+      })
       .catch(e => { setVideoError(e?.message || 'Video generation failed.'); setVideoLoading(false) })
   }
 
@@ -271,24 +278,16 @@ export default function VideoGenerationPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: BG, color: TEXT, fontFamily: "'Inter', sans-serif" }}>
-      <div>
-      <div style={{ maxWidth: 900, margin: '0 auto', padding: '32px 28px 80px' }}>
+      <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+      <AppSidebar />
+      <div style={{ marginLeft: 'var(--evox-sidebar-w, 220px)', minHeight: '100vh', transition: 'margin-left 0.22s cubic-bezier(0.4,0,0.2,1)' }}>
 
-        {/* Header */}
-        <div style={{ marginBottom: 36 }}>
-          <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', color: TEXT3, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, marginBottom: 20, padding: 0 }}>
-            <ArrowLeft size={14} /> Back
-          </button>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 8 }}>
-            <div style={{ width: 44, height: 44, borderRadius: 12, background: GDIM, border: `1px solid ${GBORDER}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Film size={22} color={GOLD} />
-            </div>
-            <div>
-              <h1 style={{ margin: 0, fontSize: 24, fontWeight: 600 }}>Video Generation</h1>
-              <p style={{ margin: 0, fontSize: 13, color: TEXT2 }}>Fig. 17 · AI-powered video production package</p>
-            </div>
-          </div>
-        </div>
+        <ToolTopBar
+          title="Video Generation"
+          subtitle="AI-powered video production package — script, visuals, audio direction, and a rendered preview."
+        />
+
+      <div style={{ maxWidth: 900, margin: '0 auto', padding: '40px 24px 80px' }}>
 
         {/* Step 1 — Video Type Selector */}
         <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: 24, marginBottom: 20 }}>
@@ -426,7 +425,7 @@ export default function VideoGenerationPage() {
                         <AlertCircle size={28} color="#f87171" />
                         <span style={{ fontSize: 13, color: '#f87171', maxWidth: 480 }}>{videoError}</span>
                         <button
-                          onClick={() => runVideoGeneration(videoPrompt)}
+                          onClick={() => runVideoGeneration(videoPrompt, savedDocId)}
                           style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: GDIM, border: `1px solid ${GBORDER}`, borderRadius: 8, padding: '8px 16px', fontSize: 12, color: GOLD, fontWeight: 600, cursor: 'pointer' }}
                         >
                           <RefreshCw size={13} /> Retry video generation
@@ -637,7 +636,6 @@ export default function VideoGenerationPage() {
         )}
       </div>
       </div>
-      <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
     </div>
   )
 }

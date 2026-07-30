@@ -8,9 +8,10 @@ import {
   Layout, ClipboardList, ChevronRight, RefreshCw, Clock,
   Upload, Send, BookOpen, Zap, History,
 } from 'lucide-react'
-import Navbar from '../components/Navbar.jsx'
+import AppSidebar from '../components/AppSidebar.jsx'
 import { useRequireAuth } from '../hooks/useRequireAuth'
 import { useAuth } from '../hooks/useAuth'
+import { saveAuditEntry, getAuditLog } from '../services/governanceService'
 import { saveContentItems, getContentItems } from '../services/contentService'
 
 const BG      = '#0e0c09'
@@ -23,8 +24,6 @@ const GBORDER = 'rgba(200,151,62,0.28)'
 const TEXT    = '#f0ebe0'
 const TEXT2   = 'rgba(240,235,224,0.55)'
 const TEXT3   = 'rgba(240,235,224,0.32)'
-
-const GROQ_KEY = import.meta.env.VITE_GROQ_API_KEY || ''
 
 const BRAND_STANDARDS = [
   { key: 'color',    label: 'Brand Color Guidelines',  icon: <Palette size={18}/>,      desc: 'Primary, secondary & accent palette', color: '#c8973e' },
@@ -61,13 +60,13 @@ Evaluate against all 5 brand standard categories and return ONLY valid JSON:
   ],
   "approvedElements": ["Element 1 that passed", "Element 2", "Element 3"],
   "revisionRequests": [],
-  "publishingQueue": ${Math.random() > 0.3 ? 'true' : 'false'},
-  "humanReviewRequired": ${Math.random() > 0.6 ? 'false' : 'true'}
+  "publishingQueue": true,
+  "humanReviewRequired": false
 }`
 
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  const res = await fetch('/api/generate', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${GROQ_KEY}` },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: 'llama-3.3-70b-versatile',
       messages: [{ role: 'user', content: prompt }],
@@ -129,7 +128,14 @@ export default function BrandGovernancePage() {
     } catch {}
   }
 
-  useEffect(() => { loadHistory() }, [user?.uid])
+  const loadAuditLog = async () => {
+    if (!user?.uid) return
+    try {
+      setAuditLog(await getAuditLog(user.uid))
+    } catch {}
+  }
+
+  useEffect(() => { loadHistory(); loadAuditLog() }, [user?.uid])
 
   const handleReview = async () => {
     if (!content.trim()) return
@@ -140,8 +146,9 @@ export default function BrandGovernancePage() {
     try {
       const r = await reviewContent(content, contentType, brand)
       setResult(r)
+      const entryId = `BG-${String(auditLog.length + 1).padStart(4, '0')}`
       const newEntry = {
-        id: `BG-${String(auditLog.length + 1).padStart(4, '0')}`,
+        label: entryId,
         type: contentType,
         status: r.decision,
         score: r.overallScore,
@@ -149,6 +156,10 @@ export default function BrandGovernancePage() {
         createdAt: { seconds: Date.now() / 1000 },
       }
       setAuditLog(prev => [newEntry, ...prev])
+      try {
+        await saveAuditEntry(user?.uid, { id: entryId, type: contentType, status: r.decision, score: r.overallScore, agent: 'Brand Governance Agent' })
+        loadAuditLog()
+      } catch (e) { console.error('Failed to persist audit entry', e) }
       try {
         const ids = await saveContentItems(
           user?.uid,
@@ -171,8 +182,9 @@ export default function BrandGovernancePage() {
 
   return (
     <div style={{ minHeight: '100vh', background: BG, color: TEXT, fontFamily: "'Inter', sans-serif" }}>
-      <Navbar />
-      <div style={{ maxWidth: 940, margin: '0 auto', padding: '100px 20px 60px' }}>
+      <AppSidebar />
+      <div style={{ marginLeft: 'var(--evox-sidebar-w, 220px)', transition: 'margin-left 0.22s' }}>
+      <div style={{ maxWidth: 940, margin: '0 auto', padding: '36px 20px 60px' }}>
 
         {/* Header */}
         <div style={{ marginBottom: 36 }}>
@@ -412,6 +424,7 @@ export default function BrandGovernancePage() {
 
       </div>
       <JourneyFooter currentPath="/brand-governance" />
+      </div>
       <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
     </div>
   )

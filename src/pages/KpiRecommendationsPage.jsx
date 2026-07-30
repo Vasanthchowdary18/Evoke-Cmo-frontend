@@ -6,7 +6,7 @@ import {
   Download, RefreshCw, AlertCircle, Loader2, CheckCircle2,
   Instagram, Linkedin, Facebook, Hash, Youtube, Twitter,
 } from 'lucide-react'
-import Navbar from '../components/Navbar.jsx'
+import AppSidebar from '../components/AppSidebar.jsx'
 import { useAuth } from '../hooks/useAuth'
 import { getKnowledgeBase } from '../services/knowledgeBaseService.js'
 
@@ -96,7 +96,6 @@ const AUDIENCES = [
 
 /* ── helpers ───────────────────────────────────────────── */
 async function callGroq(prompt) {
-  const apiKey = import.meta.env.VITE_GROQ_API_KEY
   const body = JSON.stringify({
     model: 'llama-3.1-8b-instant',
     messages: [
@@ -111,20 +110,11 @@ async function callGroq(prompt) {
     max_tokens: 3000,
   })
 
-  let res
-  if (apiKey && apiKey !== 'your_groq_api_key_here') {
-    res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-      body,
-    })
-  } else {
-    res = await fetch('/api/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body,
-    })
-  }
+  const res = await fetch('/api/generate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body,
+  })
   if (!res.ok) throw new Error(`API error ${res.status}`)
   const json = await res.json()
   return json.choices?.[0]?.message?.content || ''
@@ -493,7 +483,8 @@ export default function KpiRecommendationsPage() {
   /* ── render ───────────────────────────────────────────── */
   return (
     <div style={s.page}>
-      <Navbar />
+      <AppSidebar />
+      <div style={{ marginLeft: 'var(--evox-sidebar-w, 220px)', transition: 'margin-left 0.22s' }}>
       <div style={s.inner}>
         {/* back */}
         <button style={s.back} onClick={() => navigate(-1)}>
@@ -640,6 +631,7 @@ export default function KpiRecommendationsPage() {
         </AnimatePresence>
       </div>
 
+      </div>
       {/* spinner keyframe */}
       <style>{`@keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } } .spin { animation: spin 1s linear infinite }`}</style>
     </div>

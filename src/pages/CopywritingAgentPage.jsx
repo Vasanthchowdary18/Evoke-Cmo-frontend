@@ -5,7 +5,7 @@ import {
   PenLine, ArrowLeft, Loader2, Copy, Check, AlertCircle,
   RefreshCw, Sparkles, Tag, Megaphone, Star, Zap,
 } from 'lucide-react'
-import Navbar from '../components/Navbar.jsx'
+import AppSidebar from '../components/AppSidebar.jsx'
 import { useRequireAuth } from '../hooks/useRequireAuth'
 
 const BG     = '#0e0c09'
@@ -18,8 +18,6 @@ const GBORDER= 'rgba(200,151,62,0.28)'
 const TEXT   = '#f0ebe0'
 const TEXT2  = 'rgba(240,235,224,0.55)'
 const TEXT3  = 'rgba(240,235,224,0.32)'
-const GROQ   = import.meta.env.VITE_GROQ_API_KEY || ''
-
 const COPY_TYPES = [
   { key: 'ad_copy',        label: 'Ad Copy',           icon: <Megaphone size={16} />, color: '#6366f1', desc: 'Paid ad headlines + body copy' },
   { key: 'taglines',       label: 'Taglines',          icon: <Tag size={16} />,       color: '#10b981', desc: 'Brand slogans & tagline variants' },
@@ -33,9 +31,9 @@ const TONES = ['Bold', 'Professional', 'Playful', 'Inspirational', 'Conversation
 const TARGET_AUDIENCES = ['Marketing Managers', 'CMOs & Marketing Leaders', 'Small Business Owners', 'Startup Founders', 'E-Commerce Brands', 'B2B Decision Makers', 'Sales Professionals', 'Product Managers', 'Entrepreneurs', 'Enterprise Teams', 'Agency Clients', 'General Consumers']
 
 async function groqGenerate(prompt) {
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  const res = await fetch('/api/generate', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${GROQ}` },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: 'llama-3.3-70b-versatile',
       messages: [{ role: 'user', content: prompt }],
@@ -460,8 +458,9 @@ export default function CopywritingAgentPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: BG, color: TEXT, fontFamily: "'Inter', sans-serif" }}>
-      <Navbar />
-      <div style={{ maxWidth: 1000, margin: '0 auto', padding: '96px 20px 60px' }}>
+      <AppSidebar />
+      <div style={{ marginLeft: 'var(--evox-sidebar-w, 220px)', transition: 'margin-left 0.22s' }}>
+      <div style={{ maxWidth: 1000, margin: '0 auto', padding: '36px 20px 60px' }}>
 
         <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', color: TEXT3, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, marginBottom: 24, padding: 0 }}>
           <ArrowLeft size={14} /> Back
@@ -612,6 +611,7 @@ export default function CopywritingAgentPage() {
           </AnimatePresence>
         </div>
 
+      </div>
       </div>
       <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
     </div>

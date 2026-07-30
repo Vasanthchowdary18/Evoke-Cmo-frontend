@@ -21,8 +21,6 @@ const TEXT2  = 'rgba(240,235,224,0.55)'
 const TEXT3  = 'rgba(240,235,224,0.32)'
 const FONT   = "'Inter','Syne',sans-serif"
 
-const GROQ_KEY = import.meta.env.VITE_GROQ_API_KEY || ''
-
 async function buildAudiences(inputs) {
   const prompt = `You are an expert audience strategist for digital marketing platforms.
 
@@ -103,9 +101,9 @@ Return ONLY valid JSON:
   }
 }`
 
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  const res = await fetch('/api/generate', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_KEY}` },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: prompt }], temperature: 0.7, max_tokens: 3000 }),
   })
   if (!res.ok) throw new Error(`Groq ${res.status}`)

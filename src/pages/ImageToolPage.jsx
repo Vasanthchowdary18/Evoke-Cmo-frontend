@@ -2,7 +2,7 @@ import { useState, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft, Sparkles, Copy, Check, Loader2, Video, Send, Upload, Wand2, RefreshCw } from 'lucide-react'
-import Navbar from '../components/Navbar.jsx'
+import AppSidebar from '../components/AppSidebar.jsx'
 
 /* ─── Tool configs ─── */
 const TOOLS = {
@@ -113,6 +113,10 @@ Return ONLY valid JSON:
   },
 }
 
+// '3D Product Images' (Agents Hub / dashboard) links to /image-3d — alias it to the
+// closest matching tool so that route isn't a dead end.
+TOOLS['image-3d'] = TOOLS['image-360']
+
 /* ─── WaveSpeed API ─── */
 const WAVESPEED_BASE = 'https://api.wavespeed.ai/api/v3'
 
@@ -165,11 +169,9 @@ async function pollWaveSpeedJob(apiKey, getUrl) {
 
 /* ─── Groq text generation ─── */
 async function callGroqText(prompt) {
-  const apiKey = import.meta.env.VITE_GROQ_API_KEY
-  if (!apiKey) throw new Error('VITE_GROQ_API_KEY not configured.')
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  const res = await fetch('/api/generate', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: 'llama-3.3-70b-versatile',
       messages: [{ role: 'user', content: prompt }],
@@ -196,7 +198,6 @@ function tryParseJSON(text) {
 
 /* ─── Groq prompt enhancer ─── */
 async function generateGroqPrompt(basePrompt, toolTitle, fields) {
-  const apiKey = import.meta.env.VITE_GROQ_API_KEY
   const fieldSummary = Object.entries(fields)
     .filter(([, v]) => v)
     .map(([k, v]) => `${k}: ${v}`)
@@ -215,20 +216,11 @@ Make it vivid, specific, and optimised for AI video generation. Max 3 sentences.
     max_tokens: 300,
   })
 
-  let res
-  if (apiKey && apiKey !== 'your_groq_api_key_here') {
-    res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-      body,
-    })
-  } else {
-    res = await fetch('/api/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body,
-    })
-  }
+  const res = await fetch('/api/generate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body,
+  })
   if (!res.ok) throw new Error(`Groq error ${res.status}`)
   const data = await res.json()
   return (data.choices?.[0]?.message?.content || '').trim()
@@ -396,12 +388,12 @@ export default function ImageToolPage() {
 
   return (
     <div style={{ height: '100vh', background: BG, color: TEXT, fontFamily: "'Inter',sans-serif", overflow: 'hidden' }}>
-      <Navbar />
+      <AppSidebar />
 
       {/* ── Single unified panel ── */}
       <div style={{
-        position: 'absolute', top: 64, left: 0, right: 0, bottom: 0,
-        display: 'flex', padding: '12px 16px', overflow: 'hidden',
+        position: 'absolute', top: 0, left: 'var(--evox-sidebar-w, 220px)', right: 0, bottom: 0,
+        display: 'flex', padding: '12px 16px', overflow: 'hidden', transition: 'left 0.22s',
       }}>
         <div style={{
           width: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden',

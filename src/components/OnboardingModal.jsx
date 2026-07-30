@@ -4,9 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Zap, ArrowRight, Loader2, Send, Sparkles, Check } from 'lucide-react'
 import { saveOnboardingData } from '../services/userService'
 
-/* ─── Groq ─── */
-const GROQ_KEY = import.meta.env.VITE_GROQ_API_KEY || ''
-const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
+/* ─── Groq (via server-side proxy — never expose the key client-side) ─── */
+const GROQ_URL = '/api/generate'
 
 const LS_STEP    = 'evoke_onboarding_step'      // 'needs_social'
 const LS_PROFILE = 'evoke_onboarding_profile'   // JSON of cmoData
@@ -157,7 +156,7 @@ Extract:
     try {
       const res = await fetch(GROQ_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_KEY}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: 'llama-3.3-70b-versatile',
           messages: [{ role: 'user', content: extractPrompt }],
@@ -236,7 +235,7 @@ Extract:
 
     const res = await fetch(GROQ_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_KEY}` },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'llama-3.3-70b-versatile',
         messages,

@@ -29,12 +29,17 @@ const STRIPE_LINKS = {
 const IS_DEV = typeof window !== 'undefined' &&
   (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
 
+// Plan gating is off everywhere while packages and billing are being reworked.
+// Flip back to true to re-enable the upgrade walls — the pricing pages, Stripe
+// links and per-plan config below are all still intact and untouched.
+const PLAN_GATES_ENABLED = false
+
 export default function PlanGate({ requiredPlan, featureName, children }) {
   const { plan: userPlan, loading } = useUserPlan()
   const navigate = useNavigate()
 
-  // Dev mode — skip all gates
-  if (IS_DEV) return children
+  // Gates disabled, or running locally — render the feature.
+  if (!PLAN_GATES_ENABLED || IS_DEV) return children
 
   if (loading) {
     return (

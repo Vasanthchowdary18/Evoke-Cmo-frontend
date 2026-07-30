@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -7,8 +7,10 @@ import {
   Reply, ChevronRight, Circle, CheckCheck, Check,
   Linkedin, Instagram, Facebook, Filter, X, Zap,
 } from 'lucide-react'
-import Navbar from '../components/Navbar.jsx'
+import AppSidebar from '../components/AppSidebar.jsx'
 import { useRequireAuth } from '../hooks/useRequireAuth'
+import { useAuth } from '../hooks/useAuth'
+import { saveThreadReply, getSavedThreads } from '../services/socialInboxService'
 
 const BG     = '#0e0c09'
 const CARD   = '#1c1a13'
@@ -62,13 +64,6 @@ const MESSAGES = [
   ]},
 ]
 
-const AI_REPLIES = [
-  "Thank you for reaching out! I'd love to explore this opportunity further. Could you share more details about your goals and timeline?",
-  "Hi! Thanks for your message. This sounds like a great fit for our services. Let me schedule a call to discuss further.",
-  "Appreciate you connecting! We'd be happy to send across our detailed service brochure and pricing. What's the best time to connect?",
-  "Hello! Great to hear from you. Our team will review your request and get back to you within 24 hours with a customised proposal.",
-]
-
 function PlatformIcon({ platform, size = 12 }) {
   if (platform === 'linkedin')  return <Linkedin  size={size} />
   if (platform === 'instagram') return <Instagram size={size} />
@@ -81,6 +76,7 @@ function PlatformIcon({ platform, size = 12 }) {
 export default function SocialInbox() {
   useRequireAuth()
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [filter, setFilter]       = useState('all')
   const [search, setSearch]       = useState('')
   const [selected, setSelected]   = useState(MESSAGES[0])
@@ -88,6 +84,25 @@ export default function SocialInbox() {
   const [sending, setSending]     = useState(false)
   const [messages, setMessages]   = useState(MESSAGES)
   const [aiLoading, setAiLoading] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+
+  async function loadThreads() {
+    if (!user?.uid) return
+    try {
+      const saved = await getSavedThreads(user.uid)
+      const merged = MESSAGES.map(m => saved[m.id] ? { ...m, thread: saved[m.id] } : m)
+      setMessages(merged)
+      setSelected(prev => merged.find(m => m.id === prev?.id) || merged[0])
+    } catch (e) { console.error('Failed to load saved inbox threads', e) }
+  }
+
+  useEffect(() => { loadThreads() }, [user?.uid])
+
+  async function handleRefresh() {
+    setRefreshing(true)
+    await loadThreads()
+    setRefreshing(false)
+  }
 
   const filtered = messages.filter(m => {
     if (filter === 'unread' && !m.unread) return false
@@ -114,30 +129,57 @@ export default function SocialInbox() {
   }
 
   async function handleSend() {
-    if (!reply.trim()) return
+    if (!reply.trim() || !selected) return
     setSending(true)
-    await new Promise(r => setTimeout(r, 800))
     const newThread = [...(selected.thread || []), { from: 'me', text: reply, time: 'Just now' }]
     setMessages(prev => prev.map(m => m.id === selected.id ? { ...m, thread: newThread } : m))
     setSelected(prev => ({ ...prev, thread: newThread }))
     setReply('')
+    try {
+      await saveThreadReply(user?.uid, selected.id, newThread)
+    } catch (e) { console.error('Failed to save reply', e) }
     setSending(false)
   }
 
   async function generateAIReply() {
+    if (!selected) return
     setAiLoading(true)
-    await new Promise(r => setTimeout(r, 1200))
-    const suggestion = AI_REPLIES[Math.floor(Math.random() * AI_REPLIES.length)]
-    setReply(suggestion)
-    setAiLoading(false)
+    try {
+      const lastFromThem = [...(selected.thread || [])].reverse().find(m => m.from === 'them')
+      const res = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'llama-3.3-70b-versatile',
+          messages: [{
+            role: 'user',
+            content: `You are a helpful marketing assistant drafting a reply to a ${PLATFORMS[selected.platform]?.label || 'social'} message.
+Sender: ${selected.sender} (${selected.role || ''})
+Their message: "${lastFromThem?.text || selected.preview}"
+
+Write a warm, professional, concise reply (2-3 sentences max). Respond with ONLY the reply text — no quotes, no explanation.`,
+          }],
+          temperature: 0.7,
+          max_tokens: 200,
+        }),
+      })
+      const data = await res.json()
+      const text = data.choices?.[0]?.message?.content?.trim()
+      if (text) setReply(text)
+    } catch (e) {
+      console.error('AI reply generation failed', e)
+    } finally {
+      setAiLoading(false)
+    }
   }
 
   const sel = selected
 
   return (
     <div style={{ minHeight: '100vh', background: BG, color: TEXT, fontFamily: "'Inter',sans-serif" }}>
-      <Navbar />
-      <div style={{ maxWidth: 1280, margin: '0 auto', padding: '88px 20px 40px' }}>
+      <AppSidebar />
+      <div style={{ marginLeft: 'var(--evox-sidebar-w, 220px)', transition: 'margin-left 0.22s' }}>
+      <div style={{ maxWidth: 1280, margin: '0 auto', padding: '36px 20px 40px' }}>
 
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 24 }}>
@@ -152,9 +194,14 @@ export default function SocialInbox() {
               Unified Inbox {unreadCount > 0 && <span style={{ fontSize: 14, background: '#ef4444', color: '#fff', borderRadius: 100, padding: '2px 8px', fontWeight: 800, verticalAlign: 'middle', marginLeft: 8 }}>{unreadCount}</span>}
             </h1>
           </div>
-          <button onClick={() => {}} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: GDIM, border: `1px solid ${GBORDER}`, borderRadius: 10, color: GOLD, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
-            <RefreshCw size={12} /> Refresh
+          <button onClick={handleRefresh} disabled={refreshing} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: GDIM, border: `1px solid ${GBORDER}`, borderRadius: 10, color: GOLD, fontSize: 12, fontWeight: 700, cursor: refreshing ? 'default' : 'pointer', fontFamily: 'inherit', opacity: refreshing ? 0.6 : 1 }}>
+            <RefreshCw size={12} style={{ animation: refreshing ? 'spin 0.8s linear infinite' : 'none' }} /> {refreshing ? 'Refreshing…' : 'Refresh'}
           </button>
+          <style>{'@keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }'}</style>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px', marginBottom: 20, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 10, fontSize: 12.5, color: TEXT2 }}>
+          <Zap size={13} color="#f59e0b" /> <strong style={{ color: '#f59e0b' }}>Example conversations</strong> — no live LinkedIn/Instagram/Facebook/WhatsApp inbox is connected yet, so these threads are sample data. Replies you send are saved to your account, and Suggested Reply uses a real AI call.
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: 0, background: CARD, border: `1px solid ${BORDER}`, borderRadius: 18, overflow: 'hidden', minHeight: 600 }}>
@@ -303,7 +350,7 @@ export default function SocialInbox() {
                       opacity: aiLoading ? 0.6 : 1,
                     }}
                   >
-                    <Zap size={11} /> {aiLoading ? 'Generating…' : 'AI Reply'}
+                    <Zap size={11} /> {aiLoading ? 'Loading…' : 'Suggested Reply'}
                   </button>
                   <span style={{ fontSize: 11, color: TEXT3, alignSelf: 'center' }}>or type your reply below</span>
                 </div>
@@ -347,6 +394,7 @@ export default function SocialInbox() {
             </div>
           )}
         </div>
+      </div>
       </div>
     </div>
   )

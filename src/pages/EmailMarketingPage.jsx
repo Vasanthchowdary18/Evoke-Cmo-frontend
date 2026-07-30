@@ -8,10 +8,11 @@ import {
   TrendingUp, AlertCircle, CheckCircle2, Eye, MousePointer,
   UserMinus, ShoppingCart,
 } from 'lucide-react'
-import Navbar from '../components/Navbar.jsx'
+import AppSidebar from '../components/AppSidebar.jsx'
 import { useRequireAuth } from '../hooks/useRequireAuth'
 import { useAuth } from '../hooks/useAuth'
 import { saveContentItems } from '../services/contentService'
+import { sendEmail } from '../services/emailService'
 
 const BG      = '#0e0c09'
 const CARD    = '#1c1a13'
@@ -24,8 +25,6 @@ const TEXT    = '#f0ebe0'
 const TEXT2   = 'rgba(240,235,224,0.55)'
 const TEXT3   = 'rgba(240,235,224,0.32)'
 const ACCENT  = '#a855f7'
-
-const GROQ_KEY = import.meta.env.VITE_GROQ_API_KEY || ''
 
 const EMAIL_TYPES = [
   { key: 'broadcast',      label: 'Broadcast',       icon: <Send size={18}/>,         desc: 'One-time send to full list',   color: '#c8973e' },
@@ -84,9 +83,9 @@ Return ONLY valid JSON (no markdown, no explanation):
   "sequenceIdea": "Brief 3-email sequence suggestion for this type"
 }`
 
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  const res = await fetch('/api/generate', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${GROQ_KEY}` },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: 'llama-3.3-70b-versatile',
       messages: [{ role: 'user', content: prompt }],
@@ -114,6 +113,9 @@ export default function EmailMarketingPage() {
   const [result, setResult]       = useState(null)
   const [copied, setCopied]       = useState('')
   const [savedOk, setSavedOk]     = useState(false)
+  const [sendTo, setSendTo]       = useState('')
+  const [sending, setSending]     = useState(false)
+  const [sendResult, setSendResult] = useState(null) // { ok: true } | { ok: false, message }
 
   const [form, setForm] = useState({
     brand: '', objective: '', offer: '', audience: 'All Subscribers', tone: 'Professional',
@@ -151,6 +153,30 @@ export default function EmailMarketingPage() {
     }
   }
 
+  const handleSendCampaign = async () => {
+    if (!sendTo.trim() || !result) return
+    setSending(true); setSendResult(null)
+    const bodyHtml = `
+      <p>${result.emailBody?.greeting || ''}</p>
+      <p>${result.emailBody?.intro || ''}</p>
+      <p>${(result.emailBody?.mainContent || '').replace(/\n/g, '<br/>')}</p>
+      <p><strong>${result.emailBody?.cta || ''}</strong></p>
+      <p>${result.emailBody?.ps || ''}</p>
+    `.trim()
+    try {
+      await sendEmail({
+        to: sendTo.split(',').map(s => s.trim()).filter(Boolean),
+        subject: result.subjectLines?.[0]?.line || result.campaignName || 'Update',
+        html: bodyHtml,
+      })
+      setSendResult({ ok: true })
+    } catch (e) {
+      setSendResult({ ok: false, message: e.message })
+    } finally {
+      setSending(false)
+    }
+  }
+
   const copyText = (text, key) => {
     navigator.clipboard.writeText(text).then(() => {
       setCopied(key)
@@ -170,8 +196,9 @@ export default function EmailMarketingPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: BG, fontFamily: "'Inter',sans-serif" }}>
-      <Navbar />
-      <div style={{ maxWidth: 1000, margin: '0 auto', padding: '100px 24px 80px' }}>
+      <AppSidebar />
+      <div style={{ marginLeft: 'var(--evox-sidebar-w, 220px)', transition: 'margin-left 0.22s' }}>
+      <div style={{ maxWidth: 1000, margin: '0 auto', padding: '36px 24px 80px' }}>
 
         {/* ── Header ── */}
         <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: 36 }}>
@@ -458,6 +485,43 @@ export default function EmailMarketingPage() {
                   <div style={{ fontSize: 13, color: TEXT2, lineHeight: 1.65 }}>{result.sequenceIdea}</div>
                 </div>
 
+                {/* Send Campaign */}
+                <div style={{ gridColumn: '1/-1', background: CARD, border: `1px solid ${BORDER}`, borderRadius: 14, padding: '20px 22px' }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: TEXT, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 7 }}>
+                    <Send size={14} color={ACCENT} /> Send This Campaign
+                  </div>
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <input
+                      value={sendTo}
+                      onChange={e => setSendTo(e.target.value)}
+                      placeholder="recipient@company.com (comma-separate for multiple)"
+                      style={{ ...inputStyle, flex: 1 }}
+                    />
+                    <motion.button whileTap={{ scale: 0.97 }}
+                      onClick={handleSendCampaign}
+                      disabled={sending || !sendTo.trim()}
+                      style={{
+                        padding: '11px 20px', borderRadius: 10, border: 'none',
+                        background: sending || !sendTo.trim() ? 'rgba(168,85,247,0.3)' : `linear-gradient(135deg, ${ACCENT}, #7c3aed)`,
+                        color: '#fff', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap',
+                        cursor: sending || !sendTo.trim() ? 'not-allowed' : 'pointer',
+                        display: 'flex', alignItems: 'center', gap: 6,
+                      }}>
+                      {sending ? <><Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> Sending…</> : <><Send size={13} /> Send</>}
+                    </motion.button>
+                  </div>
+                  {sendResult?.ok && (
+                    <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 7, color: '#10b981', fontSize: 13 }}>
+                      <CheckCircle2 size={14} /> Sent to {sendTo}
+                    </div>
+                  )}
+                  {sendResult?.ok === false && (
+                    <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 7, color: '#ef4444', fontSize: 12.5 }}>
+                      <AlertCircle size={14} style={{ flexShrink: 0 }} /> {sendResult.message}
+                    </div>
+                  )}
+                </div>
+
               </div>
 
               {savedOk && (
@@ -471,6 +535,7 @@ export default function EmailMarketingPage() {
         </AnimatePresence>
       </div>
 
+      </div>
       <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
     </div>
   )

@@ -45,7 +45,6 @@ import BrandGovernancePage from './pages/BrandGovernancePage.jsx'
 import MarketingStrategyPage from './pages/MarketingStrategyPage.jsx'
 import MarketingExecutionPage from './pages/MarketingExecutionPage.jsx'
 import CampaignHub from './pages/CampaignHub.jsx'
-import AgentHub from './pages/AgentHub.jsx'
 import ContentGenerationPage from './pages/ContentGenerationPage.jsx'
 import CopywritingAgentPage from './pages/CopywritingAgentPage.jsx'
 import ExecutiveReportPage from './pages/ExecutiveReportPage.jsx'
@@ -53,14 +52,30 @@ import MarketingHealthPage from './pages/MarketingHealthPage.jsx'
 import BrandProfilePage from './pages/BrandProfilePage.jsx'
 import EventbritePost from './pages/EventbritePost.jsx'
 import DevResetPage from './pages/DevResetPage.jsx'
-import ExecutiveReportingPage from './pages/ExecutiveReportingPage.jsx'
 import CmoAgentOverviewPage from './pages/CmoAgentOverviewPage.jsx'
 import EmailMarketingPage from './pages/EmailMarketingPage.jsx'
-import StrategyHubPage from './pages/StrategyHubPage.jsx'
 import SeoAgentPage from './pages/SeoAgentPage.jsx'
 import ABTestingPage from './pages/ABTestingPage.jsx'
 import MarketingAttributionPage from './pages/MarketingAttributionPage.jsx'
 import DashboardPage from './pages/DashboardPage.jsx'
+import StrategyHome from './pages/StrategyHome.jsx'
+import CompetitorIntelPage from './pages/CompetitorIntelPage.jsx'
+import SwotAnalysisPage from './pages/SwotAnalysisPage.jsx'
+import CampaignsPage from './pages/CampaignsPage.jsx'
+import NewCampaignWizardPage from './pages/NewCampaignWizardPage.jsx'
+import CampaignPerformancePage from './pages/CampaignPerformancePage.jsx'
+import ContentStudioHubPage from './pages/ContentStudioHubPage.jsx'
+import BlogGeneratorPage from './pages/BlogGeneratorPage.jsx'
+import EmailComposerPage from './pages/EmailComposerPage.jsx'
+import CreativeStudioHubPage from './pages/CreativeStudioHubPage.jsx'
+import AIImageGeneratorPage from './pages/AIImageGeneratorPage.jsx'
+import VideoStudioHubPage from './pages/VideoStudioHubPage.jsx'
+import SeoIntelligenceCenterPage from './pages/SeoIntelligenceCenterPage.jsx'
+import AdsCenterHubPage from './pages/AdsCenterHubPage.jsx'
+import SocialMediaManagerPage from './pages/SocialMediaManagerPage.jsx'
+import SocialCalendarPage from './pages/SocialCalendarPage.jsx'
+import CompliancePage from './pages/CompliancePage.jsx'
+import CSuitePage from './pages/CSuitePage.jsx'
 import SetupPage from './pages/SetupPage.jsx'
 import Chatbot from './components/Chatbot.jsx'
 
@@ -119,6 +134,22 @@ export default function App() {
         <Route path="/privacy"           element={<Privacy />} />
         <Route path="/terms"             element={<Terms />} />
         <Route path="/dashboard"         element={<DashboardPage />} />
+        <Route path="/strategy-home"     element={<StrategyHome />} />
+        <Route path="/competitor-intel"  element={<CompetitorIntelPage />} />
+        <Route path="/swot-analysis"     element={<SwotAnalysisPage />} />
+        <Route path="/campaigns"         element={G('package-b', 'Campaigns', CampaignsPage)} />
+        <Route path="/new-campaign"      element={G('package-b', 'New Campaign', NewCampaignWizardPage)} />
+        <Route path="/campaign-performance/:campaignId" element={G('package-b', 'Campaign Performance', CampaignPerformancePage)} />
+        <Route path="/content-studio"    element={<ContentStudioHubPage />} />
+        <Route path="/blog-generator"    element={G('package-a', 'Blog Generator', BlogGeneratorPage)} />
+        <Route path="/email-composer"    element={G('package-a', 'Email Composer', EmailComposerPage)} />
+        <Route path="/hub/creative"      element={<CreativeStudioHubPage />} />
+        <Route path="/image-generator"   element={G('package-a', 'AI Image Generator', AIImageGeneratorPage)} />
+        <Route path="/hub/video-studio"  element={G('package-a', 'Video Studio', VideoStudioHubPage)} />
+        <Route path="/hub/seo"           element={G('package-b', 'SEO Intelligence Center', SeoIntelligenceCenterPage)} />
+        <Route path="/hub/ads"           element={G('package-c', 'Campaign Ads Hub', AdsCenterHubPage)} />
+        <Route path="/hub/social"        element={G('package-b', 'Social Media Manager', SocialMediaManagerPage)} />
+        <Route path="/social-calendar"   element={G('package-b', 'Social Calendar Studio', SocialCalendarPage)} />
         {/* Legacy CMO command-center route — replaced by /dashboard */}
         <Route path="/cmo"               element={<Navigate to="/dashboard" replace />} />
 
@@ -132,11 +163,13 @@ export default function App() {
 
         {/* ── Free tier (all authenticated users) ── */}
         <Route path="/agents-hub"         element={<AgentsHub />} />
-        <Route path="/hub/:agent"         element={<AgentHub />} />
+        {/* Retired 2026-07-27: old function-grouped hub, superseded by /hub/creative, /hub/video-studio, /hub/seo, /hub/ads, /hub/social + /agents-hub — nothing links here anymore */}
+        <Route path="/hub/:agent"         element={<Navigate to="/agents-hub" replace />} />
         <Route path="/agent/:type"        element={<CmoAgentOverviewPage />} />
         <Route path="/brand-profile"      element={<BrandProfilePage />} />
         <Route path="/health-score"       element={<MarketingHealthPage />} />
-        <Route path="/strategy-hub"        element={<StrategyHubPage />} />
+        {/* Retired 2026-07-27: superseded by /strategy-home, the page actually linked from the sidebar — nothing links here anymore */}
+        <Route path="/strategy-hub"        element={<Navigate to="/strategy-home" replace />} />
         <Route path="/strategy"           element={<MarketingStrategyPage />} />
 
         {/* Brand KB tool & KPI moved to Package A (setup wizard /brand-profile stays free) */}
@@ -173,7 +206,8 @@ export default function App() {
         <Route path="/crm"                 element={G('package-b', 'CRM & Lifecycle',           CrmPage)} />
         <Route path="/analytics"           element={G('package-b', 'Analytics Dashboard',       AnalyticsDashboard)} />
         <Route path="/executive-report"    element={G('package-b', 'Executive Report',          ExecutiveReportPage)} />
-        <Route path="/executive-reporting" element={G('package-b', 'Executive Reporting',       ExecutiveReportingPage)} />
+        {/* Retired 2026-07-17: was a duplicate page running entirely on hardcoded mock data; nothing in the app links here */}
+        <Route path="/executive-reporting" element={<Navigate to="/executive-report" replace />} />
         <Route path="/campaign-hub"        element={G('package-b', 'Campaign Hub',              CampaignHub)} />
         <Route path="/connect-accounts"    element={G('package-b', 'Connect Social Accounts',   ConnectAccounts)} />
         <Route path="/queue"               element={G('package-b', 'Approval Queue',            ApprovalQueue)} />
@@ -187,6 +221,11 @@ export default function App() {
         <Route path="/execution"       element={G('package-c', 'Marketing Execution',      MarketingExecutionPage)} />
         <Route path="/team"            element={G('package-c', 'Team Management',          TeamManagement)} />
         <Route path="/partner-sharing" element={G('package-c', 'Partner Sharing',          PartnerSharing)} />
+        <Route path="/compliance-agent" element={G('package-c', 'Compliance Agent',       CompliancePage)} />
+        <Route path="/ai-cfo"          element={G('package-c', 'AI CFO',                  CSuitePage)} />
+        <Route path="/ai-cto"          element={G('package-c', 'AI CTO',                  CSuitePage)} />
+        <Route path="/ai-ceo"          element={G('package-c', 'AI CEO',                  CSuitePage)} />
+        <Route path="/ai-cro"          element={G('package-c', 'AI CRO',                  CSuitePage)} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

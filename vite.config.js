@@ -267,7 +267,7 @@ export default defineConfig(({ mode }) => {
             req.on('data', chunk => { body += chunk })
             req.on('end', async () => {
               try {
-                const { prompt, provider = 'gemini' } = JSON.parse(body)
+                const { prompt, provider = 'gemini', width = 1024, height = 1024 } = JSON.parse(body)
                 if (!prompt) {
                   res.writeHead(400)
                   res.end(JSON.stringify({ error: 'Prompt is required' }))
@@ -278,7 +278,8 @@ export default defineConfig(({ mode }) => {
                 if (provider === 'pollinations') {
                   // Free image generation — no API key needed
                   const encodedPrompt = encodeURIComponent(prompt)
-                  const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&model=flux&nologo=true&seed=${Date.now()}`
+                  const seed = Math.floor(Math.random() * 2147483647) // Pollinations rejects seeds > 32-bit int (Date.now() overflowed this)
+                  const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&model=flux&nologo=true&seed=${seed}`
                   const imgRes = await fetch(pollinationsUrl)
                   if (!imgRes.ok) throw new Error(`Pollinations error ${imgRes.status}`)
                   const buffer = await imgRes.arrayBuffer()
@@ -287,6 +288,51 @@ export default defineConfig(({ mode }) => {
                   for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i])
                   const base64Image = btoa(binary)
                   imageData = { base64Image, mimeType: 'image/png', provider: 'pollinations' }
+
+                } else if (provider === 'gemini') {
+                  // Mirrors api/generate-banner.js's generateWithGemini (production edge function)
+                  const geminiKey = env.GEMINI_API_KEY
+                  if (!geminiKey) {
+                    res.setHeader('Content-Type', 'application/json')
+                    res.writeHead(500)
+                    res.end(JSON.stringify({ error: 'Gemini API key not configured. Add GEMINI_API_KEY to your .env file.' }))
+                    return
+                  }
+
+                  const geminiRes = await fetch(
+                    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${geminiKey}`,
+                    {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }],
+                        generationConfig: { responseModalities: ['IMAGE', 'TEXT'] },
+                      }),
+                    }
+                  )
+
+                  if (!geminiRes.ok) {
+                    const err = await geminiRes.json().catch(() => ({}))
+                    res.setHeader('Content-Type', 'application/json')
+                    res.writeHead(geminiRes.status)
+                    res.end(JSON.stringify({ error: err?.error?.message || `Gemini API error ${geminiRes.status}` }))
+                    return
+                  }
+
+                  const geminiData = await geminiRes.json()
+                  const parts = geminiData.candidates?.[0]?.content?.parts || []
+                  const imagePart = parts.find(p => p.inlineData?.data)
+                  const base64Image = imagePart?.inlineData?.data || null
+                  const mimeType = imagePart?.inlineData?.mimeType || 'image/png'
+
+                  if (!base64Image) {
+                    res.setHeader('Content-Type', 'application/json')
+                    res.writeHead(500)
+                    res.end(JSON.stringify({ error: 'Gemini returned no image. Try again.' }))
+                    return
+                  }
+
+                  imageData = { base64Image, mimeType, provider: 'gemini' }
 
                 } else if (provider === 'dalle') {
                   const openaiKey = env.OPENAI_API_KEY
@@ -344,7 +390,8 @@ export default defineConfig(({ mode }) => {
                 } else {
                   // Default: Pollinations (free, no API key)
                   const encodedPrompt = encodeURIComponent(prompt)
-                  const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&model=flux&nologo=true&seed=${Date.now()}`
+                  const seed = Math.floor(Math.random() * 2147483647) // Pollinations rejects seeds > 32-bit int (Date.now() overflowed this)
+                  const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&model=flux&nologo=true&seed=${seed}`
                   const imgRes = await fetch(pollinationsUrl)
                   if (!imgRes.ok) throw new Error(`Pollinations error ${imgRes.status}`)
                   const buffer = await imgRes.arrayBuffer()
@@ -474,7 +521,7 @@ export default defineConfig(({ mode }) => {
       proxy: {
         // n8n webhook proxy (avoids CORS in dev)
         '/n8n-webhook': {
-          target: 'https://vasantht18.app.n8n.cloud',
+          target: 'https://n8n-zvxi.srv1837606.hstgr.cloud',
           changeOrigin: true,
           rewrite: path => path.replace(/^\/n8n-webhook/, '/webhook'),
           secure: true,

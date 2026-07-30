@@ -37,7 +37,7 @@ import {
   UserCheck,
 } from "lucide-react";
 import Navbar from "../components/Navbar.jsx";
-import BrandSetupModal from "../components/BrandSetupModal.jsx";
+import OnboardingWizard from "../components/OnboardingWizard.jsx";
 import { useAuth } from "../hooks/useAuth.js";
 import { redirectToLogin } from "../lib/authUtils";
 import { saveOnboardingData, getUserData } from "../services/userService";
@@ -4382,7 +4382,7 @@ export default function Landing() {
       </AnimatePresence>
 
       {showSetupModal && (
-        <BrandSetupModal
+        <OnboardingWizard
           onComplete={handleSetupComplete}
           onDismiss={() => setShowSetupModal(false)}
         />

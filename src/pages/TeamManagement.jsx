@@ -1,11 +1,16 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useRequireAuth } from '../hooks/useRequireAuth'
+import { useAuth } from '../hooks/useAuth'
 import {
   ArrowLeft, Users, UserPlus, Shield, Crown, Eye, Edit3,
   Trash2, Mail, Check, X, Search, ChevronDown, MoreVertical,
-  Copy, RefreshCw, Lock, Unlock, Bell, Settings
+  Copy, RefreshCw, Lock, Unlock, Settings, Loader2
 } from 'lucide-react'
+import {
+  getMembers, ensureOwnerMember, updateMemberRole, removeMember,
+  getInvites, createInvite, resendInvite, cancelInvite,
+} from '../services/teamService'
 
 const ROLES = [
   {
@@ -42,108 +47,118 @@ const ROLES = [
   },
 ]
 
-const INITIAL_MEMBERS = [
-  {
-    id: 1,
-    name: 'Vasanth C',
-    email: 'vasanth@evokemedia.io',
-    role: 'owner',
-    avatar: 'VC',
-    status: 'active',
-    lastActive: 'Now',
-    joinedAt: 'Jan 2024',
-  },
-  {
-    id: 2,
-    name: 'Priya Sharma',
-    email: 'priya@evokemedia.io',
-    role: 'admin',
-    avatar: 'PS',
-    status: 'active',
-    lastActive: '2h ago',
-    joinedAt: 'Mar 2024',
-  },
-  {
-    id: 3,
-    name: 'Rahul Mehta',
-    email: 'rahul@evokemedia.io',
-    role: 'editor',
-    avatar: 'RM',
-    status: 'active',
-    lastActive: '1d ago',
-    joinedAt: 'May 2024',
-  },
-  {
-    id: 4,
-    name: 'Anita Singh',
-    email: 'anita@evokemedia.io',
-    role: 'viewer',
-    avatar: 'AS',
-    status: 'inactive',
-    lastActive: '5d ago',
-    joinedAt: 'Jun 2024',
-  },
-]
+function initials(name) {
+  return name
+    ? name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
+    : '?'
+}
 
-const PENDING_INVITES = [
-  { id: 1, email: 'dev@agency.io', role: 'editor', sentAt: '2d ago' },
-  { id: 2, email: 'partner@brandco.com', role: 'viewer', sentAt: '5d ago' },
-]
+function formatJoined(ts) {
+  const secs = ts?.seconds
+  if (!secs) return '—'
+  return new Date(secs * 1000).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+}
+
+function timeAgoShort(ts) {
+  const secs = ts?.seconds
+  if (!secs) return '—'
+  const mins = Math.floor((Date.now() - secs * 1000) / 60000)
+  if (mins < 1) return 'Just now'
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  return `${Math.floor(hrs / 24)}d ago`
+}
 
 export default function TeamManagement() {
   useRequireAuth()
   const navigate = useNavigate()
+  const { user } = useAuth()
 
-  const [members, setMembers] = useState(INITIAL_MEMBERS)
-  const [pendingInvites, setPendingInvites] = useState(PENDING_INVITES)
+  const [members, setMembers] = useState([])
+  const [pendingInvites, setPendingInvites] = useState([])
+  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [activeTab, setActiveTab] = useState('members')
   const [showInviteForm, setShowInviteForm] = useState(false)
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState('editor')
+  const [inviteSending, setInviteSending] = useState(false)
   const [inviteSent, setInviteSent] = useState(false)
   const [openMenu, setOpenMenu] = useState(null)
   const [selectedRole, setSelectedRole] = useState(null)
 
+  useEffect(() => {
+    if (!user?.uid) return
+    (async () => {
+      setLoading(true)
+      try {
+        await ensureOwnerMember(user.uid, { name: user.displayName, email: user.email })
+        const [m, i] = await Promise.all([getMembers(user.uid), getInvites(user.uid)])
+        setMembers(m)
+        setPendingInvites(i)
+      } catch (e) {
+        console.error('Failed to load team', e)
+      } finally {
+        setLoading(false)
+      }
+    })()
+  }, [user?.uid])
+
   const filtered = members.filter(m =>
-    m.name.toLowerCase().includes(search.toLowerCase()) ||
-    m.email.toLowerCase().includes(search.toLowerCase())
+    m.name?.toLowerCase().includes(search.toLowerCase()) ||
+    m.email?.toLowerCase().includes(search.toLowerCase())
   )
 
   function getRoleObj(roleId) {
     return ROLES.find(r => r.id === roleId) || ROLES[3]
   }
 
-  function handleInvite(e) {
+  async function handleInvite(e) {
     e.preventDefault()
-    if (!inviteEmail.trim()) return
-    const newInvite = {
-      id: Date.now(),
-      email: inviteEmail.trim(),
-      role: inviteRole,
-      sentAt: 'Just now',
+    if (!inviteEmail.trim() || !user?.uid) return
+    setInviteSending(true)
+    try {
+      const { id } = await createInvite(user.uid, inviteEmail.trim(), inviteRole, user.displayName)
+      setPendingInvites(prev => [{ id, email: inviteEmail.trim(), role: inviteRole, sentAt: { seconds: Date.now() / 1000 } }, ...prev])
+      setInviteSent(true)
+      setInviteEmail('')
+      setTimeout(() => {
+        setInviteSent(false)
+        setShowInviteForm(false)
+      }, 2000)
+    } catch (e) {
+      console.error('Invite failed', e)
+    } finally {
+      setInviteSending(false)
     }
-    setPendingInvites(prev => [newInvite, ...prev])
-    setInviteSent(true)
-    setInviteEmail('')
-    setTimeout(() => {
-      setInviteSent(false)
-      setShowInviteForm(false)
-    }, 2000)
   }
 
-  function handleRemoveMember(id) {
+  async function handleRemoveMember(id) {
+    setOpenMenu(null)
+    if (!user?.uid) return
     setMembers(prev => prev.filter(m => m.id !== id))
-    setOpenMenu(null)
+    try { await removeMember(user.uid, id) } catch (e) { console.error('Remove member failed', e) }
   }
 
-  function handleChangeRole(id, roleId) {
+  async function handleChangeRole(id, roleId) {
+    setOpenMenu(null)
+    if (!user?.uid) return
     setMembers(prev => prev.map(m => m.id === id ? { ...m, role: roleId } : m))
-    setOpenMenu(null)
+    try { await updateMemberRole(user.uid, id, roleId) } catch (e) { console.error('Role change failed', e) }
   }
 
-  function handleCancelInvite(id) {
+  async function handleCancelInvite(id) {
+    if (!user?.uid) return
     setPendingInvites(prev => prev.filter(i => i.id !== id))
+    try { await cancelInvite(user.uid, id) } catch (e) { console.error('Cancel invite failed', e) }
+  }
+
+  async function handleResendInvite(id) {
+    if (!user?.uid) return
+    const invite = pendingInvites.find(i => i.id === id)
+    setPendingInvites(prev => prev.map(i => i.id === id ? { ...i, sentAt: { seconds: Date.now() / 1000 } } : i))
+    try { await resendInvite(user.uid, id, invite?.email, invite?.role, user.displayName) } catch (e) { console.error('Resend invite failed', e) }
   }
 
   const RoleBadge = ({ roleId }) => {
@@ -181,6 +196,11 @@ export default function TeamManagement() {
       </div>
 
       <div style={{ maxWidth: 900, margin: '0 auto', padding: '32px 24px' }}>
+        {loading && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px', marginBottom: 24, background: 'rgba(200,151,62,0.08)', border: '1px solid rgba(200,151,62,0.25)', borderRadius: 10, fontSize: 12.5, color: '#c9bfa8' }}>
+            <Loader2 size={13} color="#c8973e" style={{ animation: 'spin 1s linear infinite' }} /> Loading your team…
+          </div>
+        )}
         {/* Stats row */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 32 }}>
           {[
@@ -242,7 +262,9 @@ export default function TeamManagement() {
                   </div>
                   <div style={{ display: 'flex', gap: 10 }}>
                     <button type="button" onClick={() => setShowInviteForm(false)} style={{ flex: 1, padding: '10px', background: 'transparent', border: '1px solid #2a2510', color: '#8a7a55', borderRadius: 8, cursor: 'pointer', fontSize: 14 }}>Cancel</button>
-                    <button type="submit" style={{ flex: 2, padding: '10px', background: '#c8973e', color: '#0e0c09', border: 'none', borderRadius: 8, fontWeight: 700, cursor: 'pointer', fontSize: 14 }}>Send Invite</button>
+                    <button type="submit" disabled={inviteSending} style={{ flex: 2, padding: '10px', background: '#c8973e', color: '#0e0c09', border: 'none', borderRadius: 8, fontWeight: 700, cursor: inviteSending ? 'wait' : 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                      {inviteSending ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Sending...</> : 'Send Invite'}
+                    </button>
                   </div>
                 </form>
               )}
@@ -290,7 +312,7 @@ export default function TeamManagement() {
                 return (
                   <div key={member.id} style={{ background: '#1c1a13', border: '1px solid #2a2510', borderRadius: 10, padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 16, position: 'relative' }}>
                     <div style={{ width: 44, height: 44, borderRadius: '50%', background: role.bg, border: `2px solid ${role.color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: role.color, fontSize: 14, flexShrink: 0 }}>
-                      {member.avatar}
+                      {initials(member.name)}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -303,8 +325,7 @@ export default function TeamManagement() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                       <RoleBadge roleId={member.role} />
                       <div style={{ fontSize: 12, color: '#8a7a55', textAlign: 'right', minWidth: 60 }}>
-                        <div>{member.lastActive}</div>
-                        <div style={{ color: '#3a3020', fontSize: 11 }}>Joined {member.joinedAt}</div>
+                        <div style={{ color: '#3a3020', fontSize: 11 }}>Joined {formatJoined(member.joinedAt)}</div>
                       </div>
                       {member.role !== 'owner' && (
                         <div style={{ position: 'relative' }}>
@@ -358,12 +379,12 @@ export default function TeamManagement() {
                       </div>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontWeight: 600, color: '#f0ebe0', fontSize: 14 }}>{invite.email}</div>
-                        <div style={{ color: '#8a7a55', fontSize: 12 }}>Invited {invite.sentAt} · Awaiting acceptance</div>
+                        <div style={{ color: '#8a7a55', fontSize: 12 }}>Invited {timeAgoShort(invite.sentAt)} · Awaiting acceptance</div>
                       </div>
                       <RoleBadge roleId={invite.role} />
                       <div style={{ display: 'flex', gap: 8 }}>
                         <button
-                          onClick={() => {}}
+                          onClick={() => handleResendInvite(invite.id)}
                           title="Resend invite"
                           style={{ background: 'rgba(200,151,62,0.1)', border: '1px solid rgba(200,151,62,0.3)', color: '#c8973e', borderRadius: 6, padding: '6px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }}
                         >

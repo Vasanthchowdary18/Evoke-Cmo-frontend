@@ -7,7 +7,7 @@ import {
   FileText, AlertCircle, CheckCircle2, TrendingUp,
   MapPin, Zap, Link2, FileCode, Users, Eye,
 } from 'lucide-react'
-import Navbar from '../components/Navbar.jsx'
+import AppSidebar from '../components/AppSidebar.jsx'
 import { useRequireAuth } from '../hooks/useRequireAuth'
 import { useAuth } from '../hooks/useAuth'
 import { saveContentItems } from '../services/contentService'
@@ -22,8 +22,6 @@ const TEXT    = '#f0ebe0'
 const TEXT2   = 'rgba(240,235,224,0.55)'
 const TEXT3   = 'rgba(240,235,224,0.32)'
 const ACCENT  = '#3b82f6'
-
-const GROQ_KEY = import.meta.env.VITE_GROQ_API_KEY || ''
 
 const SEO_MODULES = [
   { key: 'keyword',    label: 'Keyword Research',    icon: <Search size={16}/>,    color: '#3b82f6', desc: 'Find high-intent keywords' },
@@ -148,9 +146,9 @@ Return ONLY valid JSON (no markdown):
   }
 }`
 
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  const res = await fetch('/api/generate', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${GROQ_KEY}` },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: 'llama-3.3-70b-versatile',
       messages: [{ role: 'user', content: prompt }],
@@ -228,8 +226,9 @@ export default function SeoAgentPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: BG, fontFamily: "'Inter',sans-serif" }}>
-      <Navbar />
-      <div style={{ maxWidth: 1060, margin: '0 auto', padding: '100px 24px 80px' }}>
+      <AppSidebar />
+      <div style={{ marginLeft: 'var(--evox-sidebar-w, 220px)', transition: 'margin-left 0.22s' }}>
+      <div style={{ maxWidth: 1060, margin: '0 auto', padding: '36px 24px 80px' }}>
 
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: 36 }}>
@@ -627,6 +626,7 @@ export default function SeoAgentPage() {
             </motion.div>
           )}
         </AnimatePresence>
+      </div>
       </div>
       <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
     </div>

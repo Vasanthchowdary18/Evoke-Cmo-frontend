@@ -6,7 +6,7 @@ import {
   Rocket, ArrowRight, Sparkles, PenLine,
 } from 'lucide-react'
 import AppSidebar from '../components/AppSidebar.jsx'
-import BrandSetupModal from '../components/BrandSetupModal.jsx'
+import OnboardingWizard from '../components/OnboardingWizard.jsx'
 import { useAuth } from '../hooks/useAuth.js'
 import { getKnowledgeBase } from '../services/knowledgeBaseService.js'
 
@@ -49,14 +49,20 @@ export default function BrandProfilePage() {
 
   const toArr = (v) => Array.isArray(v) ? v : (v ? [v] : [])
 
-  // Support both old (companyName) and new (businessName) field names
-  const brandName = kb?.businessName || kb?.companyName || ''
+  // Prefer the dedicated brand name (new 6-step flow); fall back to legacy field names
+  const brandName = kb?.brandName || kb?.businessName || kb?.companyName || ''
   const industries = toArr(kb?.industry)
   const goals      = toArr(kb?.goal || kb?.primaryObjective)
   const tones      = toArr(kb?.tone || kb?.toneOfVoice)
   const audiences  = toArr(kb?.audience || kb?.audienceType)
 
   const hasBrand = !!(kb && (brandName || industries.length > 0))
+
+  // Auto-open the onboarding wizard for a brand-new user landing here straight
+  // from "Get Started" — no extra click needed to start Step 1.
+  useEffect(() => {
+    if (!loading && !hasBrand) setShowEditModal(true)
+  }, [loading, hasBrand])
 
   if (loading) return (
     <div style={{ minHeight: '100vh', background: BG, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -96,7 +102,7 @@ export default function BrandProfilePage() {
               <div style={{ fontSize: 52, marginBottom: 20 }}>📋</div>
               <h2 style={{ fontSize: 20, fontWeight: 800, color: TEXT, marginBottom: 10 }}>No Brand Profile Yet</h2>
               <p style={{ color: TEXT2, fontSize: 13, marginBottom: 28, lineHeight: 1.7 }}>
-                Answer 5 quick questions so EVOX AI can recommend the right agents and personalise every campaign for your brand.
+                Complete the 6-step setup so EVOX AI can recommend the right agents and personalise every campaign for your brand.
               </p>
               <button onClick={() => setShowEditModal(true)}
                 style={{ padding: '11px 28px', background: `linear-gradient(135deg,${GOLD},#b8803a)`, border: 'none', borderRadius: 100, color: '#0a0907', fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
@@ -182,8 +188,8 @@ export default function BrandProfilePage() {
       </div>
 
       {showEditModal && (
-        <BrandSetupModal
-          onComplete={() => { setShowEditModal(false); loadKb() }}
+        <OnboardingWizard
+          onComplete={() => navigate('/dashboard')}
           onDismiss={() => setShowEditModal(false)}
         />
       )}

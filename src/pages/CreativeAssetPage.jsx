@@ -8,7 +8,7 @@ import {
   Shield, Zap, History, Image, FileText, Palette,
   AlertCircle,
 } from 'lucide-react'
-import Navbar from '../components/Navbar.jsx'
+import AppSidebar from '../components/AppSidebar.jsx'
 import JourneyFooter from '../components/JourneyFooter.jsx'
 import { useRequireAuth } from '../hooks/useRequireAuth'
 import { useAuth } from '../hooks/useAuth'
@@ -26,8 +26,6 @@ const TEXT    = '#f0ebe0'
 const TEXT2   = 'rgba(240,235,224,0.55)'
 const TEXT3   = 'rgba(240,235,224,0.32)'
 const PINK    = '#ec4899'
-
-const GROQ_KEY = import.meta.env.VITE_GROQ_API_KEY || ''
 
 const ASSET_TYPES = [
   { key: 'photo',          label: 'Image / Photo',           icon: <Camera size={22}/>,    desc: 'Product & lifestyle photography',      color: '#ec4899' },
@@ -145,9 +143,9 @@ Return ONLY valid JSON (no markdown):
   }
 }`
 
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  const res = await fetch('/api/generate', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${GROQ_KEY}` },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: 'llama-3.3-70b-versatile',
       messages: [
@@ -378,8 +376,9 @@ export default function CreativeAssetPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: BG, color: TEXT, fontFamily: "'Inter','Syne',sans-serif" }}>
-      <Navbar />
-      <div style={{ maxWidth: 860, margin: '0 auto', padding: '100px 20px 80px' }}>
+      <AppSidebar />
+      <div style={{ marginLeft: 'var(--evox-sidebar-w, 220px)', transition: 'margin-left 0.22s' }}>
+      <div style={{ maxWidth: 860, margin: '0 auto', padding: '36px 20px 80px' }}>
 
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 28 }}>
@@ -802,6 +801,7 @@ export default function CreativeAssetPage() {
       </div>
 
       <JourneyFooter currentPath="/creative-asset" />
+      </div>
       <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
     </div>
   )

@@ -7,7 +7,7 @@ import {
   Linkedin, Instagram, Facebook, Mail, MessageSquare,
   ArrowLeft, Inbox, Loader2, RefreshCw, Zap, Filter, CalendarClock,
 } from 'lucide-react'
-import Navbar from '../components/Navbar.jsx'
+import AppSidebar from '../components/AppSidebar.jsx'
 import { useAuth } from '../hooks/useAuth.js'
 import { getContentItems, setItemStatus, updateContentItem, scheduleItem } from '../services/contentService'
 
@@ -468,9 +468,10 @@ export default function ApprovalQueue() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#f8fafc' }}>
-      <Navbar />
+      <AppSidebar />
+      <div style={{ marginLeft: 'var(--evox-sidebar-w, 220px)', transition: 'margin-left 0.22s' }}>
 
-      <div style={{ maxWidth: 900, margin: '0 auto', padding: '108px 24px 60px' }}>
+      <div style={{ maxWidth: 900, margin: '0 auto', padding: '36px 24px 60px' }}>
 
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: 32 }}>
@@ -626,6 +627,7 @@ export default function ApprovalQueue() {
       </div>
 
       <JourneyFooter currentPath="/queue" />
+      </div>
       <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
     </div>
   )

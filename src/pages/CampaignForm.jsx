@@ -19,6 +19,8 @@ import {
   Link,
   Clock,
   Mail,
+  MessageCircle,
+  MessageSquare,
   Film,
   Megaphone,
   Users,
@@ -29,7 +31,7 @@ import {
   Shield,
   ExternalLink,
 } from "lucide-react";
-import Navbar from "../components/Navbar.jsx";
+import AppSidebar from "../components/AppSidebar.jsx";
 import EventBannerGenerator from "../components/EventBannerGenerator.jsx";
 import { getEvokeUserProfile } from "../lib/session";
 import { profileToUser } from "../lib/authUtils";
@@ -37,11 +39,34 @@ import { getUserData } from "../services/userService";
 import { useAuth } from "../hooks/useAuth.js";
 import { getKnowledgeBase } from "../services/knowledgeBaseService.js";
 import { buildEventSlug, saveEventPage, downloadEventHtml } from "../services/eventService";
+import { createGoogleAdsCampaign, extractAdsContent } from "../services/googleAdsService.js";
+import { publishSocialPost } from "../services/ghlService.js";
 
 const CLOUDINARY_CLOUD = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "";
 const CLOUDINARY_PRESET = "tiktok_videos"; // Unsigned preset in Cloudinary
 const WS_KEY  = import.meta.env.VITE_WAVESPEED_API_KEY || "";
-const GROQ_KEY = import.meta.env.VITE_GROQ_API_KEY || "";
+
+/* ── Monthly budget tiers, per currency (rough planning buckets, not live FX) ── */
+const BUDGET_CURRENCIES = ["₹", "$", "€", "£", "AED"];
+const BUDGET_TIER_VALUES = {
+  "₹":   ["50,000", "2L",     "5L",     "15L",    "50L"],
+  "$":   ["500",    "2,000",  "5,000",  "15,000", "50,000"],
+  "€":   ["450",    "1,800",  "4,500",  "14,000", "45,000"],
+  "£":   ["400",    "1,500",  "4,000",  "12,000", "40,000"],
+  "AED": ["1,850",  "7,300",  "18,000", "55,000", "184,000"],
+};
+function getBudgetOptions(currency) {
+  const c = BUDGET_TIER_VALUES[currency] ? currency : "₹";
+  const [t1, t2, t3, t4, t5] = BUDGET_TIER_VALUES[c];
+  return [
+    `Under ${c}${t1}`,
+    `${c}${t1}–${c}${t2}`,
+    `${c}${t2}–${c}${t3}`,
+    `${c}${t3}–${c}${t4}`,
+    `${c}${t4}–${c}${t5}`,
+    `Above ${c}${t5}`,
+  ];
+}
 
 /* ── WaveSpeed image-to-video ── */
 async function wsSubmit(model, prompt, imageUrl, duration = 5) {
@@ -85,10 +110,10 @@ async function wsPoll(getUrl) {
 /* ── Groq text ── */
 async function gemText(prompt) {
   const res = await fetch(
-    'https://api.groq.com/openai/v1/chat/completions',
+    '/api/generate',
     {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_KEY}` },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'llama-3.3-70b-versatile',
         messages: [{ role: 'user', content: prompt }],
@@ -141,7 +166,7 @@ const CONVERTERS = [
 ];
 
 // â"€â"€â"€ Gemini Imagen 3 - full poster generator (text + design) â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
-async function generateEventPoster(form) {
+export async function generateEventPoster(form) {
   const name     = (form.name     || 'Event').trim();
   const desc     = (form.description || '').substring(0, 100).trim();
   const location = (Array.isArray(form.eventLocations) && form.eventLocations.length ? form.eventLocations.join(', ') : form.location || '').trim();
@@ -348,7 +373,6 @@ async function uploadVideoToCloudinary(file, onProgress) {
 // â"€â"€â"€ Groq campaign content generator (free tier) â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 async function generateCampaignContent(form, campaignType, campaignDays) {
   if (!form.campaignDays) form = { ...form, campaignDays: campaignDays || 7 };
-  const apiKey = import.meta.env.VITE_GROQ_API_KEY || "";
 
   const isEvent = campaignType === "event" || campaignType === "event_full";
   const isProduct = campaignType === "product";
@@ -393,6 +417,8 @@ ${form.contentTypes?.length ? `Formats Requested: ${form.contentTypes.join(", ")
 ${form.targetClientProfile ? `Ideal Client Profile: ${form.targetClientProfile}` : ""}
 ${form.avgDealSize ? `Average Deal / Contract Value: ${form.avgDealSize}` : ""}
 ${form.acquisitionChannel ? `Primary Acquisition Channel: ${form.acquisitionChannel}` : ""}
+${form.reportPeriod ? `Report Period: ${form.reportPeriod}` : ""}
+${form.funnelStage ? `Funnel Stage to Optimize: ${form.funnelStage}` : ""}
 ${websiteContent ? `\n--- LIVE WEBSITE CONTENT (use this to deeply understand the business, products, and tone) ---\n${websiteContent}\n---` : ""}
 `.trim();
 
@@ -809,38 +835,47 @@ ${getOutputSchema()}`;
     max_tokens: 3500,
   });
 
-  const controller = new AbortController();
-  const timeoutId  = setTimeout(() => controller.abort(), 45000);
-
+  // llama-3.1-8b-instant free tier shares one 6000 TPM budget across every Groq
+  // call the app makes (this one + the daily-schedule call right after it), so a
+  // 429 here is usually transient — retry with backoff instead of failing outright.
+  const MAX_ATTEMPTS = 3;
   let res;
-  try {
-    if (apiKey && apiKey !== "your_groq_api_key_here") {
-      res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
-        body: requestBody,
-        signal: controller.signal,
-      });
-    } else {
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    const controller = new AbortController();
+    const timeoutId  = setTimeout(() => controller.abort(), 45000);
+    try {
       res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: requestBody,
         signal: controller.signal,
       });
+    } catch (networkErr) {
+      clearTimeout(timeoutId);
+      if (networkErr.name === "AbortError") throw new Error("AI generation timed out. Please try again.");
+      throw new Error("Network error — check your connection and try again.");
+    } finally {
+      clearTimeout(timeoutId);
     }
-  } catch (networkErr) {
-    if (networkErr.name === "AbortError") throw new Error("AI generation timed out. Please try again.");
-    throw new Error("Network error — check your connection and try again.");
-  } finally {
-    clearTimeout(timeoutId);
+
+    if (res.ok || res.status !== 429 || attempt === MAX_ATTEMPTS - 1) break;
+
+    // Groq embeds the actual cooldown in the error body (e.g. "try again in 4.2s");
+    // fall back to exponential backoff if that's not present.
+    let waitMs = 2500 * Math.pow(2, attempt);
+    try {
+      const errBody = await res.clone().json();
+      const m = (errBody?.error?.message || "").match(/try again in ([\d.]+)s/i);
+      if (m) waitMs = Math.ceil(parseFloat(m[1]) * 1000) + 300;
+    } catch {}
+    await new Promise(r => setTimeout(r, Math.min(waitMs, 15000)));
   }
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     const msg = err?.error?.message || "";
     if (res.status === 401) throw new Error("AI service key is invalid. Please contact support.");
-    if (res.status === 429) throw new Error("AI rate limit reached. Please wait 30 seconds and try again.");
+    if (res.status === 429) throw new Error("AI rate limit reached even after retrying. Please wait a minute and try again.");
     throw new Error(msg || `AI generation failed (${res.status}). Please try again.`);
   }
 
@@ -882,8 +917,6 @@ ${getOutputSchema()}`;
 // â"€â"€â"€ Generate N-day daily schedule (unique content per day) â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 async function generateDailySchedule(form, campaignType, days, postsPerDay = 1) {
   if (days <= 1 && postsPerDay <= 1) return [];
-  const apiKey = import.meta.env.VITE_GROQ_API_KEY || "";
-  if (!apiKey) return [];
 
   const totalSlots = days * postsPerDay
   // For large calendars (>14 total slots) use compact per-slot schema to stay within token limits
@@ -1590,24 +1623,27 @@ export default function CampaignForm() {
     { key: "facebook",    label: "Facebook",    color: "#1877f2" },
     { key: "tiktok",      label: "TikTok",      color: "#ff0050" },
     { key: "whatsapp",    label: "WhatsApp",    color: "#25d366" },
+    { key: "sms",         label: "SMS",         color: "#22c55e" },
     { key: "email",       label: "Email",       color: "#c8973e" },
     { key: "eventbrite",  label: "Eventbrite",  color: "#F05537" },
     { key: "luma",        label: "Luma",        color: "#6C47FF" },
     { key: "meetup",      label: "Meetup",      color: "#ED1C40" },
+    { key: "google_ads",  label: "Google Ads",  color: "#4285f4" },
+    { key: "meta_ads",    label: "Meta Ads",    color: "#0866FF" },
   ];
 
   const [form, setForm] = useState({
-    name: "",
+    name: prefill?.name || "",
     description: prefill?.description || "",
     imageFile: null,
     imagePreview: null,
-    date: "",
+    date: prefill?.date || "",
     time: "",
     location: "",
     eventLocations: [],
-    eventUrl: "",
+    eventUrl: prefill?.eventUrl || "",
     website: prefill?.website || "",
-    price: "",
+    price: prefill?.price || "",
     targetAudience: Array.isArray(prefill?.targetAudience) ? prefill.targetAudience : [],
     goal: "",
     goalType: prefill?.goalType || "",
@@ -1622,13 +1658,15 @@ export default function CampaignForm() {
     postsPerDay: 1,
     postTimes: ["09:00"],
     campaignDays: 7,
-    platforms: ["linkedin", "instagram", "facebook", "email", "whatsapp"],
+    platforms: ["linkedin", "instagram", "facebook", "email", "whatsapp", "sms"],
     whatsappRecipients: "",
+    smsRecipients: "",
     emailRecipients: "",
     // New fields for extended CMO types
     competitorUrl: "",
     industry: prefill?.industry || "",
     budget: "",
+    budgetCurrency: "₹",
     keywords: "",
     reportPeriod: "",
     funnelStage: "",
@@ -1647,14 +1685,18 @@ export default function CampaignForm() {
   const [submitError, setSubmitError] = useState("");
   const [emailRecipientInput, setEmailRecipientInput] = useState("");
   const [emailRecipientError, setEmailRecipientError] = useState("");
+  const [whatsappRecipientInput, setWhatsappRecipientInput] = useState("");
+  const [whatsappRecipientError, setWhatsappRecipientError] = useState("");
+  const [smsRecipientInput, setSmsRecipientInput] = useState("");
+  const [smsRecipientError, setSmsRecipientError] = useState("");
   const [posterGenerating, setPosterGenerating] = useState(false);
   const [generatingEventUrl, setGeneratingEventUrl] = useState(false);
   const [generatedEventUrl, setGeneratedEventUrl] = useState("");
   const [eventUrlError, setEventUrlError] = useState("");
 
   // Event image upload (for LinkedIn / Instagram / Facebook)
-  const [eventImageFile, setEventImageFile] = useState(null);
-  const [eventImagePreview, setEventImagePreview] = useState(null);
+  const [eventImageFile, setEventImageFile] = useState(prefill?.imageFile || null);
+  const [eventImagePreview, setEventImagePreview] = useState(prefill?.imagePreview || null);
   const [eventImageUploading, setEventImageUploading] = useState(false);
   const [eventImageUploadProgress, setEventImageUploadProgress] = useState(0);
 
@@ -1778,9 +1820,9 @@ export default function CampaignForm() {
     australia: 'Australia / New Zealand', global: 'Global',
   }
   const CF_BUDGET_MAP = {
-    under_1k: 'Under ₹50,000 / $500', '1k_5k': '₹2L–₹5L / $2,000–$5,000',
-    '5k_15k': '₹5L–₹15L / $5,000–$15,000', '15k_50k': '₹15L–₹50L / $15,000–$50,000',
-    above_50k: 'Above ₹50L / $50,000+',
+    under_1k: 'Under ₹50,000', '1k_5k': '₹2L–₹5L',
+    '5k_15k': '₹5L–₹15L', '15k_50k': '₹15L–₹50L',
+    above_50k: 'Above ₹50L',
   }
 
   // For email drip, only email platform is relevant
@@ -1885,6 +1927,67 @@ export default function CampaignForm() {
     setEmailRecipientError("");
   };
 
+  // whatsappRecipients follows the same comma-separated-string contract as
+  // emailRecipients — stored as digits-only phone numbers (country code + number,
+  // no "+", no spaces) to match what the WhatsApp Cloud API's "to" field expects.
+  const whatsappRecipientList = (form.whatsappRecipients || "")
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean);
+
+  const addWhatsappRecipient = () => {
+    const raw = whatsappRecipientInput.trim().replace(/,$/, "");
+    if (!raw) return;
+    const digits = raw.replace(/[^\d]/g, "");
+    if (!/^\d{7,15}$/.test(digits)) {
+      setWhatsappRecipientError(`"${raw}" isn't a valid phone number — use country code + number, e.g. 919876543210`);
+      return;
+    }
+    if (whatsappRecipientList.includes(digits)) {
+      setWhatsappRecipientError(`${digits} is already in the list`);
+      setWhatsappRecipientInput("");
+      return;
+    }
+    set("whatsappRecipients", [...whatsappRecipientList, digits].join(","));
+    setWhatsappRecipientInput("");
+    setWhatsappRecipientError("");
+  };
+
+  const removeWhatsappRecipient = (number) => {
+    set("whatsappRecipients", whatsappRecipientList.filter((p) => p !== number).join(","));
+    setWhatsappRecipientError("");
+  };
+
+  // smsRecipients follows the same comma-separated-string contract as
+  // whatsappRecipients — digits-only phone numbers (country code + number).
+  const smsRecipientList = (form.smsRecipients || "")
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean);
+
+  const addSmsRecipient = () => {
+    const raw = smsRecipientInput.trim().replace(/,$/, "");
+    if (!raw) return;
+    const digits = raw.replace(/[^\d]/g, "");
+    if (!/^\d{7,15}$/.test(digits)) {
+      setSmsRecipientError(`"${raw}" isn't a valid phone number — use country code + number, e.g. 919876543210`);
+      return;
+    }
+    if (smsRecipientList.includes(digits)) {
+      setSmsRecipientError(`${digits} is already in the list`);
+      setSmsRecipientInput("");
+      return;
+    }
+    set("smsRecipients", [...smsRecipientList, digits].join(","));
+    setSmsRecipientInput("");
+    setSmsRecipientError("");
+  };
+
+  const removeSmsRecipient = (number) => {
+    set("smsRecipients", smsRecipientList.filter((p) => p !== number).join(","));
+    setSmsRecipientError("");
+  };
+
   // Close dropdowns when clicking outside
   const audienceRef = useRef(null);
   const locationRef = useRef(null);
@@ -1939,7 +2042,7 @@ export default function CampaignForm() {
       const sa = data.socialAccounts
       setConnectedAccounts(sa)
       // Auto-select all connected platforms for every package
-      const platforms = ['whatsapp']
+      const platforms = ['whatsapp', 'sms']
       if (sa.linkedin?.connected)   platforms.push('linkedin')
       if (sa.instagram?.connected)  platforms.push('instagram')
       if (sa.facebook?.connected)   platforms.push('facebook')
@@ -1954,12 +2057,13 @@ export default function CampaignForm() {
     if (authUser) loadConnectedAccounts()
   }, [type, fromPackageA, authUser, loadConnectedAccounts])
 
-  // Open /connect-accounts as popup so the form isn't left
+  // Opens in a new TAB, not a popup window. Connecting a social account has to
+  // open the platform's own sign-in window, and a browser will not open a popup
+  // from inside another popup — which silently breaks the connect button.
   const openConnectPopup = useCallback((platformKey) => {
     const popup = window.open(
       `/connect-accounts?platform=${platformKey}&popup=1`,
-      'evoke_connect',
-      'width=620,height=720,left=200,top=100,resizable=yes,scrollbars=yes'
+      '_blank'
     )
     if (!popup) {
       // Popup blocked — fall back to navigation
@@ -2001,6 +2105,42 @@ export default function CampaignForm() {
     }
     if (form.platforms.includes("email") && connectedAccounts.gmail?.connected && !resolvedEmailRecipients) {
       return setSubmitError("Email is selected as a platform — add at least one recipient in Email Recipients before submitting.");
+    }
+
+    let resolvedWhatsappRecipients = form.whatsappRecipients || "";
+    const pendingWhatsapp = whatsappRecipientInput.trim().replace(/,$/, "");
+    if (pendingWhatsapp) {
+      const digits = pendingWhatsapp.replace(/[^\d]/g, "");
+      if (!/^\d{7,15}$/.test(digits)) {
+        return setSubmitError(`"${pendingWhatsapp}" isn't a valid phone number — fix or clear it in WhatsApp Recipients before submitting.`);
+      }
+      const existing = resolvedWhatsappRecipients.split(",").map((p) => p.trim()).filter(Boolean);
+      if (!existing.includes(digits)) {
+        resolvedWhatsappRecipients = [...existing, digits].join(",");
+        set("whatsappRecipients", resolvedWhatsappRecipients);
+      }
+      setWhatsappRecipientInput("");
+    }
+    if (form.platforms.includes("whatsapp") && !resolvedWhatsappRecipients) {
+      return setSubmitError("WhatsApp is selected as a platform — add at least one recipient in WhatsApp Recipients before submitting.");
+    }
+
+    let resolvedSmsRecipients = form.smsRecipients || "";
+    const pendingSms = smsRecipientInput.trim().replace(/,$/, "");
+    if (pendingSms) {
+      const digits = pendingSms.replace(/[^\d]/g, "");
+      if (!/^\d{7,15}$/.test(digits)) {
+        return setSubmitError(`"${pendingSms}" isn't a valid phone number — fix or clear it in SMS Recipients before submitting.`);
+      }
+      const existing = resolvedSmsRecipients.split(",").map((p) => p.trim()).filter(Boolean);
+      if (!existing.includes(digits)) {
+        resolvedSmsRecipients = [...existing, digits].join(",");
+        set("smsRecipients", resolvedSmsRecipients);
+      }
+      setSmsRecipientInput("");
+    }
+    if (form.platforms.includes("sms") && !resolvedSmsRecipients) {
+      return setSubmitError("SMS is selected as a platform — add at least one recipient in SMS Recipients before submitting.");
     }
 
     setLoading(true);
@@ -2111,7 +2251,8 @@ export default function CampaignForm() {
         platforms: form.platforms.join(","),
         adminEmail: "vasanthchowdarythumati@gmail.com",
         imageUrl: resolvedImageUrl,
-        whatsappRecipients: form.whatsappRecipients || "",
+        whatsappRecipients: resolvedWhatsappRecipients,
+        smsRecipients: resolvedSmsRecipients,
         emailRecipients: resolvedEmailRecipients,
         dailySchedule: dailySchedule,
         campaignBrief: `${type} campaign for ${form.brandName || form.name}. Goal: ${form.goal}. Audience: ${form.targetAudience.join(", ")}. Description: ${form.description}`,
@@ -2135,6 +2276,7 @@ export default function CampaignForm() {
         facebookPost:     campaignData.facebookPost     || "",
         tiktokCaption:    campaignData.tiktokCaption    || "",
         whatsappMessage:  campaignData.whatsappMessage  || "",
+        smsMessage:       campaignData.smsMessage        || "",
         adHeadline:       campaignData.adHeadline       || "",
         adBody:           campaignData.adBody           || "",
         ...(type === "ads_creation" && {
@@ -2215,6 +2357,58 @@ export default function CampaignForm() {
         }
       }
 
+      // ── Google Ads — create campaign now if selected as a platform ──
+      if (form.platforms.includes("google_ads") && currentUser) {
+        try {
+          const { headlines, descriptions } = extractAdsContent(campaignData, type);
+          await createGoogleAdsCampaign(currentUser.uid, {
+            name: form.brandName || form.name || "EVOX Campaign",
+            headlines,
+            descriptions,
+            keywords: form.keywords ? form.keywords.split(",").map((k) => k.trim()) : ["marketing", "campaign"],
+            budget: 500,
+            finalUrl: form.website || window.location.origin,
+          });
+        } catch (gAdsErr) {
+          console.warn("[CampaignForm] Google Ads campaign creation failed:", gAdsErr.message);
+        }
+      }
+
+      // ── Facebook / Instagram — publish through the Social Planner ──
+      // Only for accounts connected that way; anything still on a direct
+      // connection keeps flowing through the existing n8n publish path.
+      let plannerResult = null;
+      if (currentUser) {
+        const sa = (await getUserData(currentUser.uid))?.socialAccounts || {};
+        const plannerPlatforms = ["facebook", "instagram"].filter(
+          (p) => form.platforms.includes(p) && sa[p]?.connected && sa[p]?.viaGhl,
+        );
+        const plannerSelected = ["facebook", "instagram"].filter((p) =>
+          form.platforms.includes(p),
+        );
+        if (plannerPlatforms.length) {
+          try {
+            const res = await publishSocialPost(currentUser.uid, {
+              platforms: plannerPlatforms,
+              caption: campaignData?.caption || campaignData?.socialPost || form.name || "",
+              mediaUrls: resolvedImageUrl ? [resolvedImageUrl] : [],
+            });
+            plannerResult = { ok: true, platforms: plannerPlatforms, postId: res?.postId || null };
+          } catch (plannerErr) {
+            // Surface it — a silent failure here reads as a successful post.
+            plannerResult = { ok: false, platforms: plannerPlatforms, error: plannerErr.message };
+            console.error("[CampaignForm] Social Planner publish failed:", plannerErr.message);
+          }
+        } else if (plannerSelected.length) {
+          plannerResult = {
+            ok: false,
+            platforms: plannerSelected,
+            error: `Not connected via GoHighLevel: ${plannerSelected.join(", ")}. Connect on the Connect Accounts page first — nothing was published to these.`,
+          };
+          console.error("[CampaignForm]", plannerResult.error);
+        }
+      }
+
       // â"€â"€ Store for Results page to review, edit, then launch â"€â"€
       sessionStorage.setItem("campaignResult", JSON.stringify({
         ...campaignData,
@@ -2223,6 +2417,12 @@ export default function CampaignForm() {
         hasVideo:  payload.hasVideo  || false,
         mediaType: payload.mediaType || "image",
       }));
+      // Real publish outcome, so Results can stop claiming success unconditionally.
+      if (plannerResult) {
+        sessionStorage.setItem("plannerResult", JSON.stringify(plannerResult));
+      } else {
+        sessionStorage.removeItem("plannerResult");
+      }
       sessionStorage.setItem("campaignType", type);
       sessionStorage.setItem("campaignMeta", JSON.stringify({ name: form.name, brandName: form.brandName }));
       sessionStorage.setItem("campaignDays", String(isAdTool ? 1 : (form.campaignDays || 7)));
@@ -2278,11 +2478,13 @@ export default function CampaignForm() {
     page: { minHeight: "100vh", background: "#0e0c09", color: "#ffffff", fontFamily: FONT },
     container: {
       maxWidth: 720,
-      margin: "0 auto",
-      padding: "108px 24px 80px",
+      marginLeft: "calc(var(--evox-sidebar-w, 220px) + max(0px, (100vw - var(--evox-sidebar-w, 220px) - 720px) / 2))",
+      marginRight: "auto",
+      padding: "40px 24px 80px",
       position: "relative",
       zIndex: 1,
       fontFamily: FONT,
+      transition: "margin-left 0.22s cubic-bezier(0.4,0,0.2,1)",
     },
     card: {
       background: "#1c1a13",
@@ -2380,7 +2582,7 @@ export default function CampaignForm() {
 
   return (
     <div style={s.page}>
-      <Navbar />
+      <AppSidebar />
       <div style={s.container}>
         <button
           onClick={() => backPath ? navigate(backPath) : navigate(-1)}
@@ -2766,11 +2968,18 @@ export default function CampaignForm() {
               {['paid_advertising','ai_cfo','ai_cro_exec','ai_ceo'].includes(type) && (
                 <>
                   <label style={s.label}>Monthly Budget (optional)</label>
-                  <select value={form.budget || ""} onChange={(e) => set("budget", e.target.value)} style={{ ...s.input, cursor: "pointer", colorScheme: "dark" }}>
-                    {["","Under ₹50,000 / $500","₹50,000–₹2L / $500–$2,000","₹2L–₹5L / $2,000–$5,000","₹5L–₹15L / $5,000–$15,000","₹15L–₹50L / $15,000–$50,000","Above ₹50L / $50,000+"].map((v) => (
-                      <option key={v} value={v} style={{ background: "#1c1a13", color: v ? "#f0ebe0" : "rgba(240,235,224,0.4)" }}>{v || "Select budget range..."}</option>
-                    ))}
-                  </select>
+                  <div style={{ display: "grid", gridTemplateColumns: "88px 1fr", gap: 8 }}>
+                    <select value={form.budgetCurrency || "₹"} onChange={(e) => set("budgetCurrency", e.target.value)} style={{ ...s.input, cursor: "pointer", colorScheme: "dark" }}>
+                      {BUDGET_CURRENCIES.map((c) => (
+                        <option key={c} value={c} style={{ background: "#1c1a13", color: "#f0ebe0" }}>{c}</option>
+                      ))}
+                    </select>
+                    <select value={form.budget || ""} onChange={(e) => set("budget", e.target.value)} style={{ ...s.input, cursor: "pointer", colorScheme: "dark" }}>
+                      {["", ...getBudgetOptions(form.budgetCurrency)].map((v) => (
+                        <option key={v} value={v} style={{ background: "#1c1a13", color: v ? "#f0ebe0" : "rgba(240,235,224,0.4)" }}>{v || "Select budget range..."}</option>
+                      ))}
+                    </select>
+                  </div>
                 </>
               )}
 
@@ -2799,11 +3008,18 @@ export default function CampaignForm() {
               </select>
 
               <label style={s.label}>Monthly Marketing Budget (optional)</label>
-              <select value={form.budget || ""} onChange={(e) => set("budget", e.target.value)} style={{ ...s.input, cursor: "pointer", colorScheme: "dark" }}>
-                {["","Under ₹50,000 / $500","₹50,000–₹2L / $500–$2,000","₹2L–₹5L / $2,000–$5,000","₹5L–₹15L / $5,000–$15,000","₹15L–₹50L / $15,000–$50,000","Above ₹50L / $50,000+"].map((v) => (
-                  <option key={v} value={v} style={{ background: "#1c1a13", color: v ? "#f0ebe0" : "rgba(240,235,224,0.4)" }}>{v || "Select budget range..."}</option>
-                ))}
-              </select>
+              <div style={{ display: "grid", gridTemplateColumns: "88px 1fr", gap: 8 }}>
+                <select value={form.budgetCurrency || "₹"} onChange={(e) => set("budgetCurrency", e.target.value)} style={{ ...s.input, cursor: "pointer", colorScheme: "dark" }}>
+                  {BUDGET_CURRENCIES.map((c) => (
+                    <option key={c} value={c} style={{ background: "#1c1a13", color: "#f0ebe0" }}>{c}</option>
+                  ))}
+                </select>
+                <select value={form.budget || ""} onChange={(e) => set("budget", e.target.value)} style={{ ...s.input, cursor: "pointer", colorScheme: "dark" }}>
+                  {["", ...getBudgetOptions(form.budgetCurrency)].map((v) => (
+                    <option key={v} value={v} style={{ background: "#1c1a13", color: v ? "#f0ebe0" : "rgba(240,235,224,0.4)" }}>{v || "Select budget range..."}</option>
+                  ))}
+                </select>
+              </div>
             </>
           )}
 
@@ -3365,7 +3581,7 @@ export default function CampaignForm() {
             </>
           )}
 
-          {type !== "event" && type !== "growth_strategy" && type !== "growth_agent" && type !== "content_calendar" && type !== "ads_creation" && type !== "ads_manager" && type !== "target_audience" && type !== "email_drip" && type !== "influencer" && type !== "analytics_report" && !EXEC_TYPES.includes(type) && (
+          {type !== "event" && type !== "growth_strategy" && type !== "growth_agent" && type !== "content_calendar" && type !== "ads_creation" && type !== "ads_manager" && type !== "target_audience" && type !== "email_drip" && type !== "influencer" && type !== "analytics_report" && type !== "competitive_intel" && type !== "funnel_cro" && !EXEC_TYPES.includes(type) && (
             <>
               <label style={s.label}>
                 Price / Pricing Info{" "}
@@ -3519,7 +3735,7 @@ export default function CampaignForm() {
             </>
           )}
 
-          {type !== "event" && type !== "growth_strategy" && type !== "growth_agent" && type !== "content_calendar" && type !== "product" && (
+          {type !== "event" && type !== "growth_strategy" && type !== "growth_agent" && type !== "content_calendar" && type !== "product" && type !== "competitive_intel" && type !== "analytics_report" && (
             <>
               <label style={{ ...s.label, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span>Brand Name <span style={s.req}>*</span></span>
@@ -3926,15 +4142,15 @@ export default function CampaignForm() {
             {PLATFORM_OPTIONS.map((p) => {
               const active = form.platforms.includes(p.key);
               // Map platform key to connected accounts key
-              const accountKey = p.key === "email" ? "gmail" : p.key;
-              const isAlwaysOn = p.key === "whatsapp";
+              const accountKey = p.key === "email" ? "gmail" : p.key === "google_ads" ? "google-ads" : p.key === "meta_ads" ? "meta-ads" : p.key;
+              const isAlwaysOn = p.key === "whatsapp" || p.key === "sms";
               const isConnected = isAlwaysOn || connectedAccounts[accountKey]?.connected;
               return (
                 <button
                   key={p.key}
                   onClick={() => {
                     if (!isConnected && !isAlwaysOn) {
-                      openConnectPopup(p.key === "email" ? "gmail" : p.key);
+                      openConnectPopup(accountKey);
                     } else {
                       togglePlatform(p.key);
                     }
@@ -4035,6 +4251,138 @@ export default function CampaignForm() {
             </div>
           )}
 
+          {/* WhatsApp recipient list — WhatsApp is always-on, so show this whenever it's an active platform */}
+          {form.platforms.includes("whatsapp") && (
+            <div style={{ marginTop: "14px", padding: "14px 16px", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "12px" }}>
+              <label style={{ ...s.label, marginTop: 0, display: "flex", alignItems: "center", gap: "6px" }}>
+                <MessageCircle size={13} /> WhatsApp Recipients
+              </label>
+              <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.35)", marginTop: "2px", marginBottom: "10px" }}>
+                Add phone numbers (with country code, e.g. 919876543210) to send this campaign's content out via WhatsApp.
+              </p>
+
+              {whatsappRecipientList.length > 0 && (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "10px" }}>
+                  {whatsappRecipientList.map((number) => (
+                    <span key={number} style={{
+                      display: "flex", alignItems: "center", gap: "6px",
+                      padding: "5px 8px 5px 10px", background: "rgba(37,211,102,0.1)",
+                      border: "1px solid rgba(37,211,102,0.3)", borderRadius: "100px",
+                      fontSize: "12px", color: "#86efac",
+                    }}>
+                      {number}
+                      <button
+                        type="button"
+                        onClick={() => removeWhatsappRecipient(number)}
+                        aria-label={`Remove ${number}`}
+                        style={{ display: "flex", background: "none", border: "none", cursor: "pointer", padding: 2, color: "#86efac" }}
+                      >
+                        <X size={11} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              <div style={{ display: "flex", gap: "8px" }}>
+                <input
+                  type="tel"
+                  value={whatsappRecipientInput}
+                  onChange={(e) => { setWhatsappRecipientInput(e.target.value); setWhatsappRecipientError(""); }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === ",") { e.preventDefault(); addWhatsappRecipient(); }
+                  }}
+                  placeholder="919876543210 — press Enter to add"
+                  style={{ ...s.input, flex: 1 }}
+                />
+                <button
+                  type="button"
+                  onClick={addWhatsappRecipient}
+                  style={{
+                    padding: "0 16px", borderRadius: "10px", border: "1px solid rgba(37,211,102,0.4)",
+                    background: "rgba(37,211,102,0.12)", color: "#86efac", fontSize: "13px", fontWeight: 700, cursor: "pointer",
+                  }}
+                >
+                  Add
+                </button>
+              </div>
+              {whatsappRecipientError && (
+                <p style={{ fontSize: "11px", color: "#fca5a5", marginTop: "6px" }}>{whatsappRecipientError}</p>
+              )}
+              {whatsappRecipientList.length === 0 && !whatsappRecipientError && (
+                <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.3)", marginTop: "6px" }}>
+                  No recipients yet — add at least one phone number to send this campaign's content out.
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* SMS recipient list — SMS is always-on, so show this whenever it's an active platform */}
+          {form.platforms.includes("sms") && (
+            <div style={{ marginTop: "14px", padding: "14px 16px", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "12px" }}>
+              <label style={{ ...s.label, marginTop: 0, display: "flex", alignItems: "center", gap: "6px" }}>
+                <MessageSquare size={13} /> SMS Recipients
+              </label>
+              <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.35)", marginTop: "2px", marginBottom: "10px" }}>
+                Add phone numbers (with country code, e.g. 919876543210) to send this campaign's content out via SMS.
+              </p>
+
+              {smsRecipientList.length > 0 && (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "10px" }}>
+                  {smsRecipientList.map((number) => (
+                    <span key={number} style={{
+                      display: "flex", alignItems: "center", gap: "6px",
+                      padding: "5px 8px 5px 10px", background: "rgba(34,197,94,0.1)",
+                      border: "1px solid rgba(34,197,94,0.3)", borderRadius: "100px",
+                      fontSize: "12px", color: "#86efac",
+                    }}>
+                      {number}
+                      <button
+                        type="button"
+                        onClick={() => removeSmsRecipient(number)}
+                        aria-label={`Remove ${number}`}
+                        style={{ display: "flex", background: "none", border: "none", cursor: "pointer", padding: 2, color: "#86efac" }}
+                      >
+                        <X size={11} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              <div style={{ display: "flex", gap: "8px" }}>
+                <input
+                  type="tel"
+                  value={smsRecipientInput}
+                  onChange={(e) => { setSmsRecipientInput(e.target.value); setSmsRecipientError(""); }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === ",") { e.preventDefault(); addSmsRecipient(); }
+                  }}
+                  placeholder="919876543210 — press Enter to add"
+                  style={{ ...s.input, flex: 1 }}
+                />
+                <button
+                  type="button"
+                  onClick={addSmsRecipient}
+                  style={{
+                    padding: "0 16px", borderRadius: "10px", border: "1px solid rgba(34,197,94,0.4)",
+                    background: "rgba(34,197,94,0.12)", color: "#86efac", fontSize: "13px", fontWeight: 700, cursor: "pointer",
+                  }}
+                >
+                  Add
+                </button>
+              </div>
+              {smsRecipientError && (
+                <p style={{ fontSize: "11px", color: "#fca5a5", marginTop: "6px" }}>{smsRecipientError}</p>
+              )}
+              {smsRecipientList.length === 0 && !smsRecipientError && (
+                <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.3)", marginTop: "6px" }}>
+                  No recipients yet — add at least one phone number to send this campaign's content out.
+                </p>
+              )}
+            </div>
+          )}
+
             </>
           )} {/* end type !== "growth_strategy" publishing settings */}
 
@@ -4095,8 +4443,8 @@ export default function CampaignForm() {
             )}
           </button>
           <p style={{ textAlign: "center", color: "rgba(255,255,255,0.35)", fontSize: "13px", marginTop: "12px" }}>
-            {type === "growth_strategy"
-              ? "Powered by AI · Full strategy document generated in seconds"
+            {['growth_strategy','growth_agent','competitive_intel','funnel_cro','analytics_report','sales_enablement','content_calendar','seo_blog','brand_strategy',...EXEC_TYPES].includes(type)
+              ? "Powered by AI · Full report generated in seconds"
               : "Content generated by AI  ·  Posted instantly to all platforms"}
           </p>
           <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>

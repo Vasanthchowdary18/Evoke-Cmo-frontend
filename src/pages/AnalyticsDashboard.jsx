@@ -8,8 +8,9 @@ import {
   Target, BookOpen, ChevronRight, Instagram, MessageSquare,
   CheckCircle, MousePointer, Eye, DollarSign, Percent, Award,
   Sparkles, TrendingUp, Plus, Users, ThumbsUp, Share2, Heart,
+  AlertCircle,
 } from 'lucide-react'
-import Navbar from '../components/Navbar.jsx'
+import AppSidebar from '../components/AppSidebar.jsx'
 import { useRequireAuth } from '../hooks/useRequireAuth'
 import { useAuth } from '../hooks/useAuth.js'
 import { getOrCreateUser } from '../services/userService'
@@ -166,6 +167,7 @@ export default function AnalyticsDashboard() {
   const [gadsAccount, setGadsAccount] = useState(null)
   const [gadsMetrics, setGadsMetrics] = useState(null)
   const [gadsLoading, setGadsLoading] = useState(false)
+  const [gadsError, setGadsError]     = useState('')
   const [fbInsights, setFbInsights]   = useState(null)
   const [fbPosts, setFbPosts]         = useState([])
   const [fbLoading, setFbLoading]     = useState(false)
@@ -196,6 +198,7 @@ export default function AnalyticsDashboard() {
   const loadGoogleAds = async (uid) => {
     if (!uid) return
     setGadsLoading(true)
+    setGadsError('')
     try {
       const acc = await getGoogleAdsAccount(uid)
       setGadsAccount(acc)
@@ -203,7 +206,10 @@ export default function AnalyticsDashboard() {
         const metrics = await getGoogleAdsMetrics(uid)
         if (metrics) setGadsMetrics(metrics)
       }
-    } catch (e) { console.error('Google Ads error', e) }
+    } catch (e) {
+      console.error('Google Ads error', e)
+      setGadsError("Couldn't load Google Ads data — the connection may be down. Try refreshing, or reconnect the account.")
+    }
     finally { setGadsLoading(false) }
   }
 
@@ -265,9 +271,10 @@ export default function AnalyticsDashboard() {
 
   return (
     <div style={{ minHeight: '100vh', background: BG, color: TEXT, fontFamily: "'Inter',sans-serif" }}>
-      <Navbar />
+      <AppSidebar />
+      <div style={{ marginLeft: 'var(--evox-sidebar-w, 220px)', transition: 'margin-left 0.22s' }}>
 
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '88px 24px 64px' }}>
+      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '36px 24px 64px' }}>
 
         {/* ── Page header ── */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 32, flexWrap: 'wrap', gap: 12 }}>
@@ -476,6 +483,11 @@ export default function AnalyticsDashboard() {
                     <div style={{ fontSize: 20, fontWeight: 800, color: TEXT }}>{m.value}</div>
                   </div>
                 ))}
+              </div>
+            ) : gadsError ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 8 }}>
+                <AlertCircle size={14} color="#ef4444" style={{ flexShrink: 0 }} />
+                <span style={{ fontSize: 12.5, color: TEXT2 }}>{gadsError}</span>
               </div>
             ) : null}
           </div>
@@ -709,6 +721,7 @@ export default function AnalyticsDashboard() {
 
       </div>
       <JourneyFooter currentPath="/analytics" />
+      </div>
       <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
     </div>
   )

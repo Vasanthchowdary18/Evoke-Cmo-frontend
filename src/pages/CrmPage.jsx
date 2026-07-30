@@ -404,7 +404,7 @@ export default function CrmPage() {
   const handleEdit = async (form) => {
     setSaving(true)
     try {
-      const updated = await updateContact(user.uid, editContact.id, form)
+      const updated = await updateContact(user.uid, editContact.id, form, editContact.stage)
       setContacts(p => p.map(c => c.id === editContact.id ? { ...c, ...updated } : c))
       setEditContact(null)
     } catch (e) { console.error(e) }

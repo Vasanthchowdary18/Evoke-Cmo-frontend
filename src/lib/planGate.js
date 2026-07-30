@@ -131,6 +131,13 @@ export const ROUTE_PLAN = {
   '/health-score':          'free',
   '/strategy':              'free',
 
+  // Connecting accounts and posting are open — a user has to be able to link
+  // their own social accounts and publish before any plan means anything.
+  // Matches FEATURE_PLAN.connect_accounts / campaign_hub, which were already 'free'.
+  '/connect-accounts':      'free',
+  '/post-content':          'free',
+  '/campaign-hub':          'free',
+
   // ── Brand KB tool, KPI & Content Calendar moved to Package A ──
   '/brand-kb':              'package-a',
   '/kpi-recommendations':   'package-a',
@@ -156,11 +163,7 @@ export const ROUTE_PLAN = {
   '/crm':                   'package-b',
   '/analytics':             'package-b',
   '/executive-report':      'package-b',
-  '/executive-reporting':   'package-b',
-  '/campaign-hub':          'package-b',
   '/queue':                 'package-b',
-  '/post-content':          'package-b',
-  '/connect-accounts':      'package-b',
   '/inbox':                 'package-b',
   '/brand-governance':      'package-b',
   '/image-3d':              'package-b',
@@ -170,4 +173,5 @@ export const ROUTE_PLAN = {
   '/execution':             'package-c',
   '/team':                  'package-c',
   '/partner-sharing':       'package-c',
+  '/compliance-agent':      'package-c',
 }

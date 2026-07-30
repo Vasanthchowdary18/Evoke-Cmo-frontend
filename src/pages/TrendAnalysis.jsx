@@ -21,8 +21,6 @@ const TEXT   = '#f0ebe0'
 const TEXT2  = 'rgba(240,235,224,0.55)'
 const TEXT3  = 'rgba(240,235,224,0.32)'
 
-const GROQ_KEY = import.meta.env.VITE_GROQ_API_KEY || ''
-
 const INDUSTRIES = [
   'Marketing & Advertising', 'Technology & SaaS', 'E-commerce & Retail',
   'Food & Beverage', 'Health & Wellness', 'Finance & Fintech',
@@ -80,12 +78,11 @@ Return ONLY valid JSON in this exact structure:
 }`
 
   const res = await fetch(
-    'https://api.groq.com/openai/v1/chat/completions',
+    '/api/generate',
     {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${GROQ_KEY}`,
       },
       body: JSON.stringify({
         model: 'llama-3.3-70b-versatile',
