@@ -13,10 +13,16 @@ export const GHL_PLATFORMS = ['facebook', 'instagram', 'linkedin', 'tiktok', 'th
 /**
  * Shared workspace used while running on a Private Integration Token. A PIT is
  * issued per workspace, so everyone posts through this one until the agency
- * scope lands and each user can be given their own. Clear this env var to make
- * signup provision a workspace per user instead.
+ * scope lands and each user can be given their own.
+ *
+ * The default is deliberate: relying on an env var meant any environment that
+ * missed it silently disabled connecting, with no clue why. This is only a
+ * workspace identifier — the token that can act on it lives server-side in n8n
+ * — and the browser already sends it on every request. Set the env var to point
+ * an environment somewhere else, or to '' to force per-user provisioning.
  */
-const SHARED_LOCATION_ID = import.meta.env.VITE_GHL_LOCATION_ID || ''
+const SHARED_LOCATION_ID =
+  import.meta.env.VITE_GHL_LOCATION_ID ?? 'ePB8lCVVTftERqNprfkc'
 
 /** Origins the OAuth popup is allowed to postMessage from. */
 const TRUSTED_POPUP_ORIGINS = [
