@@ -2386,19 +2386,40 @@ export default function CampaignForm() {
         const plannerSelected = ["facebook", "instagram"].filter((p) =>
           form.platforms.includes(p),
         );
+        // The generator writes different copy per platform, so publish one post
+        // per platform rather than sending a single shared caption to both.
+        const captionFor = (p) =>
+          (p === "instagram" ? campaignData?.instagramCaption : campaignData?.facebookPost) ||
+          campaignData?.facebookPost ||
+          campaignData?.instagramCaption ||
+          campaignData?.linkedinPost ||
+          form.description ||
+          form.name ||
+          "";
+
         if (plannerPlatforms.length) {
-          try {
-            const res = await publishSocialPost(currentUser.uid, {
-              platforms: plannerPlatforms,
-              caption: campaignData?.caption || campaignData?.socialPost || form.name || "",
-              mediaUrls: resolvedImageUrl ? [resolvedImageUrl] : [],
-            });
-            plannerResult = { ok: true, platforms: plannerPlatforms, postId: res?.postId || null };
-          } catch (plannerErr) {
-            // Surface it — a silent failure here reads as a successful post.
-            plannerResult = { ok: false, platforms: plannerPlatforms, error: plannerErr.message };
-            console.error("[CampaignForm] Social Planner publish failed:", plannerErr.message);
+          const posted = [];
+          const failed = [];
+          for (const p of plannerPlatforms) {
+            try {
+              const res = await publishSocialPost(currentUser.uid, {
+                platforms: [p],
+                caption: captionFor(p),
+                mediaUrls: resolvedImageUrl ? [resolvedImageUrl] : [],
+              });
+              posted.push({ platform: p, postId: res?.postId || null });
+            } catch (plannerErr) {
+              // Surface it — a silent failure here reads as a successful post.
+              failed.push({ platform: p, error: plannerErr.message });
+              console.error(`[CampaignForm] ${p} publish failed:`, plannerErr.message);
+            }
           }
+          plannerResult = {
+            ok: failed.length === 0,
+            posted,
+            failed,
+            platforms: plannerPlatforms,
+          };
         } else if (plannerSelected.length) {
           plannerResult = {
             ok: false,
