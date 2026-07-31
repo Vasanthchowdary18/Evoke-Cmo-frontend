@@ -163,19 +163,20 @@ export async function startSocialConnect(uid, platform) {
   } catch (err) {
     // Cancelling is only a dead end if nothing was linked on a previous run.
     const existing = await listConnectedPages(platform, acc.locationId, accountId)
-    if (!existing.length) throw err
+    if (!existing.pages.length) throw err
   }
 
-  const pages = await listConnectedPages(platform, acc.locationId, accountId)
-  return { accountId, pages, locationId: acc.locationId }
+  const { pages, scoped } = await listConnectedPages(platform, acc.locationId, accountId)
+  return { accountId, pages, scoped, locationId: acc.locationId }
 }
 
 /**
  * Pages this sign-in authorised, for one platform.
  *
- * The workspace may hold other people's pages, so results are narrowed to the
- * account that just signed in — page ids are `<accountId>_<location>_<page>`.
- * Without this a user would see, and could publish to, someone else's page.
+ * Returns `scoped: true` only when the list could be narrowed to the account
+ * that just signed in — page ids are `<accountId>_<location>_<page>`. When it
+ * can't, the caller gets every page on the workspace and must NOT auto-select
+ * one: on a shared workspace that could silently link somebody else's page.
  */
 async function listConnectedPages(platform, locationId, accountId = '') {
   const { pages } = await postJson(GHL_SOCIAL_ACCOUNTS_WEBHOOK, {
@@ -185,12 +186,12 @@ async function listConnectedPages(platform, locationId, accountId = '') {
   })
 
   const live = (pages || []).filter((p) => !p.isExpired)
-  if (!accountId) return live
+  if (!accountId) return { pages: live, scoped: false }
 
   // GHL doesn't document how the popup's accountId relates to the composite
   // page id, and the shape differs between platforms — so match loosely.
   const mine = live.filter((p) => String(p.originId || '').includes(accountId))
-  if (mine.length) return mine
+  if (mine.length) return { pages: mine, scoped: true }
 
   // No match: rather than dead-ending the user, show what the workspace has.
   // On a shared workspace that can include another user's pages, so this is a
@@ -200,7 +201,7 @@ async function listConnectedPages(platform, locationId, accountId = '') {
     `showing all ${live.length} account(s) on this workspace.`,
     live.map((p) => p.originId),
   )
-  return live
+  return { pages: live, scoped: false }
 }
 
 /**

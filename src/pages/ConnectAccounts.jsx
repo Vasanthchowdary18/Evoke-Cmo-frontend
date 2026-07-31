@@ -454,17 +454,19 @@ export default function ConnectAccounts() {
     setLoad(platform, true);
     clrErr(platform);
     try {
-      const { accountId, pages } = await startSocialConnect(user.uid, platform);
+      const { accountId, pages, scoped } = await startSocialConnect(user.uid, platform);
       if (!pages.length) {
         throw new Error(
           "No pages came back from that account. When the login window asks which pages to allow, select at least one.",
         );
       }
-      // One page: attach it. Several: let them choose.
-      if (pages.length === 1) {
+      // Auto-attach only when the list is definitely this sign-in's own single
+      // page. If it couldn't be narrowed, always ask — picking for the user
+      // could otherwise link an account that isn't theirs.
+      if (scoped && pages.length === 1) {
         await choosePage(pages[0], platform, accountId);
       } else {
-        setPagePicker({ platform, accountId, pages });
+        setPagePicker({ platform, accountId, pages, scoped });
       }
     } catch (e) {
       setErr(platform, e.message);
@@ -2156,11 +2158,25 @@ export default function ConnectAccounts() {
                   color: "rgba(255,255,255,0.55)",
                   fontSize: 13,
                   margin: 0,
-                  marginBottom: 18,
+                  marginBottom: pagePicker.scoped === false ? 10 : 18,
                 }}
               >
                 Your campaigns will publish to the page you select.
               </p>
+              {pagePicker.scoped === false && (
+                <p
+                  style={{
+                    color: "#c8973e",
+                    fontSize: 12,
+                    lineHeight: 1.5,
+                    margin: 0,
+                    marginBottom: 18,
+                  }}
+                >
+                  Pick the page you just signed in with — only select an account
+                  you own.
+                </p>
+              )}
 
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {pagePicker.pages.map((pg) => (
