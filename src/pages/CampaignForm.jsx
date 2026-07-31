@@ -876,6 +876,15 @@ ${getOutputSchema()}`;
     const msg = err?.error?.message || "";
     if (res.status === 401) throw new Error("AI service key is invalid. Please contact support.");
     if (res.status === 429) throw new Error("AI rate limit reached even after retrying. Please wait a minute and try again.");
+    // 403/404 here means /api/generate isn't being served at all — the usual
+    // cause is a static host (S3/CloudFront) that can't run the API routes.
+    // Retrying will never help, so say so instead of suggesting it.
+    if (res.status === 403 || res.status === 404) {
+      throw new Error(
+        `Content generation is unavailable on this environment — the /api/generate endpoint returned ${res.status}. ` +
+        `It works locally but is not deployed here. This needs fixing on the server, not by retrying.`,
+      );
+    }
     throw new Error(msg || `AI generation failed (${res.status}). Please try again.`);
   }
 
