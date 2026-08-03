@@ -10,10 +10,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.111.0",
     "axios": "^1.6.7",
     "cloudinary": "^2.10.0",
     "firebase": "^12.13.0",
     "framer-motion": "^11.0.6",
+    "jsonwebtoken": "^9.0.3",
     "lucide-react": "^0.323.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
