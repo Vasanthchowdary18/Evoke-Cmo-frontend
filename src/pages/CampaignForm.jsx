@@ -3103,8 +3103,10 @@ export default function CampaignForm() {
             </>
           )}
 
-          {/* ── Social Platforms — Package A free agents (strategy / growth / content) ── */}
-          {(type === "growth_strategy" || type === "growth_agent" || type === "content_calendar") && (
+          {/* ── Social Platforms — Package A free agents (growth / content). Not shown for
+              growth_strategy: it's a pure strategy doc, Results.jsx never renders per-platform
+              posts for it, so targeting platforms here had no effect on the output. ── */}
+          {(type === "growth_agent" || type === "content_calendar") && (
             <>
               <label style={s.label}>
                 Social Platforms to Target
