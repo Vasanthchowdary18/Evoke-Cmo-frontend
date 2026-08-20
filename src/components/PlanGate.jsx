@@ -14,9 +14,9 @@ const TEXT2  = 'rgba(240,235,224,0.55)'
 const TEXT3  = 'rgba(240,235,224,0.28)'
 
 const PLAN_PRICES = {
-  'package-a': '$1,000',
-  'package-b': '$1,800',
-  'package-c': '$4,000',
+  'package-a': '$30/mo',
+  'package-b': '$100/mo',
+  'package-c': 'Custom',
 }
 
 const STRIPE_LINKS = {
@@ -29,10 +29,9 @@ const STRIPE_LINKS = {
 const IS_DEV = typeof window !== 'undefined' &&
   (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
 
-// Plan gating is off everywhere while packages and billing are being reworked.
-// Flip back to true to re-enable the upgrade walls — the pricing pages, Stripe
-// links and per-plan config below are all still intact and untouched.
-const PLAN_GATES_ENABLED = false
+// Re-enabled 2026-08-04 now that the 4-tier pricing (Free Trial/Starter/
+// Professional/Enterprise) is in place — Starter etc. now actually gate.
+const PLAN_GATES_ENABLED = true
 
 export default function PlanGate({ requiredPlan, featureName, children }) {
   const { plan: userPlan, loading } = useUserPlan()

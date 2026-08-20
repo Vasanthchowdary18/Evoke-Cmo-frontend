@@ -76,29 +76,54 @@ const DISCOUNT_GRADIENT =
    comparison-table detail rows + FAQ copy are best-effort fill —
    verify against the Figma "ComparisonSection" / "FAQSection".
    ═══════════════════════════════════════════════════════════ */
+// NOTE: Starter tier price/features are placeholders (Vasanth asked to proceed
+// without giving exact numbers) — adjust monthly/annual/features to your real
+// pricing before launch. Free Trial now tracks a real trialDays length (see
+// trialStartedAt written in OnboardingWizard.jsx) — expiry ENFORCEMENT
+// (what happens when the trial runs out) is intentionally not built yet since
+// that wasn't specified; flag before shipping to real users.
 const PLANS = [
   {
-    key: "free",
-    label: "FREE",
-    col: "Starter",
+    key: "freeTrial",
+    label: "FREE TRIAL",
+    col: "Free Trial",
     accent: "#6C63FF",
     monthly: "$0",
     annual: "$0",
-    per: "/month",
-    desc: "Perfect for high-growth startups testing market fit and channels.",
+    per: "/14 days",
+    trialDays: 14,
+    desc: "Try the full platform free for 14 days — no card required.",
     features: [
       "Access to 4 core agents",
       "Up to $10,000 ad spend managed",
       "Bi-weekly performance audit",
       "Slack dashboard integration",
     ],
+    cta: "Start Free Trial",
+    popular: false,
+  },
+  {
+    key: "starter",
+    label: "STARTER",
+    col: "Starter",
+    accent: "#10b981",
+    monthly: "$30",
+    annual: "$24",
+    per: "/month",
+    desc: "For small teams getting serious about consistent growth.",
+    features: [
+      "Access to 6 core agents",
+      "Up to $50,000 ad spend managed",
+      "Weekly performance audit",
+      "Email support",
+    ],
     cta: "Get Started Now",
     popular: false,
   },
   {
     key: "pro",
-    label: "PROFESSIONAL FLEET",
-    col: "Pro",
+    label: "PROFESSIONAL",
+    col: "Professional",
     accent: "#C8962A",
     monthly: "$100",
     annual: "$80",
@@ -115,7 +140,7 @@ const PLANS = [
   },
   {
     key: "enterprise",
-    label: "SOVEREIGN CMO",
+    label: "ENTERPRISE",
     col: "Enterprise",
     accent: "#06B6D4",
     monthly: "Custom",
@@ -141,19 +166,22 @@ const COMPARE_GROUPS = [
     rows: [
       {
         feature: "AI Agents Count",
-        starter: "4",
+        freeTrial: "4",
+        starter: "6",
         pro: "12",
         enterprise: "Unlimited",
       },
       {
         feature: "Monthly Actions",
-        starter: "5,000",
+        freeTrial: "5,000",
+        starter: "15,000",
         pro: "50,000",
         enterprise: "Unlimited",
       },
       {
         feature: "Brand Workspaces",
-        starter: "1",
+        freeTrial: "1",
+        starter: "2",
         pro: "5",
         enterprise: "Unlimited",
       },
@@ -162,16 +190,18 @@ const COMPARE_GROUPS = [
   {
     group: "Support",
     rows: [
-      { feature: "Email Support", starter: true, pro: true, enterprise: true },
-      { feature: "Chat Support", starter: false, pro: true, enterprise: true },
+      { feature: "Email Support", freeTrial: true, starter: true, pro: true, enterprise: true },
+      { feature: "Chat Support", freeTrial: false, starter: true, pro: true, enterprise: true },
       {
         feature: "Priority 24/7 Support",
+        freeTrial: false,
         starter: false,
         pro: true,
         enterprise: true,
       },
       {
         feature: "Dedicated Success Manager",
+        freeTrial: false,
         starter: false,
         pro: false,
         enterprise: true,
@@ -183,18 +213,21 @@ const COMPARE_GROUPS = [
     rows: [
       {
         feature: "Basic Dashboard",
+        freeTrial: true,
         starter: true,
         pro: true,
         enterprise: true,
       },
       {
         feature: "Advanced Reports",
-        starter: false,
+        freeTrial: false,
+        starter: true,
         pro: true,
         enterprise: true,
       },
       {
         feature: "White-label Reports",
+        freeTrial: false,
         starter: false,
         pro: false,
         enterprise: true,
@@ -541,7 +574,7 @@ export default function PricingPage() {
             maxWidth: 1280,
             margin: "0 auto",
             display: "grid",
-            gridTemplateColumns: "repeat(3,1fr)",
+            gridTemplateColumns: "repeat(4,1fr)",
             gap: 24,
             alignItems: "stretch",
           }}
@@ -641,7 +674,7 @@ export default function PricingPage() {
                   </div>
                   {plan.monthly !== "Custom" &&
                     billing === "annual" &&
-                    plan.key !== "free" && (
+                    plan.key !== "freeTrial" && (
                       <div
                         style={{
                           fontSize: 11,
@@ -827,7 +860,7 @@ export default function PricingPage() {
                     >
                       Feature
                     </th>
-                    {["Starter", "Pro", "Enterprise"].map((c) => (
+                    {["Free Trial", "Starter", "Professional", "Enterprise"].map((c) => (
                       <th
                         key={c}
                         style={{
@@ -837,7 +870,7 @@ export default function PricingPage() {
                           fontSize: 14,
                           fontWeight: 800,
                           lineHeight: "100%",
-                          color: c === "Pro" ? "#C8962A" : "#FFFFFF",
+                          color: c === "Professional" ? "#C8962A" : "#FFFFFF",
                           borderBottom: "1px solid #1E1E30",
                           fontFamily: "'Manrope','Inter',sans-serif",
                           boxSizing: "border-box",
@@ -854,7 +887,7 @@ export default function PricingPage() {
                       {/* CategoryRow — height 48, padding 16px 24px, bg #111122 */}
                       <tr>
                         <td
-                          colSpan={4}
+                          colSpan={5}
                           style={{
                             height: 48,
                             padding: "16px 24px",
@@ -893,6 +926,14 @@ export default function PricingPage() {
                             }}
                           >
                             {row.feature}
+                          </td>
+                          <td
+                            style={{
+                              padding: "18px 16px",
+                              textAlign: "center",
+                            }}
+                          >
+                            <Cell value={row.freeTrial} />
                           </td>
                           <td
                             style={{

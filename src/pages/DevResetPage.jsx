@@ -53,6 +53,8 @@ export default function DevResetPage() {
         selectedPlan:        deleteField(),
         recommendedRoutes:   deleteField(),
         brandName:           deleteField(),
+        productTourSeen:     deleteField(),
+        trialStartedAt:      deleteField(),
       })
 
       // Step 2 — clear brand knowledge base

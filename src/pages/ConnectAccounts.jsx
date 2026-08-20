@@ -1212,6 +1212,20 @@ export default function ConnectAccounts() {
                 : `${connectedCount} of ${PLATFORMS.length} platforms connected — you're ready to proceed! Connect more for wider reach.`
               }
             </div>
+            {connectedCount > 0 && (
+              <button
+                onClick={() => navigate('/agents-hub')}
+                style={{
+                  marginTop: 16, padding: '12px 20px',
+                  background: 'linear-gradient(135deg,#c8973e,#b8803a)', border: 'none',
+                  borderRadius: 10, color: '#0e0c09', fontSize: 14, fontWeight: 800,
+                  cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8,
+                  fontFamily: 'inherit',
+                }}
+              >
+                Continue to AI Agents Hub <ArrowRight size={15} />
+              </button>
+            )}
           </div>
         </motion.div>
 

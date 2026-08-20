@@ -36,7 +36,9 @@ const STEP_META = [
 
 // Maps PricingPage.jsx plan keys ('free' | 'pro' | 'enterprise') to the
 // internal plan-gating system's keys used by planGate.js / useUserPlan.
-const PLAN_KEY_MAP = { free: 'free', pro: 'package-c', enterprise: 'package-c' }
+// Matches PricingPage.jsx's 4 tiers 1:1 onto the app's real plan-gating keys
+// (free/package-a/package-b/package-c, see AppSidebar.jsx/PlanGate.jsx).
+const PLAN_KEY_MAP = { freeTrial: 'free', free: 'free', starter: 'package-a', pro: 'package-b', enterprise: 'package-c' }
 
 const INDUSTRY_OPTIONS = [
   { value: 'ecommerce',  label: 'E-commerce & Retail' },
@@ -271,6 +273,11 @@ export default function OnboardingWizard({ onComplete, onDismiss }) {
           recommendedRoutes: recs.map(r => r.route),
           selectedPlan,
           userPlan: selectedPlan,
+          // Only stamped the first time someone starts the free trial — real
+          // trial-length tracking (see PricingPage.jsx's trialDays: 14).
+          // NOTE: expiry enforcement (what happens after 14 days) isn't built
+          // yet — this just records the start so it CAN be enforced later.
+          ...(rawPlan === 'freeTrial' ? { trialStartedAt: serverTimestamp() } : {}),
         })
         sessionStorage.setItem('evox_setup_recs', JSON.stringify(recs))
       }
@@ -572,7 +579,7 @@ export default function OnboardingWizard({ onComplete, onDismiss }) {
             </div>
             <StepFooter
               leftSlot={<button onClick={exportReport} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: TEXT2, fontFamily: FBODY, fontSize: 14, fontWeight: 600, textDecoration: 'underline', cursor: 'pointer', padding: 0 }}><Download size={14}/> Export Report PDF</button>}
-              onNext={handleFinish} nextLabel="Enter Marketing Control Center" saving={saving} />
+              onNext={handleFinish} nextLabel="Continue to Choose Your Plan" saving={saving} />
           </>
         )}
       </div>

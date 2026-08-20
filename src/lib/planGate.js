@@ -7,10 +7,10 @@
 export const PLANS = ['free', 'package-a', 'package-b', 'package-c']
 
 export const PLAN_LABELS = {
-  'free':      'Free',
-  'package-a': 'Package A',
-  'package-b': 'Package B',
-  'package-c': 'Package C',
+  'free':      'Free Trial',
+  'package-a': 'Starter',
+  'package-b': 'Professional',
+  'package-c': 'Enterprise',
 }
 
 export const PLAN_COLORS = {

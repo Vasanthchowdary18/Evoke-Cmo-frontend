@@ -269,8 +269,13 @@ export default function BrandSetupModal({ onComplete, onDismiss }) {
     setStep(s => s + delta)
   }
 
+  // Matches PricingPage.jsx's 4 tiers onto the app's real plan-gating keys
+  // (free/package-a/package-b/package-c, see AppSidebar.jsx/PlanGate.jsx).
+  const PLAN_KEY_MAP = { freeTrial: 'free', free: 'free', starter: 'package-a', pro: 'package-b', enterprise: 'package-c' }
+
   const handleFinish = async () => {
-    const final = { ...answersRef.current, selectedPlan: selectedPlan || 'free' }
+    const normalizedPlan = PLAN_KEY_MAP[selectedPlan] || selectedPlan || 'free'
+    const final = { ...answersRef.current, selectedPlan: normalizedPlan }
     setSaving(true)
     try {
       const recs = getRecommendations(final)

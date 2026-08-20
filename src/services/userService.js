@@ -64,6 +64,19 @@ export async function saveOnboardingData(uid, data) {
   })
 }
 
+/** Persists a chosen plan to Firestore (mirrors the write OnboardingWizard already does on finish). */
+export async function saveSelectedPlan(uid, planKey) {
+  await updateDoc(doc(db, 'users', uid), {
+    selectedPlan: planKey,
+    userPlan: planKey,
+  })
+}
+
+/** Marks the guided product tour as seen so it doesn't replay on every visit. */
+export async function markTourSeen(uid) {
+  await updateDoc(doc(db, 'users', uid), { productTourSeen: true })
+}
+
 /** Returns the full user document, or null if the user doesn't exist. */
 export async function getUserData(uid) {
   const snap = await getDoc(doc(db, 'users', uid))

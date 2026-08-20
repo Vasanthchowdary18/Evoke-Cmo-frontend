@@ -5,20 +5,31 @@ import {
   LayoutDashboard, MessageSquare, Target, Layers, FileText, Image, Video,
   Search, TrendingUp, Share2, Users, UserCheck, Cpu, BarChart2,
   PieChart, Folder, Link, UsersRound, CreditCard, Settings, LogOut,
-  ChevronLeft, ChevronRight, Zap, Crown, CalendarClock,
+  ChevronLeft, ChevronRight, Zap, Crown, CalendarClock, Send, Sparkles,
 } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth.js'
 import { useUserPlan } from '../hooks/useUserPlan.js'
 import { signOut as ssoSignOut } from '../lib/session'
 
-// Matches the Figma "strategy-home" sidebar exactly: a flat primary nav, a
-// "GROWTH STACK" module group, a spacer, then a flat utility group ending
-// at Settings — no plan badge / user row / logout block in the design.
+// Primary nav follows the product journey diagram's literal stage order:
+// Dashboard -> Connect Channels -> AI Agents Hub -> Campaign Builder ->
+// Campaign Execution -> (supporting creation tools) -> Analytics -> Optimization.
+// "Growth Stack" holds the remaining channel/tool pages that don't map to a
+// single diagram stage. Team + Utility (Reports/Asset Library/Billing/Settings)
+// stay a flat group at the bottom, unchanged from the prior Figma layout.
 const PRIMARY_ITEMS = [
   { label: 'Dashboard',       icon: LayoutDashboard, route: '/dashboard',     minPlan: 'free' },
-  { label: 'AI Chat',         icon: MessageSquare,    route: '/agents-hub',   minPlan: 'free', badge: 'Live' },
+  { label: 'Connect Channels', icon: Link,           route: '/connect-accounts', minPlan: 'free', tourId: 'nav-connect-channels' },
+  { label: 'AI Agents Hub',   icon: MessageSquare,    route: '/agents-hub',   minPlan: 'free', badge: 'Live', tourId: 'nav-agents-hub' },
+  { label: 'Campaigns',       icon: Layers,           route: '/campaigns',    minPlan: 'package-b', tourId: 'nav-campaigns', subItems: [
+      { label: 'All Campaigns', route: '/campaigns' },
+      { label: 'New Campaign',  route: '/new-campaign' },
+    ] },
+  { label: 'Campaign Execution', icon: Send,         route: '/queue',        minPlan: 'package-b', tourId: 'nav-campaign-execution', subItems: [
+      { label: 'Approval Queue', route: '/queue' },
+      { label: 'Post & Publish', route: '/post-content' },
+    ] },
   { label: 'Strategy',        icon: Target,           route: '/strategy-home', minPlan: 'free' },
-  { label: 'Campaigns',       icon: Layers,           route: '/campaigns',    minPlan: 'package-b' },
   { label: 'Content Studio',  icon: FileText,         route: '/content-studio', minPlan: 'free', subItems: [
       { label: 'Blog Generator', route: '/blog-generator' },
       { label: 'Email',          route: '/email-composer' },
@@ -31,6 +42,11 @@ const PRIMARY_ITEMS = [
       { label: 'Display Ads',     route: '/hub/creative' },
     ] },
   { label: 'Video Studio',    icon: Video,            route: '/video-gen',    minPlan: 'package-a' },
+  { label: 'Analytics',       icon: BarChart2,        route: '/analytics',    minPlan: 'package-b' },
+  { label: 'Optimization',    icon: Sparkles,         route: '/trends',       minPlan: 'package-b', subItems: [
+      { label: 'Trend Analysis',      route: '/trends' },
+      { label: 'KPI Recommendations', route: '/kpi-recommendations' },
+    ] },
 ]
 
 const GROWTH_STACK_ITEMS = [
@@ -41,14 +57,12 @@ const GROWTH_STACK_ITEMS = [
   { label: 'CRM',          icon: Users,      route: '/crm',              minPlan: 'package-b' },
   { label: 'Audience',     icon: UserCheck,  route: '/audience-builder', minPlan: 'package-b' },
   { label: 'Automation',   icon: Cpu,        route: '/execution',        minPlan: 'package-c' },
-  { label: 'Analytics',    icon: BarChart2,  route: '/analytics',        minPlan: 'package-b' },
 ]
 
-// Flat, in Figma's exact order: Reports, Asset Library, Integrations, Team, Billing, Settings.
+// Flat, unchanged from the prior Figma layout: Reports, Asset Library, Team, Billing, Settings.
 const UTILITY_ITEMS = [
   { label: 'Reports',       icon: PieChart,   route: '/executive-report',           minPlan: 'package-b' },
   { label: 'Asset Library', icon: Folder,     route: '/products',                   minPlan: 'free' },
-  { label: 'Integrations',  icon: Link,       route: '/connect-accounts',           minPlan: 'package-b' },
   { label: 'Team',          icon: UsersRound, route: '/team',                       minPlan: 'package-c' },
   { label: 'Billing',       icon: CreditCard, route: '/purchase',                   minPlan: 'free' },
   { label: 'Settings',      icon: Settings,   route: '/brand-profile?tab=settings', minPlan: 'free' },
@@ -59,7 +73,7 @@ function planAllows(userPlan, minPlan) {
   return PLAN_ORDER.indexOf(userPlan || 'free') >= PLAN_ORDER.indexOf(minPlan || 'free')
 }
 
-const PLAN_LABELS = { free: 'Free Plan', 'package-a': 'Package A', 'package-b': 'Package B', 'package-c': 'Package C' }
+const PLAN_LABELS = { free: 'Free Trial', 'package-a': 'Starter', 'package-b': 'Professional', 'package-c': 'Enterprise' }
 const PLAN_COLOR  = { free: '#666', 'package-a': '#c8973e', 'package-b': '#94a3b8', 'package-c': '#f59e0b' }
 
 // Exact Figma "Sidebar" frame spec: width 260, height 1024, gap 16,
@@ -71,7 +85,7 @@ export default function AppSidebar() {
   const navigate      = useNavigate()
   const location      = useLocation()
   const { user }      = useAuth()
-  const { plan }      = useUserPlan()
+  const { plan, trialDaysLeft } = useUserPlan()
   const [collapsed, setCollapsed] = useState(false)
   const [menuOpen, setMenuOpen]   = useState(false)
   const [menuPos, setMenuPos]     = useState({ top: 0, left: 0 })
@@ -104,7 +118,9 @@ export default function AppSidebar() {
     const [path, query] = route.split('?')
     if (path === '/dashboard') return location.pathname === '/dashboard'
     if (path === '/strategy-home') return location.pathname.startsWith('/strategy-home') || location.pathname === '/strategy'
-    if (path === '/campaigns') return location.pathname === '/campaigns' || location.pathname === '/campaign-hub' || location.pathname.startsWith('/campaign/')
+    if (path === '/campaigns') return location.pathname === '/campaigns' || location.pathname === '/campaign-hub' || location.pathname === '/new-campaign' || location.pathname.startsWith('/campaign/') || location.pathname.startsWith('/campaign-performance/')
+    if (path === '/queue') return location.pathname === '/queue' || location.pathname === '/post-content'
+    if (path === '/trends') return location.pathname === '/trends' || location.pathname === '/kpi-recommendations'
     if (path === '/content-studio') return ['/content-studio', '/blog-generator', '/content-gen', '/copywriting', '/email-composer', '/caption-suite'].some(p => location.pathname.startsWith(p))
     if (path === '/hub/creative') return ['/hub/creative', '/image-generator', '/hub/video-studio'].some(p => location.pathname.startsWith(p))
     if (path === '/brand-profile') return location.pathname === '/brand-profile' && location.search.replace(/^\?/, '') === (query || '')
@@ -182,6 +198,7 @@ export default function AppSidebar() {
                 badge={item.badge}
                 active={active}
                 collapsed={collapsed}
+                tourId={item.tourId}
                 onClick={() => navigate(item.route)}
               />
               {/* Contextual sub-links — only shown while this section is the active page, matching Figma's expanded Content Studio */}
@@ -283,6 +300,11 @@ export default function AppSidebar() {
               <span style={{ fontSize: 11, fontWeight: 700, color: planColor, flex: 1 }}>{PLAN_LABELS[plan || 'free']}</span>
               {plan !== 'package-c' && <span style={{ fontSize: 10, color: 'rgba(240,235,224,0.3)', fontWeight: 500 }}>Upgrade →</span>}
             </div>
+            {trialDaysLeft !== null && (
+              <div style={{ padding: '6px 10px', marginBottom: 6, fontSize: 11, fontWeight: 600, color: trialDaysLeft > 0 ? '#9B9BB0' : '#ef4444' }}>
+                {trialDaysLeft > 0 ? `${trialDaysLeft} day${trialDaysLeft === 1 ? '' : 's'} left in trial` : 'Trial expired'}
+              </div>
+            )}
             <MenuRow icon={<LogOut size={14} color="#ef4444"/>} label="Log out" danger onClick={() => { setMenuOpen(false); handleLogout() }} />
           </div>
         </>,
@@ -308,7 +330,7 @@ function MenuRow({ icon, label, onClick, danger }) {
 
 // Primary nav rows are 36px tall (Figma nav-item); Growth Stack / Utility
 // rows are 32px tall (Figma module-item / utility-item) — pass `compact`.
-function NavItem({ icon, label, active, collapsed, onClick, danger, badge, compact }) {
+function NavItem({ icon, label, active, collapsed, onClick, danger, badge, compact, tourId }) {
   const [hov, setHov] = useState(false)
   const bg = active
     ? '#BE954A1A'
@@ -323,6 +345,7 @@ function NavItem({ icon, label, active, collapsed, onClick, danger, badge, compa
 
   return (
     <div onClick={onClick}
+      data-tour={tourId}
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
       style={{

@@ -189,7 +189,7 @@ export default function BrandProfilePage() {
 
       {showEditModal && (
         <OnboardingWizard
-          onComplete={() => navigate('/dashboard')}
+          onComplete={() => navigate('/plans')}
           onDismiss={() => setShowEditModal(false)}
         />
       )}

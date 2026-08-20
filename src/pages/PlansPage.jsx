@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Check, ArrowRight, ArrowLeft, Zap, Sparkles, CheckCircle2 } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
 import { useAuth } from '../hooks/useAuth.js'
-import { getOrCreateUser, getUserData } from '../services/userService'
+import { getOrCreateUser, getUserData, saveSelectedPlan } from '../services/userService'
 
 const BG      = '#0e0c09'
 const CARD    = '#1c1a13'
@@ -159,6 +159,7 @@ export default function PlansPage() {
 
   const handlePlan = (key) => {
     try { localStorage.setItem('evoke_selected_package', key) } catch {}
+    if (user?.uid) saveSelectedPlan(user.uid, key).catch(() => {})
     setConfirmedPlan(key)
   }
 
@@ -223,13 +224,20 @@ export default function PlansPage() {
             </div>
           )}
 
-          <button onClick={() => navigate('/dashboard')} style={{
+          <button onClick={() => navigate('/connect-accounts')} style={{
             width: '100%', padding: '14px', background: `linear-gradient(135deg,${GOLD},#b8803a)`,
             border: 'none', borderRadius: 12, color: '#0e0c09', fontSize: 15, fontWeight: 800,
             cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            fontFamily: 'inherit',
+            fontFamily: 'inherit', marginBottom: 10,
           }}>
-            Go to Dashboard <ArrowRight size={16}/>
+            Connect Your Channels <ArrowRight size={16}/>
+          </button>
+          <button onClick={() => navigate('/dashboard')} style={{
+            width: '100%', padding: '12px', background: 'transparent',
+            border: `1px solid ${BORDER}`, borderRadius: 12, color: TEXT2, fontSize: 13, fontWeight: 600,
+            cursor: 'pointer', fontFamily: 'inherit',
+          }}>
+            Skip, go to Dashboard
           </button>
         </motion.div>
       </div>

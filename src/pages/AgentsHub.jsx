@@ -98,6 +98,23 @@ const PLAN_SECTIONS = [
   },
 ]
 
+// The org-chart-style "AI Executive Team" grid — one card per exec role,
+// independent of plan tier. Roles without a built agent yet show "Coming Soon"
+// instead of a fake link (same honest-placeholder pattern used elsewhere,
+// e.g. SeoIntelligenceCenterPage's "Not tracked" tiles).
+const EXEC_TEAM = [
+  { role: 'CMO',              title: 'Marketing Strategy',        icon: TrendingUp, color: '#c8973e', route: '/dashboard' },
+  { role: 'CEO',              title: 'Business Growth',           icon: Crown,      color: '#c8973e', route: '/ai-ceo' },
+  { role: 'CFO',              title: 'Finance & ROI',              icon: DollarSign, color: '#10b981', route: '/ai-cfo' },
+  { role: 'COO',              title: 'Operations & Efficiency',    icon: Cpu,        color: '#3b82f6' },
+  { role: 'CTO',              title: 'Technology & Innovation',    icon: Cpu,        color: '#3b82f6', route: '/ai-cto' },
+  { role: 'Sales',            title: 'Lead Gen & Pipeline',        icon: Target,     color: '#f97316' },
+  { role: 'HR',                title: 'Talent & Culture',           icon: Users,      color: '#ec4899' },
+  { role: 'Customer Success', title: 'Retention & Support',        icon: UserCheck,  color: '#06b6d4' },
+  { role: 'Legal',             title: 'Compliance & Contracts',     icon: Shield,     color: '#a855f7', route: '/compliance-agent' },
+  { role: 'Analytics',         title: 'Data & Insights',            icon: BarChart2,  color: '#f59e0b', route: '/analytics' },
+]
+
 const PLAN_COLORS = { free: '#10b981', 'package-a': '#3b82f6', 'package-b': '#c8973e', 'package-c': '#a855f7' }
 
 function planAllows(userPlan, requiredPlan) {
@@ -177,6 +194,19 @@ export default function AgentsHub() {
             </button>
           </motion.div>
         )}
+
+        {/* ── AI Executive Team ── */}
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: 44 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+            <div style={{ fontSize: 15, fontWeight: 800, color: TEXT }}>Your AI Executive Team</div>
+            <div style={{ flex: 1, height: 1, background: BORDER }} />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
+            {EXEC_TEAM.map((exec, i) => (
+              <ExecCard key={exec.role} exec={exec} i={i} onClick={() => exec.route && navigate(exec.route)} />
+            ))}
+          </div>
+        </motion.div>
 
         {/* ── Plan Sections ── */}
         {PLAN_SECTIONS.map((section, si) => {
@@ -259,6 +289,45 @@ export default function AgentsHub() {
         />
       )}
     </SidebarLayout>
+  )
+}
+
+function ExecCard({ exec, i, onClick }) {
+  const [hovered, setHovered] = useState(false)
+  const Icon = exec.icon
+  const comingSoon = !exec.route
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: i * 0.03, duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+      onClick={comingSoon ? undefined : onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        background: comingSoon ? 'rgba(255,255,255,0.02)' : CARD,
+        border: `1px solid ${hovered && !comingSoon ? exec.color + '55' : BORDER}`,
+        borderRadius: 14,
+        padding: '16px 16px 14px',
+        cursor: comingSoon ? 'default' : 'pointer',
+        transition: 'all 0.2s ease',
+        transform: hovered && !comingSoon ? 'translateY(-2px)' : 'translateY(0)',
+        opacity: comingSoon ? 0.6 : 1,
+        position: 'relative',
+      }}
+    >
+      {comingSoon && (
+        <div style={{ position: 'absolute', top: 10, right: 10, padding: '3px 8px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 100, fontSize: 9, fontWeight: 800, color: TEXT3, letterSpacing: '0.05em' }}>
+          COMING SOON
+        </div>
+      )}
+      <div style={{ width: 34, height: 34, borderRadius: 9, background: comingSoon ? 'rgba(255,255,255,0.04)' : `${exec.color}18`, border: `1px solid ${comingSoon ? 'rgba(255,255,255,0.08)' : exec.color + '30'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: comingSoon ? TEXT3 : exec.color, marginBottom: 10 }}>
+        <Icon size={16} />
+      </div>
+      <div style={{ fontSize: 13, fontWeight: 700, color: comingSoon ? TEXT3 : TEXT, marginBottom: 3 }}>{exec.role}</div>
+      <div style={{ fontSize: 11, color: TEXT3, lineHeight: 1.3 }}>{exec.title}</div>
+    </motion.div>
   )
 }
 

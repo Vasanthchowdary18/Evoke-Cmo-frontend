@@ -7,7 +7,6 @@ import { getOrCreateUser } from './services/userService'
 import PlanGate from './components/PlanGate.jsx'
 import Landing from './pages/Landing.jsx'
 import SignIn from './pages/SignIn.jsx'
-import Onboarding from './pages/Onboarding.jsx'
 import CampaignForm from './pages/CampaignForm.jsx'
 import Tokens from './pages/Tokens.jsx'
 import Results from './pages/Results.jsx'
@@ -52,6 +51,7 @@ import MarketingHealthPage from './pages/MarketingHealthPage.jsx'
 import BrandProfilePage from './pages/BrandProfilePage.jsx'
 import EventbritePost from './pages/EventbritePost.jsx'
 import DevResetPage from './pages/DevResetPage.jsx'
+import SupabaseTestPage from './pages/SupabaseTestPage.jsx'
 import CmoAgentOverviewPage from './pages/CmoAgentOverviewPage.jsx'
 import EmailMarketingPage from './pages/EmailMarketingPage.jsx'
 import SeoAgentPage from './pages/SeoAgentPage.jsx'
@@ -76,7 +76,6 @@ import SocialMediaManagerPage from './pages/SocialMediaManagerPage.jsx'
 import SocialCalendarPage from './pages/SocialCalendarPage.jsx'
 import CompliancePage from './pages/CompliancePage.jsx'
 import CSuitePage from './pages/CSuitePage.jsx'
-import SetupPage from './pages/SetupPage.jsx'
 import Chatbot from './components/Chatbot.jsx'
 
 // Helper: wrap a page component with a plan gate
@@ -129,8 +128,9 @@ export default function App() {
         {/* ── Public ── */}
         <Route path="/"                  element={<Landing />} />
         <Route path="/signin"            element={<SignIn />} />
-        <Route path="/onboarding"        element={<Onboarding />} />
-        <Route path="/setup"             element={<SetupPage />} />
+        {/* Retired: legacy chat-wizard onboarding chain, nothing links here anymore — superseded by /brand-profile's OnboardingWizard, the flow everything else actually reads from */}
+        <Route path="/onboarding"        element={<Navigate to="/brand-profile" replace />} />
+        <Route path="/setup"             element={<Navigate to="/brand-profile" replace />} />
         <Route path="/privacy"           element={<Privacy />} />
         <Route path="/terms"             element={<Terms />} />
         <Route path="/dashboard"         element={<DashboardPage />} />
@@ -182,6 +182,7 @@ export default function App() {
         <Route path="/products"           element={<ProductsPage />} />
         <Route path="/eventbrite-post"    element={<EventbritePost />} />
         <Route path="/dev-reset"          element={IS_LOCAL ? <DevResetPage /> : <Navigate to="/" replace />} />
+        <Route path="/supabase-test"      element={IS_LOCAL ? <SupabaseTestPage /> : <Navigate to="/" replace />} />
 
         {/* ── Package A — Creative & Content ── */}
         <Route path="/caption-suite"   element={G('package-a', 'Caption Suite',          CaptionSuitePage)} />

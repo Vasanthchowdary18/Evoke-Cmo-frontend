@@ -27,3 +27,7 @@ docs-internal/
 .DS_Store
 Thumbs.db
 node_modules
+
+# Agent tooling (skills cache) — not project code
+.agents/
+skills-lock.json

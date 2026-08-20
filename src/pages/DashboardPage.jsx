@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ArrowRight, ChevronRight, Bot, FileText } from 'lucide-react'
+import { ArrowRight, ChevronRight, Bot, FileText, CheckCircle2, Circle, Facebook, Instagram, Linkedin, MessageCircle, Mail, Music2, Megaphone, Ticket, CalendarDays, Users } from 'lucide-react'
 import AppSidebar from '../components/AppSidebar.jsx'
 import UpgradeModal from '../components/UpgradeModal.jsx'
 import { useAuth } from '../hooks/useAuth.js'
 import { useRequireAuth } from '../hooks/useRequireAuth'
 import { useUserPlan } from '../hooks/useUserPlan.js'
-import { getOrCreateUser } from '../services/userService'
+import { getOrCreateUser, markTourSeen } from '../services/userService'
+import ProductTour from '../components/ProductTour.jsx'
 import { getKnowledgeBase } from '../services/knowledgeBaseService.js'
+import { getGoogleAdsMetrics } from '../services/googleAdsService.js'
 import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore'
 import { db } from '../firebase'
 
@@ -28,7 +30,24 @@ const PURPLE = '#a855f7'
 
 const ORANGE = '#f97316'
 
-const PLAN_LABEL = { free: 'Free Plan', 'package-a': 'Package A', 'package-b': 'Package B', 'package-c': 'Package C' }
+const PLAN_LABEL = { free: 'Free Trial', 'package-a': 'Starter', 'package-b': 'Professional', 'package-c': 'Enterprise' }
+
+// Keys must match PLATFORMS in ConnectAccounts.jsx — that page writes the
+// socialAccounts map these read from, so a mismatch silently shows a platform
+// as unconnected even when it is.
+const SOCIAL_PLATFORMS = [
+  { key: 'instagram',   label: 'Instagram',  icon: Instagram,     color: '#E4405F' },
+  { key: 'facebook',    label: 'Facebook',   icon: Facebook,      color: '#1877F2' },
+  { key: 'linkedin',    label: 'LinkedIn',   icon: Linkedin,      color: '#0A66C2' },
+  { key: 'tiktok',      label: 'TikTok',     icon: Music2,        color: '#FFFFFF' },
+  { key: 'whatsapp',    label: 'WhatsApp',   icon: MessageCircle, color: '#25D366' },
+  { key: 'google-ads',  label: 'Google Ads', icon: Megaphone,     color: '#4285F4' },
+  { key: 'meta-ads',    label: 'Meta Ads',   icon: Megaphone,     color: '#0668E1' },
+  { key: 'gmail',       label: 'Gmail',      icon: Mail,          color: '#EA4335' },
+  { key: 'eventbrite',  label: 'Eventbrite', icon: Ticket,        color: '#F05537' },
+  { key: 'luma',        label: 'Luma',       icon: CalendarDays,  color: '#8B5CF6' },
+  { key: 'meetup',      label: 'Meetup',     icon: Users,         color: '#ED1C40' },
+]
 const PLANS = ['free', 'package-a', 'package-b', 'package-c']
 
 const INDUSTRY_LABELS = { ecommerce: 'E-commerce & Retail', tech: 'Tech / SaaS', services: 'Professional Services', food: 'Food & Beverage', fashion: 'Fashion & Lifestyle', health: 'Health & Fitness', education: 'Education / EdTech', realestate: 'Real Estate', finance: 'Finance / Fintech', media: 'Media & Entertainment', beauty: 'Beauty & Personal Care', other: 'Other' }
@@ -72,14 +91,17 @@ const ALL_AGENTS = [
 ]
 
 /* 7-step campaign launch journey — drives the Marketing Health score */
+// Ordered to match the product journey diagram's own sequence:
+// Org Setup -> Subscription/Strategy -> Connect Channels -> AI Agents Hub (implicit,
+// this page) -> Campaign Builder -> Campaign Execution.
 const JOURNEY = [
-  { key: 'account',    label: 'Account created' },
-  { key: 'onboarding', label: 'Brand profile set' },
-  { key: 'strategy',   label: 'Marketing strategy built' },
-  { key: 'social',     label: 'Social accounts connected' },
-  { key: 'content',    label: 'First content generated' },
-  { key: 'approved',   label: 'Content approved in queue' },
-  { key: 'launched',   label: 'Campaign launched' },
+  { key: 'account',    label: 'Account created',              route: null },
+  { key: 'onboarding', label: 'Brand profile set',            route: '/brand-profile' },
+  { key: 'strategy',   label: 'Marketing strategy built',     route: '/strategy' },
+  { key: 'social',     label: 'Social accounts connected',    route: '/connect-accounts' },
+  { key: 'content',    label: 'First content generated',      route: '/new-campaign' },
+  { key: 'approved',   label: 'Content approved in queue',    route: '/queue' },
+  { key: 'launched',   label: 'Campaign launched',            route: '/campaigns' },
 ]
 
 function timeAgo(ts) {
@@ -115,11 +137,17 @@ export default function DashboardPage() {
   const [contentCount,    setContentCount]   = useState(0)
   const [recentContent,   setRecentContent]  = useState([])
   const [upgradeModal,    setUpgradeModal]   = useState(null)
+  const [gadsMetrics,     setGadsMetrics]    = useState(null)
+  const [gadsLoading,     setGadsLoading]    = useState(true)
+  const [showTour,        setShowTour]       = useState(false)
 
   useEffect(() => {
     if (!user?.uid) return
     getOrCreateUser(user.uid, user.displayName, user.email)
-      .then(d => setUserData(d))
+      .then(d => {
+        setUserData(d)
+        if (!d?.productTourSeen) setShowTour(true)
+      })
       .catch(() => {})
   }, [user?.uid])
 
@@ -130,6 +158,14 @@ export default function DashboardPage() {
         if (data && Object.keys(data).length > 1) setBrandKb(data)
       })
       .catch(() => {})
+  }, [user?.uid])
+
+  useEffect(() => {
+    if (!user?.uid) return
+    getGoogleAdsMetrics(user.uid)
+      .then(m => setGadsMetrics(m))
+      .catch(() => setGadsMetrics(null))
+      .finally(() => setGadsLoading(false))
   }, [user?.uid])
 
   useEffect(() => {
@@ -146,7 +182,11 @@ export default function DashboardPage() {
     }).catch(() => {})
   }, [user?.uid])
 
-  const connectedAccounts = Object.values(userData?.socialAccounts || {}).filter(a => a?.connected).length
+  // Only count real publishable platforms — socialAccounts also holds internal
+  // provisioning records (e.g. `ghl`, the GoHighLevel workspace) that aren't
+  // destinations you can post to, and counting those overstated the total.
+  const connectedAccounts = SOCIAL_PLATFORMS
+    .filter(p => userData?.socialAccounts?.[p.key]?.connected).length
   const firstName  = user?.displayName?.split(' ')[0] || user?.email?.split('@')[0] || 'there'
   const planLevel  = PLANS.indexOf(plan || 'free')
   const brandName  = userData?.brandName || userData?.onboardingData?.businessName || userData?.onboardingData?.brandName || null
@@ -170,8 +210,18 @@ export default function DashboardPage() {
   }
   const doneCount = Object.values(completed).filter(Boolean).length
   const progress  = Math.round((doneCount / JOURNEY.length) * 100)
+  const nextStepKey = JOURNEY.find(j => !completed[j.key])?.key || null
 
   const reviewCount = recentContent.filter(c => ['draft', 'pending', 'review', 'pending_approval'].includes((c.status || '').toLowerCase())).length
+
+  // Ad-attributed revenue estimate = spend x ROAS (same figures AnalyticsDashboard.jsx shows) — real Google Ads data, not invented.
+  const gadsConnected = !!gadsMetrics
+  const attributedRevenue = gadsConnected ? gadsMetrics.spend * gadsMetrics.roas : 0
+
+  const handleTourFinish = () => {
+    setShowTour(false)
+    if (user?.uid) markTourSeen(user.uid).catch(() => {})
+  }
 
   const handleAgent = (agent) => {
     const locked = PLANS.indexOf(agent.plan) > planLevel
@@ -199,7 +249,7 @@ export default function DashboardPage() {
       <div style={{ marginLeft: 'var(--evox-sidebar-w, 220px)', minHeight: '100vh', transition: 'margin-left 0.22s cubic-bezier(0.4,0,0.2,1)' }}>
 
         {/* ── TOP BAR ── */}
-        <div style={{ minHeight: 76, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 28px', borderBottom: `1px solid ${BORDER}`, position: 'sticky', top: 0, background: BG, zIndex: 100 }}>
+        <div data-tour="dashboard-header" style={{ minHeight: 76, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 28px', borderBottom: `1px solid ${BORDER}`, position: 'sticky', top: 0, background: BG, zIndex: 100 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             <div style={{ fontSize: 28, fontWeight: 700, color: '#FFFFFF', fontFamily: "'Outfit','Inter',sans-serif" }}>Command Console</div>
             <div style={{ fontSize: 14, fontWeight: 400, color: '#9B9BB0', fontFamily: "'Geist','Inter',sans-serif" }}>Workspace: {brandName || `${firstName}'s Workspace`} ({PLAN_LABEL[plan || 'free']})</div>
@@ -227,8 +277,10 @@ export default function DashboardPage() {
               delta={`${doneCount}/${JOURNEY.length} steps done`} deltaColor={GREEN}
               onClick={() => navigate('/health-score')} />
             <MetricCard
-              label="Total Revenue Ingest" value="—"
-              delta="Connect Analytics to track" deltaColor={TEXT3}
+              label="Est. Ad Revenue (Google Ads)"
+              value={gadsLoading ? '—' : gadsConnected ? `$${attributedRevenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '—'}
+              delta={gadsLoading ? 'Loading...' : gadsConnected ? `${gadsMetrics.roas.toFixed(2)}x ROAS` : 'Connect Analytics to track'}
+              deltaColor={gadsConnected ? GREEN : TEXT3}
               onClick={() => navigate('/analytics')} />
             <MetricCard
               label="Active Campaign Chains" value={`${connectedAccounts} Channel${connectedAccounts === 1 ? '' : 's'}`}
@@ -240,6 +292,27 @@ export default function DashboardPage() {
               onClick={() => navigate('/queue')} />
           </div>
 
+          {/* ══ GETTING STARTED ══ */}
+          {progress < 100 && (
+            <motion.div data-tour="dashboard-getting-started" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+              style={{ background: CARD, borderRadius: 12, padding: '20px 24px', border: `1px solid ${BORDER}` }}>
+              <div style={{ fontFamily: "'Outfit','Inter',sans-serif", fontSize: 16, fontWeight: 700, color: '#FFFFFF', marginBottom: 14 }}>
+                Getting Started
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {JOURNEY.map(step => (
+                  <JourneyStep
+                    key={step.key}
+                    label={step.label}
+                    done={!!completed[step.key]}
+                    isNext={step.key === nextStepKey}
+                    onClick={step.route ? () => navigate(step.route) : undefined}
+                  />
+                ))}
+              </div>
+            </motion.div>
+          )}
+
           {/* ══ CONNECT ACCOUNTS ══ */}
           {/* Campaigns can't publish anywhere until at least one account is
               linked, so this sits above the fold rather than in settings. */}
@@ -249,7 +322,7 @@ export default function DashboardPage() {
               border: `1px solid ${connectedAccounts > 0 ? BORDER : GBORD}`,
               display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap',
             }}>
-            <div style={{ flex: 1, minWidth: 260 }}>
+            <div style={{ flex: 1, minWidth: 260, width: '100%' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
                 <div style={{ fontFamily: "'Outfit','Inter',sans-serif", fontSize: 18, fontWeight: 700, color: '#FFFFFF' }}>
                   Connected Accounts
@@ -266,6 +339,38 @@ export default function DashboardPage() {
                 {connectedAccounts > 0
                   ? 'Campaigns will publish to these accounts. Add more channels for wider reach.'
                   : 'Link Facebook, Instagram or LinkedIn before launching a campaign — otherwise there is nowhere to publish.'}
+              </div>
+
+              {/* Per-platform status boxes — click any to manage that connection */}
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 16 }}>
+                {SOCIAL_PLATFORMS.map(p => {
+                  const isConnected = !!userData?.socialAccounts?.[p.key]?.connected
+                  const Icon = p.icon
+                  return (
+                    <div
+                      key={p.key}
+                      onClick={() => navigate('/connect-accounts')}
+                      title={isConnected ? `${p.label} — connected` : `${p.label} — not connected`}
+                      style={{
+                        width: 76, padding: '12px 8px', borderRadius: 10, cursor: 'pointer',
+                        background: isConnected ? 'rgba(16,185,129,0.06)' : 'rgba(255,255,255,0.02)',
+                        border: `1px solid ${isConnected ? 'rgba(16,185,129,0.3)' : BORDER}`,
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+                        opacity: isConnected ? 1 : 0.5, transition: 'all 0.18s',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.opacity = 1; e.currentTarget.style.transform = 'translateY(-2px)' }}
+                      onMouseLeave={e => { e.currentTarget.style.opacity = isConnected ? 1 : 0.5; e.currentTarget.style.transform = 'translateY(0)' }}
+                    >
+                      <Icon size={20} color={isConnected ? p.color : TEXT3} />
+                      <span style={{ fontSize: 10, fontWeight: 600, color: isConnected ? '#FFFFFF' : TEXT3, whiteSpace: 'nowrap' }}>
+                        {p.label}
+                      </span>
+                      <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.04em', color: isConnected ? GREEN : TEXT3 }}>
+                        {isConnected ? 'LINKED' : 'ADD'}
+                      </span>
+                    </div>
+                  )
+                })}
               </div>
             </div>
 
@@ -361,6 +466,8 @@ export default function DashboardPage() {
       {upgradeModal && (
         <UpgradeModal featureName={upgradeModal.featureName} onClose={() => setUpgradeModal(null)}/>
       )}
+
+      {showTour && <ProductTour onFinish={handleTourFinish} />}
 
     </div>
   )
@@ -489,6 +596,27 @@ function MetricCard({ label, value, delta, deltaColor, onClick }) {
         <div style={{ fontSize: 24, fontWeight: 800, color: '#FFFFFF', fontFamily: "'Outfit','Inter',sans-serif" }}>{value}</div>
         <div style={{ fontFamily: "'Geist','Inter',sans-serif", fontSize: 12, fontWeight: 700, color: deltaColor }}>{delta}</div>
       </div>
+    </div>
+  )
+}
+
+function JourneyStep({ label, done, isNext, onClick }) {
+  const [hov, setHov] = useState(false)
+  return (
+    <div onClick={onClick} onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 10, padding: '9px 10px', borderRadius: 8,
+        cursor: onClick ? 'pointer' : 'default',
+        background: isNext ? GDIM : hov && onClick ? 'rgba(255,255,255,0.03)' : 'transparent',
+        border: isNext ? `1px solid ${GBORD}` : '1px solid transparent',
+      }}>
+      {done
+        ? <CheckCircle2 size={16} color={GREEN} style={{ flexShrink: 0 }} />
+        : <Circle size={16} color={isNext ? GOLD : TEXT3} style={{ flexShrink: 0 }} />}
+      <span style={{ flex: 1, fontSize: 13, fontWeight: isNext ? 700 : 500, color: done ? TEXT2 : isNext ? TEXT : TEXT3 }}>
+        {label}
+      </span>
+      {isNext && <span style={{ fontSize: 11, fontWeight: 800, color: GOLD, letterSpacing: '0.04em' }}>NEXT →</span>}
     </div>
   )
 }

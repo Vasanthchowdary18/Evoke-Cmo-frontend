@@ -1,3 +1,15 @@
+/**
+ * knowledgeBaseService.js
+ * Manages all Firestore read/write operations for the Brand Knowledge Base.
+ *
+ * NOTE: a Supabase-backed version of this (api/brand-kb.js, api/_lib/*) was
+ * built but reverted 2026-08-04 — Vercel API routes don't run under plain
+ * `vite` dev (only under `vercel dev` or a real Vercel deployment), and the
+ * required credentials (Firebase admin key, Supabase service_role key) were
+ * never added, so every save was silently failing with a 404. Reinstate the
+ * Supabase version only once those prerequisites are in place AND it's been
+ * tested against a real Vercel dev/deploy, not just `vite`.
+ */
 import { doc, getDoc, updateDoc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
 
