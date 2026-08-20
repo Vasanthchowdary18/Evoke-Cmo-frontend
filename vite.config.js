@@ -1,0 +1,553 @@
+import { defineConfig, loadEnv } from 'vite'
+import react from '@vitejs/plugin-react'
+
+export default defineConfig(({ mode }) => {
+  // Load all env vars (including non-VITE_ ones like GEMINI_API_KEY)
+  const env = loadEnv(mode, process.cwd(), '')
+
+  return {
+    plugins: [
+      react(),
+
+      // ── Dev-only API handlers (replaces Vercel Edge Functions locally) ──────
+      {
+        name: 'local-api-handlers',
+        configureServer(server) {
+
+          // ── /api/generate → Groq ────────────────────────────────────────────
+          server.middlewares.use('/api/generate', (req, res) => {
+            if (req.method === 'OPTIONS') {
+              res.setHeader('Access-Control-Allow-Origin', '*')
+              res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
+              res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+              res.writeHead(204); res.end(); return
+            }
+            if (req.method !== 'POST') {
+              res.writeHead(405); res.end('Method not allowed'); return
+            }
+
+            const apiKey = env.VITE_GROQ_API_KEY
+            if (!apiKey) {
+              res.setHeader('Content-Type', 'application/json')
+              res.writeHead(500)
+              res.end(JSON.stringify({ error: { message: 'VITE_GROQ_API_KEY not set in .env' } }))
+              return
+            }
+
+            let body = ''
+            req.on('data', chunk => { body += chunk })
+            req.on('end', async () => {
+              try {
+                const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`,
+                  },
+                  body,
+                })
+                const text = await groqRes.text()
+                res.setHeader('Content-Type', 'application/json')
+                res.setHeader('Access-Control-Allow-Origin', '*')
+                res.writeHead(groqRes.status)
+                res.end(text)
+              } catch (err) {
+                res.setHeader('Content-Type', 'application/json')
+                res.writeHead(500)
+                res.end(JSON.stringify({ error: { message: err.message } }))
+              }
+            })
+          })
+
+          // ── /api/generate-campaign → generates full campaign copy server-side
+          // and returns it directly in the response (headless/API integrations —
+          // e.g. a marketplace calling this without going through the browser UI) ──
+          server.middlewares.use('/api/generate-campaign', (req, res) => {
+            if (req.method === 'OPTIONS') {
+              res.setHeader('Access-Control-Allow-Origin', '*')
+              res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
+              res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+              res.writeHead(204); res.end(); return
+            }
+            if (req.method !== 'POST') {
+              res.writeHead(405); res.end('Method not allowed'); return
+            }
+
+            const apiKey = env.VITE_GROQ_API_KEY
+            if (!apiKey) {
+              res.setHeader('Content-Type', 'application/json')
+              res.writeHead(500)
+              res.end(JSON.stringify({ success: false, error: { message: 'VITE_GROQ_API_KEY not set in .env' } }))
+              return
+            }
+
+            const baseSchema = (name, campaignDays) => `{
+  "campaignName": "${name}",
+  "emailSubject": "email subject line",
+  "emailBody": "1-paragraph email body",
+  "linkedinPost": "60-word LinkedIn post with 3 hashtags",
+  "instagramCaption": "40-word caption with emojis and 3 hashtags",
+  "facebookPost": "50-word Facebook post with CTA",
+  "whatsappMessage": "30-word WhatsApp message",
+  "smsMessage": "SMS under 160 chars",
+  "seoTitle": "SEO title (60 chars max)",
+  "seoDescription": "meta description (160 chars max)",
+  "adHeadline": "ad headline (30 chars max)",
+  "adBody": "ad copy (90 chars max)",
+  "tiktokCaption": "TikTok caption with hook and 3 hashtags",
+  "campaignCalendar": "${campaignDays || 7}-day action schedule",
+  "positioningStatement": "1-sentence positioning statement"
+}`
+
+            const buildPrompt = (body) => {
+              const {
+                campaignType = 'event', name = '', description = '', goal = '',
+                targetAudience = [], brandName = '', date = '', time = '',
+                location = '', eventUrl = '', campaignDays = 7,
+              } = body
+              const audience = Array.isArray(targetAudience) ? targetAudience.join(', ') : (targetAudience || '')
+              const isEvent = campaignType === 'event' || campaignType === 'event_full'
+              const context = isEvent
+                ? `Event Name: ${name}\nDescription: ${description}\nDate: ${date || 'TBD'}  Time: ${time || 'TBD'}\nLocation: ${location || 'TBD'}\nEvent URL: ${eventUrl || ''}\nGoal: ${goal}\nTarget Audience: ${audience}`
+                : `Campaign Type: ${campaignType}\nName/Title: ${name}\nDescription: ${description}\nGoal: ${goal}\nTarget Audience: ${audience}\nBrand/Company: ${brandName || name}`
+              const eventUrlInstruction = (isEvent && eventUrl)
+                ? `\nIMPORTANT: The event page URL is: ${eventUrl}\nYou MUST include this URL in every social media post, email body, and WhatsApp message so readers can register or learn more. Add it naturally at the end of each post (e.g. "Register here: ${eventUrl}").\n`
+                : ''
+              return `You are an expert AI CMO (Chief Marketing Officer) with 20+ years of experience. Generate a complete, professional ${campaignType.replace(/_/g, ' ')} package.\n\n${context}\n${eventUrlInstruction}\nReturn ONLY valid JSON matching this exact schema, no markdown, no explanation:\n${baseSchema(name, campaignDays)}`
+            }
+
+            const extractJson = (text) => {
+              let raw = text.match(/```json\s*([\s\S]*?)```/)?.[1] ?? text.match(/```\s*([\s\S]*?)```/)?.[1]
+              if (!raw) { const m = text.match(/\{[\s\S]*\}/); if (m) raw = m[0] }
+              if (!raw) { const start = text.indexOf('{'); if (start !== -1) raw = text.slice(start) + '}' }
+              if (!raw) return null
+              try { return JSON.parse(raw) } catch (_) {}
+              const fixed = raw.replace(/"(?:[^"\\]|\\.)*"/g, (s) => s.replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t'))
+              try { return JSON.parse(fixed) } catch (_) { return null }
+            }
+
+            let bodyRaw = ''
+            req.on('data', chunk => { bodyRaw += chunk })
+            req.on('end', async () => {
+              res.setHeader('Content-Type', 'application/json')
+              res.setHeader('Access-Control-Allow-Origin', '*')
+              try {
+                const body = JSON.parse(bodyRaw)
+                if (!body.name || !body.description) {
+                  res.writeHead(400)
+                  res.end(JSON.stringify({ success: false, error: { message: 'name and description are required' } }))
+                  return
+                }
+
+                const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+                  body: JSON.stringify({
+                    model: 'llama-3.1-8b-instant',
+                    messages: [
+                      { role: 'system', content: 'You are an expert AI CMO. Respond ONLY with valid JSON — no markdown, no explanation, no extra text.' },
+                      { role: 'user', content: buildPrompt(body) },
+                    ],
+                    temperature: 0.7,
+                    max_tokens: 3500,
+                  }),
+                })
+
+                if (!groqRes.ok) {
+                  const err = await groqRes.json().catch(() => ({}))
+                  res.writeHead(groqRes.status === 401 ? 500 : groqRes.status)
+                  res.end(JSON.stringify({ success: false, error: { message: err?.error?.message || `AI generation failed (${groqRes.status})` } }))
+                  return
+                }
+
+                const groqData = await groqRes.json()
+                const text = groqData.choices?.[0]?.message?.content || ''
+                const parsed = extractJson(text)
+                if (!parsed) {
+                  res.writeHead(502)
+                  res.end(JSON.stringify({ success: false, error: { message: 'AI returned no parseable content' } }))
+                  return
+                }
+
+                res.writeHead(200)
+                res.end(JSON.stringify({ success: true, data: parsed }))
+              } catch (err) {
+                res.writeHead(500)
+                res.end(JSON.stringify({ success: false, error: { message: err.message } }))
+              }
+            })
+          })
+
+          // ── /api/run-agent → Google Gemini (text agents) ────────────────────
+          server.middlewares.use('/api/run-agent', (req, res) => {
+            if (req.method === 'OPTIONS') {
+              res.setHeader('Access-Control-Allow-Origin', '*')
+              res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
+              res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+              res.writeHead(204); res.end(); return
+            }
+            if (req.method !== 'POST') { res.writeHead(405); res.end(); return }
+
+            let body = ''
+            req.on('data', chunk => { body += chunk })
+            req.on('end', async () => {
+              try {
+                const payload = JSON.parse(body)
+                const { agentType, ...fields } = payload
+
+                const PROMPTS = {
+                  reddit: `You are a Reddit marketing expert. Inputs:\n- Subreddit(s): ${fields.subreddit||''}\n- Topic: ${fields.topic||''}\n- Brand Context: ${fields.brandContext||''}\n\nGenerate 3 authentic Reddit reply drafts that add genuine value and naturally reference the brand without being promotional.\n\nRespond ONLY with valid JSON:\n{"title":"Reddit Reply Drafts","sections":[{"heading":"Draft Reply 1","content":"..."},{"heading":"Draft Reply 2","content":"..."},{"heading":"Draft Reply 3","content":"..."},{"heading":"Best Subreddits to Target","content":"..."},{"heading":"Reddit Engagement Strategy","content":"..."}]}`,
+                  seo: `You are a senior SEO strategist. Inputs:\n- Website: ${fields.websiteUrl||''}\n- Target Keyword: ${fields.targetKeyword||''}\n- Industry: ${fields.industry||'General'}\n\nGenerate a full SEO content package.\n\nRespond ONLY with valid JSON:\n{"title":"SEO Content Package","sections":[{"heading":"Keyword Opportunities (15 keywords)","content":"..."},{"heading":"Full SEO Blog Post (800+ words)","content":"..."},{"heading":"Meta Tags & On-Page SEO","content":"..."},{"heading":"Featured Snippet Content","content":"..."},{"heading":"Internal Linking Strategy","content":"..."}]}`,
+                  writer: `You are a professional brand content writer. Inputs:\n- Topic: ${fields.topic||''}\n- Brand: ${fields.brandName||''}\n- Audience: ${fields.audience||''}\n- Tone: ${fields.tone||'Professional'}\n\nWrite a comprehensive long-form article.\n\nRespond ONLY with valid JSON:\n{"title":"Long-Form Article","sections":[{"heading":"Full Article (1200+ words)","content":"..."},{"heading":"Social Media Snippets (5 quotes)","content":"..."},{"heading":"Email Newsletter Version (300 words)","content":"..."},{"heading":"Key Takeaways","content":"..."}]}`,
+                  twitter: `You are an X (Twitter) growth strategist. Inputs:\n- Topic: ${fields.topic||''}\n- Brand: ${fields.brandName||''}\n- Tone: ${fields.tone||'Bold and engaging'}\n\nGenerate high-engagement Twitter/X content.\n\nRespond ONLY with valid JSON:\n{"title":"X (Twitter) Content Drafts","sections":[{"heading":"Standalone Tweets (5)","content":"..."},{"heading":"Thread Draft (7 tweets)","content":"..."},{"heading":"Engagement Hook Tweets (3)","content":"..."},{"heading":"Hashtag Strategy","content":"..."}]}`,
+                  linkedin_agent: `You are a LinkedIn content strategist. Inputs:\n- Topic: ${fields.topic||''}\n- Brand/Person: ${fields.brandName||''}\n- Audience: ${fields.audience||'B2B professionals'}\n\nGenerate LinkedIn content.\n\nRespond ONLY with valid JSON:\n{"title":"LinkedIn Post Drafts","sections":[{"heading":"Post Draft 1 — Story Format","content":"..."},{"heading":"Post Draft 2 — Insight Format","content":"..."},{"heading":"Post Draft 3 — Engagement Format","content":"..."},{"heading":"Best Posting Schedule & Hashtags","content":"..."}]}`,
+                  hackernews: `You are a Hacker News community expert. Inputs:\n- Topic: ${fields.topic||''}\n- Brand/Product: ${fields.brandName||''}\n- Value Proposition: ${fields.value||''}\n\nGenerate an HN engagement strategy.\n\nRespond ONLY with valid JSON:\n{"title":"Hacker News Engagement Strategy","sections":[{"heading":"Show HN Post Draft","content":"..."},{"heading":"Comment Draft 1","content":"..."},{"heading":"Comment Draft 2","content":"..."},{"heading":"Comment Draft 3","content":"..."},{"heading":"Thread Targeting Strategy","content":"..."}]}`,
+                  geo: `You are a GEO expert. Inputs:\n- Brand: ${fields.brandName||''}\n- Keywords: ${fields.keywords||''}\n- Description: ${fields.description||''}\n\nGenerate a complete GEO optimization package.\n\nRespond ONLY with valid JSON:\n{"title":"GEO Optimization Package","sections":[{"heading":"AI Citation-Ready Content Blocks","content":"..."},{"heading":"Entity & Authority Building Strategy","content":"..."},{"heading":"FAQ Content for AI Overviews (10 Q&As)","content":"..."},{"heading":"Schema Markup Recommendations","content":"..."},{"heading":"Content Distribution Plan for AI Citations","content":"..."}]}`,
+                  coding: `You are a technical SEO engineer. Inputs:\n- Website: ${fields.websiteUrl||''}\n- Issue/Goal: ${fields.issue||''}\n- Tech Stack: ${fields.techStack||'Unknown'}\n\nGenerate technical SEO fixes with code.\n\nRespond ONLY with valid JSON:\n{"title":"Technical SEO Fix Plan","sections":[{"heading":"Diagnosis & Priority Issues","content":"..."},{"heading":"Code Fix 1 (Primary)","content":"..."},{"heading":"Code Fix 2 (Secondary)","content":"..."},{"heading":"Performance Optimizations","content":"..."},{"heading":"Testing & Verification Checklist","content":"..."}]}`,
+                  ugc_videos: `You are a UGC video content strategist. Inputs:\n- Product/Service: ${fields.product||''}\n- Style: ${fields.style||''}\n- Audience: ${fields.audience||'General consumers'}\n- Platforms: ${fields.platforms||'Instagram, TikTok'}\n\nGenerate UGC video briefs and scripts.\n\nRespond ONLY with valid JSON:\n{"title":"UGC Video Brief & Scripts","sections":[{"heading":"Video Brief & Creative Direction","content":"..."},{"heading":"Full Script — Version 1 (60 seconds)","content":"..."},{"heading":"Short Script — Version 2 (30 seconds)","content":"..."},{"heading":"Hook Options (5 variations)","content":"..."},{"heading":"Platform Adaptations & Hashtags","content":"..."}]}`
+                }
+
+                const prompt = PROMPTS[agentType] || PROMPTS.seo
+                const groqKey = env.VITE_GROQ_API_KEY
+                if (!groqKey) {
+                  res.setHeader('Content-Type', 'application/json')
+                  res.writeHead(500)
+                  res.end(JSON.stringify({ success: false, error: 'VITE_GROQ_API_KEY not set in .env' }))
+                  return
+                }
+
+                const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${groqKey}` },
+                  body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: prompt }], temperature: 0.7, max_tokens: 4096 }),
+                })
+
+                const groqData = await groqRes.json()
+                if (!groqRes.ok) {
+                  res.setHeader('Content-Type', 'application/json')
+                  res.writeHead(500)
+                  res.end(JSON.stringify({ success: false, error: groqData?.error?.message || 'Groq error' }))
+                  return
+                }
+
+                const rawText = groqData.choices?.[0]?.message?.content || ''
+                let agentResult
+                try {
+                  let clean = rawText.trim().replace(/^```json\s*/i,'').replace(/```\s*$/i,'').trim()
+                  agentResult = JSON.parse(clean)
+                } catch {
+                  agentResult = { title: agentType + ' Results', sections: [{ heading: 'Generated Content', content: rawText }] }
+                }
+
+                res.setHeader('Content-Type', 'application/json')
+                res.setHeader('Access-Control-Allow-Origin', '*')
+                res.writeHead(200)
+                res.end(JSON.stringify({ success: true, agentType, agentResult }))
+              } catch (err) {
+                res.setHeader('Content-Type', 'application/json')
+                res.writeHead(500)
+                res.end(JSON.stringify({ success: false, error: err.message }))
+              }
+            })
+          })
+
+          // ── /api/generate-banner → DALL-E 3 or Gemini ──────────────────────
+          server.middlewares.use('/api/generate-banner', (req, res) => {
+            if (req.method === 'OPTIONS') {
+              res.setHeader('Access-Control-Allow-Origin', '*')
+              res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
+              res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+              res.writeHead(204); res.end(); return
+            }
+            if (req.method !== 'POST') {
+              res.writeHead(405); res.end('Method not allowed'); return
+            }
+
+            let body = ''
+            req.on('data', chunk => { body += chunk })
+            req.on('end', async () => {
+              try {
+                const { prompt, provider = 'gemini', width = 1024, height = 1024 } = JSON.parse(body)
+                if (!prompt) {
+                  res.writeHead(400)
+                  res.end(JSON.stringify({ error: 'Prompt is required' }))
+                  return
+                }
+
+                let imageData
+                if (provider === 'pollinations') {
+                  // Free image generation — no API key needed
+                  const encodedPrompt = encodeURIComponent(prompt)
+                  const seed = Math.floor(Math.random() * 2147483647) // Pollinations rejects seeds > 32-bit int (Date.now() overflowed this)
+                  const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&model=flux&nologo=true&seed=${seed}`
+                  const imgRes = await fetch(pollinationsUrl)
+                  if (!imgRes.ok) throw new Error(`Pollinations error ${imgRes.status}`)
+                  const buffer = await imgRes.arrayBuffer()
+                  const bytes = new Uint8Array(buffer)
+                  let binary = ''
+                  for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i])
+                  const base64Image = btoa(binary)
+                  imageData = { base64Image, mimeType: 'image/png', provider: 'pollinations' }
+
+                } else if (provider === 'gemini') {
+                  // Mirrors api/generate-banner.js's generateWithGemini (production edge function)
+                  const geminiKey = env.GEMINI_API_KEY
+                  if (!geminiKey) {
+                    res.setHeader('Content-Type', 'application/json')
+                    res.writeHead(500)
+                    res.end(JSON.stringify({ error: 'Gemini API key not configured. Add GEMINI_API_KEY to your .env file.' }))
+                    return
+                  }
+
+                  const geminiRes = await fetch(
+                    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${geminiKey}`,
+                    {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }],
+                        generationConfig: { responseModalities: ['IMAGE', 'TEXT'] },
+                      }),
+                    }
+                  )
+
+                  if (!geminiRes.ok) {
+                    const err = await geminiRes.json().catch(() => ({}))
+                    res.setHeader('Content-Type', 'application/json')
+                    res.writeHead(geminiRes.status)
+                    res.end(JSON.stringify({ error: err?.error?.message || `Gemini API error ${geminiRes.status}` }))
+                    return
+                  }
+
+                  const geminiData = await geminiRes.json()
+                  const parts = geminiData.candidates?.[0]?.content?.parts || []
+                  const imagePart = parts.find(p => p.inlineData?.data)
+                  const base64Image = imagePart?.inlineData?.data || null
+                  const mimeType = imagePart?.inlineData?.mimeType || 'image/png'
+
+                  if (!base64Image) {
+                    res.setHeader('Content-Type', 'application/json')
+                    res.writeHead(500)
+                    res.end(JSON.stringify({ error: 'Gemini returned no image. Try again.' }))
+                    return
+                  }
+
+                  imageData = { base64Image, mimeType, provider: 'gemini' }
+
+                } else if (provider === 'dalle') {
+                  const openaiKey = env.OPENAI_API_KEY
+                  if (!openaiKey) {
+                    res.setHeader('Content-Type', 'application/json')
+                    res.writeHead(500)
+                    res.end(JSON.stringify({ error: 'OPENAI_API_KEY not configured' }))
+                    return
+                  }
+
+                  const dalleRes = await fetch('https://api.openai.com/v1/images/generations', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${openaiKey}`,
+                    },
+                    body: JSON.stringify({
+                      model: 'dall-e-3',
+                      prompt: prompt,
+                      n: 1,
+                      size: '1024x1024',
+                      quality: 'hd',
+                    }),
+                  })
+
+                  if (!dalleRes.ok) {
+                    const err = await dalleRes.json().catch(() => ({}))
+                    res.setHeader('Content-Type', 'application/json')
+                    res.writeHead(dalleRes.status)
+                    res.end(JSON.stringify({ error: err?.error?.message || `OpenAI error ${dalleRes.status}` }))
+                    return
+                  }
+
+                  const data = await dalleRes.json()
+                  const imageUrl = data.data?.[0]?.url
+                  if (!imageUrl) {
+                    res.writeHead(500)
+                    res.end(JSON.stringify({ error: 'DALL-E returned no image URL' }))
+                    return
+                  }
+
+                  const imgRes = await fetch(imageUrl)
+                  const buffer = await imgRes.arrayBuffer()
+                  const bytes = new Uint8Array(buffer)
+                  let binary = ''
+                  for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i])
+                  const base64Image = btoa(binary)
+
+                  imageData = {
+                    base64Image,
+                    mimeType: 'image/png',
+                    provider: 'dalle-3',
+                    revised_prompt: data.data?.[0]?.revised_prompt || prompt,
+                  }
+                } else {
+                  // Default: Pollinations (free, no API key)
+                  const encodedPrompt = encodeURIComponent(prompt)
+                  const seed = Math.floor(Math.random() * 2147483647) // Pollinations rejects seeds > 32-bit int (Date.now() overflowed this)
+                  const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&model=flux&nologo=true&seed=${seed}`
+                  const imgRes = await fetch(pollinationsUrl)
+                  if (!imgRes.ok) throw new Error(`Pollinations error ${imgRes.status}`)
+                  const buffer = await imgRes.arrayBuffer()
+                  const bytes = new Uint8Array(buffer)
+                  let binary = ''
+                  for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i])
+                  const base64Image = btoa(binary)
+                  imageData = { base64Image, mimeType: 'image/png', provider: 'pollinations' }
+                }
+
+                res.setHeader('Content-Type', 'application/json')
+                res.setHeader('Access-Control-Allow-Origin', '*')
+                res.writeHead(200)
+                res.end(JSON.stringify(imageData))
+              } catch (err) {
+                res.setHeader('Content-Type', 'application/json')
+                res.writeHead(500)
+                res.end(JSON.stringify({ error: err.message }))
+              }
+            })
+          })
+
+          // ── /api/eventbrite → Eventbrite API proxy ─────────────────────────
+          server.middlewares.use('/api/eventbrite', (req, res) => {
+            if (req.method === 'OPTIONS') {
+              res.setHeader('Access-Control-Allow-Origin', '*')
+              res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
+              res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+              res.writeHead(204); res.end(); return
+            }
+            if (req.method !== 'POST') { res.writeHead(405); res.end('Method not allowed'); return }
+
+            let body = ''
+            req.on('data', chunk => { body += chunk })
+            req.on('end', async () => {
+              const reply = (status, data) => {
+                res.setHeader('Content-Type', 'application/json')
+                res.setHeader('Access-Control-Allow-Origin', '*')
+                res.writeHead(status)
+                res.end(JSON.stringify(data))
+              }
+
+              try {
+                const { action, accessToken, organizationId, eventId, event, venue, ticketClass } = JSON.parse(body)
+                if (!accessToken) { reply(400, { error: 'accessToken required' }); return }
+
+                const ebFetch = async (path, method = 'GET', payload = null) => {
+                  const r = await fetch(`https://www.eventbriteapi.com/v3${path}`, {
+                    method,
+                    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+                    ...(payload ? { body: JSON.stringify(payload) } : {}),
+                  })
+                  return { ok: r.ok, status: r.status, data: await r.json() }
+                }
+
+                let r
+                if (action === 'create_venue') {
+                  r = await ebFetch(`/organizations/${organizationId}/venues/`, 'POST', { venue })
+                } else if (action === 'create_event') {
+                  r = await ebFetch(`/organizations/${organizationId}/events/`, 'POST', { event })
+                } else if (action === 'create_ticket') {
+                  r = await ebFetch(`/events/${eventId}/ticket_classes/`, 'POST', { ticket_class: ticketClass })
+                } else if (action === 'publish_event') {
+                  r = await ebFetch(`/events/${eventId}/publish/`, 'POST')
+                } else {
+                  reply(400, { error: `Unknown action: ${action}` }); return
+                }
+
+                reply(r.status, r.data)
+              } catch (err) {
+                reply(500, { error: err.message })
+              }
+            })
+          })
+
+          // ── /auth/facebook/callback → Facebook OAuth ────────────────────────
+          server.middlewares.use('/auth/facebook/callback', (req, res) => {
+            if (req.method !== 'GET') {
+              res.writeHead(405); res.end('Method not allowed'); return
+            }
+
+            const url = new URL(req.url, `http://${req.headers.host}`)
+            const code = url.searchParams.get('code')
+            const state = url.searchParams.get('state')
+            const error = url.searchParams.get('error')
+            const errorDescription = url.searchParams.get('error_description')
+
+            // Handle OAuth errors
+            if (error) {
+              const errorMsg = `${error}: ${errorDescription || 'Unknown error'}`
+              return res.end(`
+                <html>
+                  <body style="font-family: sans-serif; text-align: center; margin-top: 50px;">
+                    <h1>❌ Facebook Login Failed</h1>
+                    <p>${errorMsg}</p>
+                    <a href="/connected-accounts">← Back to Connected Accounts</a>
+                  </body>
+                </html>
+              `)
+            }
+
+            if (!code) {
+              return res.end(`
+                <html>
+                  <body style="font-family: sans-serif; text-align: center; margin-top: 50px;">
+                    <h1>❌ Invalid OAuth Response</h1>
+                    <p>No authorization code received from Facebook</p>
+                    <a href="/connected-accounts">← Back to Connected Accounts</a>
+                  </body>
+                </html>
+              `)
+            }
+
+            // Success — redirect to connected accounts with code in hash
+            res.setHeader('Location', `/connected-accounts#facebook_code=${code}&state=${state || ''}`)
+            res.writeHead(302)
+            res.end()
+          })
+
+        }
+      }
+    ],
+
+    server: {
+      port: 5173,
+      open: false,
+      proxy: {
+        // n8n webhook proxy (avoids CORS in dev)
+        '/n8n-webhook': {
+          target: 'https://n8n-zvxi.srv1837606.hstgr.cloud',
+          changeOrigin: true,
+          rewrite: path => path.replace(/^\/n8n-webhook/, '/webhook'),
+          secure: true,
+        },
+        // Legacy groq-api proxy (kept for backwards compat)
+        '/groq-api': {
+          target: 'https://api.groq.com',
+          changeOrigin: true,
+          rewrite: path => path.replace(/^\/groq-api/, ''),
+          secure: true,
+        },
+        // Evoke API proxy — avoids CORS from localhost in dev
+        '/evoke-api': {
+          target: 'https://apieksv1.evokemarketplace.com',
+          changeOrigin: true,
+          rewrite: path => path.replace(/^\/evoke-api/, '/api'),
+          secure: true,
+        },
+        // Pollinations image proxy — avoids CORS on localhost
+        '/pollinations': {
+          target: 'https://image.pollinations.ai',
+          changeOrigin: true,
+          rewrite: path => path.replace(/^\/pollinations/, ''),
+          secure: true,
+        },
+      },
+    },
+  }
+})

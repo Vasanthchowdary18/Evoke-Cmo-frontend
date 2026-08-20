@@ -1,0 +1,18 @@
+{
+  "recommendations": [
+    "esbenp.prettier-vscode",
+    "dbaeumer.vscode-eslint",
+    "dsznajder.es7-react-js-snippets",
+    "bradlc.vscode-tailwindcss",
+    "antfu.vite",
+    "formulahendry.auto-rename-tag",
+    "christian-kohler.path-intellisense",
+    "burkeholland.simple-react-snippets"
+  ],
+  "unwantedRecommendations": [
+    "ms-python.python",
+    "ms-python.vscode-pylance",
+    "ms-python.debugpy",
+    "ms-vscode.vscode-typescript-next"
+  ]
+}

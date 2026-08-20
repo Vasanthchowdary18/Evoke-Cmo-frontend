@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Environment variables (secrets!)
+.env
+.env.local
+.env.development
+.env.production
+
+# MCP config (contains API tokens)
+.mcp.json
+
+# Vercel
+.vercel
+
+# Internal-only docs (never publicly served or committed)
+docs-internal/
+
+# Editor
+.vscode/
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db
+node_modules
+
+# Agent tooling (skills cache) — not project code
+.agents/
+skills-lock.json
